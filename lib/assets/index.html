@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>Filen Sync</title>
+		<link rel="stylesheet" href="fa/css/all.min.css">
+		<link rel="stylesheet" href="bootstrap.min.css">
+		<link rel="stylesheet" href="app.css">
+	</head>
+	<body style="overflow: hidden;">
+		<div class="container-lg">
+			<div class="header" style="height: 68px;">
+				<div class="row">
+					<div class="header-col text-center btn btn-secondary" data-go="account">
+						<i class="far fa-user-circle" style="font-size: 24pt;"></i>
+						<br>
+						<font size="2">
+							Account
+						</font>
+					</div>
+					<div class="header-col text-center btn btn-secondary" data-go="syncs">
+						<i class="fas fa-sync" style="font-size: 24pt;"></i>
+						<br>
+						<font size="2">
+							Syncs
+						</font>
+					</div>
+					<div class="header-col text-center btn btn-secondary" data-go="settings">
+						<i class="fas fa-cog" style="font-size: 24pt;"></i>
+						<br>
+						<font size="2">
+							Settings
+						</font>
+					</div>
+				</div>
+			</div>
+			<div class="content login-content" data-type="login">
+				<div class="card fullscreen-card">
+					<div class="card-header text-center">
+						<h3>Login</h3>
+					</div>
+					<div class="card-body">
+						<div class="form-group">
+							<label for="login-email-input">Email address</label>
+							<input type="email" class="form-control" id="login-email-input" placeholder="Your email address">
+						</div>
+						<div class="form-group">
+							<label for="login-password-input">Password</label>
+							<input type="password" class="form-control" id="login-password-input" placeholder="Your password">
+						</div>
+						<div class="form-group">
+							<label for="login-2fa-input">Two Factor Authentication (leave empty if disabled)</label>
+							<input type="text" class="form-control" id="login-2fa-input" placeholder="2FA code" maxlength="6">
+						</div>
+						<div id="login-status" style="display: none;"></div>
+					</div>
+					<div class="card-footer">
+						<div class="float-left">
+							<a class="open-in-browser" href="https://filen.io/register" target="_blank">Create account</a>
+							&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+							<a class="open-in-browser" href="https://filen.io/forgot-password" target="_blank">Forgot password</a>
+						</div>
+						<div class="float-right">
+							<button class="btn btn-primary btn-sm" id="login-btn">Login</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="content" data-type="account" style="padding: 15px;">
+				<div class="row" style="margin-top: 5px;">
+					<div class="col-lg-12">
+						<div class="float-left" id="account-email-text">
+							user@filen.io
+						</div>
+						<div class="float-right">
+							<a class="open-in-browser btn btn-secondary btn-sm" href="https://filen.io/my-account/file-manager/settings" target="_blank">Settings</a>
+							<button class="btn btn-secondary btn-sm" onClick="doLogout()">Logout</button>
+						</div>
+					</div>
+				</div>
+				<hr>
+				<div class="row">
+					<div class="col-lg-12">
+						Storage
+					</div>
+				</div>
+				<div class="row" style="margin-top: 10px;">
+					<div class="col-lg-12">
+						<div class="progress">
+						  	<div class="progress-bar" id="account-storage-used-progress" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+						</div>
+					</div>
+				</div>
+				<div class="row">
+					<div class="col-lg-12">
+						<div class="float-left">
+							<text id="account-storage-used-text">
+								0 GB of 0 TB used (0%)
+							</text>
+						</div>
+						<div class="float-right" id="account-pro-button-container">
+							<button class="btn btn-secondary btn-sm">Pro</button>
+						</div>
+					</div>
+				</div>
+				<hr>
+				<div class="row">
+					<div class="col-lg-12">
+						<div class="float-left">
+							Sync Folder Stats
+						</div>
+						<div class="float-right">
+							<button class="btn btn-secondary btn-sm" onClick="openSyncFolder()">Open</button>
+						</div>
+					</div>
+				</div>
+				<div class="row" style="margin-top: 15px;">
+					<div class="col-lg-12">
+						<div class="float-left">
+							Files: <text id="account-sync-stats-files-text">0</text>
+						</div>
+						<div class="float-right">
+							Folders: <text id="account-sync-stats-folders-text">0</text>
+						</div>
+					</div>
+				</div>
+				<hr>
+			</div>
+			<div class="content" data-type="syncs">
+				<div class="row" style="padding: 15px;">
+					<div class="col-lg-12">
+						Running sync tasks: <text id="syncs-running-tasks-text">0</text>
+					</div>
+				</div>
+				<div style="overflow-x: hidden; overflow-y: scroll; height: 79vh; width: 100%">
+					<ul class="list-group" id="sync-task-tbody" style="width: 100%; margin-top: 0px; padding-top: 0px;"></ul>
+				</div>
+			</div>
+			<div class="content" data-type="settings" style="padding: 15px;">
+				<div class="row">
+					<div class="col-lg-12">
+						<div class="form-group">
+							<label class="control-label">Sync Path</label>
+							<div class="form-group">
+								<div class="input-group mb-3">
+									<input type="text" class="form-control" id="settings-home-path-text" disabled="">
+									<div class="input-group-append">
+										<span class="input-group-text btn btn-secondary btn-sm" onClick="changeHomePath()">Change</span>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="row" style="margin-top: 15px;">
+					<div class="col-lg-12">
+						Version: <text id="settings-client-version-text"></text>
+					</div>
+				</div>
+				<div class="row" id="settings-update-container" style="margin-top: 20px; display: none;">
+					<div class="col-lg-12">
+						<div class="float-left">
+							Update available, please restart
+						</div>
+						<div class="float-right">
+							<button class="btn btn-secondary btn-sm" onClick="restartForUpdate()">Restart</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="content" data-type="download-file">
+				download-file
+			</div>
+			<div class="content" data-type="download-folder">
+				<div class="row">
+					<div class="col-lg-12">
+						<div class="float-right">
+							<i class="fas fa-times" style="cursor: pointer; margin-right: 15px; margin-top: 10px; font-size: 18pt;" onClick="isCurrentlyDownloadigRemote = false; currentDownloadFolderStopped[currentDownloadFolderUUID] = true; routeTo('account')"></i>
+						</div>
+					</div>
+				</div>
+				<div class="row" style="padding: 15px;">
+					<div class="col-lg-12">
+						<center>
+							<b>Download folder</b>
+						</center>
+					</div>
+				</div>
+				<div class="row" style="padding: 15px; margin-top: 15px;">
+					<div class="col-lg-12">
+						<div class="form-group">
+							<label class="control-label">Download Path</label>
+							<div class="form-group">
+								<div class="input-group mb-3">
+									<input type="text" class="form-control" id="download-folder-path-text" disabled="">
+									<div class="input-group-append">
+										<span class="input-group-text btn btn-secondary btn-sm" id="download-folder-change-path-btn" onClick="changeDownloadFolderPath()">Change</span>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="row" style="padding: 15px;" id="download-folder-btn-container">
+					<div class="col-lg-12">
+						<center>
+							<button class="btn btn-secondary btn-sm" onClick="startDownloadFolder()">Download</button>
+						</center>
+					</div>
+				</div>
+				<div class="row" style="padding: 15px; margin-top: 10px; display: none;" id="download-folder-progress-container">
+					<div class="col-lg-12">
+						<div class="row">
+							<div class="col-lg-12">
+								<div class="progress">
+								  	<div class="progress-bar" id="download-folder-progress" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+								</div>
+							</div>
+						</div>
+						<div class="row" id="download-folder-progress-text-container" style="display: none;">
+							<div class="col-lg-12">
+								<div class="float-left">
+								  	<text id="download-folder-progress-bytes-text"></text>
+								</div>
+								<div class="float-right">
+								  	<text id="download-folder-progress-percent-text"></text>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="content" data-type="big-loading">
+				<div class="row" style="margin-top: 150px;">
+					<div class="col-lg-12">
+						<center>
+							<i class="fas fa-spinner fa-spin" style="font-size: 24pt;"></i>
+						</center>
+					</div>
+				</div>
+				<div class="row" style="margin-top: 20px;">
+					<div class="col-lg-12">
+						<center>
+							<text id="big-loading-text"></text>
+						</center>
+					</div>
+				</div>
+			</div>
+			<div class="content" data-type="setup">
+				setup
+			</div>
+		</div>
+	</body>
+	<script src="utils.js"></script>
+	<script src="app.js"></script>
+</html>
