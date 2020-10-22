@@ -126,7 +126,10 @@ const checkIfSyncDirectoryExists = () => {
 				browserWindow.webContents.send("pause-syncing")
 			}
 
-			fs.mkdir(winOrUnixFilePath(syncDirPath), (err) => {
+			fs.mkdir(winOrUnixFilePath(syncDirPath), {
+				recursive: true,
+				overwrite: true
+			}, (err) => {
 				if(err){
 					console.log("Could not create sync dir:", err)
 				}
