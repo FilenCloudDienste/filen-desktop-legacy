@@ -14,6 +14,7 @@ const copy = require("recursive-copy")
 const rimraf = require("rimraf")
 const { autoUpdater } = require("electron-updater")
 const log = require("electron-log")
+const child_process = require("child_process")
 
 let db = undefined
 
@@ -136,6 +137,7 @@ const checkIfSyncDirectoryExists = () => {
 				else{
 					if(typeof browserWindow !== "undefined"){
 						browserWindow.webContents.send("unpause-syncing")
+						browserWindow.webContents.send("clear-db")
 					}
 
 					console.log("Sync dir created:", syncDirPath)
@@ -470,7 +472,7 @@ const createWindow = async () => {
 
 	checkIfSyncDirectoryExists()
 
-	setInterval(checkIfSyncDirectoryExists, 3000)
+	//setInterval(checkIfSyncDirectoryExists, 3000)
 
   	browserWindow.loadFile("./lib/assets/index.html")
 
