@@ -160,10 +160,10 @@
 				<div class="row" id="settings-update-container" style="margin-top: 20px; display: none;">
 					<div class="col-lg-12">
 						<div class="float-left">
-							Update available, please restart
+							Update available, please download and install
 						</div>
 						<div class="float-right">
-							<button class="btn btn-secondary btn-sm" onClick="restartForUpdate()">Restart</button>
+							<button class="btn btn-secondary btn-sm" onClick="downloadUpdateLink()">Download</button>
 						</div>
 					</div>
 				</div>
@@ -183,6 +183,8 @@
 					<div class="col-lg-12">
 						<center>
 							<b>Download folder</b>
+							<br>
+							<small><text id="download-folder-foldername-text"></text></small>
 						</center>
 					</div>
 				</div>
@@ -204,7 +206,7 @@
 				<div class="row" style="padding: 15px;" id="download-folder-btn-container">
 					<div class="col-lg-12">
 						<center>
-							<button class="btn btn-secondary btn-sm" onClick="startDownloadFolder()">Download</button>
+							<button class="btn btn-primary btn-sm" onClick="startDownloadFolder()">Download</button>
 						</center>
 					</div>
 				</div>

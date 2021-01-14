@@ -1,6 +1,6 @@
 {
 	"name": "filen-desktop-client",
-	"version": "1.2.30",
+	"version": "1.2.31",
 	"description": "Filen Sync",
 	"main": "index.js",
 	"dependencies": {
@@ -36,8 +36,7 @@
 		"start": "electron .",
 		"postinstall": "electron-builder install-app-deps",
 		"rebuild": "./node_modules/.bin/electron-rebuild.cmd",
-		"dist": "npm run postinstall && electron-builder -wl",
-		"dist-win": "npm run postinstall && electron-builder"
+		"dist": "npm run postinstall && electron-builder -wlm -c.mac.identity=null"
 	},
 	"build": {
 		"appId": "io.filen.sync",
@@ -52,7 +51,7 @@
 		"publish": [
 			{
 				"provider": "generic",
-				"url": "https://cdn.filen.io/sync/updates/${platform}/"
+				"url": "https://cdn.filen.io/sync/updates/"
 			}
 		],
 		"win": {
@@ -72,6 +71,13 @@
 				"AppImage",
 				"zip"
 			]
+		},
+		"mac": {
+			"target": [
+				"dmg",
+				"zip"
+			],
+			"icon": "./icons/png/512x512.png"
 		}
 	},
 	"author": "Filen Cloud Dienste",

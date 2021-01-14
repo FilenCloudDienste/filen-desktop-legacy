@@ -1,14 +1,18 @@
 process.noAsar = true
 
-//really bad practice, but we dont want our app to spit out errors and look like its made by a 10 year old
 process.on("uncaughtException", (err) => {
   	console.log("Caught exception:", err)
 })
 
-const { app, BrowserWindow, Menu, ipcMain, Tray, dialog, powerMonitor, globalShortcut } = require("electron")
+const { app, BrowserWindow, Menu, ipcMain, Tray, dialog, powerMonitor, globalShortcut, nativeImage } = require("electron")
+const path = require("path")
+
+if(process.platform == "darwin"){
+	app.dock.setIcon(nativeImage.createFromPath(path.join(__dirname, "icons", "png", "512x512.png")))
+}
+
 const level = require("level")
 const fs = require("fs-extra")
-const path = require("path")
 const AutoLaunch = require("auto-launch")
 const copy = require("recursive-copy")
 const rimraf = require("rimraf")
@@ -19,7 +23,7 @@ const child_process = require("child_process")
 let db = undefined
 
 try{
-	if(process.platform == "linux"){
+	if(process.platform == "linux" || process.platform == "darwin"){
 		db = level(app.getPath("userData") + "/index")
 	}
 	else{
@@ -43,6 +47,17 @@ let syncTasks = 0
 
 autoUpdater.logger = log
 autoUpdater.logger.transports.file.level = "info"
+
+let nativeImageAppIcon = path.join(__dirname, "lib", "assets", "logo.png")
+let nativeImageTrayIconNormal = path.join(__dirname, "lib", "assets", "logo.png")
+let nativeImageTrayIconSyncing = path.join(__dirname, "lib", "assets", "tray_sync.png")
+let nativeImageTrayIconPaused = path.join(__dirname, "lib", "assets", "tray_paused.png")
+
+if(process.platform == "darwin"){
+	nativeImageTrayIconNormal = path.join(__dirname, "lib", "assets", "logo_16.png")
+	nativeImageTrayIconSyncing = path.join(__dirname, "lib", "assets", "tray_sync_16.png")
+	nativeImageTrayIconPaused = path.join(__dirname, "lib", "assets", "tray_paused_16.png")
+}
 
 const sendUserDirs = () => {
 	try{
@@ -95,7 +110,7 @@ const getPlatform = () => {
 	}
 
 	if(process.platform == "darwin"){
-		return "macos"
+		return "mac"
 	}
 }
 
@@ -155,15 +170,17 @@ const createWindow = async () => {
 	})
 
 	autoLaunch.isEnabled().then((isEnabled) => {
-	    if(!isEnabled){
+	    /*if(!isEnabled){
 	    	autoLaunch.enable()
-	    }
+	    }*/
+
+	    autoLaunch.disable()
 	})
 
 	browserWindow = new BrowserWindow({
 		width: 400,
 		height: 600,
-		icon: path.join(__dirname, "lib/assets/logo.png"),
+		icon: nativeImageAppIcon,
 		webPreferences: {
 			nodeIntegration: true,
 			nodeIntegrationInWorker: true,
@@ -179,12 +196,11 @@ const createWindow = async () => {
 	})
 
 	browserWindow.setResizable(false)
-
-	tray = new Tray(path.join(__dirname, "lib/assets/logo.png"))
-
+	browserWindow.setVisibleOnAllWorkspaces(true)
 	browserWindow.setMenuBarVisibility(false)
-
 	//browserWindow.toggleDevTools()
+
+	tray = new Tray(nativeImageTrayIconNormal)
 
 	let normalTrayMenu = Menu.buildFromTemplate(
 		[
@@ -258,7 +274,10 @@ const createWindow = async () => {
     	]
     )
 
-	tray.setTitle("Filen Sync")
+	if(process.platform !== "darwin"){
+		tray.setTitle("Filen Sync")
+	}
+
 	tray.setContextMenu(normalTrayMenu)
 
     tray.on("double-click", () => {
@@ -474,7 +493,7 @@ const createWindow = async () => {
 
 	//setInterval(checkIfSyncDirectoryExists, 3000)
 
-  	browserWindow.loadFile("./lib/assets/index.html")
+  	browserWindow.loadFile(path.join(__dirname, "lib", "assets", "index.html"))
 
   	setInterval(() => {
   		autoUpdater.checkForUpdatesAndNotify()
@@ -487,16 +506,16 @@ const createWindow = async () => {
 	setInterval(() => {
 		if(syncingPaused){
 			tray.setContextMenu(unpauseTrayMenu)
-			tray.setImage(path.join(__dirname, "lib/assets/tray_paused.png"))
+			tray.setImage(nativeImageTrayIconPaused)
 		}
 		else{
 			tray.setContextMenu(normalTrayMenu)
 
 			if(syncTasks > 0){
-				tray.setImage(path.join(__dirname, "lib/assets/tray_sync.png"))
+				tray.setImage(nativeImageTrayIconSyncing)
 			}
 			else{
-				tray.setImage(path.join(__dirname, "lib/assets/logo.png"))
+				tray.setImage(nativeImageTrayIconNormal)
 			}
 		}
 	}, 1000)
@@ -532,7 +551,7 @@ else{
 }
 
 app.on("window-all-closed", () => {
-  	if(getPlatform() !== "macos"){
+  	if(getPlatform() !== "mac"){
     	return app.exit(0)
   	}
 })
