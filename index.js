@@ -44,6 +44,7 @@ let appPath = undefined
 let doCheckIfSyncDirectoryExists = true
 let syncingPaused = false
 let syncTasks = 0
+let isSyncing = false
 
 autoUpdater.logger = log
 autoUpdater.logger.transports.file.level = "info"
@@ -232,7 +233,13 @@ const createWindow = async () => {
 	        {
 	            label: "Quit",
 	            click: () => {
-	            	return app.exit(0)
+	            	let waitForSyncToFinishInterval = setInterval(() => {
+	            		if(!isSyncing){
+	            			clearInterval(waitForSyncToFinishInterval)
+
+	            			return app.exit(0)
+	            		}
+	            	}, 100)
 	            }
 	        }
     	]
@@ -268,7 +275,13 @@ const createWindow = async () => {
 	        {
 	            label: "Quit",
 	            click: () => {
-	            	return app.exit(0)
+	            	let waitForSyncToFinishInterval = setInterval(() => {
+	            		if(!isSyncing){
+	            			clearInterval(waitForSyncToFinishInterval)
+
+	            			return app.exit(0)
+	            		}
+	            	}, 100)
 	            }
 	        }
     	]
@@ -296,6 +309,10 @@ const createWindow = async () => {
         event.preventDefault()
 
         return browserWindow.hide()
+    })
+
+    ipcMain.on("is-syncing", (event, data) => {
+    	isSyncing = data.isSyncing
     })
 
     ipcMain.on("is-syncing-paused", (event, data) => {
@@ -445,11 +462,23 @@ const createWindow = async () => {
 	})
 
 	ipcMain.on("rewrite-saved-sync-data-done", (event, data) => {
-		return app.exit(0)
+		let waitForSyncToFinishInterval = setInterval(() => {
+    		if(!isSyncing){
+    			clearInterval(waitForSyncToFinishInterval)
+
+    			return app.exit(0)
+    		}
+    	}, 100)
 	})
 
 	ipcMain.on("exit-app", (event, data) => {
-		return app.exit(0)
+		let waitForSyncToFinishInterval = setInterval(() => {
+    		if(!isSyncing){
+    			clearInterval(waitForSyncToFinishInterval)
+
+    			return app.exit(0)
+    		}
+    	}, 100)
 	})
 
 	ipcMain.on("restart-for-update", (event, data) => {
@@ -515,7 +544,9 @@ const createWindow = async () => {
 				tray.setImage(nativeImageTrayIconSyncing)
 			}
 			else{
-				tray.setImage(nativeImageTrayIconNormal)
+				setTimeout(() => {
+					tray.setImage(nativeImageTrayIconNormal)
+				}, 10000)
 			}
 		}
 	}, 1000)
