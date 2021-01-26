@@ -234,7 +234,7 @@ const createWindow = async () => {
 	            label: "Quit",
 	            click: () => {
 	            	let waitForSyncToFinishInterval = setInterval(() => {
-	            		if(!isSyncing){
+	            		if(syncTasks == 0){
 	            			clearInterval(waitForSyncToFinishInterval)
 
 	            			return app.exit(0)
@@ -276,7 +276,7 @@ const createWindow = async () => {
 	            label: "Quit",
 	            click: () => {
 	            	let waitForSyncToFinishInterval = setInterval(() => {
-	            		if(!isSyncing){
+	            		if(syncTasks == 0){
 	            			clearInterval(waitForSyncToFinishInterval)
 
 	            			return app.exit(0)
@@ -463,7 +463,7 @@ const createWindow = async () => {
 
 	ipcMain.on("rewrite-saved-sync-data-done", (event, data) => {
 		let waitForSyncToFinishInterval = setInterval(() => {
-    		if(!isSyncing){
+    		if(syncTasks == 0){
     			clearInterval(waitForSyncToFinishInterval)
 
     			return app.exit(0)
@@ -473,7 +473,7 @@ const createWindow = async () => {
 
 	ipcMain.on("exit-app", (event, data) => {
 		let waitForSyncToFinishInterval = setInterval(() => {
-    		if(!isSyncing){
+    		if(syncTasks == 0){
     			clearInterval(waitForSyncToFinishInterval)
 
     			return app.exit(0)
@@ -544,9 +544,7 @@ const createWindow = async () => {
 				tray.setImage(nativeImageTrayIconSyncing)
 			}
 			else{
-				setTimeout(() => {
-					tray.setImage(nativeImageTrayIconNormal)
-				}, 10000)
+				tray.setImage(nativeImageTrayIconNormal)
 			}
 		}
 	}, 1000)
