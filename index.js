@@ -1,11 +1,29 @@
 process.noAsar = true
 
 process.on("uncaughtException", (err) => {
-  	console.log("Caught exception:", err)
+	console.error(err)
+
+	if(err.toString().indexOf("OpenError") !== -1 || err.toString().indexOf("Corruption") !== -1){
+		let electron = require("electron")
+		let rmrf = require("rimraf")
+		let dbPath = electron.app.getPath("userData") + "/db/index"
+
+		if(process.platform == "linux" || process.platform == "darwin"){
+			dbPath = electron.app.getPath("userData") + "/index"
+		}
+
+		return rmrf(dbPath, () => {
+			electron.app.exit(0)
+		})
+	}
 })
 
 const { app, BrowserWindow, Menu, ipcMain, Tray, dialog, powerMonitor, globalShortcut, nativeImage } = require("electron")
 const path = require("path")
+
+console.log("platform = " + process.platform)
+console.log("exePath = " + app.getPath("exe"))
+console.log("userDataPath = " + app.getPath("userData"))
 
 if(process.platform == "darwin"){
 	app.dock.setIcon(nativeImage.createFromPath(path.join(__dirname, "icons", "png", "512x512.png")))
@@ -20,18 +38,29 @@ const { autoUpdater } = require("electron-updater")
 const log = require("electron-log")
 const child_process = require("child_process")
 
+const autoLaunch = new AutoLaunch({
+    name: "Filen Sync",
+    path: app.getPath("exe"),
+    isHidden: true
+})
+
 let db = undefined
+let dbPath = undefined
+
+if(process.platform == "linux" || process.platform == "darwin"){
+	dbPath = app.getPath("userData") + "/index"
+}
+else{
+	dbPath = app.getPath("userData") + "/db/index"
+}
 
 try{
-	if(process.platform == "linux" || process.platform == "darwin"){
-		db = level(app.getPath("userData") + "/index")
-	}
-	else{
-		db = level(app.getPath("userData") + "/db/index")
-	}
+	db = level(dbPath)
 }
 catch(e){
-	return app.exit(0)
+	return rimraf(dbPath, () => {
+		app.exit(0)
+	})
 }
 
 let tray = null
@@ -164,19 +193,34 @@ const checkIfSyncDirectoryExists = () => {
 }
 
 const createWindow = async () => {
-	const autoLaunch = new AutoLaunch({
-	    name: "Filen Sync",
-	    path: app.getPath("exe"),
-	    isHidden: true
-	})
+	let autostartEnabledSetter = false
 
-	autoLaunch.isEnabled().then((isEnabled) => {
-	    /*if(!isEnabled){
-	    	autoLaunch.enable()
-	    }*/
+	try{
+		let getAutostartEnabled = await db.get("autostartEnabled")
 
-	    autoLaunch.disable()
-	})
+		if(getAutostartEnabled){
+			autoLaunch.enable()
+
+			autostartEnabledSetter = true
+		}
+		else{
+			autoLaunch.disable()
+
+			autostartEnabledSetter = false
+		}
+	}
+	catch(e){
+		autoLaunch.enable()
+
+		autostartEnabledSetter = true
+	}
+
+	try{
+		await db.put("autostartEnabled", autostartEnabledSetter)
+	}
+	catch(e){
+		console.log(e)
+	}
 
 	browserWindow = new BrowserWindow({
 		width: 400,
@@ -197,7 +241,7 @@ const createWindow = async () => {
 	})
 
 	browserWindow.setResizable(false)
-	browserWindow.setVisibleOnAllWorkspaces(true)
+	//browserWindow.setVisibleOnAllWorkspaces(true)
 	browserWindow.setMenuBarVisibility(false)
 	//browserWindow.toggleDevTools()
 
@@ -311,6 +355,12 @@ const createWindow = async () => {
         return browserWindow.hide()
     })
 
+    ipcMain.on("relaunch-app", (event, data) => {
+    	app.relaunch()
+
+    	return app.exit(0)
+    })
+
     ipcMain.on("is-syncing", (event, data) => {
     	isSyncing = data.isSyncing
     })
@@ -319,7 +369,70 @@ const createWindow = async () => {
     	return syncingPaused = data.paused
     })
 
-	ipcMain.on("renderer-ready", (event, data) => {
+    ipcMain.on("toggle-autostart", async (event, data) => {
+    	let autostartEnabled = false
+
+		try{
+			let getAutostartEnabled = await db.get("autostartEnabled")
+
+			if(getAutostartEnabled){
+				autostartEnabled = true
+			}
+		}
+		catch(e){
+			autostartEnabled = false
+		}
+
+		console.log(autostartEnabled)
+
+		if(autostartEnabled){
+			autoLaunch.disable()
+
+			try{
+				await db.put("autostartEnabled", false)
+			}
+			catch(e){
+				console.log(e)
+			}
+
+			browserWindow.webContents.send("autostart-enabled-res", {
+				autostartEnabled: false
+			})
+		}
+		else{
+			autoLaunch.enable()
+
+			try{
+				await db.put("autostartEnabled", true)
+			}
+			catch(e){
+				console.log(e)
+			}
+
+			browserWindow.webContents.send("autostart-enabled-res", {
+				autostartEnabled: true
+			})
+		}
+    })
+
+	ipcMain.on("renderer-ready", async (event, data) => {
+		let autostartEnabled = false
+
+		try{
+			let getAutostartEnabled = await db.get("autostartEnabled")
+
+			if(getAutostartEnabled){
+				autostartEnabled = true
+			}
+		}
+		catch(e){
+			autostartEnabled = false
+		}
+
+		browserWindow.webContents.send("autostart-enabled-res", {
+			autostartEnabled: autostartEnabled
+		})
+
   		return rendererReady = true
 	})
 
@@ -402,63 +515,67 @@ const createWindow = async () => {
 		browserWindow.webContents.send("pause-syncing")
 		doCheckIfSyncDirectoryExists = false
 
-		setTimeout(async () => {
-			let selectedPath = result.filePaths[0].split("\\").join("/")
+		let wait = setInterval(async () => {
+			if(syncTasks == 0){
+				clearInterval(wait)
 
-			userHomePath = selectedPath
+				let selectedPath = result.filePaths[0].split("\\").join("/")
 
-			let newSyncDirPath = userHomePath + "/" + "Filen Sync"
+				userHomePath = selectedPath
 
-			try{
-				await db.put("altHomePath", selectedPath)
-			}
-			catch(e){
-				return console.log(e)
-			}
+				let newSyncDirPath = userHomePath + "/" + "Filen Sync"
 
-			sendUserDirs()
+				try{
+					await db.put("altHomePath", selectedPath)
+				}
+				catch(e){
+					return console.log(e)
+				}
 
-			const copyOldFilesOver = () => {
 				sendUserDirs()
 
-				copy(winOrUnixFilePath(lastUserSyncDir), winOrUnixFilePath(newSyncDirPath), {
-					overwrite: true,
-					expamd: false,
-					dot: true,
-					junk: true
-				}, (err, res) => {
-					if(err){
-						console.log(err)
-					}
-					else{
-						rimraf(winOrUnixFilePath(lastUserSyncDir), () => {
-							sendUserDirs()
-							
-							browserWindow.webContents.send("rewrite-saved-sync-data", {
-								lastUserHomePath,
-								newUserHomePath: userHomePath
-							})
-						})
-					}
-				})
-			}
+				const copyOldFilesOver = () => {
+					sendUserDirs()
 
-			fs.access(winOrUnixFilePath(newSyncDirPath), (err) => {
-				if(err && err.code == "ENOENT"){
-					fs.mkdir(winOrUnixFilePath(newSyncDirPath), (err) => {
+					copy(winOrUnixFilePath(lastUserSyncDir), winOrUnixFilePath(newSyncDirPath), {
+						overwrite: true,
+						expand: false,
+						dot: true,
+						junk: true
+					}, (err, res) => {
 						if(err){
 							console.log(err)
 						}
 						else{
-							copyOldFilesOver()
+							rimraf(winOrUnixFilePath(lastUserSyncDir), () => {
+								sendUserDirs()
+								
+								browserWindow.webContents.send("rewrite-saved-sync-data", {
+									lastUserHomePath,
+									newUserHomePath: userHomePath
+								})
+							})
 						}
 					})
 				}
-				else{
-					copyOldFilesOver()
-				}
-			})
-		}, 5000)
+
+				fs.access(winOrUnixFilePath(newSyncDirPath), (err) => {
+					if(err && err.code == "ENOENT"){
+						fs.mkdir(winOrUnixFilePath(newSyncDirPath), (err) => {
+							if(err){
+								console.log(err)
+							}
+							else{
+								copyOldFilesOver()
+							}
+						})
+					}
+					else{
+						copyOldFilesOver()
+					}
+				})
+			}
+		}, 100)
 	})
 
 	ipcMain.on("rewrite-saved-sync-data-done", (event, data) => {

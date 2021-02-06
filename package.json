@@ -1,6 +1,6 @@
 {
 	"name": "filen-desktop-client",
-	"version": "1.2.43",
+	"version": "1.2.46",
 	"description": "Filen Sync",
 	"main": "index.js",
 	"dependencies": {
