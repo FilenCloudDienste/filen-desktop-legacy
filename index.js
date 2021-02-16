@@ -3,7 +3,7 @@ process.noAsar = true
 process.on("uncaughtException", (err) => {
 	console.error(err)
 
-	if(err.toString().indexOf("OpenError") !== -1 || err.toString().indexOf("Corruption") !== -1){
+	if(err.toString().toLowerCase().indexOf("openerror") !== -1 || err.toString().toLowerCase().indexOf("corruption") !== -1 && err.toString().toLowerCase().indexOf("level") !== -1){
 		let electron = require("electron")
 		let rmrf = require("rimraf")
 		let dbPath = electron.app.getPath("userData") + "/db/index"
@@ -382,8 +382,6 @@ const createWindow = async () => {
 		catch(e){
 			autostartEnabled = false
 		}
-
-		console.log(autostartEnabled)
 
 		if(autostartEnabled){
 			autoLaunch.disable()
