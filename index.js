@@ -267,6 +267,7 @@ const createWindow = async () => {
 			backgroundThrottling: false,
 			enableRemoteModule: true
 		},
+		title: "Filen Sync",
 		maximizable: false,
 		fullscreenable: false,
 		darkTheme: true,
@@ -349,6 +350,10 @@ const createWindow = async () => {
 	        }
     	]
     )
+
+    if(is.macOS()){
+    	browserWindow.setTitle("Filen Sync")
+    }
 
 	tray.setContextMenu(normalTrayMenu)
 
