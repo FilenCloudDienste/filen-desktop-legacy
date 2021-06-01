@@ -26,7 +26,7 @@ const copy = require("recursive-copy")
 const rimraf = require("rimraf")
 const { autoUpdater } = require("electron-updater")
 const log = require("electron-log")
-const Positioner = require("electron-positioner")
+const positioner = require("electron-traywindow-positioner")
 const child_process = require("child_process")
 const is = require("electron-is")
 
@@ -53,7 +53,6 @@ let tray = null,
 	isSyncing = false,
 	currentTrayIcon = undefined,
 	toggleAutostartTimeout = 0,
-	positioner = undefined,
 	db = undefined,
 	dbPath = undefined
 
@@ -199,10 +198,6 @@ const toggleAutoLaunch = (enable = true) => {
 		return false
 	}
 
-	if(is.dev()){
-		return false
-	}
-
 	try{
 		if(is.macOS()){
 			app.setLoginItemSettings({
@@ -254,47 +249,14 @@ const showWindow = () => {
 }
 
 const moveWindow = () => {
-	if(typeof browserWindow == "undefined" || typeof tray == "undefined" || typeof positioner == "undefined"){
+	if(typeof browserWindow == "undefined" || typeof tray == "undefined"){
 		return false
 	}
 
-	return positioner.move("trayCenter", tray.getBounds())
+	return positioner.position(browserWindow, tray.getBounds())
 }
 
 const createWindow = async () => {
-	if(!is.linux()){
-		let autostartEnabledSetter = false
-
-		try{
-			let getAutostartEnabled = app.getLoginItemSettings()['openAtLogin']
-
-			if(getAutostartEnabled){
-				toggleAutoLaunch(true)
-
-				autostartEnabledSetter = true
-			}
-			else{
-				toggleAutoLaunch(false)
-
-				autostartEnabledSetter = false
-			}
-		}
-		catch(e){
-			toggleAutoLaunch(false)
-
-			autostartEnabledSetter = true
-		}
-
-		try{
-			await db.put("autostartEnabled", autostartEnabledSetter.toString())
-
-			console.log("autostartEnabled", autostartEnabledSetter.toString())
-		}
-		catch(e){
-			console.log(e)
-		}
-	}
-
 	browserWindow = new BrowserWindow({
 		width: 350,
 		height: 550,
@@ -319,8 +281,6 @@ const createWindow = async () => {
 	browserWindow.setMenuBarVisibility(false)
 
 	tray = new Tray(nativeImageTrayIconNormal)
-
-	positioner = new Positioner(browserWindow)
 
 	let normalTrayMenu = Menu.buildFromTemplate(
 		[
