@@ -10,6 +10,7 @@
 		"chokidar": "^3.4.3",
 		"chokidar-fs-extra": "git+https://github.com/Dwynr/chokidar-fs-extra.git",
 		"crypto-js": "^4.0.0",
+		"electron-is": "^3.0.0",
 		"electron-log": "^4.2.4",
 		"electron-positioner": "^4.1.0",
 		"electron-traywindow-positioner": "^1.1.0",

@@ -20,31 +20,44 @@ process.on("uncaughtException", (err) => {
 
 const { app, BrowserWindow, Menu, ipcMain, Tray, dialog, powerMonitor, globalShortcut, nativeImage, screen } = require("electron")
 const path = require("path")
-
-console.log("platform = " + process.platform)
-console.log("exePath = " + app.getPath("exe"))
-console.log("userDataPath = " + app.getPath("userData"))
-
-if(process.platform == "darwin"){
-	app.dock.setIcon(nativeImage.createFromPath(path.join(__dirname, "icons", "png", "512x512.png")))
-
-	app.dock.hide()
-}
-
 const level = require("level")
 const fs = require("fs-extra")
 const copy = require("recursive-copy")
 const rimraf = require("rimraf")
 const { autoUpdater } = require("electron-updater")
 const log = require("electron-log")
-const Positioner = require('electron-positioner')
+const Positioner = require("electron-positioner")
 const child_process = require("child_process")
+const is = require("electron-is")
 
-let db = undefined
-let dbPath = undefined
-let positioner = undefined
+console.log("platform = " + process.platform)
+console.log("exePath = " + app.getPath("exe"))
+console.log("userDataPath = " + app.getPath("userData"))
 
-if(process.platform == "linux" || process.platform == "darwin"){
+if(is.macOS()){
+	app.dock.setIcon(nativeImage.createFromPath(path.join(__dirname, "icons", "png", "512x512.png")))
+
+	app.dock.hide()
+}
+
+let tray = null,
+	rendererReady = false,
+	userHomePath = undefined,
+	userSyncDir = undefined,
+	userDownloadPath = undefined,
+	browserWindow = undefined,
+	appPath = undefined,
+	doCheckIfSyncDirectoryExists = true,
+	syncingPaused = false,
+	syncTasks = 0,
+	isSyncing = false,
+	currentTrayIcon = undefined,
+	toggleAutostartTimeout = 0,
+	positioner = undefined,
+	db = undefined,
+	dbPath = undefined
+
+if(is.linux() || is.macOS()){
 	dbPath = app.getPath("userData") + "/index"
 }
 else{
@@ -60,20 +73,6 @@ catch(e){
 	})
 }
 
-let tray = null
-let rendererReady = false
-let userHomePath = undefined
-let userSyncDir = undefined
-let userDownloadPath = undefined
-let browserWindow = undefined
-let appPath = undefined
-let doCheckIfSyncDirectoryExists = true
-let syncingPaused = false
-let syncTasks = 0
-let isSyncing = false
-let currentTrayIcon = undefined
-let toggleAutostartTimeout = 0
-
 autoUpdater.logger = log
 autoUpdater.logger.transports.file.level = "info"
 
@@ -82,7 +81,7 @@ let nativeImageTrayIconNormal = path.join(__dirname, "lib", "assets", "logo.png"
 let nativeImageTrayIconSyncing = path.join(__dirname, "lib", "assets", "tray_sync.png")
 let nativeImageTrayIconPaused = path.join(__dirname, "lib", "assets", "tray_paused.png")
 
-if(process.platform == "darwin"){
+if(is.macOS()){
 	nativeImageTrayIconNormal = path.join(__dirname, "lib", "assets", "logo_16.png")
 	nativeImageTrayIconSyncing = path.join(__dirname, "lib", "assets", "tray_sync_16.png")
 	nativeImageTrayIconPaused = path.join(__dirname, "lib", "assets", "tray_paused_16.png")
@@ -130,21 +129,21 @@ const init = () => {
 }
 
 const getPlatform = () => {
-	if(process.platform == "win32" || process.platform == "win64"){
+	if(is.windows()){
 		return "windows"
 	}
 
-	if(process.platform == "linux"){
+	if(is.linux()){
 		return "linux"
 	}
 
-	if(process.platform == "darwin"){
+	if(is.macOS()){
 		return "mac"
 	}
 }
 
 const winOrUnixFilePath = (path) => {
-	if(getPlatform() == "windows"){
+	if(is.windows()){
 		return path.split("/").join("\\")
 	}
 	else{
@@ -196,18 +195,16 @@ const toggleAutoLaunch = (enable = true) => {
 		return false
 	}
 
-	if(process.platform == "linux"){
+	if(is.linux()){
 		return false
 	}
 
-	/*let isDevelopment = process.env.NODE_ENV !== "production"
-
-	if(isDevelopment){
+	if(is.dev()){
 		return false
-	}*/
+	}
 
 	try{
-		if(process.platform == "linux" || process.platform == "darwin"){
+		if(is.macOS()){
 			app.setLoginItemSettings({
 				openAtLogin: (enable ? true : false),
 				openAsHidden: true
@@ -256,42 +253,16 @@ const showWindow = () => {
 	return browserWindow.focus()
 }
 
-const getTrayPosition = () => {
-	if(typeof browserWindow == "undefined" || typeof positioner == "undefined" || typeof tray == "undefined"){
-		return false
-	}
-
-	let windowBounds = browserWindow.getBounds()
-	let trayBounds = tray.getBounds()
-
-	// Center window horizontally below the tray icon
-	let x = Math.round(trayBounds.x + (trayBounds.width / 2) - (windowBounds.width / 2))
-
-	// Position window 4 pixels vertically below the tray icon
-	let y = Math.round(trayBounds.y + trayBounds.height + 3)
-
-	return {
-		x,
-		y
-	}
-}
-
 const moveWindow = () => {
-	if(typeof browserWindow == "undefined" || typeof tray == "undefined"){
+	if(typeof browserWindow == "undefined" || typeof tray == "undefined" || typeof positioner == "undefined"){
 		return false
 	}
 
-	let trayPosition = getTrayPosition()
-
-	if(!trayPosition){
-		return false
-	}
-
-	return browserWindow.setPosition(trayPosition.x, trayPosition.y, false)
+	return positioner.move("trayCenter", tray.getBounds())
 }
 
 const createWindow = async () => {
-	if(process.platform !== "linux"){
+	if(!is.linux()){
 		let autostartEnabledSetter = false
 
 		try{
@@ -336,7 +307,6 @@ const createWindow = async () => {
 		},
 		maximizable: false,
 		fullscreenable: false,
-		title: "Filen Sync",
 		darkTheme: true,
 		resizable: false,
 		show: false,
@@ -345,9 +315,8 @@ const createWindow = async () => {
 	})
 
 	browserWindow.setResizable(false)
-	//browserWindow.setVisibleOnAllWorkspaces(true)
+	browserWindow.setVisibleOnAllWorkspaces(true)
 	browserWindow.setMenuBarVisibility(false)
-	//browserWindow.toggleDevTools()
 
 	tray = new Tray(nativeImageTrayIconNormal)
 
@@ -420,10 +389,6 @@ const createWindow = async () => {
 	        }
     	]
     )
-
-	if(process.platform !== "darwin"){
-		tray.setTitle("Filen Sync")
-	}
 
 	tray.setContextMenu(normalTrayMenu)
 
@@ -739,6 +704,12 @@ const createWindow = async () => {
 
   	browserWindow.loadFile(path.join(__dirname, "lib", "assets", "index.html"))
 
+  	if(is.dev()){
+		browserWindow.webContents.openDevTools({
+			mode: "detach"
+		})
+	}
+
   	moveWindow()
 
   	setInterval(() => {
@@ -812,7 +783,7 @@ else{
 }
 
 app.on("window-all-closed", () => {
-  	if(getPlatform() !== "mac"){
+  	if(!is.macOS()){
     	return app.exit(0)
   	}
 })
