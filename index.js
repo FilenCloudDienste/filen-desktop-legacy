@@ -18,7 +18,7 @@ process.on("uncaughtException", (err) => {
 	}
 })
 
-const { app, BrowserWindow, Menu, ipcMain, Tray, dialog, powerMonitor, globalShortcut, nativeImage } = require("electron")
+const { app, BrowserWindow, Menu, ipcMain, Tray, dialog, powerMonitor, globalShortcut, nativeImage, screen } = require("electron")
 const path = require("path")
 
 console.log("platform = " + process.platform)
@@ -27,25 +27,22 @@ console.log("userDataPath = " + app.getPath("userData"))
 
 if(process.platform == "darwin"){
 	app.dock.setIcon(nativeImage.createFromPath(path.join(__dirname, "icons", "png", "512x512.png")))
+
+	app.dock.hide()
 }
 
 const level = require("level")
 const fs = require("fs-extra")
-const AutoLaunch = require("auto-launch")
 const copy = require("recursive-copy")
 const rimraf = require("rimraf")
 const { autoUpdater } = require("electron-updater")
 const log = require("electron-log")
+const Positioner = require('electron-positioner')
 const child_process = require("child_process")
-
-const autoLaunch = new AutoLaunch({
-    name: "Filen Sync",
-    path: app.getPath("exe"),
-    isHidden: true
-})
 
 let db = undefined
 let dbPath = undefined
+let positioner = undefined
 
 if(process.platform == "linux" || process.platform == "darwin"){
 	dbPath = app.getPath("userData") + "/index"
@@ -74,6 +71,8 @@ let doCheckIfSyncDirectoryExists = true
 let syncingPaused = false
 let syncTasks = 0
 let isSyncing = false
+let currentTrayIcon = undefined
+let toggleAutostartTimeout = 0
 
 autoUpdater.logger = log
 autoUpdater.logger.transports.file.level = "info"
@@ -192,39 +191,142 @@ const checkIfSyncDirectoryExists = () => {
 	})
 }
 
-const createWindow = async () => {
-	let autostartEnabledSetter = false
+const toggleAutoLaunch = (enable = true) => {
+	if(typeof app == "undefined"){
+		return false
+	}
+
+	if(process.platform == "linux"){
+		return false
+	}
+
+	/*let isDevelopment = process.env.NODE_ENV !== "production"
+
+	if(isDevelopment){
+		return false
+	}*/
 
 	try{
-		let getAutostartEnabled = await db.get("autostartEnabled")
+		if(process.platform == "linux" || process.platform == "darwin"){
+			app.setLoginItemSettings({
+				openAtLogin: (enable ? true : false),
+				openAsHidden: true
+			})
+		}
+		else{
+			app.setLoginItemSettings({
+				openAtLogin: (enable ? true : false),
+				openAsHidden: true,
+				path: app.getPath("exe"),
+				args: [
+				  	"--processStart",
+				  	`"${app.getPath("exe")}"`,
+				  	"--process-start-args",
+				  	`"--hidden"`
+				]
+			 })
+		}
+	}
+	catch(e){
+		console.log(err)
 
-		if(getAutostartEnabled){
-			autoLaunch.enable()
+		return false
+	}
+
+	return true
+}
+
+const hideWindow = () => {
+	if(typeof browserWindow == "undefined"){
+		return false
+	}
+
+	return browserWindow.hide()
+}
+
+const showWindow = () => {
+	if(typeof browserWindow == "undefined"){
+		return false
+	}
+
+	moveWindow()
+
+	browserWindow.show()
+
+	return browserWindow.focus()
+}
+
+const getTrayPosition = () => {
+	if(typeof browserWindow == "undefined" || typeof positioner == "undefined" || typeof tray == "undefined"){
+		return false
+	}
+
+	let windowBounds = browserWindow.getBounds()
+	let trayBounds = tray.getBounds()
+
+	// Center window horizontally below the tray icon
+	let x = Math.round(trayBounds.x + (trayBounds.width / 2) - (windowBounds.width / 2))
+
+	// Position window 4 pixels vertically below the tray icon
+	let y = Math.round(trayBounds.y + trayBounds.height + 3)
+
+	return {
+		x,
+		y
+	}
+}
+
+const moveWindow = () => {
+	if(typeof browserWindow == "undefined" || typeof tray == "undefined"){
+		return false
+	}
+
+	let trayPosition = getTrayPosition()
+
+	if(!trayPosition){
+		return false
+	}
+
+	return browserWindow.setPosition(trayPosition.x, trayPosition.y, false)
+}
+
+const createWindow = async () => {
+	if(process.platform !== "linux"){
+		let autostartEnabledSetter = false
+
+		try{
+			let getAutostartEnabled = app.getLoginItemSettings()['openAtLogin']
+
+			if(getAutostartEnabled){
+				toggleAutoLaunch(true)
+
+				autostartEnabledSetter = true
+			}
+			else{
+				toggleAutoLaunch(false)
+
+				autostartEnabledSetter = false
+			}
+		}
+		catch(e){
+			toggleAutoLaunch(false)
 
 			autostartEnabledSetter = true
 		}
-		else{
-			autoLaunch.disable()
 
-			autostartEnabledSetter = false
+		try{
+			await db.put("autostartEnabled", autostartEnabledSetter.toString())
+
+			console.log("autostartEnabled", autostartEnabledSetter.toString())
 		}
-	}
-	catch(e){
-		autoLaunch.enable()
-
-		autostartEnabledSetter = true
-	}
-
-	try{
-		await db.put("autostartEnabled", autostartEnabledSetter)
-	}
-	catch(e){
-		console.log(e)
+		catch(e){
+			console.log(e)
+		}
 	}
 
 	browserWindow = new BrowserWindow({
-		width: 400,
-		height: 600,
+		width: 350,
+		height: 550,
 		icon: nativeImageAppIcon,
 		webPreferences: {
 			nodeIntegration: true,
@@ -232,12 +334,14 @@ const createWindow = async () => {
 			backgroundThrottling: false,
 			enableRemoteModule: true
 		},
-		center: true,
 		maximizable: false,
 		fullscreenable: false,
 		title: "Filen Sync",
 		darkTheme: true,
-		resizable: false
+		resizable: false,
+		show: false,
+		frame: false,
+		skipTaskbar: true
 	})
 
 	browserWindow.setResizable(false)
@@ -247,14 +351,14 @@ const createWindow = async () => {
 
 	tray = new Tray(nativeImageTrayIconNormal)
 
+	positioner = new Positioner(browserWindow)
+
 	let normalTrayMenu = Menu.buildFromTemplate(
 		[
 	        {
 	            label: "Show",
 	            click: () => {
-	               	browserWindow.show()
-
-					return browserWindow.focus()
+	               	return showWindow()
 	            }
 	        },
 	        {
@@ -277,13 +381,7 @@ const createWindow = async () => {
 	        {
 	            label: "Quit",
 	            click: () => {
-	            	let waitForSyncToFinishInterval = setInterval(() => {
-	            		if(syncTasks == 0){
-	            			clearInterval(waitForSyncToFinishInterval)
-
-	            			return app.exit(0)
-	            		}
-	            	}, 100)
+	            	return app.exit(0)
 	            }
 	        }
     	]
@@ -294,9 +392,7 @@ const createWindow = async () => {
 	        {
 	            label: "Show",
 	            click: () => {
-	               	browserWindow.show()
-
-					return browserWindow.focus()
+	               	return showWindow()
 	            }
 	        },
 	        {
@@ -319,13 +415,7 @@ const createWindow = async () => {
 	        {
 	            label: "Quit",
 	            click: () => {
-	            	let waitForSyncToFinishInterval = setInterval(() => {
-	            		if(syncTasks == 0){
-	            			clearInterval(waitForSyncToFinishInterval)
-
-	            			return app.exit(0)
-	            		}
-	            	}, 100)
+	            	return app.exit(0)
 	            }
 	        }
     	]
@@ -338,21 +428,27 @@ const createWindow = async () => {
 	tray.setContextMenu(normalTrayMenu)
 
     tray.on("double-click", () => {
-    	browserWindow.show()
+    	return showWindow()
+    })
 
-		return browserWindow.focus()
+    tray.on("click", () => {
+    	return showWindow()
     })
 
 	browserWindow.on("close", (event) => {
         event.preventDefault()
 
-        return browserWindow.hide()
+        return hideWindow()
     })
 
     browserWindow.on("minimize", (event) => {
         event.preventDefault()
 
-        return browserWindow.hide()
+        return hideWindow()
+    })
+
+    ipcMain.on("minimize", (event, data) => {
+    	return hideWindow()
     })
 
     ipcMain.on("relaunch-app", (event, data) => {
@@ -362,7 +458,7 @@ const createWindow = async () => {
     })
 
     ipcMain.on("is-syncing", (event, data) => {
-    	isSyncing = data.isSyncing
+    	return isSyncing = data.isSyncing
     })
 
     ipcMain.on("is-syncing-paused", (event, data) => {
@@ -375,19 +471,32 @@ const createWindow = async () => {
 		try{
 			let getAutostartEnabled = await db.get("autostartEnabled")
 
-			if(getAutostartEnabled){
+			if(getAutostartEnabled == "true"){
 				autostartEnabled = true
+			}
+			else{
+				autostartEnabled = false
 			}
 		}
 		catch(e){
 			autostartEnabled = false
 		}
 
+		if(Math.floor((+new Date()) / 1000) < toggleAutostartTimeout){
+			browserWindow.webContents.send("autostart-enabled-res", {
+				autostartEnabled: autostartEnabled
+			})
+
+			return false
+		}
+
+		toggleAutostartTimeout = (Math.floor((+new Date()) / 1000) + 3)
+
 		if(autostartEnabled){
-			autoLaunch.disable()
+			toggleAutoLaunch(false)
 
 			try{
-				await db.put("autostartEnabled", false)
+				await db.put("autostartEnabled", "false")
 			}
 			catch(e){
 				console.log(e)
@@ -398,10 +507,10 @@ const createWindow = async () => {
 			})
 		}
 		else{
-			autoLaunch.enable()
+			toggleAutoLaunch(true)
 
 			try{
-				await db.put("autostartEnabled", true)
+				await db.put("autostartEnabled", "true")
 			}
 			catch(e){
 				console.log(e)
@@ -419,8 +528,11 @@ const createWindow = async () => {
 		try{
 			let getAutostartEnabled = await db.get("autostartEnabled")
 
-			if(getAutostartEnabled){
+			if(getAutostartEnabled == "true"){
 				autostartEnabled = true
+			}
+			else{
+				autostartEnabled = false
 			}
 		}
 		catch(e){
@@ -435,21 +547,15 @@ const createWindow = async () => {
 	})
 
 	ipcMain.on("download-folder-screen-opened", (event, data) => {
-		browserWindow.show()
-
-		return browserWindow.focus()
+		return showWindow()
 	})
 
 	ipcMain.on("download-file-screen-opened", (event, data) => {
-		browserWindow.show()
-
-		return browserWindow.focus()
+		return showWindow()
 	})
 
 	ipcMain.on("open-window", (event, data) => {
-		browserWindow.show()
-
-		return browserWindow.focus()
+		return showWindow()
 	})
 
 	ipcMain.on("change-download-folder-path", async (event, data) => {
@@ -587,17 +693,11 @@ const createWindow = async () => {
 	})
 
 	ipcMain.on("exit-app", (event, data) => {
-		let waitForSyncToFinishInterval = setInterval(() => {
-    		if(syncTasks == 0){
-    			clearInterval(waitForSyncToFinishInterval)
-
-    			return app.exit(0)
-    		}
-    	}, 100)
+		return app.exit(0)
 	})
 
 	ipcMain.on("restart-for-update", (event, data) => {
-		autoUpdater.quitAndInstall()
+		return autoUpdater.quitAndInstall()
 	})
 
 	ipcMain.on("set-tray-tooltip", (event, data) => {
@@ -639,30 +739,45 @@ const createWindow = async () => {
 
   	browserWindow.loadFile(path.join(__dirname, "lib", "assets", "index.html"))
 
+  	moveWindow()
+
   	setInterval(() => {
   		autoUpdater.checkForUpdatesAndNotify()
-  	}, 300000)
+  	}, 60000)
 
   	autoUpdater.on("update-downloaded", () => {
-		browserWindow.webContents.send("update-available")
+		return browserWindow.webContents.send("update-available")
 	})
 
 	setInterval(() => {
 		if(syncingPaused){
 			tray.setContextMenu(unpauseTrayMenu)
-			tray.setImage(nativeImageTrayIconPaused)
+
+			if(currentTrayIcon !== nativeImageTrayIconPaused){
+				currentTrayIcon = nativeImageTrayIconPaused
+
+				tray.setImage(nativeImageTrayIconPaused)
+			}
 		}
 		else{
 			tray.setContextMenu(normalTrayMenu)
 
 			if(syncTasks > 0){
-				tray.setImage(nativeImageTrayIconSyncing)
+				if(currentTrayIcon !== nativeImageTrayIconSyncing){
+					currentTrayIcon = nativeImageTrayIconSyncing
+	
+					tray.setImage(nativeImageTrayIconSyncing)
+				}
 			}
 			else{
-				tray.setImage(nativeImageTrayIconNormal)
+				if(currentTrayIcon !== nativeImageTrayIconNormal){
+					currentTrayIcon = nativeImageTrayIconNormal
+	
+					tray.setImage(nativeImageTrayIconNormal)
+				}
 			}
 		}
-	}, 1000)
+	}, 100)
 
   	const initInterval = setInterval(() => {
   		if(rendererReady){
@@ -670,7 +785,7 @@ const createWindow = async () => {
 
   			return init()
   		}
-  	}, 50)
+  	}, 10)
 }
 
 app.commandLine.appendSwitch("disable-renderer-backgrounding")
@@ -686,6 +801,8 @@ else{
 			}
 
 			browserWindow.focus()
+
+			showWindow()
 		}
 	})
 
@@ -719,4 +836,8 @@ app.on("browser-window-focus", () => {
 app.on("browser-window-blur", () => {
     globalShortcut.unregister("CommandOrControl+R")
     globalShortcut.unregister("F5")
+})
+
+powerMonitor.on("shutdown", () => {
+  	return app.exit(0)
 })
