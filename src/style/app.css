@@ -43,8 +43,7 @@ body {
 
 .header {
 	display: none;
-	background-color: #3A97DD;
-	color: white;
+	background-color: #202020;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
@@ -116,7 +115,11 @@ html, body, head {
     position: absolute;
     width: 356px;
     border-top: 1px solid #2E2E2E;
-    padding-top: 8px;
+    padding-top: 14px;
 }
 
-
+.list-group-item {
+	color: #A7B1B1;
+    background-color: #121212;
+    border: none;
+}

@@ -1034,26 +1034,36 @@ const initIPC = () => {
 	})
 }
 
+const openLinkInBrowser = (url) => {
+	try{
+    	shell.openExternal(url).catch((err) => {
+			if(err){
+				console.log(err)
+			}
+		})
+    }
+    catch(e){
+    	console.log(e)
+
+    	return false
+    }
+
+    return true
+}
+
 const initFns = () => {
 	$(".open-in-browser").click((e) => {
         e.preventDefault()
 
-        try{
-        	shell.openExternal(e.target.href).catch((err) => {
-				if(err){
-					console.log(err)
-				}
-			})
-        }
-        catch(e){
-        	console.log(e)
-        }
+        return openLinkInBrowser(e.target.href)
    	})
 
    	$(".header-col").each(function(){
-   		$(this).click(() => {
-   			routeTo($(this).attr("data-go"))
-   		})
+   		if(typeof $(this).attr("data-go") !== "undefined"){
+   			$(this).click(() => {
+	   			routeTo($(this).attr("data-go"))
+	   		})
+   		}
    	})
 
    	$("#login-btn").click(() => {
@@ -1176,7 +1186,7 @@ const initFns = () => {
 					startSyncing()
 				}, 5000)
 
-				return routeTo("account")
+				return routeTo("syncs")
 			})
    		})
    	})
@@ -4425,7 +4435,7 @@ const init = async () => {
 			startSyncing()
 		}, 5000)
 
-		return routeTo("account")
+		return routeTo("syncs")
 	})
 
 	setInterval(() => {

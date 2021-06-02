@@ -12,7 +12,7 @@
 			<div class="header" style="height: 68px; display: none;">
 				<div class="header-inner">
 					<center>
-						<img src="../img/logo_16.png"> Filen is up to date
+						<img src="../img/logo_16.png">&nbsp;&nbsp;Filen is up to date
 					</center>
 				</div>
 			</div>
@@ -109,13 +109,8 @@
 				<hr>
 			</div>
 			<div class="content" data-type="syncs">
-				<div class="row" style="padding: 15px;">
-					<div class="col-lg-12">
-						Running sync tasks: <text id="syncs-running-tasks-text">0</text>
-					</div>
-				</div>
-				<div style="overflow-x: hidden; overflow-y: scroll; height: 79vh; width: 100%">
-					<ul class="list-group" id="sync-task-tbody" style="width: 100%; margin-top: 0px; padding-top: 0px;"></ul>
+				<div style="overflow-x: hidden; overflow-y: hidden; height: 79vh; width: 100%; border: none;">
+					<ul class="list-group" id="sync-task-tbody" style="width: 100%; margin-top: 0px; padding-top: 0px; border: none;"></ul>
 				</div>
 			</div>
 			<div class="content" data-type="settings" style="padding: 15px;">
@@ -245,22 +240,29 @@
 			</div>
 			<div class="footer" style="height: 68px; display: none;">
 				<div class="row">
-					<div class="header-col text-center" data-go="account">
-						<i class="far fa-user-circle" style="font-size: 24pt;"></i>
+					<div class="header-col text-center" onClick="openSyncFolder()">
+						<i class="far fa-folder-open" style="font-size: 16pt;"></i>
 						<br>
 						<font size="2">
-							Account
+							Open folder
 						</font>
 					</div>
-					<div class="header-col text-center" data-go="syncs">
-						<i class="fas fa-sync" style="font-size: 24pt;"></i>
+					<div class="header-col text-center" onClick="openLinkInBrowser('https://filen.io/my-account/file-manager/default')">
+						<i class="fas fa-globe" style="font-size: 16pt;"></i>
 						<br>
 						<font size="2">
-							Syncs
+							Show online
+						</font>
+					</div>
+					<div class="header-col text-center" style="display: none;" id="footer-go-pro-container" onClick="openLinkInBrowser('https://filen.io/pro')">
+						<i class="far fa-gem" style="font-size: 16pt;"></i>
+						<br>
+						<font size="2">
+							Go pro
 						</font>
 					</div>
 					<div class="header-col text-center" data-go="settings">
-						<i class="fas fa-cog" style="font-size: 24pt;"></i>
+						<i class="fas fa-cogs" style="font-size: 16pt;"></i>
 						<br>
 						<font size="2">
 							Settings
