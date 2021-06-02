@@ -4348,6 +4348,10 @@ const getDiskSpace = () => {
 	}, 15000)
 }
 
+const showSettings = () => {
+	return ipcRenderer.send("show-settings")
+}
+
 const setupErrorReporter = () => {
 	window.addEventListener("error", async (e) => {
 		try{

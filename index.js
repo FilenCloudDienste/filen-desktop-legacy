@@ -54,7 +54,8 @@ let tray = null,
 	currentTrayIcon = undefined,
 	toggleAutostartTimeout = 0,
 	db = undefined,
-	dbPath = undefined
+	dbPath = undefined,
+	settingsWindow = undefined
 
 if(is.linux() || is.macOS()){
 	dbPath = app.getPath("userData") + "/index"
@@ -256,6 +257,24 @@ const moveWindow = () => {
 	return positioner.position(browserWindow, tray.getBounds())
 }
 
+const showSettings = () => {
+	if(typeof settingsWindow == "undefined"){
+		return false
+	}
+
+	settingsWindow.show()
+
+	return settingsWindow.focus()
+}
+
+const hideSettings = () => {
+	if(typeof settingsWindow == "undefined"){
+		return false
+	}
+
+	return settingsWindow.hide()
+}
+
 const createWindow = async () => {
 	browserWindow = new BrowserWindow({
 		width: 360,
@@ -280,6 +299,31 @@ const createWindow = async () => {
 	browserWindow.setResizable(false)
 	browserWindow.setVisibleOnAllWorkspaces(true)
 	browserWindow.setMenuBarVisibility(false)
+
+	settingsWindow = new BrowserWindow({
+		width: 400,
+		height: 400,
+		icon: nativeImageAppIcon,
+		webPreferences: {
+			nodeIntegration: true,
+			nodeIntegrationInWorker: true,
+			backgroundThrottling: false,
+			enableRemoteModule: true
+		},
+		title: "Settings",
+		maximizable: false,
+		minimizable: false,
+		fullscreenable: false,
+		darkTheme: true,
+		resizable: false,
+		show: false,
+		skipTaskbar: false,
+		center: true
+	})
+
+	settingsWindow.setResizable(false)
+	settingsWindow.setVisibleOnAllWorkspaces(true)
+	settingsWindow.setMenuBarVisibility(false)
 
 	tray = new Tray(nativeImageTrayIconNormal)
 
@@ -352,7 +396,8 @@ const createWindow = async () => {
     )
 
     if(is.macOS()){
-    	browserWindow.setTitle("Filen Sync")
+    	browserWindow.setTitle("Filen")
+    	settingsWindow.setTitle("Settings")
     }
 
 	tray.setContextMenu(normalTrayMenu)
@@ -365,16 +410,14 @@ const createWindow = async () => {
     	return showWindow()
     })
 
-	browserWindow.on("close", (event) => {
+    settingsWindow.on("close", (event) => {
         event.preventDefault()
 
-        return hideWindow()
+        return hideSettings()
     })
 
-    browserWindow.on("minimize", (event) => {
-        event.preventDefault()
-
-        return hideWindow()
+    ipcMain.on("show-settings", (event, data) => {
+    	return showSettings()
     })
 
     ipcMain.on("minimize", (event, data) => {
@@ -668,6 +711,7 @@ const createWindow = async () => {
 	//setInterval(checkIfSyncDirectoryExists, 3000)
 
   	browserWindow.loadFile(path.join(__dirname, "src", "html", "index.html"))
+  	settingsWindow.loadFile(path.join(__dirname, "src", "html", "settings.html"))
 
   	if(is.dev()){
 		browserWindow.webContents.openDevTools({
