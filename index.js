@@ -75,15 +75,15 @@ catch(e){
 autoUpdater.logger = log
 autoUpdater.logger.transports.file.level = "info"
 
-let nativeImageAppIcon = path.join(__dirname, "lib", "assets", "logo.png")
-let nativeImageTrayIconNormal = path.join(__dirname, "lib", "assets", "logo.png")
-let nativeImageTrayIconSyncing = path.join(__dirname, "lib", "assets", "tray_sync.png")
-let nativeImageTrayIconPaused = path.join(__dirname, "lib", "assets", "tray_paused.png")
+let nativeImageAppIcon = path.join(__dirname, "src", "img", "logo.png")
+let nativeImageTrayIconNormal = path.join(__dirname, "src", "img", "logo.png")
+let nativeImageTrayIconSyncing = path.join(__dirname, "src", "img", "tray_sync.png")
+let nativeImageTrayIconPaused = path.join(__dirname, "src", "img", "tray_paused.png")
 
 if(is.macOS()){
-	nativeImageTrayIconNormal = path.join(__dirname, "lib", "assets", "logo_16.png")
-	nativeImageTrayIconSyncing = path.join(__dirname, "lib", "assets", "tray_sync_16.png")
-	nativeImageTrayIconPaused = path.join(__dirname, "lib", "assets", "tray_paused_16.png")
+	nativeImageTrayIconNormal = path.join(__dirname, "src", "img", "logo_16.png")
+	nativeImageTrayIconSyncing = path.join(__dirname, "src", "img", "tray_sync_16.png")
+	nativeImageTrayIconPaused = path.join(__dirname, "src", "img", "tray_paused_16.png")
 }
 
 const sendUserDirs = () => {
@@ -667,7 +667,7 @@ const createWindow = async () => {
 
 	//setInterval(checkIfSyncDirectoryExists, 3000)
 
-  	browserWindow.loadFile(path.join(__dirname, "lib", "assets", "index.html"))
+  	browserWindow.loadFile(path.join(__dirname, "src", "html", "index.html"))
 
   	if(is.dev()){
 		browserWindow.webContents.openDevTools({
