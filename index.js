@@ -258,8 +258,8 @@ const moveWindow = () => {
 
 const createWindow = async () => {
 	browserWindow = new BrowserWindow({
-		width: 350,
-		height: 550,
+		width: 360,
+		height: 640,
 		icon: nativeImageAppIcon,
 		webPreferences: {
 			nodeIntegration: true,

@@ -43,13 +43,13 @@ body {
 
 .header {
 	display: none;
-	background: black;
-	  color: white;
-	  display: flex;
-	  flex-direction: column;
-	  justify-content: center;
-	  overflow: auto;
-	  width: 100%;
+	background-color: #3A97DD;
+	color: white;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	overflow: auto;
+	width: 100%;
 }
 
 .header-inner {
@@ -61,6 +61,10 @@ body {
 	width: 33.333333333333%;
 	height: 100%;
 	cursor: pointer;
+}
+
+.header-col:hover {
+	color: white;
 }
 
 .login-content {
@@ -98,8 +102,21 @@ html, body, head {
 	padding: 0px;
 	margin: 0px;
 	border-radius: 0px;
+	color: #A7B1B1;
+    text-align: left;
+    background-color: #121212;
+    border: 1px solid #2E2E2E;
+    height: 640px;
 }
 
-
+.footer {
+	height: 68px;
+    background-color: #202020;
+    bottom: 0;
+    position: absolute;
+    width: 356px;
+    border-top: 1px solid #2E2E2E;
+    padding-top: 8px;
+}
 
 

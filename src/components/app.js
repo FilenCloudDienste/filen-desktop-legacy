@@ -137,7 +137,7 @@ let maxAPICallThreads = 30
 let currentAPICallThreads = 0
 let savedUserUsage = {}
 let syncingPaused = false
-let syncTimeout = 2500
+let syncTimeout = 3000
 let fillSyncDataInterval = undefined
 let remoteDecryptedCache = {}
 let isCurrentlyDownloadigRemote = false
@@ -4470,7 +4470,11 @@ const init = async () => {
 }
 
 window.addEventListener("blur", () => {
-	ipcRenderer.send("minimize")
+	if(is.dev()){
+		return false
+	}
+
+	return ipcRenderer.send("minimize")
 })
 
 window.onload = () => {
