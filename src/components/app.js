@@ -4385,13 +4385,23 @@ const reload = (type) => {
 
 const doLogout = async () => {
 	syncingPaused = true
+	syncStarted = false
+
+	let userEmail = undefined
 
 	try{
-		await db.put("isLoggedIn", "false")
+		userEmail = 
+
+		currentStorageData = JSON.parse(await db.get(userEmail + "_finishedSyncTasks"))
 	}
 	catch(e){
-		syncingPaused = false
+		currentStorageData = undefined
+	}
 
+	try{
+		await db.clear()
+	}
+	catch(e){
 		return console.log(e)
 	}
 
