@@ -422,6 +422,18 @@ const createWindow = async () => {
 		return showWindow()
 	})
 
+	ipcMain.on("open-window-login", (event, data) => {
+		if(typeof browserWindow == "undefined"){
+			return false
+		}
+
+		if(browserWindow.isVisible()){
+			return false
+		}
+
+		return showWindow()
+	})
+
 	ipcMain.on("change-download-folder-path", async (event, data) => {
 		let result = await dialog.showOpenDialog(browserWindow, {
 		    properties: [

@@ -292,7 +292,7 @@ const routeTo = async (route) => {
 	}
 
 	if(route == "login"){
-		ipcRenderer.send("open-window")
+		ipcRenderer.send("open-window-login")
 
 		$("#login-status").hide()
 	}
