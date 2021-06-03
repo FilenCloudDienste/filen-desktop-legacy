@@ -80,6 +80,7 @@ const downloadSemaphore = new Semaphore(30)
 const uploadSemaphore = new Semaphore(10)
 const logSyncTasksSemaphore = new Semaphore(1)
 
+let currentAppVersion = "1"
 let thisDeviceId = undefined
 let isIndexing = false
 let updateUserKeysPKTries = 0
@@ -160,6 +161,9 @@ let lastReceivedSyncData = undefined
 let firstDataRequest = true
 let skipNextRequestData = true
 let dontHideOnBlur = false
+let lastHeaderStatus = ""
+let lastTooltipText = ""
+let updateUserKeysInterval = undefined
 
 const unixTimestamp = () => {
 	return Math.floor((+new Date()) / 1000)
@@ -265,7 +269,7 @@ const showPage = (page) => {
 }
 
 const routeTo = (route) => {
-	if(route == "login" || route == "setup" || route == "big-loading" || route == "download-file" || route == "download-folder"){
+	if(route == "login" || route == "setup" || route == "big-loading" || route == "download-folder"){
 		$(".header").hide()
 		$(".footer").hide()
 	}
@@ -317,6 +321,14 @@ const openSyncFolder = () => {
 }
 
 const initSocket = () => {
+	if(typeof socket !== "undefined"){
+		return false
+	}
+
+	if(socketReady){
+		return false
+	}
+
 	socket = socketIO("https://socket.filen.io", {
 		path: "",
 		reconnect: true,
@@ -787,6 +799,8 @@ const initIPC = () => {
 	})
 
 	ipcRenderer.on("app-version", (e, data) => {
+		currentAppVersion = data.version
+
 		return $("#settings-client-version-text").html(data.version)
 	})
 
@@ -899,8 +913,6 @@ const initIPC = () => {
 	})
 
 	ipcRenderer.on("show-big-loading", (e, data) => {
-		$("#big-loading-text").html(data.message)
-
 		return routeTo("big-loading")
 	})
 
@@ -1139,8 +1151,6 @@ const initFns = () => {
 
 			console.log(res.message)
 
-			$("#big-loading-text").html("Loading..")
-
 			routeTo("big-loading")
 
 			doSetup((err) => {
@@ -1154,14 +1164,6 @@ const initFns = () => {
 
 					return console.log(err)
 				}
-
-				syncingPaused = false
-
-				initSocket()
-				
-				setTimeout(() => {
-					startSyncing()
-				}, 5000)
 
 				return routeTo("syncs")
 			})
@@ -1357,6 +1359,80 @@ const restartForUpdate = () => {
 	return ipcRenderer.send("restart-for-update")
 }
 
+const fillSyncTasks = async () => {
+	let syncTasksData = undefined
+
+	try{
+		let userEmail = await db.get("userEmail")
+
+		syncTasksData = JSON.parse(await db.get(userEmail + "_finishedSyncTasks"))
+	}
+	catch(e){
+		syncTasksData = undefined
+	}
+
+	if(typeof syncTasksData !== "undefined"){
+		syncTasksData = syncTasksData.reverse()
+
+		lastSyncTasksData = syncTasksData
+
+		if(syncTasksData.length > 0){
+			$("#sync-task-tbody").html("")
+
+			for(let i = 0; i < syncTasksData.length; i++){
+				if(i < 100){
+					let taskName = ""
+
+					if(syncTasksData[i].where == "remote" && syncTasksData[i].task == "upload"){
+						taskName = "Upload"
+					}
+					else if(syncTasksData[i].where == "remote" && syncTasksData[i].task == "rmdir"){
+						taskName = "Trash"
+					}
+					else if(syncTasksData[i].where == "remote" && syncTasksData[i].task == "rmfile"){
+						taskName = "Trash"
+					}
+					else if(syncTasksData[i].where == "remote" && syncTasksData[i].task == "mkdir"){
+						taskName = "Create"
+					}
+					else if(syncTasksData[i].where == "remote" && syncTasksData[i].task == "update"){
+						taskName = "Update"
+					}
+					else if(syncTasksData[i].where == "local" && syncTasksData[i].task == "download"){
+						taskName = "Download"
+					}
+					else if(syncTasksData[i].where == "local" && syncTasksData[i].task == "rmdir"){
+						taskName = "Delete"
+					}
+					else if(syncTasksData[i].where == "local" && syncTasksData[i].task == "rmfile"){
+						taskName = "Delete"
+					}
+					else if(syncTasksData[i].where == "local" && syncTasksData[i].task == "mkdir"){
+						taskName = "Create"
+					}
+					else if(syncTasksData[i].where == "local" && syncTasksData[i].task == "update"){
+						taskName = "Update"
+					}
+
+					let fileNameEx = JSON.parse(syncTasksData[i].taskInfo).path.split("/")
+					let fileName = fileNameEx[fileNameEx.length - 1]
+
+					if(fileName.length <= 0){
+						fileName = fileNameEx[fileNameEx.length - 2]
+					}
+
+					$("#sync-task-tbody").append(`
+						<li class="list-group-item d-flex justify-content-between align-items-center">
+							<span class="badge badge-primary badge-pill">` + taskName + `</span>
+							` + fileName + `
+							</li>
+					`)
+				}
+			}
+		}
+	}
+}
+
 const fillContent = async (callback) => {
 	apiRequest("/v1/user/sync/get/data", {
 		apiKey: await getUserAPIKey()
@@ -1402,85 +1478,7 @@ const fillContent = async (callback) => {
 			$("#account-pro-button-container").show()
 		}
 
-		const fillSyncTasks = async () => {
-			let syncTasksData = undefined
-
-			try{
-				let userEmail = await db.get("userEmail")
-
-				syncTasksData = JSON.parse(await db.get(userEmail + "_finishedSyncTasks"))
-			}
-			catch(e){
-				syncTasksData = undefined
-			}
-
-			if(typeof syncTasksData !== "undefined"){
-				syncTasksData = syncTasksData.reverse()
-
-				lastSyncTasksData = syncTasksData
-
-				if(syncTasksData.length > 0){
-					$("#sync-task-tbody").html("")
-
-					for(let i = 0; i < syncTasksData.length; i++){
-						if(i < 100){
-							let taskName = ""
-
-							if(syncTasksData[i].where == "remote" && syncTasksData[i].task == "upload"){
-								taskName = "Upload"
-							}
-							else if(syncTasksData[i].where == "remote" && syncTasksData[i].task == "rmdir"){
-								taskName = "Trash"
-							}
-							else if(syncTasksData[i].where == "remote" && syncTasksData[i].task == "rmfile"){
-								taskName = "Trash"
-							}
-							else if(syncTasksData[i].where == "remote" && syncTasksData[i].task == "mkdir"){
-								taskName = "Create"
-							}
-							else if(syncTasksData[i].where == "remote" && syncTasksData[i].task == "update"){
-								taskName = "Update"
-							}
-							else if(syncTasksData[i].where == "local" && syncTasksData[i].task == "download"){
-								taskName = "Download"
-							}
-							else if(syncTasksData[i].where == "local" && syncTasksData[i].task == "rmdir"){
-								taskName = "Delete"
-							}
-							else if(syncTasksData[i].where == "local" && syncTasksData[i].task == "rmfile"){
-								taskName = "Delete"
-							}
-							else if(syncTasksData[i].where == "local" && syncTasksData[i].task == "mkdir"){
-								taskName = "Create"
-							}
-							else if(syncTasksData[i].where == "local" && syncTasksData[i].task == "update"){
-								taskName = "Update"
-							}
-
-							let fileNameEx = JSON.parse(syncTasksData[i].taskInfo).path.split("/")
-							let fileName = fileNameEx[fileNameEx.length - 1]
-
-							if(fileName.length <= 0){
-								fileName = fileNameEx[fileNameEx.length - 2]
-							}
-
-							$("#sync-task-tbody").append(`
-								<li class="list-group-item d-flex justify-content-between align-items-center">
-									<span class="badge badge-primary badge-pill">` + taskName + `</span>
-    								` + fileName + `
- 								</li>
-							`)
-						}
-					}
-				}
-			}
-		}
-
-		clearInterval(fillSyncDataInterval)
-
 		fillSyncTasks()
-
-		fillSyncDataInterval = setInterval(fillSyncTasks, 3000)
 
 		if(typeof callback == "function"){
 			return callback(null)
@@ -1492,9 +1490,47 @@ const fillContent = async (callback) => {
 }
 
 const doSetup = async (callback) => {
+	const setupDone = () => {
+		initSocket()
+		updateUserKeys()
+		getUserUsage()
+
+		clearInterval(updateUserKeysInterval)
+
+		updateUserKeysInterval = setInterval(() => {
+			updateUserKeys()
+		}, 60000)
+
+		syncingPaused = false
+
+		setTimeout(() => {
+			startSyncing()
+		}, 3000)
+
+		fillContent((err) => {
+			if(err){
+				if(typeof callback == "function"){
+					return callback(err)
+				}
+
+				return console.log(err)
+			}
+
+			if(typeof callback == "function"){
+				return callback(null)
+			}
+
+			return false
+		})
+	}
+
 	checkIfSyncFolderExistsRemote(async (err, exists, uuid) => {
 		if(err){
-			return callback(err)
+			if(typeof callback == "function"){
+				return callback(err)
+			}
+
+			return console.log(err)
 		}
 
 		let deviceId = undefined
@@ -1517,6 +1553,10 @@ const doSetup = async (callback) => {
 				await db.put("deviceId", deviceId)
 			}
 			catch(e){
+				if(typeof callback == "function"){
+					return callback(e)
+				}
+
 				return console.log(e)
 			}
 		}
@@ -1531,25 +1571,27 @@ const doSetup = async (callback) => {
 				await db.put("syncFolderUUID", uuid)
 			}
 			catch(e){
-				return callback(e)
+				if(typeof callback == "function"){
+					return callback(e)
+				}
+
+				return console.log(e)
 			}
 
 			console.log("Sync folder already exists.")
 
-			fillContent((err) => {
-				if(err){
-					return callback(err)
-				}
-
-				return callback(null)
-			})
+			return setupDone()
 		}
 		else{
 			try{
 				var userMasterKeys = await getUserMasterKeys()
 			}
 			catch(e){
-				return callback(e)
+				if(typeof callback == "function"){
+					return callback(e)
+				}
+
+				return console.log(e)
 			}
 
 			let syncFolderUUID = uuidv4()
@@ -1564,17 +1606,27 @@ const doSetup = async (callback) => {
 				type: "sync"
 			}, async (err, res) => {
 				if(err){
-					return callback(err)
+					if(typeof callback == "function"){
+						return callback(err)
+					}
+
+					return console.log(err)
 				}
 
 				if(!res.status){
 					if(res.message.toLowerCase().indexOf("api key not found") !== -1){
-						callback(res.messsage)
+						if(typeof callback == "function"){
+							callback(res.message)
+						}
 
 						return doLogout()
 					}
 					
-					return callback(res.message)
+					if(typeof callback == "function"){
+						return callback(res.message)
+					}
+
+					return console.log(res.message)
 				}
 
 				try{
@@ -1582,18 +1634,16 @@ const doSetup = async (callback) => {
 					await db.put("syncFolderUUID", syncFolderUUID)
 				}
 				catch(e){
-					return callback(e)
+					if(typeof callback == "function"){
+						return callback(e)
+					}
+
+					return console.log(e)
 				}
 
 				console.log("Sync folder created.")
 
-				fillContent((err) => {
-					if(err){
-						return callback(err)
-					}
-
-					return callback(null)
-				})
+				return setupDone()
 			})
 		}
 	})
@@ -2845,11 +2895,9 @@ const addFinishedSyncTaskToStorage = async (where, task, taskInfo) => {
 		}
 
 		release()
-
-		return true
 	}
 	else{
-		if(currentStorageData.length >= 250){
+		if(currentStorageData.length >= 150){
 			currentStorageData.shift()
 		}
 
@@ -2873,9 +2921,9 @@ const addFinishedSyncTaskToStorage = async (where, task, taskInfo) => {
 		}
 
 		release()
-
-		return true
 	}
+
+	return fillSyncTasks()
 }
 
 var skipCheckLocalExistedFoldersAndFiles = 0
@@ -2998,8 +3046,8 @@ const getLocalSyncDirContents = async (callback) => {
 	lastLocalSyncFolders = folders
 	lastLocalSyncFiles = files
 
-	$("#account-sync-stats-files-text").html(Object.keys(files).length)
-	$("#account-sync-stats-folders-text").html(Object.keys(folders).length - 1)
+	//$("#account-sync-stats-files-text").html(Object.keys(files).length)
+	//$("#account-sync-stats-folders-text").html(Object.keys(folders).length - 1)
 
 	return callback(null, folders, files)
 }
@@ -3245,6 +3293,8 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 	currentSyncTasks.push(taskId)
 
 	console.log(where, task, JSON.stringify(taskInfo))
+
+	updateVisualStatus()
 
 	switch(where){
 		case "remote":
@@ -4120,9 +4170,13 @@ const doSync = async () => {
 
 					isIndexing = false
 
+					updateVisualStatus()
+
 					let waitForQueueToFinishInterval = setInterval(async () => {
 						if(currentSyncTasks.length <= 0){
 							clearInterval(waitForQueueToFinishInterval)
+
+							updateVisualStatus()
 
 							lastRemoteSyncFolders = remoteFolders
 							lastRemoteSyncFiles = remoteFiles
@@ -4392,57 +4446,52 @@ const setupErrorReporter = () => {
 				}
 			})
 		}
-		catch(e){  }
+		catch(e){
+			console.log(e)
+		}
 	})
 }
 
-const init = async () => {
-	initIPC()
-	initFns()
-	getDiskSpace()
-	setupErrorReporter()
+const updateVisualStatus = () => {
+	let headerStatus = ""
+	let tooltipText = ""
 
-	let loggedIn = await isLoggedIn()
+	if(currentSyncTasks.length > 0){
+		headerStatus = `
+			<center>
+				<i class="fas fa-spinner fa-spin"></i>&nbsp;&nbsp;Filen is synchronizing
+			</center>
+		`
 
-	console.log("isLoggedIn", loggedIn)
-
-	if(!loggedIn){
-		return routeTo("login")
-	}
-
-	if(is.linux()){
-		$("#autostart-settings-container").hide()
+		tooltipText = "Filen Sync v" + currentAppVersion + "\nSynchronizing.."
 	}
 	else{
-		$("#autostart-settings-container").show()
+		headerStatus = `
+			<center>
+				<img src="../img/header/16x16_gray.png">&nbsp;&nbsp;Filen is up to date
+			</center>
+		`
+
+		tooltipText = "Filen Sync v" + currentAppVersion + "\nUp to date"
 	}
 
-	initSocket()
-	updateUserKeys()
-	getUserUsage()
+	if(lastHeaderStatus !== headerStatus){
+		$("#header-status").html(headerStatus)
 
-	setInterval(() => {
-		updateUserKeys()
-	}, 60000)
+		lastHeaderStatus = headerStatus
+	}
 
-	$("#big-loading-text").html("Loading..")
+	if(lastTooltipText !== tooltipText){
+		lastTooltipText = tooltipText
 
-	routeTo("big-loading")
+		ipcRenderer.send("set-tray-tooltip", {
+			tooltip: tooltipText,
+			tasks: currentSyncTasks.length
+		})
+	}
+}
 
-	doSetup((err) => {
-		if(err){
-			return console.log(err)
-		}
-
-		syncingPaused = false
-
-		setTimeout(() => {
-			startSyncing()
-		}, 5000)
-
-		return routeTo("syncs")
-	})
-
+const setupIntervals = () => {
 	setInterval(() => {
 		ipcRenderer.send("is-syncing-paused", {
 			paused: syncingPaused
@@ -4451,50 +4500,42 @@ const init = async () => {
 		ipcRenderer.send("is-syncing", {
 			isSyncing: isSyncing
 		})
-	}, 100)
+	}, 250)
 
-	setInterval(async () => {
-		if(currentSyncTasks.length > 0){
-			$("#header-status").html(`
-				<center>
-					<i class="fas fa-spinner fa-spin"></i>&nbsp;&nbsp;Filen is synchronizing
-				</center>
-			`)
+	updateVisualStatus()
+
+	setInterval(updateVisualStatus, 3000)
+}
+
+const init = async () => {
+	initIPC()
+	initFns()
+	getDiskSpace()
+	setupErrorReporter()
+	setupIntervals()
+
+	if(is.linux()){
+		$("#autostart-settings-container").hide()
+	}
+	else{
+		$("#autostart-settings-container").show()
+	}
+
+	let loggedIn = await isLoggedIn()
+
+	if(!loggedIn){
+		return routeTo("login")
+	}
+
+	routeTo("big-loading")
+
+	doSetup((err) => {
+		if(err){
+			return console.log(err)
 		}
-		else{
-			$("#header-status").html(`
-				<center>
-					<img src="../img/header/16x16_gray.png">&nbsp;&nbsp;Filen is up to date
-				</center>
-			`)
-		}
 
-		if(typeof lastSyncTasksData !== "undefined"){
-			let lastSyncedItemName = ""
-			let tooltipText = ""
-
-			let fileNameEx = JSON.parse(lastSyncTasksData[0].taskInfo).path.split("/")
-			let fileName = fileNameEx[fileNameEx.length - 1]
-
-			if(fileName.length <= 0){
-				fileName = fileNameEx[fileNameEx.length - 2]
-			}
-
-			lastSyncedItemName = fileName
-
-			if(currentSyncTasks.length > 0){
-				tooltipText = "Currently syncing " + currentSyncTasks.length + " item" + (currentSyncTasks.length == 1 ? "" : "s") + "\nLast synced item: " + lastSyncedItemName
-			}
-			else{
-				tooltipText = "Nothing to sync\nLast synced item: " + lastSyncedItemName
-			}
-
-			ipcRenderer.send("set-tray-tooltip", {
-				tooltip: tooltipText,
-				tasks: currentSyncTasks.length
-			})
-		}
-	}, 500)
+		return routeTo("syncs")
+	})
 }
 
 window.addEventListener("blur", () => {

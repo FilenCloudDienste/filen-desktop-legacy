@@ -1,5 +1,13 @@
 body {
 	padding-top: 0px;
+    padding: 0px;
+	margin: 0px;
+	border-radius: 0px;
+	color: #A7B1B1;
+    text-align: left;
+    background-color: #121212;
+    border: 1px solid #2E2E2E;
+    height: 640px;
 }
 
 .content {
@@ -18,6 +26,17 @@ body {
 	justify-content: center;
 	overflow: auto;
 	width: 100%;
+	border-bottom: 1px solid #2E2E2E;
+}
+
+.footer {
+	height: 68px;
+    background-color: #202020;
+    bottom: 0;
+    position: absolute;
+    width: 358px;
+    border-top: 1px solid #2E2E2E;
+    padding-top: 14px;
 }
 
 .header-inner {
@@ -66,29 +85,76 @@ hr {
 	width: 200%;
 }
 
-html, body, head {
-	padding: 0px;
-	margin: 0px;
-	border-radius: 0px;
-	color: #A7B1B1;
-    text-align: left;
-    background-color: #121212;
-    border: 1px solid #2E2E2E;
-    height: 640px;
-}
-
-.footer {
-	height: 68px;
-    background-color: #202020;
-    bottom: 0;
-    position: absolute;
-    width: 356px;
-    border-top: 1px solid #2E2E2E;
-    padding-top: 14px;
-}
-
 .list-group-item {
 	color: #A7B1B1;
     background-color: #121212;
     border: none;
+}
+
+#big-loading-img {
+	width: 100%;
+	height: 100%;
+	z-index: 100002201;
+	position: absolute;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	text-align: center;
+}
+
+/* Firefox old*/
+@-moz-keyframes blink {
+    0% {
+        opacity:1;
+    }
+    50% {
+        opacity:0;
+    }
+    100% {
+        opacity:1;
+    }
+} 
+
+@-webkit-keyframes blink {
+    0% {
+        opacity:1;
+    }
+    50% {
+        opacity:0;
+    }
+    100% {
+        opacity:1;
+    }
+}
+/* IE */
+@-ms-keyframes blink {
+    0% {
+        opacity:1;
+    }
+    50% {
+        opacity:0;
+    }
+    100% {
+        opacity:1;
+    }
+} 
+/* Opera and prob css3 final iteration */
+@keyframes blink {
+    0% {
+        opacity:1;
+    }
+    50% {
+        opacity:0;
+    }
+    100% {
+        opacity:1;
+    }
+}
+
+.blink-image {
+    -moz-animation: blink normal 1.6s infinite ease-in-out; /* Firefox */
+    -webkit-animation: blink normal 1.6s infinite ease-in-out; /* Webkit */
+    -ms-animation: blink normal 1.6s infinite ease-in-out; /* IE */
+    animation: blink normal 1.6s infinite ease-in-out; /* Opera and prob css3 final iteration */
 }

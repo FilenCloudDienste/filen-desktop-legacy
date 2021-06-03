@@ -275,7 +275,8 @@ const createWindow = async () => {
 		resizable: false,
 		show: false,
 		frame: false,
-		skipTaskbar: true
+		skipTaskbar: true,
+		transparent: true
 	})
 
 	browserWindow.setResizable(false)
@@ -293,7 +294,7 @@ const createWindow = async () => {
 	            }
 	        },
 	        {
-	        	label: "Open sync folder",
+	        	label: "Open folder",
 	        	click: () => {
 	        		return browserWindow.webContents.send("open-sync-folder", {
 	        			userHomePath,
@@ -304,7 +305,7 @@ const createWindow = async () => {
 	        	}
 	        },
 	        {
-	        	label: "Pause syncing",
+	        	label: "Pause",
 	        	click: () => {
 	        		return browserWindow.webContents.send("pause-syncing")
 	        	}
@@ -327,7 +328,7 @@ const createWindow = async () => {
 	            }
 	        },
 	        {
-	        	label: "Open sync folder",
+	        	label: "Open folder",
 	        	click: () => {
 	        		return browserWindow.webContents.send("open-sync-folder", {
 	        			userHomePath,
@@ -338,7 +339,7 @@ const createWindow = async () => {
 	        	}
 	        },
 	        {
-	        	label: "Resume syncing",
+	        	label: "Resume",
 	        	click: () => {
 	        		return browserWindow.webContents.send("unpause-syncing")
 	        	}
@@ -533,9 +534,7 @@ const createWindow = async () => {
 		let lastUserHomePath = userHomePath
 		let lastUserSyncDir = userSyncDir
 
-		browserWindow.webContents.send("show-big-loading", {
-			message: "Restarting.."
-		})
+		browserWindow.webContents.send("show-big-loading")
 
 		browserWindow.webContents.send("pause-syncing")
 		doCheckIfSyncDirectoryExists = false
