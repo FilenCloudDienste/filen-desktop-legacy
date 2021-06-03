@@ -1728,8 +1728,8 @@ const updateUserKeys = async () => {
 				else{
 					console.log("Could not decrypt private key.")
 
-					if(updateUserKeysPKTries < 3){
-						uu += 1
+					if(updateUserKeysPKTries < 16){
+						updateUserKeysPKTries += 1
 
 						updateUserKeys()
 					}
