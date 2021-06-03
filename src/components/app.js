@@ -268,7 +268,20 @@ const showPage = (page) => {
 	})
 }
 
-const routeTo = (route) => {
+const routeTo = async (route) => {
+	let loggedIn = false
+
+	try{
+		loggedIn = await isLoggedIn()
+	}
+	catch(e){
+		console.log(e)
+	}
+
+	if(route !== "login" && !loggedIn){
+		route = "login"
+	}
+
 	if(route == "login" || route == "big-loading" || route == "download-folder"){
 		$(".header").hide()
 		$(".footer").hide()
