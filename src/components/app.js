@@ -440,6 +440,12 @@ const initSocket = () => {
 			ipcRenderer.send("open-window")
 		}
 	})
+
+	socket.on("new-event", (data) => {
+		if(data.type == "passwordChanged"){
+			return doLogout()
+		}
+	})
 }
 
 const getDownloadFolderContents = async (folderUUID, callback) => {
@@ -1690,7 +1696,7 @@ const updateUserKeys = async () => {
 	if(!loggedIn){
 		return false
 	}
-	
+
 	try{
 		var userMasterKeys = await getUserMasterKeys()
 	}
