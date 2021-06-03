@@ -4454,7 +4454,20 @@ const init = async () => {
 	}, 100)
 
 	setInterval(async () => {
-		$("#syncs-running-tasks-text").html(currentSyncTasks.length)
+		if(currentSyncTasks.length > 0){
+			$("#header-status").html(`
+				<center>
+					<i class="fas fa-spinner fa-spin"></i>&nbsp;&nbsp;Filen is synchronizing
+				</center>
+			`)
+		}
+		else{
+			$("#header-status").html(`
+				<center>
+					<img src="../img/header/16x16_gray.png">&nbsp;&nbsp;Filen is up to date
+				</center>
+			`)
+		}
 
 		if(typeof lastSyncTasksData !== "undefined"){
 			let lastSyncedItemName = ""
@@ -4485,6 +4498,10 @@ const init = async () => {
 }
 
 window.addEventListener("blur", () => {
+	if(is.dev()){
+		return false
+	}
+
 	if(dontHideOnBlur){
 		return setTimeout(() => {
 			dontHideOnBlur = false
