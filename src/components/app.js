@@ -4500,7 +4500,7 @@ const setupIntervals = () => {
 		ipcRenderer.send("is-syncing", {
 			isSyncing: isSyncing
 		})
-	}, 250)
+	}, 100)
 
 	updateVisualStatus()
 
@@ -4513,13 +4513,6 @@ const init = async () => {
 	getDiskSpace()
 	setupErrorReporter()
 	setupIntervals()
-
-	if(is.linux()){
-		$("#autostart-settings-container").hide()
-	}
-	else{
-		$("#autostart-settings-container").show()
-	}
 
 	let loggedIn = await isLoggedIn()
 

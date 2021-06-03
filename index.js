@@ -29,6 +29,7 @@ const log = require("electron-log")
 const positioner = require("electron-traywindow-positioner")
 const child_process = require("child_process")
 const is = require("electron-is")
+const AutoLaunch = require("auto-launch")
 
 console.log("platform = " + process.platform)
 console.log("exePath = " + app.getPath("exe"))
@@ -54,7 +55,8 @@ let tray = null,
 	currentTrayIcon = undefined,
 	toggleAutostartTimeout = 0,
 	db = undefined,
-	dbPath = undefined
+	dbPath = undefined,
+	autoLauncher = undefined
 
 if(is.linux() || is.macOS()){
 	dbPath = app.getPath("userData") + "/index"
@@ -189,40 +191,16 @@ const checkIfSyncDirectoryExists = () => {
 	})
 }
 
-const toggleAutoLaunch = (enable = true) => {
-	if(typeof app == "undefined"){
+const toggleAutoLaunch = async (enable = true) => {
+	if(typeof app == "undefined" || typeof autoLauncher == "undefined"){
 		return false
 	}
 
-	if(is.linux()){
-		return false
+	if(enable){
+		autoLauncher.enable()
 	}
-
-	try{
-		if(is.macOS()){
-			app.setLoginItemSettings({
-				openAtLogin: (enable ? true : false),
-				openAsHidden: true
-			})
-		}
-		else{
-			app.setLoginItemSettings({
-				openAtLogin: (enable ? true : false),
-				openAsHidden: true,
-				path: app.getPath("exe"),
-				args: [
-				  	"--processStart",
-				  	`"${app.getPath("exe")}"`,
-				  	"--process-start-args",
-				  	`"--hidden"`
-				]
-			 })
-		}
-	}
-	catch(e){
-		console.log(err)
-
-		return false
+	else{
+		autoLauncher.disable()
 	}
 
 	return true
@@ -275,8 +253,7 @@ const createWindow = async () => {
 		resizable: false,
 		show: false,
 		frame: false,
-		skipTaskbar: true,
-		transparent: true
+		skipTaskbar: true
 	})
 
 	browserWindow.setResizable(false)
@@ -284,6 +261,11 @@ const createWindow = async () => {
 	browserWindow.setMenuBarVisibility(false)
 
 	tray = new Tray(nativeImageTrayIconNormal)
+
+	autoLauncher = new AutoLaunch({
+	    name: "Filen",
+	    path: app.getPath("exe"),
+	})
 
 	let normalTrayMenu = Menu.buildFromTemplate(
 		[
@@ -386,24 +368,13 @@ const createWindow = async () => {
     })
 
     ipcMain.on("toggle-autostart", async (event, data) => {
-    	if(is.linux()){
-    		return false
-    	}
-
     	let autostartEnabled = false
 
 		try{
-			let getAutostartEnabled = await db.get("autostartEnabled")
-
-			if(getAutostartEnabled == "true"){
-				autostartEnabled = true
-			}
-			else{
-				autostartEnabled = false
-			}
+			autostartEnabled = await autoLauncher.isEnabled()
 		}
 		catch(e){
-			autostartEnabled = false
+			console.log(e)
 		}
 
 		if(Math.floor((+new Date()) / 1000) < toggleAutostartTimeout){
@@ -416,58 +387,26 @@ const createWindow = async () => {
 
 		toggleAutostartTimeout = (Math.floor((+new Date()) / 1000) + 5)
 
-		if(autostartEnabled){
-			toggleAutoLaunch(false)
+		toggleAutoLaunch(!autostartEnabled)
 
-			try{
-				await db.put("autostartEnabled", "false")
-			}
-			catch(e){
-				console.log(e)
-			}
-
-			browserWindow.webContents.send("autostart-enabled-res", {
-				autostartEnabled: false
-			})
-		}
-		else{
-			toggleAutoLaunch(true)
-
-			try{
-				await db.put("autostartEnabled", "true")
-			}
-			catch(e){
-				console.log(e)
-			}
-
-			browserWindow.webContents.send("autostart-enabled-res", {
-				autostartEnabled: true
-			})
-		}
+		browserWindow.webContents.send("autostart-enabled-res", {
+			autostartEnabled: !autostartEnabled
+		})
     })
 
 	ipcMain.on("renderer-ready", async (event, data) => {
-		if(!is.linux()){
-    		let autostartEnabled = false
+		let autostartEnabled = false
 
-			try{
-				let getAutostartEnabled = await db.get("autostartEnabled")
+		try{
+			autostartEnabled = await autoLauncher.isEnabled()
+		}
+		catch(e){
+			console.log(e)
+		}
 
-				if(getAutostartEnabled == "true"){
-					autostartEnabled = true
-				}
-				else{
-					autostartEnabled = false
-				}
-			}
-			catch(e){
-				autostartEnabled = false
-			}
-
-			browserWindow.webContents.send("autostart-enabled-res", {
-				autostartEnabled
-			})
-    	}
+		browserWindow.webContents.send("autostart-enabled-res", {
+			autostartEnabled
+		})
 
   		return rendererReady = true
 	})
