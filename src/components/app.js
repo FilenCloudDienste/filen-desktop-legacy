@@ -4514,7 +4514,16 @@ const init = async () => {
 	setupErrorReporter()
 	setupIntervals()
 
-	let loggedIn = await isLoggedIn()
+	let loggedIn = false
+
+	try{
+		loggedIn = await isLoggedIn()
+	}
+	catch(e){
+		console.log(e)
+
+		return routeTo("login")
+	}
 
 	if(!loggedIn){
 		return routeTo("login")

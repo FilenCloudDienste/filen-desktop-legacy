@@ -56,7 +56,8 @@ let tray = null,
 	toggleAutostartTimeout = 0,
 	db = undefined,
 	dbPath = undefined,
-	autoLauncher = undefined
+	autoLauncher = undefined,
+	lastTrayMenuName = ""
 
 if(is.linux() || is.macOS()){
 	dbPath = app.getPath("userData") + "/index"
@@ -341,6 +342,8 @@ const createWindow = async () => {
 
 	tray.setContextMenu(normalTrayMenu)
 
+	lastTrayMenuName = "normal"
+
     tray.on("double-click", () => {
     	return showWindow()
     })
@@ -616,7 +619,11 @@ const createWindow = async () => {
 
 	setInterval(() => {
 		if(syncingPaused){
-			tray.setContextMenu(unpauseTrayMenu)
+			if(lastTrayMenuName !== "unpause"){
+				lastTrayMenuName = "unpause"
+
+				tray.setContextMenu(unpauseTrayMenu)
+			}
 
 			if(currentTrayIcon !== nativeImageTrayIconPaused){
 				currentTrayIcon = nativeImageTrayIconPaused
@@ -625,7 +632,11 @@ const createWindow = async () => {
 			}
 		}
 		else{
-			tray.setContextMenu(normalTrayMenu)
+			if(lastTrayMenuName !== "normal"){
+				lastTrayMenuName = "normal"
+
+				tray.setContextMenu(normalTrayMenu)
+			}
 
 			if(syncTasks > 0){
 				if(currentTrayIcon !== nativeImageTrayIconSyncing){
