@@ -269,7 +269,7 @@ const showPage = (page) => {
 }
 
 const routeTo = (route) => {
-	if(route == "login" || route == "setup" || route == "big-loading" || route == "download-folder"){
+	if(route == "login" || route == "big-loading" || route == "download-folder"){
 		$(".header").hide()
 		$(".footer").hide()
 	}
@@ -279,6 +279,8 @@ const routeTo = (route) => {
 	}
 
 	if(route == "login"){
+		ipcRenderer.send("open-window")
+
 		$("#login-status").hide()
 	}
 
@@ -4518,6 +4520,8 @@ const init = async () => {
 
 	try{
 		loggedIn = await isLoggedIn()
+
+		console.log("isLoggedIn", loggedIn)
 	}
 	catch(e){
 		console.log(e)
