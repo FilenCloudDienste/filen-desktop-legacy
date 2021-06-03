@@ -529,7 +529,7 @@ const getDownloadFolderContents = async (folderUUID, callback) => {
 			basePath = decryptCryptoJSFolderName(res.data.folders[0].name, userMasterKeys)
 		}
 
-		if(basePath == "CON_NO_DECRYPT_POSSIBLE_NO_NAME_FOUND_FOR_FOLDER"){
+		if(basePath.length == 0){
 			return callback(new Error("Base path folder name cant decrypt")) 
 		}
 
@@ -594,7 +594,7 @@ const getDownloadFolderContents = async (folderUUID, callback) => {
 				selfName = decryptCryptoJSFolderName(self.name, userMasterKeys)
 			}
 
-			if(selfName !== "CON_NO_DECRYPT_POSSIBLE_NO_NAME_FOUND_FOR_FOLDER"){
+			if(selfName.length > 0){
 				if(self.parent !== "base"){
 					let parent = folders[res.data.folders[i].parent]
 
@@ -660,7 +660,7 @@ const getDownloadFolderContents = async (folderUUID, callback) => {
 					metadata = decryptFileMetadata(self.metadata, userMasterKeys)
 				}
 
-				if(metadata.key !== ""){
+				if(metadata.name.length > 0){
 					let newPath = pathsForFiles[self.parent] + metadata.name
 
 					if(typeof newPath !== "undefined" && metadata.size > 0){
@@ -1079,11 +1079,11 @@ const initFns = () => {
    			twoFactorKey = "XXXXXX"
    		}
 
-		password = hashPassword(password)
+		let passwordHashed = hashPassword(password)
 
    		apiRequest("/v1/login", {
    			email,
-   			password,
+   			password: passwordHashed,
    			twoFactorKey
    		}, async (err, res) => {
 	   		$("#login-2fa-input").val("")
@@ -1792,7 +1792,7 @@ const updateUserKeys = async () => {
 }
 
 function decryptFolderNameLink(metadata, linkKey, uuid){
-    let folderName = "CON_NO_DECRYPT_POSSIBLE_NO_NAME_FOUND_FOR_FOLDER"
+    let folderName = ""
 
     try{
         let obj = JSON.parse(CryptoJS.AES.decrypt(metadata, linkKey).toString(CryptoJS.enc.Utf8))
@@ -1839,7 +1839,7 @@ function decryptFileMetadataLink(metadata, linkKey, uuid){
 }
 
 const decryptCryptoJSFolderName = (str, userMasterKeys) => {
-	let folderName = "CON_NO_DECRYPT_POSSIBLE_NO_NAME_FOUND_FOR_FOLDER"
+	let folderName = ""
 
 	userMasterKeys = userMasterKeys.reverse()
 
@@ -3223,12 +3223,14 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 				else{
 					metadata = decryptFileMetadata(self.metadata, userMasterKeys)
 
-					remoteDecryptedCache["file_" + self.uuid + "_" + self.metadata] = JSON.stringify(metadata)
+					if(metadata.name.length > 0){
+						remoteDecryptedCache["file_" + self.uuid + "_" + self.metadata] = JSON.stringify(metadata)
+					}
 				}
 
 				let newPath = pathsForFiles[self.parent] + metadata.name
 
-				if(metadata.key !== ""){
+				if(metadata.name.length > 0){
 					if(typeof newPath !== "undefined" && metadata.size > 0){
 						if(typeof fileNamesExisting[self.parent + "_" + metadata.name.toLowerCase()] == "undefined"){
 							fileNamesExisting[self.parent + "_" + metadata.name.toLowerCase()] = true
