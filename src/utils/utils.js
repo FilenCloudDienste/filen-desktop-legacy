@@ -152,3 +152,25 @@ function toArrayBuffer(buf) {
     }
     return ab;
 }
+
+const winOrUnixFilePath = (path) => {
+  if(appPlatform == "windows"){
+    return path.split("/").join("\\")
+  }
+  else{
+    return path.split("\\").join("/")
+  }
+}
+
+const sortObjectArrayByPropLengthASC = (a) => {
+  let keyArray = Object.keys(a)
+  let object = {}
+
+  keyArray.sort()
+
+  keyArray.forEach(function(item){
+    object[item] = a[item]
+  })
+
+  return object
+}

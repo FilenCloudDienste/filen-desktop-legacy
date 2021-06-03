@@ -159,6 +159,7 @@ let appId = undefined
 let lastReceivedSyncData = undefined
 let firstDataRequest = true
 let skipNextRequestData = true
+let dontHideOnBlur = false
 
 const unixTimestamp = () => {
 	return Math.floor((+new Date()) / 1000)
@@ -296,7 +297,7 @@ const socketAuth = async () => {
 
 const openSyncFolder = () => {
 	if(typeof userSyncDir == "undefined"){
-		return
+		return false
 	}
 
 	try{
@@ -306,7 +307,13 @@ const openSyncFolder = () => {
 	}
 	catch(e){
 		console.log(e)
+
+		return false
 	}
+
+	dontHideOnBlur = true
+
+	return true
 }
 
 const initSocket = () => {
@@ -765,55 +772,35 @@ const startDownloadFolder = () => {
 }
 
 const changeDownloadFolderPath = () => {
+	dontHideOnBlur = true
+
 	return ipcRenderer.send("change-download-folder-path")
 }
 
-const changeHomePath = () => {
-	if(currentSyncTasks.length > 0){
-		return false
-	}
-
-	syncingPaused = true
-
-	return ipcRenderer.send("open-path-selection")
-}
-
-const restartForUpdate = () => {
-	return ipcRenderer.send("restart-for-update")
-}
-
-const downloadUpdateLink = () => {
-	let href = ""
-
-	if(process.platform == "linux"){
-		href = "https://cdn.filen.io/sync/updates/Filen%20Sync-setup.AppImage"
-	}
-	else if(process.platform == "darwin"){
-		href = "https://cdn.filen.io/sync/updates/Filen%20Sync-setup.dmg"
-	}
-	else{
-		href = "https://cdn.filen.io/sync/updates/Filen%20Sync-setup.exe"
-	}
-
-	try{
-    	shell.openExternal(href).catch((err) => {
-			if(err){
-				console.log(err)
-			}
-		})
-    }
-    catch(e){
-    	console.log(e)
-    }
-
-    return true
-}
-
-const toggleAutostart = () => {
-	ipcRenderer.send("toggle-autostart")
-}
-
 const initIPC = () => {
+	ipcRenderer.on("show-syncs", (e, data) => {
+		return routeTo("syncs")
+	})
+
+	ipcRenderer.on("update-available", (e, data) => {
+		return $("#settings-update-container").show()
+	})
+
+	ipcRenderer.on("app-version", (e, data) => {
+		return $("#settings-client-version-text").html(data.version)
+	})
+
+	ipcRenderer.on("user-dirs", (e, data) => {
+		userSyncDir = data.userSyncDir
+		userHomePath = data.userHomePath
+		appPath = data.appPath
+		userDownloadPath = data.userDownloadPath
+
+		$("#settings-home-path-text").val(winOrUnixFilePath(userSyncDir))
+
+		return true
+	})
+
 	ipcRenderer.on("autostart-enabled-res", (e, data) => {
 		if(data.autostartEnabled){
 			$("#enable-autostart-toggle").prop("checked", true)
@@ -821,10 +808,12 @@ const initIPC = () => {
 		else{
 			$("#enable-autostart-toggle").prop("checked", false)
 		}
+
+		return true
 	})
 
 	ipcRenderer.on("change-download-folder-path-res", (e, data) => {
-		$("#download-folder-path-text").val(winOrUnixFilePath(data.path))
+		return $("#download-folder-path-text").val(winOrUnixFilePath(data.path))
 	})
 
 	ipcRenderer.on("clear-db", async (e, data) => {
@@ -863,20 +852,6 @@ const initIPC = () => {
 
 		remoteDecryptedCache = {}
 	})
-
-	ipcRenderer.on("update-available", (e, data) => {
-		$("#settings-update-container").show()
-	})
-
-	ipcRenderer.on("app-version", (e, data) => {
-		$("#settings-client-version-text").html(data.version)
-	})
-
-	ipcRenderer.on("open-download-file-screen", (e, data) => {
-		routeTo("download-file")
-
-	 	return ipcRenderer.send("download-file-screen-opened")
-	})
 	
 	ipcRenderer.on("open-download-folder-screen", (e, data) => {
 		routeTo("download-folder")
@@ -898,6 +873,8 @@ const initIPC = () => {
 		catch(e){
 			console.log(e)
 		}
+
+		return true
 	})
 
 	ipcRenderer.on("user-dirs", (e, data) => {
@@ -906,11 +883,11 @@ const initIPC = () => {
 		appPath = data.appPath
 		userDownloadPath = data.userDownloadPath
 
-		$("#settings-home-path-text").val(winOrUnixFilePath(userSyncDir))
+		return true
 	})
 
 	ipcRenderer.on("app-platform", (e, data) => {
-		appPlatform = data.appPlatform
+		return appPlatform = data.appPlatform
 	})
 
 	ipcRenderer.on("pause-syncing", (e, data) => {
@@ -928,7 +905,7 @@ const initIPC = () => {
 	})
 
 	ipcRenderer.on("idle-time", (e, data) => {
-		idleTimeSeconds = data.seconds
+		return idleTimeSeconds = data.seconds
 	})
 
 	ipcRenderer.on("rewrite-saved-sync-data", async (e, data) => {
@@ -1028,7 +1005,7 @@ const initIPC = () => {
 
 				return setTimeout(() => {
 					ipcRenderer.send("rewrite-saved-sync-data-done")
-				}, 5000)
+				}, 1000)
 			}
 		}, 50)
 	})
@@ -1269,28 +1246,6 @@ const isLoggedIn = async () => {
 	return true
 }
 
-const sortObjectArrayByPropLengthASC = (a) => {
-	let keyArray = Object.keys(a)
-	let object = {}
-
-	keyArray.sort()
-
-	keyArray.forEach(function(item){
-		object[item] = a[item]
-	})
-
-	return object
-}
-
-const winOrUnixFilePath = (path) => {
-	if(appPlatform == "windows"){
-		return path.split("/").join("\\")
-	}
-	else{
-		return path.split("\\").join("/")
-	}
-}
-
 const getUserUsage = () => {
 	const getUsage = async () => {
 		apiRequest("/v1/user/usage", {
@@ -1354,6 +1309,52 @@ const checkIfSyncFolderExistsRemote = async (callback) => {
 
 		return callback(null, false)
 	})
+}
+
+const toggleAutostart = () => {
+	return ipcRenderer.send("toggle-autostart")
+}
+
+const changeHomePath = () => {
+	if(currentSyncTasks.length > 0){
+		return false
+	}
+
+	dontHideOnBlur = true
+	syncingPaused = true
+
+	return ipcRenderer.send("open-path-selection")
+}
+
+const downloadUpdateLink = () => {
+	let href = ""
+
+	if(process.platform == "linux"){
+		href = "https://cdn.filen.io/sync/updates/Filen%20Sync-setup.AppImage"
+	}
+	else if(process.platform == "darwin"){
+		href = "https://cdn.filen.io/sync/updates/Filen%20Sync-setup.dmg"
+	}
+	else{
+		href = "https://cdn.filen.io/sync/updates/Filen%20Sync-setup.exe"
+	}
+
+	try{
+    	shell.openExternal(href).catch((err) => {
+			if(err){
+				console.log(err)
+			}
+		})
+    }
+    catch(e){
+    	console.log(e)
+    }
+
+    return true
+}
+
+const restartForUpdate = () => {
+	return ipcRenderer.send("restart-for-update")
 }
 
 const fillContent = async (callback) => {
@@ -4409,7 +4410,7 @@ const init = async () => {
 		return routeTo("login")
 	}
 
-	if(process.platform == "linux"){
+	if(is.linux()){
 		$("#autostart-settings-container").hide()
 	}
 	else{
@@ -4484,8 +4485,10 @@ const init = async () => {
 }
 
 window.addEventListener("blur", () => {
-	if(is.dev()){
-		return false
+	if(dontHideOnBlur){
+		return setTimeout(() => {
+			dontHideOnBlur = false
+		}, 1000)
 	}
 
 	return ipcRenderer.send("minimize")

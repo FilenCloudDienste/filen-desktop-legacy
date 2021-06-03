@@ -48,121 +48,16 @@
 					</div>
 				</div>
 			</div>
-			<div class="content" data-type="account" style="padding: 15px;">
-				<div class="row" style="margin-top: 5px;">
-					<div class="col-lg-12">
-						<div class="float-left" id="account-email-text">
-							user@filen.io
-						</div>
-						<div class="float-right">
-							<!--<a class="open-in-browser btn btn-secondary btn-sm" href="https://filen.io/my-account/file-manager/settings" target="_blank">Settings</a>-->
-							<button class="btn btn-secondary btn-sm" onClick="doLogout()">Logout</button>
-						</div>
-					</div>
-				</div>
-				<hr>
-				<div class="row">
-					<div class="col-lg-12">
-						Account Storage
-					</div>
-				</div>
-				<div class="row" style="margin-top: 10px;">
-					<div class="col-lg-12">
-						<div class="progress">
-						  	<div class="progress-bar" id="account-storage-used-progress" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-						</div>
-					</div>
-				</div>
-				<div class="row">
-					<div class="col-lg-12">
-						<div class="float-left">
-							<text id="account-storage-used-text">
-								0 GB of 0 TB used (0%)
-							</text>
-						</div>
-						<div class="float-right" id="account-pro-button-container">
-							<a class="btn btn-secondary btn-sm open-in-browser" href="https://filen.io/pro" target="_blank">Pro</a>
-						</div>
-					</div>
-				</div>
-				<hr>
-				<div class="row">
-					<div class="col-lg-12">
-						<div class="float-left">
-							Sync Folder Stats
-						</div>
-						<div class="float-right">
-							<button class="btn btn-secondary btn-sm" onClick="openSyncFolder()">Open</button>
-						</div>
-					</div>
-				</div>
-				<div class="row" style="margin-top: 15px;">
-					<div class="col-lg-12">
-						<div class="float-left">
-							Files: <text id="account-sync-stats-files-text">0</text>
-						</div>
-						<div class="float-right">
-							Folders: <text id="account-sync-stats-folders-text">0</text>
-						</div>
-					</div>
-				</div>
-				<hr>
-			</div>
 			<div class="content" data-type="syncs">
 				<div style="overflow-x: hidden; overflow-y: hidden; height: 79vh; width: 100%; border: none;">
 					<ul class="list-group" id="sync-task-tbody" style="width: 100%; margin-top: 0px; padding-top: 0px; border: none;"></ul>
 				</div>
 			</div>
-			<div class="content" data-type="settings" style="padding: 15px;">
-				<div class="row">
-					<div class="col-lg-12">
-						<div class="form-group">
-							<label class="control-label">Sync Path</label>
-							<div class="form-group">
-								<div class="input-group mb-3">
-									<input type="text" class="form-control" id="settings-home-path-text" disabled="">
-									<div class="input-group-append">
-										<span class="input-group-text btn btn-secondary btn-sm" onClick="changeHomePath()">Change</span>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-				<div class="row" style="margin-top: 15px;" id="autostart-settings-container">
-					<div class="col-lg-12">
-						<div class="float-left">
-							Enable Autostart
-						</div>
-						<div class="float-right">
-							<input type="checkbox" id="enable-autostart-toggle" onClick="toggleAutostart()">
-						</div>
-					</div>
-				</div>
-				<div class="row" style="margin-top: 15px;">
-					<div class="col-lg-12">
-						Version: <text id="settings-client-version-text"></text>
-					</div>
-				</div>
-				<div class="row" id="settings-update-container" style="margin-top: 20px; display: none;">
-					<div class="col-lg-12">
-						<div class="float-left">
-							Update available, please download and install
-						</div>
-						<div class="float-right">
-							<button class="btn btn-secondary btn-sm" onClick="downloadUpdateLink()">Download</button>
-						</div>
-					</div>
-				</div>
-			</div>
-			<div class="content" data-type="download-file">
-				download-file
-			</div>
 			<div class="content" data-type="download-folder">
 				<div class="row">
 					<div class="col-lg-12">
 						<div class="float-right">
-							<i class="fas fa-times" style="cursor: pointer; margin-right: 15px; margin-top: 10px; font-size: 18pt;" onClick="isCurrentlyDownloadigRemote = false; currentDownloadFolderStopped[currentDownloadFolderUUID] = true; routeTo('account')"></i>
+							<i class="fas fa-times" style="cursor: pointer; margin-right: 15px; margin-top: 10px; font-size: 16pt;" onClick="isCurrentlyDownloadigRemote = false; currentDownloadFolderStopped[currentDownloadFolderUUID] = true; routeTo('syncs')"></i>
 						</div>
 					</div>
 				</div>
@@ -235,8 +130,52 @@
 					</div>
 				</div>
 			</div>
-			<div class="content" data-type="setup">
-				setup
+			<div class="content" data-type="settings" style="padding: 15px;">
+				<div class="row">
+					<div class="col-lg-12">
+						<button class="btn btn-sm btn-block btn-primary" onClick="routeTo('syncs')">Back</button>
+					</div>
+				</div>
+				<div class="row" style="margin-top: 15px;">
+					<div class="col-lg-12">
+						<div class="form-group">
+							<label class="control-label">Sync Path</label>
+							<div class="form-group">
+								<div class="input-group mb-3">
+									<input type="text" class="form-control" id="settings-home-path-text" disabled="">
+									<div class="input-group-append">
+										<span class="input-group-text btn btn-secondary btn-sm" onClick="changeHomePath()">Change</span>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="row" style="margin-top: 15px;" id="autostart-settings-container">
+					<div class="col-lg-12">
+						<div class="float-left">
+							Launch at startup
+						</div>
+						<div class="float-right">
+							<input type="checkbox" id="enable-autostart-toggle" onClick="toggleAutostart()">
+						</div>
+					</div>
+				</div>
+				<div class="row" style="margin-top: 15px;">
+					<div class="col-lg-12">
+						Version: <text id="settings-client-version-text"></text>
+					</div>
+				</div>
+				<div class="row" id="settings-update-container" style="margin-top: 15px; display: none;">
+					<div class="col-lg-12">
+						<div class="float-left">
+							Update available, please download and install
+						</div>
+						<div class="float-right">
+							<button class="btn btn-secondary btn-sm" onClick="downloadUpdateLink()">Download</button>
+						</div>
+					</div>
+				</div>
 			</div>
 			<div class="footer" style="height: 68px; display: none;">
 				<div class="row">
@@ -261,7 +200,7 @@
 							Go pro
 						</font>
 					</div>
-					<div class="header-col text-center" onClick="showSettings()">
+					<div class="header-col text-center" data-go="settings">
 						<i class="fas fa-cogs" style="font-size: 16pt;"></i>
 						<br>
 						<font size="2">

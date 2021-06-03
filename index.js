@@ -54,8 +54,7 @@ let tray = null,
 	currentTrayIcon = undefined,
 	toggleAutostartTimeout = 0,
 	db = undefined,
-	dbPath = undefined,
-	settingsWindow = undefined
+	dbPath = undefined
 
 if(is.linux() || is.macOS()){
 	dbPath = app.getPath("userData") + "/index"
@@ -245,6 +244,7 @@ const showWindow = () => {
 	moveWindow()
 
 	browserWindow.show()
+	browserWindow.webContents.send("show-syncs")
 
 	return browserWindow.focus()
 }
@@ -255,24 +255,6 @@ const moveWindow = () => {
 	}
 
 	return positioner.position(browserWindow, tray.getBounds())
-}
-
-const showSettings = () => {
-	if(typeof settingsWindow == "undefined"){
-		return false
-	}
-
-	settingsWindow.show()
-
-	return settingsWindow.focus()
-}
-
-const hideSettings = () => {
-	if(typeof settingsWindow == "undefined"){
-		return false
-	}
-
-	return settingsWindow.hide()
 }
 
 const createWindow = async () => {
@@ -299,31 +281,6 @@ const createWindow = async () => {
 	browserWindow.setResizable(false)
 	browserWindow.setVisibleOnAllWorkspaces(true)
 	browserWindow.setMenuBarVisibility(false)
-
-	settingsWindow = new BrowserWindow({
-		width: 400,
-		height: 400,
-		icon: nativeImageAppIcon,
-		webPreferences: {
-			nodeIntegration: true,
-			nodeIntegrationInWorker: true,
-			backgroundThrottling: false,
-			enableRemoteModule: true
-		},
-		title: "Settings",
-		maximizable: false,
-		minimizable: false,
-		fullscreenable: false,
-		darkTheme: true,
-		resizable: false,
-		show: false,
-		skipTaskbar: false,
-		center: true
-	})
-
-	settingsWindow.setResizable(false)
-	settingsWindow.setVisibleOnAllWorkspaces(true)
-	settingsWindow.setMenuBarVisibility(false)
 
 	tray = new Tray(nativeImageTrayIconNormal)
 
@@ -397,7 +354,6 @@ const createWindow = async () => {
 
     if(is.macOS()){
     	browserWindow.setTitle("Filen")
-    	settingsWindow.setTitle("Settings")
     }
 
 	tray.setContextMenu(normalTrayMenu)
@@ -408,16 +364,6 @@ const createWindow = async () => {
 
     tray.on("click", () => {
     	return showWindow()
-    })
-
-    settingsWindow.on("close", (event) => {
-        event.preventDefault()
-
-        return hideSettings()
-    })
-
-    ipcMain.on("show-settings", (event, data) => {
-    	return showSettings()
     })
 
     ipcMain.on("minimize", (event, data) => {
@@ -439,6 +385,10 @@ const createWindow = async () => {
     })
 
     ipcMain.on("toggle-autostart", async (event, data) => {
+    	if(is.linux()){
+    		return false
+    	}
+
     	let autostartEnabled = false
 
 		try{
@@ -457,13 +407,13 @@ const createWindow = async () => {
 
 		if(Math.floor((+new Date()) / 1000) < toggleAutostartTimeout){
 			browserWindow.webContents.send("autostart-enabled-res", {
-				autostartEnabled: autostartEnabled
+				autostartEnabled
 			})
 
 			return false
 		}
 
-		toggleAutostartTimeout = (Math.floor((+new Date()) / 1000) + 3)
+		toggleAutostartTimeout = (Math.floor((+new Date()) / 1000) + 5)
 
 		if(autostartEnabled){
 			toggleAutoLaunch(false)
@@ -496,34 +446,32 @@ const createWindow = async () => {
     })
 
 	ipcMain.on("renderer-ready", async (event, data) => {
-		let autostartEnabled = false
+		if(!is.linux()){
+    		let autostartEnabled = false
 
-		try{
-			let getAutostartEnabled = await db.get("autostartEnabled")
+			try{
+				let getAutostartEnabled = await db.get("autostartEnabled")
 
-			if(getAutostartEnabled == "true"){
-				autostartEnabled = true
+				if(getAutostartEnabled == "true"){
+					autostartEnabled = true
+				}
+				else{
+					autostartEnabled = false
+				}
 			}
-			else{
+			catch(e){
 				autostartEnabled = false
 			}
-		}
-		catch(e){
-			autostartEnabled = false
-		}
 
-		browserWindow.webContents.send("autostart-enabled-res", {
-			autostartEnabled: autostartEnabled
-		})
+			browserWindow.webContents.send("autostart-enabled-res", {
+				autostartEnabled
+			})
+    	}
 
   		return rendererReady = true
 	})
 
 	ipcMain.on("download-folder-screen-opened", (event, data) => {
-		return showWindow()
-	})
-
-	ipcMain.on("download-file-screen-opened", (event, data) => {
 		return showWindow()
 	})
 
@@ -711,7 +659,6 @@ const createWindow = async () => {
 	//setInterval(checkIfSyncDirectoryExists, 3000)
 
   	browserWindow.loadFile(path.join(__dirname, "src", "html", "index.html"))
-  	settingsWindow.loadFile(path.join(__dirname, "src", "html", "settings.html"))
 
   	if(is.dev()){
 		browserWindow.webContents.openDevTools({
