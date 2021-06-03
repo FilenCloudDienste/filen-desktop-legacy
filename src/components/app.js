@@ -1263,7 +1263,20 @@ const isLoggedIn = async () => {
 	return true
 }
 
-const getUserUsage = () => {
+const getUserUsage = async () => {
+	let loggedIn = false
+
+	try{
+		loggedIn = await isLoggedIn()
+	}
+	catch(e){
+		return console.log(e)
+	}
+
+	if(!loggedIn){
+		return false
+	}
+
 	const getUsage = async () => {
 		apiRequest("/v1/user/usage", {
 			apiKey: await getUserAPIKey()
@@ -1665,6 +1678,19 @@ const doSetup = async (callback) => {
 }
 
 const updateUserKeys = async () => {
+	let loggedIn = false
+
+	try{
+		loggedIn = await isLoggedIn()
+	}
+	catch(e){
+		return console.log(e)
+	}
+
+	if(!loggedIn){
+		return false
+	}
+	
 	try{
 		var userMasterKeys = await getUserMasterKeys()
 	}
@@ -4386,17 +4412,6 @@ const reload = (type) => {
 const doLogout = async () => {
 	syncingPaused = true
 	syncStarted = false
-
-	let userEmail = undefined
-
-	try{
-		userEmail = 
-
-		currentStorageData = JSON.parse(await db.get(userEmail + "_finishedSyncTasks"))
-	}
-	catch(e){
-		currentStorageData = undefined
-	}
 
 	try{
 		await db.clear()
