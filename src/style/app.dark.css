@@ -25,6 +25,7 @@ input {
 
 .login-header {
     background-color: #202020 !important;
+    color: #A7B1B1 !important;
 }
 
 .login-footer {
@@ -35,6 +36,7 @@ input {
 .header {
 	background-color: #202020 !important;
 	border-bottom: 1px solid #2E2E2E !important;
+    color: #A7B1B1 !important;
 }
 
 .footer {
@@ -48,4 +50,13 @@ input {
 
 .header-col:hover {
     color: white !important;
+}
+
+#sync-task-tbody > div {
+    color: #A7B1B1 !important;
+}
+
+.progress {
+    background: #121212 !important;
+    border: 1px solid #2E2E2E !important;
 }

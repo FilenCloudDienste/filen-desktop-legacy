@@ -4406,7 +4406,8 @@ const setupErrorReporter = () => {
 	})
 }
 
-const updateVisualStatus = () => {
+const updateVisualStatus = async () => {
+	let darkMode = await darkModeEnabled()
 	let headerStatus = ""
 	let tooltipText = ""
 
@@ -4422,7 +4423,7 @@ const updateVisualStatus = () => {
 	else{
 		headerStatus = `
 			<center>
-				<img src="../img/header/16x16_gray.png">&nbsp;&nbsp;Filen is up to date
+				<img id="header-icon" src="` + (darkMode ? `../img/header/16x16_gray.png` : `../img/header/16x16_black.png`) + `">&nbsp;&nbsp;Filen is up to date
 			</center>
 		`
 

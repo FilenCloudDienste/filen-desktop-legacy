@@ -48,6 +48,7 @@ hr {
     overflow: auto;
     border-bottom: 1px solid rgba(0,0,0,0.1);
     background-color: #E5E5E5;
+    color: black;
 }
 
 .login-footer {
@@ -64,6 +65,7 @@ hr {
 	width: 100%;
     border-bottom: 1px solid rgba(0,0,0,0.1);
     background-color: #E5E5E5;
+    color: black;
 }
 
 .footer {
@@ -205,6 +207,7 @@ hr {
     padding: 9px;
     padding-left: 0px;
     padding-right: 14px;
+    color: rgb(68, 69, 68, 0.8);
 }
 
 .dont-highlight {
