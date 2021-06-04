@@ -249,12 +249,13 @@ const createWindow = async () => {
 		},
 		title: "Filen Sync",
 		maximizable: false,
+		minimizable: false,
 		fullscreenable: false,
-		darkTheme: true,
 		resizable: false,
 		show: false,
 		frame: false,
-		skipTaskbar: true
+		skipTaskbar: true,
+		transparent: true
 	})
 
 	browserWindow.setResizable(false)
@@ -694,8 +695,8 @@ else{
 		}
 	})
 
-	app.whenReady().then(() => {
-		return createWindow()
+	app.on("ready", () => {
+		return setTimeout(createWindow, 500)
 	})
 }
 
