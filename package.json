@@ -45,7 +45,10 @@
 		"start": "electron .",
 		"postinstall": "electron-builder install-app-deps",
 		"rebuild": "./node_modules/.bin/electron-rebuild.cmd",
-		"dist": "npm run postinstall && electron-builder -wlm -c.mac.identity=null"
+		"dist": "npm run postinstall && electron-builder -wlm -c.mac.identity=null",
+		"build-linux": "npm run postinstall && electron-builder -l",
+		"build-mac": "npm run postinstall && electron-builder -m -c.mac.identity=null",
+		"build-win": "npm run postinstall && electron-builder -w",
 	},
 	"build": {
 		"appId": "io.filen.sync",
