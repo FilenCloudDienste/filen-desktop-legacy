@@ -396,6 +396,8 @@ const initSocket = () => {
 
 			ipcRenderer.send("open-window")
 		}
+
+		return true
 	})
 
 	socket.on("new-event", (data) => {
@@ -1363,6 +1365,76 @@ const restartForUpdate = () => {
 	return ipcRenderer.send("restart-for-update")
 }
 
+const renderSyncTask = (task, prepend = true) => {
+	let taskName = ""
+	let isFile = true
+
+	if(task.where == "remote" && task.task == "upload"){
+		taskName = '<i class="fas fa-arrow-up"></i>'
+	}
+	else if(task.where == "remote" && task.task == "rmdir"){
+		taskName = '<i class="fas fa-trash"></i>'
+		isFile = false
+	}
+	else if(task.where == "remote" && task.task == "rmfile"){
+		taskName = '<i class="fas fa-trash"></i>'
+	}
+	else if(task.where == "remote" && task.task == "mkdir"){
+		taskName = '<i class="fas fa-arrow-up"></i>'
+		isFile = false
+	}
+	else if(task.where == "remote" && task.task == "update"){
+		taskName = '<i class="fas fa-arrow-up"></i>'
+	}
+	else if(task.where == "local" && task.task == "download"){
+		taskName = '<i class="fas fa-arrow-down"></i>'
+	}
+	else if(task.where == "local" && task.task == "rmdir"){
+		taskName = '<i class="fas fa-trash"></i>'
+		isFile = false
+	}
+	else if(task.where == "local" && task.task == "rmfile"){
+		taskName = '<i class="fas fa-trash"></i>'
+	}
+	else if(task.where == "local" && task.task == "mkdir"){
+		taskName = '<i class="fas fa-arrow-down"></i>'
+		isFile = false
+	}
+	else if(task.where == "local" && task.task == "update"){
+		taskName = '<i class="fas fa-arrow-down"></i>'
+	}
+
+	let fileNameEx = JSON.parse(task.taskInfo).path.split("/")
+	let fileName = fileNameEx[fileNameEx.length - 1]
+
+	if(fileName.length <= 0){
+		fileName = fileNameEx[fileNameEx.length - 2]
+	}
+
+	let taskHTML = `
+		<div>
+			<div class="overflow-ellipsis" style="width: 10%; float: left;">
+	    		` + (isFile ? `<i class="fas fa-file"></i>` : `<i class="fas fa-folder" style="color: #F6C358;"></i>`) + `
+	        </div>
+	        <div class="overflow-ellipsis" style="width: 80%; float: left; padding-right: 25px;">
+	            ` + fileName + `
+	        </div>
+	        <div class="overflow-ellipsis" style="width: 10%; float: left;">
+	            ` + taskName + `
+	        </div>
+		</div>
+	`
+
+	if(prepend){
+		$("#sync-task-tbody").prepend(taskHTML)
+	}
+	else{
+		$("#sync-task-tbody").append(taskHTML)
+	}
+
+	return true
+}
+
 const fillSyncTasks = async () => {
 	let syncTasksData = undefined
 
@@ -1384,54 +1456,7 @@ const fillSyncTasks = async () => {
 			$("#sync-task-tbody").html("")
 
 			for(let i = 0; i < syncTasksData.length; i++){
-				if(i < 100){
-					let taskName = ""
-
-					if(syncTasksData[i].where == "remote" && syncTasksData[i].task == "upload"){
-						taskName = "Upload"
-					}
-					else if(syncTasksData[i].where == "remote" && syncTasksData[i].task == "rmdir"){
-						taskName = "Trash"
-					}
-					else if(syncTasksData[i].where == "remote" && syncTasksData[i].task == "rmfile"){
-						taskName = "Trash"
-					}
-					else if(syncTasksData[i].where == "remote" && syncTasksData[i].task == "mkdir"){
-						taskName = "Create"
-					}
-					else if(syncTasksData[i].where == "remote" && syncTasksData[i].task == "update"){
-						taskName = "Update"
-					}
-					else if(syncTasksData[i].where == "local" && syncTasksData[i].task == "download"){
-						taskName = "Download"
-					}
-					else if(syncTasksData[i].where == "local" && syncTasksData[i].task == "rmdir"){
-						taskName = "Delete"
-					}
-					else if(syncTasksData[i].where == "local" && syncTasksData[i].task == "rmfile"){
-						taskName = "Delete"
-					}
-					else if(syncTasksData[i].where == "local" && syncTasksData[i].task == "mkdir"){
-						taskName = "Create"
-					}
-					else if(syncTasksData[i].where == "local" && syncTasksData[i].task == "update"){
-						taskName = "Update"
-					}
-
-					let fileNameEx = JSON.parse(syncTasksData[i].taskInfo).path.split("/")
-					let fileName = fileNameEx[fileNameEx.length - 1]
-
-					if(fileName.length <= 0){
-						fileName = fileNameEx[fileNameEx.length - 2]
-					}
-
-					$("#sync-task-tbody").append(`
-						<li class="list-group-item d-flex justify-content-between align-items-center">
-							<span class="badge badge-primary badge-pill">` + taskName + `</span>
-							` + fileName + `
-							</li>
-					`)
-				}
+				renderSyncTask(syncTasksData[i], false)
 			}
 		}
 	}
@@ -2802,7 +2827,7 @@ const addFinishedSyncTaskToStorage = async (where, task, taskInfo) => {
 		return console.log(e)
 	}
 
-	let currentStorageData = undefined
+	let currentStorageData = []
 	let userEmail = undefined
 
 	try{
@@ -2811,61 +2836,34 @@ const addFinishedSyncTaskToStorage = async (where, task, taskInfo) => {
 		currentStorageData = JSON.parse(await db.get(userEmail + "_finishedSyncTasks"))
 	}
 	catch(e){
-		currentStorageData = undefined
-	}
-
-	if(typeof currentStorageData == "undefined"){
 		currentStorageData = []
-
-		currentStorageData.push({
-			where,
-			task,
-			taskInfo
-		})
-
-		lastSyncedItem = {
-			where,
-			task,
-			taskInfo
-		}
-
-		try{
-			await db.put(userEmail + "_finishedSyncTasks", JSON.stringify(currentStorageData))
-		}
-		catch(e){
-			console.log(e)
-		}
-
-		release()
-	}
-	else{
-		if(currentStorageData.length >= 150){
-			currentStorageData.shift()
-		}
-
-		currentStorageData.push({
-			where,
-			task,
-			taskInfo
-		})
-
-		lastSyncedItem = {
-			where,
-			task,
-			taskInfo
-		}
-
-		try{
-			await db.put(userEmail + "_finishedSyncTasks", JSON.stringify(currentStorageData))
-		}
-		catch(e){
-			console.log(e)
-		}
-
-		release()
 	}
 
-	return fillSyncTasks()
+	let taskData = {
+		where,
+		task,
+		taskInfo,
+		timestamp: Math.floor((+new Date()) / 1000)
+	}
+
+	if(currentStorageData.length >= 1000){
+		currentStorageData.shift()
+	}
+
+	currentStorageData.push(taskData)
+
+	lastSyncedItem = taskData
+
+	renderSyncTask(taskData, true)
+
+	try{
+		await db.put(userEmail + "_finishedSyncTasks", JSON.stringify(currentStorageData))
+	}
+	catch(e){
+		console.log(e)
+	}
+
+	return release()
 }
 
 var skipCheckLocalExistedFoldersAndFiles = 0

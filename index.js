@@ -27,7 +27,6 @@ const rimraf = require("rimraf")
 const { autoUpdater } = require("electron-updater")
 const log = require("electron-log")
 const positioner = require("electron-traywindow-positioner")
-const Positioner = require("electron-positioner")
 const child_process = require("child_process")
 const is = require("electron-is")
 const AutoLaunch = require("auto-launch")
@@ -58,8 +57,7 @@ let tray = null,
 	db = undefined,
 	dbPath = undefined,
 	autoLauncher = undefined,
-	lastTrayMenuName = "",
-	electronPositioner = undefined
+	lastTrayMenuName = ""
 
 if(is.linux() || is.macOS()){
 	dbPath = app.getPath("userData") + "/index"
@@ -235,14 +233,7 @@ const moveWindow = () => {
 		return false
 	}
 
-	if(is.linux()){
-		electronPositioner.move("trayCenter", tray.getBounds())
-	}
-	else{
-		positioner.position(browserWindow, tray.getBounds())
-	}
-
-	return true
+	return positioner.position(browserWindow, tray.getBounds())
 }
 
 const createWindow = async () => {
@@ -277,8 +268,6 @@ const createWindow = async () => {
 	    name: "Filen",
 	    path: app.getPath("exe"),
 	})
-
-	electronPositioner = new Positioner(browserWindow)
 
 	let normalTrayMenu = Menu.buildFromTemplate(
 		[
@@ -707,7 +696,7 @@ else{
 	})
 
 	app.on("ready", () => {
-		return setTimeout(createWindow, 500)
+		return createWindow()
 	})
 }
 

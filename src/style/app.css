@@ -15,12 +15,52 @@ body {
     overflow: hidden;
 }
 
+input {
+    background-color: #121212 !important;
+    color: #A7B1B1 !important;
+    border: 1px solid #2E2E2E !important;
+    outline: none !important;
+}
+
+hr {
+    margin-left: -50px;
+    width: 200%;
+}
+
+.btn-secondary {
+    background-color: #121212;
+    color: #A7B1B1;
+    border: 1px solid #2E2E2E;
+    outline: none;
+}
+
+.btn-secondary:hover, .btn-secondary:focus, .btn-secondary:active {
+    background-color: #121212;
+    color: white;
+    border: 1px solid #2E2E2E;
+    outline: none;
+}
+
 .content {
 	display: none;
 }
 
 .login-card {
 	width: 60%;
+}
+
+.login-header {
+    background-color: #202020;
+    height: 68px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: auto;
+}
+
+.login-footer {
+    background-color: #202020;
+    border-top: 1px solid #2E2E2E;
 }
 
 .header {
@@ -76,18 +116,13 @@ body {
 }
 
 .fullscreen-card {
-	width: 100vw;
+    background: #121212;
 	height: 100vh;
 }
 
 .content-padding {
 	padding-left: 15px !important;
 	padding-right: 15px !important;
-}
-
-hr {
-	margin-left: -50px;
-	width: 200%;
 }
 
 .list-group-item {
@@ -162,4 +197,37 @@ hr {
     -webkit-animation: blink normal 1.6s infinite ease-in-out; /* Webkit */
     -ms-animation: blink normal 1.6s infinite ease-in-out; /* IE */
     animation: blink normal 1.6s infinite ease-in-out; /* Opera and prob css3 final iteration */
+}
+
+#sync-task-tbody {
+    width: 100%;
+    margin-top: 0px;
+    padding-top: 0px;
+    border: none;
+    height: auto;
+    overflow-y: scroll;
+    position: absolute;
+    left: 18px;
+    height: 100%;
+}
+
+#sync-task-tbody > div {
+    width: 105%;
+    height: 31px;
+    padding: 9px;
+    padding-left: 0px;
+    padding-right: 14px;
+}
+
+.dont-highlight {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    -o-user-select: none;
+    user-select: none;
+}
+.overflow-ellipsis {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }

@@ -1,16 +1,16 @@
 <!DOCTYPE html>
-<html>
-	<head>
+<html class="dont-highlight">
+	<head class="dont-highlight">
 		<meta charset="UTF-8">
 		<title>Filen</title>
 		<link rel="stylesheet" href="../style/fa/css/all.min.css">
 		<link rel="stylesheet" href="../style/bootstrap.min.css">
 		<link rel="stylesheet" href="../style/app.css">
 	</head>
-	<body>
-		<div class="container-lg">
-			<div class="header" style="height: 68px; display: none;">
-				<div class="header-inner" id="header-status">
+	<body class="dont-highlight">
+		<div class="container-lg dont-highlight">
+			<div class="header dont-highlight" style="height: 68px; display: none;">
+				<div class="header-inner dont-highlight" id="header-status">
 					<center>
 						<img src="../img/header/16x16_gray.png">&nbsp;&nbsp;Filen is up to date
 					</center>
@@ -18,8 +18,10 @@
 			</div>
 			<div class="content login-content" data-type="login">
 				<div class="card fullscreen-card">
-					<div class="card-header text-center">
-						<h3>Login</h3>
+					<div class="card-header login-header text-center">
+						<center>
+							<img src="../img/header/16x16_gray.png">&nbsp;&nbsp;Login
+						</center>
 					</div>
 					<div class="card-body">
 						<div class="form-group">
@@ -36,7 +38,7 @@
 						</div>
 						<div id="login-status" style="display: none;"></div>
 					</div>
-					<div class="card-footer">
+					<div class="card-footer login-footer">
 						<div class="float-left">
 							<a class="open-in-browser" href="https://filen.io/register" target="_blank">Create account</a>
 							&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
@@ -50,7 +52,11 @@
 			</div>
 			<div class="content" data-type="syncs">
 				<div style="overflow-x: hidden; overflow-y: hidden; height: 79vh; width: 100%; border: none;">
-					<ul class="list-group" id="sync-task-tbody" style="width: 100%; margin-top: 0px; padding-top: 0px; border: none;"></ul>
+					<div id="sync-task-tbody">
+						<center>
+							<img class="blink-image" style="margin-top: 58%; margin-left: -14px;" id="sync-task-loader" src="../img/splash_dark.png" width="64" height="64">
+						</center>
+					</div>
 				</div>
 			</div>
 			<div class="content" data-type="download-folder">
