@@ -199,16 +199,19 @@ hr {
     animation: blink normal 1.6s infinite ease-in-out; /* Opera and prob css3 final iteration */
 }
 
+::-webkit-scrollbar {
+  width: 0px;
+}
+
 #sync-task-tbody {
     width: 100%;
     margin-top: 0px;
     padding-top: 0px;
     border: none;
     height: auto;
-    overflow-y: scroll;
-    position: absolute;
-    left: 18px;
     height: 100%;
+    padding-left: 16px;
+    overflow: scroll;
 }
 
 #sync-task-tbody > div {

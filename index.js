@@ -223,7 +223,6 @@ const showWindow = () => {
 	moveWindow()
 
 	browserWindow.show()
-	browserWindow.webContents.send("show-syncs")
 
 	return browserWindow.focus()
 }
@@ -261,6 +260,7 @@ const createWindow = async () => {
 	browserWindow.setResizable(false)
 	browserWindow.setVisibleOnAllWorkspaces(true)
 	browserWindow.setMenuBarVisibility(false)
+	browserWindow.setAlwaysOnTop(true, "screen")
 
 	tray = new Tray(nativeImageTrayIconNormal)
 

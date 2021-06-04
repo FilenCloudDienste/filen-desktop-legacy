@@ -328,7 +328,7 @@ const initSocket = () => {
 	})
 
 	socket.on("fm-to-sync-client-message", async (data) => {
-		if(idleTimeSeconds >= 30){
+		if(idleTimeSeconds >= 60){
 			return false
 		}
 
@@ -355,20 +355,11 @@ const initSocket = () => {
 			return false
 		}
 
-		if(args.type == "download-file"){
-			let fileData = args.file
-
-			console.log(fileData)
-
-			routeTo("download-file")
-
-			ipcRenderer.send("open-window")
-		}
-		else if(args.type == "download-folder"){
+		if(args.type == "download-folder"){
 			let folderUUID = args.uuid
 
 			if(isCurrentlyDownloadigRemote){
-				return
+				return false
 			}
 
 			isCurrentlyDownloadigRemote = true
@@ -670,7 +661,8 @@ const startDownloadFolder = () => {
 		return false
 	}
 
-	$("#download-folder-btn-container").hide()
+	$("#download-folder-btn").html('<i class="fas fa-spinner fa-spin"></i>')
+	$("#download-folder-btn").prop("disabled", true)
 	$("#download-folder-change-path-btn").prop("disabled", true)
 	$("#download-folder-progress").attr("aria-valuenow", "0")
 	$("#download-folder-progress").css("width", "0%")
@@ -683,9 +675,16 @@ const startDownloadFolder = () => {
 		if(err){
 			$("#download-folder-btn-container").show()
 			$("#download-folder-change-path-btn").prop("disabled", false)
+			$("#download-folder-btn").html("Download")
+			$("#download-folder-btn").prop("disabled", false)
+			$("#download-folder-change-path-btn").prop("disabled", false)
 
 			return console.log(err)
 		}
+
+		$("#download-folder-btn-container").hide()
+		$("#download-folder-btn").html("Download")
+		$("#download-folder-btn").prop("disabled", false)
 
 		let foldersCreated = 0
 
@@ -706,7 +705,7 @@ const startDownloadFolder = () => {
 		}
 
 		if(foldersCreated == Object.keys(folders).length){
-			console.log("all folders created, download files now..")
+			console.log("all folders created, downloading files now..")
 
 			let totalFolderSize = 0
 			let totalFiles = Object.keys(files).length
