@@ -249,7 +249,9 @@ const routeTo = async (route) => {
 	}
 
 	if(route == "login"){
-		ipcRenderer.send("open-window-login")
+		if(!is.linux()){
+			ipcRenderer.send("open-window-login")
+		}
 
 		$("#login-status").hide()
 	}
@@ -1432,6 +1434,9 @@ const renderSyncTask = (task, prepend = true) => {
 		$("#sync-task-tbody").append(taskHTML)
 	}
 
+	$("#no-syncs").hide()
+	$("#sync-task-loader-container").hide()
+
 	return true
 }
 
@@ -1454,12 +1459,21 @@ const fillSyncTasks = async () => {
 
 		if(syncTasksData.length > 0){
 			$("#sync-task-tbody").html("")
+			$("#no-syncs").hide()
 
 			for(let i = 0; i < syncTasksData.length; i++){
 				renderSyncTask(syncTasksData[i], false)
 			}
 		}
+		else{
+			$("#no-syncs").show()
+		}
 	}
+	else{
+		$("#no-syncs").show()
+	}
+
+	$("#sync-task-loader-container").hide()
 }
 
 const fillContent = async (callback) => {

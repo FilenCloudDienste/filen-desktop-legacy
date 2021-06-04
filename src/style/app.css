@@ -231,3 +231,9 @@ hr {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+#no-syncs {
+    padding: 13px;
+    font-size: 10pt;
+    display: none;
+}
