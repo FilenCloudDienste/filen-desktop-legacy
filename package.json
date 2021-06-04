@@ -48,7 +48,7 @@
 		"dist": "npm run postinstall && electron-builder -wlm -c.mac.identity=null",
 		"build-linux": "npm run postinstall && electron-builder -l",
 		"build-mac": "npm run postinstall && electron-builder -m -c.mac.identity=null",
-		"build-win": "npm run postinstall && electron-builder -w",
+		"build-win": "npm run postinstall && electron-builder -w"
 	},
 	"build": {
 		"appId": "io.filen.sync",
