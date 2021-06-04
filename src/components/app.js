@@ -1371,38 +1371,38 @@ const renderSyncTask = (task, prepend = true) => {
 	let isFile = true
 
 	if(task.where == "remote" && task.task == "upload"){
-		taskName = '<i class="fas fa-arrow-up"></i>'
+		taskName = '<i class="fas fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-up"></i>'
 	}
 	else if(task.where == "remote" && task.task == "rmdir"){
-		taskName = '<i class="fas fa-trash"></i>'
+		taskName = '<i class="fas fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-trash"></i>'
 		isFile = false
 	}
 	else if(task.where == "remote" && task.task == "rmfile"){
-		taskName = '<i class="fas fa-trash"></i>'
+		taskName = '<i class="fas fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-trash"></i>'
 	}
 	else if(task.where == "remote" && task.task == "mkdir"){
-		taskName = '<i class="fas fa-arrow-up"></i>'
+		taskName = '<i class="fas fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-up"></i>'
 		isFile = false
 	}
 	else if(task.where == "remote" && task.task == "update"){
-		taskName = '<i class="fas fa-arrow-up"></i>'
+		taskName = '<i class="fas fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-up"></i>'
 	}
 	else if(task.where == "local" && task.task == "download"){
-		taskName = '<i class="fas fa-arrow-down"></i>'
+		taskName = '<i class="fas fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-down"></i>'
 	}
 	else if(task.where == "local" && task.task == "rmdir"){
-		taskName = '<i class="fas fa-trash"></i>'
+		taskName = '<i class="fas fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-trash"></i>'
 		isFile = false
 	}
 	else if(task.where == "local" && task.task == "rmfile"){
-		taskName = '<i class="fas fa-trash"></i>'
+		taskName = '<i class="fas fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-trash"></i>'
 	}
 	else if(task.where == "local" && task.task == "mkdir"){
-		taskName = '<i class="fas fa-arrow-down"></i>'
+		taskName = '<i class="fas fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-down"></i>'
 		isFile = false
 	}
 	else if(task.where == "local" && task.task == "update"){
-		taskName = '<i class="fas fa-arrow-down"></i>'
+		taskName = '<i class="fas fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-down"></i>'
 	}
 
 	let fileNameEx = JSON.parse(task.taskInfo).path.split("/")
@@ -1414,13 +1414,13 @@ const renderSyncTask = (task, prepend = true) => {
 
 	let taskHTML = `
 		<div>
-			<div class="overflow-ellipsis" style="width: 10%; float: left;">
+			<div class="overflow-ellipsis" style="width: 8%; float: left;">
 	    		` + (isFile ? `<i class="fas fa-file"></i>` : `<i class="fas fa-folder" style="color: #F6C358;"></i>`) + `
 	        </div>
-	        <div class="overflow-ellipsis" style="width: 80%; float: left; padding-right: 25px;">
+	        <div class="overflow-ellipsis" style="width: 72%; float: left; padding-right: 25px;">
 	            ` + fileName + `
 	        </div>
-	        <div class="overflow-ellipsis" style="width: 10%; float: left;">
+	        <div class="overflow-ellipsis" style="width: 20%; float: left; padding-left: 4px;">
 	            ` + taskName + `
 	        </div>
 		</div>
@@ -4461,7 +4461,88 @@ const setupIntervals = () => {
 	setInterval(updateVisualStatus, 3000)
 }
 
+const darkModeEnabled = async () => {
+	let enabled = false
+
+	try{
+		let isEnabled = await db.get("darkModeEnabled")
+
+		if(isEnabled == "true"){
+			enabled = true
+		}
+		else{
+			enabled = false
+		}
+	}
+	catch(e){
+		try{
+			if(window.matchMedia("(prefers-color-scheme: dark)").matches){
+				await db.put("darkModeEnabled", "true")
+
+				enabled = true
+			}
+			else{
+				await db.put("darkModeEnabled", "false")
+
+				enabled = false
+			}
+		}
+		catch(err){
+			enabled = false
+		}
+	}
+
+	return enabled
+}
+
+const toggleDarkMode = async () => {
+	let enabled = await darkModeEnabled()
+
+	try{
+		await db.put("darkModeEnabled", (!enabled).toString())
+	}
+	catch(e){
+		console.log(e)
+
+		return false
+	}
+
+	initDarkOrLightMode()
+
+	return true
+}
+
+const initDarkOrLightMode = async () => {
+	let darkModeOn = await darkModeEnabled()
+
+	$("#dark-css").remove()
+
+	if(darkModeOn){
+		$("head").append(`
+			<link rel="stylesheet" id="dark-css" href="../style/app.dark.css">
+		`)
+
+		$("#header-icon").attr("src", "../img/header/16x16_gray.png")
+		$("#login-icon").attr("src", "../img/header/16x16_gray.png")
+		$("#sync-task-loader").attr("src", "../img/splash_dark.png")
+		$("#big-loader").attr("src", "../img/splash_dark.png")
+
+		$("#enable-darkmode-toggle").prop("checked", true)
+	}
+	else{
+		$("#header-icon").attr("src", "../img/header/16x16_black.png")
+		$("#login-icon").attr("src", "../img/header/16x16_black.png")
+		$("#sync-task-loader").attr("src", "../img/splash_white.png")
+		$("#big-loader").attr("src", "../img/splash_white.png")
+
+		$("#enable-darkmode-toggle").prop("checked", false)
+	}
+
+	return true
+}
+
 const init = async () => {
+	initDarkOrLightMode()
 	initIPC()
 	initFns()
 	getDiskSpace()

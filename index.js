@@ -101,6 +101,8 @@ const sendUserDirs = () => {
 	catch(e){
 		console.log(e)
 	}
+
+	return true
 }
 
 const init = () => {

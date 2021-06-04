@@ -12,7 +12,7 @@
 			<div class="header dont-highlight" style="height: 68px; display: none;">
 				<div class="header-inner dont-highlight" id="header-status">
 					<center>
-						<img src="../img/header/16x16_gray.png">&nbsp;&nbsp;Filen is up to date
+						<img id="header-icon" src="../img/header/16x16_gray.png">&nbsp;&nbsp;Filen is up to date
 					</center>
 				</div>
 			</div>
@@ -20,7 +20,7 @@
 				<div class="card fullscreen-card">
 					<div class="card-header login-header text-center">
 						<center>
-							<img src="../img/header/16x16_gray.png">&nbsp;&nbsp;Login
+							<img id="login-icon" src="../img/header/16x16_gray.png">&nbsp;&nbsp;Login
 						</center>
 					</div>
 					<div class="card-body">
@@ -160,6 +160,16 @@
 									</div>
 								</div>
 							</div>
+						</div>
+					</div>
+				</div>
+				<div class="row" style="margin-top: 15px;">
+					<div class="col-lg-12">
+						<div class="float-left">
+							Dark mode
+						</div>
+						<div class="float-right">
+							<input type="checkbox" id="enable-darkmode-toggle" onClick="toggleDarkMode()">
 						</div>
 					</div>
 				</div>

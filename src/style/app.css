@@ -7,19 +7,16 @@ body {
 	padding-top: 0px;
     padding: 0px;
 	margin: 0px;
-	color: #A7B1B1;
     text-align: left;
-    background-color: #121212;
-    border: 1px solid #2E2E2E;
     height: 640px;
     overflow: hidden;
+    color: #444;
+    border: 1px solid rgba(0,0,0,0.1);
 }
 
 input {
-    background-color: #121212 !important;
-    color: #A7B1B1 !important;
-    border: 1px solid #2E2E2E !important;
     outline: none !important;
+    background: white !important;
 }
 
 hr {
@@ -28,16 +25,10 @@ hr {
 }
 
 .btn-secondary {
-    background-color: #121212;
-    color: #A7B1B1;
-    border: 1px solid #2E2E2E;
     outline: none;
 }
 
 .btn-secondary:hover, .btn-secondary:focus, .btn-secondary:active {
-    background-color: #121212;
-    color: white;
-    border: 1px solid #2E2E2E;
     outline: none;
 }
 
@@ -50,38 +41,39 @@ hr {
 }
 
 .login-header {
-    background-color: #202020;
     height: 68px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     overflow: auto;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    background-color: #E5E5E5;
 }
 
 .login-footer {
-    background-color: #202020;
-    border-top: 1px solid #2E2E2E;
+    border-top: 1px solid rgba(0,0,0,0.1);
+    background-color: #E5E5E5;
 }
 
 .header {
 	display: none;
-	background-color: #202020;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
 	overflow: auto;
 	width: 100%;
-	border-bottom: 1px solid #2E2E2E;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    background-color: #E5E5E5;
 }
 
 .footer {
 	height: 68px;
-    background-color: #202020;
     bottom: 0;
     position: absolute;
     width: 358px;
-    border-top: 1px solid #2E2E2E;
     padding-top: 14px;
+    border-top: 1px solid rgba(0,0,0,0.1);
+    background-color: #E5E5E5;
 }
 
 .header-inner {
@@ -96,7 +88,7 @@ hr {
 }
 
 .header-col:hover {
-	color: white;
+	color: black;
 }
 
 .login-content {
@@ -116,19 +108,12 @@ hr {
 }
 
 .fullscreen-card {
-    background: #121212;
 	height: 100vh;
 }
 
 .content-padding {
 	padding-left: 15px !important;
 	padding-right: 15px !important;
-}
-
-.list-group-item {
-	color: #A7B1B1;
-    background-color: #121212;
-    border: none;
 }
 
 #big-loading-img {
@@ -210,7 +195,7 @@ hr {
     border: none;
     height: auto;
     height: 100%;
-    padding-left: 16px;
+    padding-left: 18px;
     overflow: scroll;
 }
 
