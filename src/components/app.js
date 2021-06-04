@@ -165,49 +165,6 @@ let lastHeaderStatus = ""
 let lastTooltipText = ""
 let updateUserKeysInterval = undefined
 
-const unixTimestamp = () => {
-	return Math.floor((+new Date()) / 1000)
-}
-
-const getAPIServer = () => {
-	let servers = [
-		"https://api.filen.io",
-		"https://api.filen-1.xyz",
-		"https://api.filen-2.xyz",
-		"https://api.filen-3.xyz",
-		"https://api.filen-4.xyz",
-		"https://api.filen-5.xyz"
-	]
-
-	return servers[getRandomArbitrary(0, (servers.length - 1))]
-}
-
-const getDownloadServer = () => {
-	let servers = [
-		"https://down.filen.io",
-		"https://down.filen-1.xyz",
-		"https://down.filen-2.xyz",
-		"https://down.filen-3.xyz",
-		"https://down.filen-4.xyz",
-		"https://down.filen-5.xyz"
-	]
-
-	return servers[getRandomArbitrary(0, (servers.length - 1))]
-}
-
-const getUploadServer = () => {
-	let servers = [
-		"https://up.filen.io",
-		"https://up.filen-1.xyz",
-		"https://up.filen-2.xyz",
-		"https://up.filen-3.xyz",
-		"https://up.filen-4.xyz",
-		"https://up.filen-5.xyz"
-	]
-
-	return servers[getRandomArbitrary(0, (servers.length - 1))]
-}
-
 const apiRequest = async (endpoint, data, callback) => {
 	try{
 		var release = await apiSemaphore.acquire()
@@ -1315,6 +1272,19 @@ const getUserUsage = async () => {
 }
 
 const checkIfSyncFolderExistsRemote = async (callback) => {
+	let loggedIn = false
+
+	try{
+		loggedIn = await isLoggedIn()
+	}
+	catch(e){
+		return console.log(e)
+	}
+
+	if(!loggedIn){
+		return false
+	}
+
 	apiRequest("/v1/user/dirs", {
 		apiKey: await getUserAPIKey()
 	}, (err, res) => {
@@ -1960,81 +1930,6 @@ const checkIfFileExistsLocallyOtherwiseDelete = async (path, callback) => {
 		return callback(null)
 	}
 }
-
-/*const checkIfItemParentIsBeingShared = (upFolder, parentUUID, type, metaData) => {
-	const checkIfIsSharing = async (parent, callback) => {
-		apiRequest("/v1/share/dir/status", {
-			apiKey: await getUserAPIKey(),
-			uuid: parent
-		}, (err, res) => {
-			if(err){
-				console.log("Request error")
-
-				return callback(false)
-			}
-
-			if(!res.status){
-				console.log(res.message)
-
-				return callback(false)
-			}
-
-			return callback(res.data.sharing, res.data.users)
-		})
-	}
-
-	checkIfIsSharing(upFolder, (status, users) => {
-		if(!status){
-			return false
-		}
-
-		users.forEach((user) => {
-			window.crypto.subtle.importKey("spki", _base64ToArrayBuffer(user.publicKey), {
-      			name: "RSA-OAEP",
-        		hash: "SHA-512"
-    		}, true, ["encrypt"]).then((usrPubKey) => {
-    			let mData = ""
-
-    			if(type == "file"){
-    				mData = JSON.stringify({
-	    				name: metaData.name,
-	    				size: parseInt(metaData.size),
-	    				mime: metaData.mime,
-	    				key: metaData.key
-	    			})
-				}
-				else{
-					mData = metaData.name
-				}
-
-				window.crypto.subtle.encrypt({
-    				name: "RSA-OAEP"
-    			}, usrPubKey, new TextEncoder().encode(mData)).then(async (encrypted) => {
-    				apiRequest("/v1/share", {
-    					apiKey: await getUserAPIKey(),
-    					uuid: metaData.uuid,
-						parent: parentUUID,
-						email: user.email,
-						type: type,
-						metadata: base64ArrayBuffer(encrypted)
-    				}, (err, res) => {
-    					if(err){
-    						return console.log("Request error.")
-    					}
-
-    					if(!res.status){
-							return console.log(res.message)
-						}
-    				})
-    			}).catch((err) => {
-	    			return console.log(err)
-	    		})
-    		}).catch((err) => {
-    			return console.log(err)
-    		})
-		})
-	})
-}*/
 
 function decryptFolderLinkKey(str, userMasterKeys){
 	let link = ""
@@ -2873,7 +2768,7 @@ const uploadFileToRemote = async (path, uuid, parent, name, userMasterKeys, call
 														mime: mime,
 														key: key
 													}, () => {
-														callback(null)
+														return callback(null)
 													})
 												})
 											}
@@ -4388,7 +4283,7 @@ const startSyncing = async () => {
 			}
 		}
 		catch(e){
-			//console.log(e)
+			console.log(e)
 		}
 
 		initChokidar()

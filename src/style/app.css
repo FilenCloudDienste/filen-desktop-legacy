@@ -12,8 +12,7 @@ body {
     background-color: #121212;
     border: 1px solid #2E2E2E;
     height: 640px;
-    transform: scale(0.99);
-    border-radius: 5px;
+    overflow: hidden;
 }
 
 .content {
