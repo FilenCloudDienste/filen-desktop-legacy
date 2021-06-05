@@ -1476,6 +1476,15 @@ const fillSyncTasks = async () => {
 }
 
 const fillContent = async (callback) => {
+	let userEmail = undefined
+
+	try{
+		userEmail = await db.get("userEmail")
+	}
+	catch(e){
+		return console.log(e)
+	}
+
 	apiRequest("/v1/user/sync/get/data", {
 		apiKey: await getUserAPIKey()
 	}, (err, res) => {
@@ -1503,6 +1512,10 @@ const fillContent = async (callback) => {
 			else{
 				return console.log(res.message)
 			}
+		}
+
+		if(res.data.email !== userEmail){
+			return doLogout()
 		}
 
 		$("#account-email-text").html(res.data.email)
