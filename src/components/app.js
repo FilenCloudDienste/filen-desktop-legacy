@@ -4489,7 +4489,7 @@ const darkModeEnabled = async () => {
 		}
 	}
 	catch(e){
-		try{
+		/*try{
 			if(window.matchMedia("(prefers-color-scheme: dark)").matches){
 				await db.put("darkModeEnabled", "true")
 
@@ -4503,7 +4503,11 @@ const darkModeEnabled = async () => {
 		}
 		catch(err){
 			enabled = false
-		}
+		}*/
+
+		await db.put("darkModeEnabled", "true")
+
+		enabled = true
 	}
 
 	return enabled
