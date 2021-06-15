@@ -52,7 +52,7 @@ const is = require("electron-is")
 let db = undefined
 let dbPath = undefined
 
-if(process.platform == "linux" || process.platform == "darwin"){
+if(is.linux() || is.macOS()){
 	dbPath = (electron.app || electron.remote.app).getPath("userData") + "/level"
 }
 else{
@@ -76,8 +76,8 @@ catch(e){
 }
 
 const apiSemaphore = new Semaphore(30)
-const downloadSemaphore = new Semaphore(30)
-const uploadSemaphore = new Semaphore(10)
+const downloadSemaphore = new Semaphore(40)
+const uploadSemaphore = new Semaphore(20)
 const logSyncTasksSemaphore = new Semaphore(1)
 
 let currentAppVersion = "1"
@@ -273,15 +273,13 @@ const socketAuth = async () => {
 	}, 5000)
 }
 
-const openSyncFolder = () => {
+const openSyncFolder = async () => {
 	if(typeof userSyncDir == "undefined"){
 		return false
 	}
 
 	try{
-		shell.openPath(winOrUnixFilePath(userSyncDir)).catch((err) => {
-			console.log(err)
-		})
+		await shell.openPath(winOrUnixFilePath(userSyncDir))
 	}
 	catch(e){
 		console.log(e)
@@ -289,7 +287,7 @@ const openSyncFolder = () => {
 		return false
 	}
 
-	dontHideOnBlur = true
+	//dontHideOnBlur = true
 
 	return true
 }
@@ -491,6 +489,8 @@ const getDownloadFolderContents = async (folderUUID, callback) => {
 			return callback(new Error("Base path folder name cant decrypt")) 
 		}
 
+		basePath = cleanString(basePath)
+
 		paths.push(basePath + "/")
 
 		pathsForFiles[res.data.folders[0].uuid] = basePath + "/"
@@ -551,6 +551,8 @@ const getDownloadFolderContents = async (folderUUID, callback) => {
 			else{
 				selfName = decryptCryptoJSFolderName(self.name, userMasterKeys)
 			}
+
+			selfName = cleanString(selfName)
 
 			if(selfName.length > 0){
 				if(self.parent !== "base"){
@@ -617,6 +619,11 @@ const getDownloadFolderContents = async (folderUUID, callback) => {
 				else{
 					metadata = decryptFileMetadata(self.metadata, userMasterKeys)
 				}
+
+				metadata.name = cleanString(metadata.name)
+				metadata.key = cleanString(metadata.key)
+				metadata.mime = cleanString(metadata.mime)
+				metadata.size = parseInt(cleanString(metadata.size))
 
 				if(metadata.name.length > 0){
 					let newPath = pathsForFiles[self.parent] + metadata.name
@@ -1550,11 +1557,11 @@ const doSetup = async (callback) => {
 		updateUserKeys()
 		getUserUsage()
 
-		clearInterval(updateUserKeysInterval)
+		/*clearInterval(updateUserKeysInterval)
 
 		updateUserKeysInterval = setInterval(() => {
 			updateUserKeys()
-		}, 60000)
+		}, 60000)*/
 
 		syncingPaused = false
 
@@ -3130,7 +3137,9 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 				remoteDecryptedCache["folder_" + self.uuid + "_" + self.name] = selfName
 			}
 
-			if(selfName !== "Cannot decrypt (rename folder to fix)"){
+			selfName = cleanString(selfName)
+
+			if(selfName.length > 0){
 				if(self.parent !== "base"){
 					let parent = folders[res.data.folders[i].parent]
 
@@ -3178,6 +3187,11 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 						remoteDecryptedCache["file_" + self.uuid + "_" + self.metadata] = JSON.stringify(metadata)
 					}
 				}
+
+				metadata.name = cleanString(metadata.name)
+				metadata.key = cleanString(metadata.key)
+				metadata.mime = cleanString(metadata.mime)
+				metadata.size = parseInt(cleanString(metadata.size))
 
 				let newPath = pathsForFiles[self.parent] + metadata.name
 

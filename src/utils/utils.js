@@ -217,3 +217,50 @@ const getUploadServer = () => {
 
   return servers[getRandomArbitrary(0, (servers.length - 1))]
 }
+
+const removeIllegalCharsFromString = (str) => {
+    if(typeof str !== "string"){
+        return str
+      }
+
+      if(str.length == 0){
+        return str
+      }
+
+    str = str.split("'").join("")
+    str = str.split('"').join("")
+    str = str.split("´").join("")
+    str = str.split("`").join("")
+    str = str.split("<").join("")
+    str = str.split(">").join("")
+    str = str.split("!").join("")
+    str = str.split("^").join("")
+    str = str.split(":").join("")
+    str = str.replace(/(<([^>]+)>)/ig, "")
+
+    return str
+}
+
+const escapeHTML = (str) => {
+  if(typeof str !== "string"){
+    return str
+  }
+
+  if(str.length == 0){
+    return str
+  }
+
+  return str.replace(/(<([^>]+)>)/ig, "")
+}
+
+const cleanString = (str) => {
+    if(typeof str !== "string"){
+    return str
+  }
+
+  if(str.length == 0){
+    return str
+  }
+  
+    return removeIllegalCharsFromString(escapeHTML(str))
+}
