@@ -134,14 +134,7 @@ const getRandomArbitrary = (min, max) => {
 }
 
 const generateRandomString = (length = 32) => {
-    let result = ""
-    let characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-
-    for(let i = 0; i < length; i++){
-        result += characters.charAt(Math.floor(Math.random() * characters.length))
-    }
-
-    return result
+    return window.btoa(Array.from(window.crypto.getRandomValues(new Uint8Array(length * 2))).map((b) => String.fromCharCode(b)).join("")).replace(/[+/]/g, "").substring(0, length)
 }
 
 function toArrayBuffer(buf) {

@@ -164,6 +164,7 @@ let dontHideOnBlur = false
 let lastHeaderStatus = ""
 let lastTooltipText = ""
 let updateUserKeysInterval = undefined
+let currentFileVersion = 1
 
 const apiRequest = async (endpoint, data, callback) => {
 	try{
@@ -641,7 +642,8 @@ const getDownloadFolderContents = async (folderUUID, callback) => {
 								size: metadata.size,
 								mime: metadata.mime,
 								key: metadata.key,
-								parent: self.parent
+								parent: self.parent,
+								version: self.version
 							}
 						}
 					}
@@ -1457,6 +1459,8 @@ const fillSyncTasks = async () => {
 	catch(e){
 		syncTasksData = undefined
 	}
+
+	$("#no-syncs").hide()
 
 	if(typeof syncTasksData !== "undefined"){
 		syncTasksData = syncTasksData.reverse()
@@ -2332,10 +2336,10 @@ const checkIfItemParentIsBeingShared = async (parentUUID, type, metaData, option
 	})
 }
 
-const downloadFileChunk = async (file, key, iv, index, tries, maxTries, isSync, callback) => {
+const downloadFileChunk = async (file, index, tries, maxTries, isSync, callback) => {
 	if(syncingPaused && isSync){
 		return setTimeout(() => {
-			downloadFileChunk(file, key, iv, index, tries, maxTries, isSync, callback)
+			downloadFileChunk(file, index, tries, maxTries, isSync, callback)
 		}, getRandomArbitrary(25, 100))
 	}
 
@@ -2372,30 +2376,13 @@ const downloadFileChunk = async (file, key, iv, index, tries, maxTries, isSync, 
 			release()
 
 			if(res.byteLength){
-				let sliced = convertUint8ArrayToBinaryString(new Uint8Array(res.slice(0, 16)))
-
-				if(sliced.indexOf("Salted") !== -1){
-					return callback(null, index, convertWordArrayToUint8Array(CryptoJS.AES.decrypt(base64ArrayBuffer(res), file.key)))
-				}
-				else if(sliced.indexOf("U2FsdGVk") !== -1){
-					return callback(null, index, convertWordArrayToUint8Array(CryptoJS.AES.decrypt(convertUint8ArrayToBinaryString(new Uint8Array(res)), file.key)))
-				}
-				else{
-					window.crypto.subtle.decrypt({
-						name: "AES-CBC",
-						iv: iv
-					}, key, res).then((decrypted) => {
-						return callback(null, index, new Uint8Array(decrypted))
-					}).catch((err) => {
-						return setTimeout(() => {
-							downloadFileChunk(file, key, iv, index, (tries + 1), maxTries, isSync, callback)
-						}, 1000)
-					})
-				}
+				decryptDataWorker(file.uuid, index, file.key, res, file.version, (decrypted) => {
+					return callback(null, index, new Uint8Array(decrypted))
+				})
 			}
 			else{
 				return setTimeout(() => {
-					downloadFileChunk(file, key, iv, index, (tries + 1), maxTries, isSync, callback)
+					downloadFileChunk(file, index, (tries + 1), maxTries, isSync, callback)
 				}, 1000)
 			}
 		},
@@ -2403,7 +2390,7 @@ const downloadFileChunk = async (file, key, iv, index, tries, maxTries, isSync, 
 			release()
 
 			return setTimeout(() => {
-				downloadFileChunk(file, key, iv, index, (tries + 1), maxTries, isSync, callback)
+				downloadFileChunk(file, index, (tries + 1), maxTries, isSync, callback)
 			}, 1000)
 		}
 	})
@@ -2455,7 +2442,7 @@ const writeFileChunk = (file, index, data) => {
 	}
 }
 
-const downloadFileChunksAndWrite = (path, file, key, iv, isSync, callback) => {
+const downloadFileChunksAndWrite = (path, file, isSync, callback) => {
 	let maxDownloadThreadsInterval = setInterval(() => {
 		if(currentDownloadThreads < maxDownloadThreads){
 			currentDownloadThreads += 1
@@ -2463,7 +2450,7 @@ const downloadFileChunksAndWrite = (path, file, key, iv, isSync, callback) => {
 
 			let thisIndex = downloadIndex[file.uuid]
 
-			downloadFileChunk(file, key, iv, thisIndex, 0, 128, isSync, (err, index, data) => {
+			downloadFileChunk(file, thisIndex, 0, 128, isSync, (err, index, data) => {
 				if(err){
 					clearInterval(maxDownloadThreadsInterval)
 
@@ -2531,49 +2518,42 @@ const downloadFileToLocal = async (path, file, isSync, callback) => {
 			return callback(err)
 		}
 
-		let preKey = new TextEncoder().encode(file.key)
-		let iv = preKey.slice(0, 16)
+		downloadWriteChunk[file.uuid] = 0
+		downloadIndex[file.uuid] = -1
 
-		window.crypto.subtle.importKey("raw", preKey, "AES-CBC", false, ["encrypt", "decrypt"]).then((genKey) => {
-			downloadWriteChunk[file.uuid] = 0
-			downloadIndex[file.uuid] = -1
+		downloadWriteStreams[file.uuid] = fs.createWriteStream(winOrUnixFilePath(path), {
+			flags: "w"
+		})
 
-			downloadWriteStreams[file.uuid] = fs.createWriteStream(winOrUnixFilePath(path), {
-				flags: "w"
-			})
+		downloadFileChunksAndWrite(winOrUnixFilePath(path), file, isSync, (err) => {
+			if(err){
+				downloadWriteStreams[file.uuid].end()
 
-			downloadFileChunksAndWrite(winOrUnixFilePath(path), file, genKey, iv, isSync, (err) => {
-				if(err){
-					downloadWriteStreams[file.uuid].end()
+				return callback(err)
+			}
 
-					return callback(err)
-				}
+			let waitForChunksToWriteInterval = setInterval(() => {
+				if(typeof chunksWritten[file.uuid] !== "undefined"){
+					if(chunksWritten[file.uuid] >= file.chunks){
+						clearInterval(waitForChunksToWriteInterval)
 
-				let waitForChunksToWriteInterval = setInterval(() => {
-					if(typeof chunksWritten[file.uuid] !== "undefined"){
-						if(chunksWritten[file.uuid] >= file.chunks){
-							clearInterval(waitForChunksToWriteInterval)
+						if(isSync){
+							return setTimeout(() => {
+								downloadWriteStreams[file.uuid].end()
 
-							if(isSync){
-								return setTimeout(() => {
-									downloadWriteStreams[file.uuid].end()
+								callback(null)
+							}, syncTimeout)
+						}
+						else{
+							return setTimeout(() => {
+								downloadWriteStreams[file.uuid].end()
 
-									callback(null)
-								}, syncTimeout)
-							}
-							else{
-								return setTimeout(() => {
-									downloadWriteStreams[file.uuid].end()
-
-									callback(null)
-								}, 1000)
-							}
+								callback(null)
+							}, 1000)
 						}
 					}
-				}, 100)
-			})
-		}).catch((err) => {
-			return callback(err)
+				}
+			}, 100)
 		})
 	})
 }
@@ -2746,109 +2726,94 @@ const uploadFileToRemote = async (path, uuid, parent, name, userMasterKeys, call
 		let currentIndex = -1
 		let chunksUploaded = -1
 
-		let preKey = new TextEncoder().encode(key)
-		let iv = preKey.slice(0, 16)
+		let uploadInterval = setInterval(() => {
+			if(offset < size){
+				if(currentUploadThreads < maxUploadThreads){
+					if(firstDone){
+						doFirst = true
+					}
 
-		window.crypto.subtle.importKey("raw", preKey, "AES-CBC", false, ["encrypt", "decrypt"]).then((genKey) => {
-			let uploadInterval = setInterval(() => {
-				if(offset < size){
-					if(currentUploadThreads < maxUploadThreads){
-						if(firstDone){
-							doFirst = true
+					if(doFirst){
+						if(!firstDone){
+							doFirst = false
 						}
 
-						if(doFirst){
-							if(!firstDone){
-								doFirst = false
-							}
+						currentUploadThreads += 1
+						offset += chunkSizeToUse
+						currentIndex += 1
 
-							currentUploadThreads += 1
-							offset += chunkSizeToUse
-							currentIndex += 1
+						let thisIndex = currentIndex
 
-							let thisIndex = currentIndex
+						readChunk(winOrUnixFilePath(path), offset, chunkSizeToUse).then((chunkData) => {
+							let arrayBuffer = toArrayBuffer(chunkData)
 
-							readChunk(winOrUnixFilePath(path), offset, chunkSizeToUse).then((chunkData) => {
-								let arrayBuffer = toArrayBuffer(chunkData)
+							encryptDataWorker(uuid, thisIndex, key, arrayBuffer, currentFileVersion, (blob) => {
+								arrayBuffer = null
 
-								window.crypto.subtle.encrypt({
-									name: "AES-CBC",
-									iv: iv
-								}, genKey, arrayBuffer).then(async (encrypted) => {
-									let blob = convertUint8ArrayToBinaryString(new Uint8Array(encrypted))
-
-									arrayBuffer = null
-
-									let queryParams = $.param({
-										apiKey: usrAPIKey,
-										uuid: uuid,
-										name: nameEnc,
-										nameHashed: nameH,
-										size: sizeEnc,
-										chunks: fileChunks,
-										mime: mimeEnc,
-										index: thisIndex,
-										rm: rm,
-										expire: expire,
-										uploadKey: uploadKey,
-										metaData: metaData,
-										parent: parent
-									})
-
-									uploadChunk(uuid, queryParams, blob, 0, 10000000, (err, res) => {
-										if(err){
-											return callback(err)
-										}
-
-										currentUploadThreads -= 1
-										chunksUploaded += 1
-
-										console.log(chunksUploaded, fileChunks)
-
-										blob = null
-										firstDone = true
-
-										if(chunksUploaded >= fileChunks){
-											clearInterval(uploadInterval)
-
-											if(!markedAsDone){
-												markedAsDone = true
-
-												markUploadAsDone(uuid, uploadKey, 0, 10000000, (err) => {
-													if(err){
-														return callback(err)
-													}
-
-													checkIfItemParentIsBeingShared(parent, "file", {
-														uuid: uuid,
-														name: name,
-														size: parseInt(size),
-														mime: mime,
-														key: key
-													}, () => {
-														return callback(null)
-													})
-												})
-											}
-										}
-									})
-								}).catch((err) => {
-									currentUploadThreads -= 1
-
-									return callback(err)
+								let queryParams = $.param({
+									apiKey: usrAPIKey,
+									uuid: uuid,
+									name: nameEnc,
+									nameHashed: nameH,
+									size: sizeEnc,
+									chunks: fileChunks,
+									mime: mimeEnc,
+									index: thisIndex,
+									rm: rm,
+									expire: expire,
+									uploadKey: uploadKey,
+									metaData: metaData,
+									parent: parent,
+									version: currentFileVersion
 								})
-							}).catch((err) => {
-								currentUploadThreads -= 1
 
-								return callback(err)
+								uploadChunk(uuid, queryParams, blob, 0, 10000000, (err, res) => {
+									if(err){
+										return callback(err)
+									}
+
+									currentUploadThreads -= 1
+									chunksUploaded += 1
+
+									console.log(chunksUploaded, fileChunks)
+
+									blob = null
+									firstDone = true
+
+									if(chunksUploaded >= fileChunks){
+										clearInterval(uploadInterval)
+
+										if(!markedAsDone){
+											markedAsDone = true
+
+											markUploadAsDone(uuid, uploadKey, 0, 10000000, (err) => {
+												if(err){
+													return callback(err)
+												}
+
+												checkIfItemParentIsBeingShared(parent, "file", {
+													uuid: uuid,
+													name: name,
+													size: parseInt(size),
+													mime: mime,
+													key: key
+												}, () => {
+													return callback(null)
+												})
+											})
+										}
+									}
+								})
 							})
-						}
+						}).catch((err) => {
+							currentUploadThreads -= 1
+
+							return callback(err)
+						})
 					}
 				}
-			}, 100)
-		}).catch((err) => {
-			return callback(err)
-		})
+			}
+		}, 100)
 	})
 }
 
@@ -3209,7 +3174,8 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 								size: metadata.size,
 								mime: metadata.mime,
 								key: metadata.key,
-								parent: self.parent
+								parent: self.parent,
+								version: self.version
 							}
 						}
 					}
