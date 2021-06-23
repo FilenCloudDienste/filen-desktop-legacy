@@ -165,6 +165,7 @@ let lastHeaderStatus = ""
 let lastTooltipText = ""
 let updateUserKeysInterval = undefined
 let currentFileVersion = 1
+let currentAuthVersion = 1
 
 const apiRequest = async (endpoint, data, callback) => {
 	try{
@@ -213,6 +214,28 @@ const hashFnFast = (val) => {
 
 const hashPassword = (password) => {
 	return sha512(sha384(sha256(sha1(password)))) + sha512(md5(md4(md2(password))))
+}
+
+const deriveKeyFromPassword = async (password, salt, iterations = 100000, hash = "SHA-512", bitLength = 8192) => {
+    try{
+        var bits = await window.crypto.subtle.deriveBits({
+            name: "PBKDF2",
+          salt: new TextEncoder().encode(salt),
+          iterations: iterations,
+          hash: {
+            name: hash
+          }
+        }, await window.crypto.subtle.importKey("raw", new TextEncoder().encode(password), {
+            name: "PBKDF2"
+        }, false, ["deriveBits"]), bitLength)
+    }
+    catch(e){
+        console.log(e)
+        
+        return null
+    }
+  
+    return buf2hex(bits)
 }
 
 const showPage = (page) => {
@@ -1054,8 +1077,6 @@ const initFns = () => {
    			twoFactorKey = "XXXXXX"
    		}
 
-		let passwordHashed = hashPassword(password)
-
    		apiRequest("/v1/login", {
    			email,
    			password: passwordHashed,
@@ -1097,66 +1118,140 @@ const initFns = () => {
 				return console.log(res.message)
 			}
 
-			$("#login-email-input").val("")
-			$("#login-password-input").val("")
+			let authVersion = res.data.authVersion
+			let salt = res.data.salt
 
-			let masterKeys = hashFn(password)
+			let passwordToSend = undefined
+			let mKey = undefined
 
-			if(masterKeys.length < 16){
-				$("#login-status").html(`
-   					<br>
-   					<font color="darkred">
-   						Could not decrypt master keys.
-   					</font>
-   				`).show()
-
-				return console.log("Could not decrypt master keys.")
+			if(authVersion == 1){
+				passwordToSend = hashPassword(password)
+				mKey = hashFn(password)
 			}
+			else if(authVersion == 2){
+				try{
+					let derivedKey = await deriveKeyFromPassword(password, salt, 100000, "SHA-512", 8192) //PBKDF2, 100.000 iterations, sha-512, 8192 bit key, first half (from left) = master key, second half = auth key
 
-			try{
-				await db.put("isLoggedIn", "true")
-				await db.put("userEmail", email)
-				await db.put("userAPIKey", res.data.apiKey)
-				await db.put("userMasterKeys", masterKeys)
-			}
-			catch(e){
-				$("#login-status").html(`
-   					<br>
-   					<font color="darkred">
-   						Local DB error, please try again.
-   					</font>
-   				`).show()
+					mKey = derivedKey.substring(0, (derivedKey.length / 2))
+			  		passwordToSend = derivedKey.substring((derivedKey.length / 2), derivedKey.length)
+			  		passwordToSend = CryptoJS.SHA512(passwordToSend).toString()
+				}
+				catch(e){
+					$("#login-password-input").val("")
 
-				return console.log(e)
-			}
-
-			updateUserKeys()
-
-			$("#login-status").html(`
-				<br>
-				<font color="darkgreen">
-					Login successful, please wait..
-				</font>
-			`).show()
-
-			console.log(res.message)
-
-			routeTo("big-loading")
-
-			doSetup((err) => {
-				if(err){
-					$("#login-status").html(`
+	   				$("#login-status").html(`
 	   					<br>
 	   					<font color="darkred">
-	   						Setup error, please try again.
+	   						Password derivation error.
 	   					</font>
 	   				`).show()
 
-					return console.log(err)
+	   				return console.log(e)
+				}
+			}
+
+			apiRequest("/v1/login", {
+	   			email,
+	   			password: passwordToSend,
+	   			twoFactorKey,
+	   			authVersion
+	   		}, async (err, res) => {
+		   		$("#login-2fa-input").val("")
+
+	   			if(err){
+	   				$("#login-password-input").val("")
+
+	   				$("#login-status").html(`
+	   					<br>
+	   					<font color="darkred">
+	   						Request error, please try again later.
+	   					</font>
+	   				`).show()
+
+	   				return console.log(err)
+	   			}
+
+	   			if(!res.status){
+	   				if(res.message == "Please enter your Two Factor Authentication code."){
+	   					$("#login-2fa-container").show()
+	   				}
+	   				else if(res.message == "Invalid Two Factor Authentication code."){
+	   					$("#login-2fa-container").show()
+	   				}
+	   				else{
+	   					$("#login-password-input").val("")
+	   				}
+
+	   				$("#login-status").html(`
+	   					<br>
+	   					<font color="darkred">
+	   						` + res.message + `
+	   					</font>
+	   				`).show()
+
+					return console.log(res.message)
 				}
 
-				return routeTo("syncs")
-			})
+				$("#login-email-input").val("")
+				$("#login-password-input").val("")
+
+				if(mKey.length < 16){
+					$("#login-status").html(`
+	   					<br>
+	   					<font color="darkred">
+	   						Invalid master key.
+	   					</font>
+	   				`).show()
+
+					return console.log("Invalid master key.")
+				}
+
+				try{
+					await db.put("isLoggedIn", "true")
+					await db.put("userEmail", email)
+					await db.put("userAPIKey", res.data.apiKey)
+					await db.put("userMasterKeys", mKey)
+					await db.put("userAuthVersion", authVersion)
+				}
+				catch(e){
+					$("#login-status").html(`
+	   					<br>
+	   					<font color="darkred">
+	   						Local DB error, please try again.
+	   					</font>
+	   				`).show()
+
+					return console.log(e)
+				}
+
+				updateUserKeys()
+
+				$("#login-status").html(`
+					<br>
+					<font color="darkgreen">
+						Login successful, please wait..
+					</font>
+				`).show()
+
+				console.log(res.message)
+
+				routeTo("big-loading")
+
+				doSetup((err) => {
+					if(err){
+						$("#login-status").html(`
+		   					<br>
+		   					<font color="darkred">
+		   						Setup error, please try again.
+		   					</font>
+		   				`).show()
+
+						return console.log(err)
+					}
+
+					return routeTo("syncs")
+				})
+	   		})
    		})
    	})
 }
