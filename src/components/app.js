@@ -83,7 +83,6 @@ const logSyncTasksSemaphore = new Semaphore(1)
 let currentAppVersion = "1"
 let thisDeviceId = undefined
 let isIndexing = false
-let updateUserKeysPKTries = 0
 let lastSyncTasksData = undefined
 let lastSyncedItem = undefined
 let diskSpaceFree = 5114639114240
@@ -163,9 +162,7 @@ let skipNextRequestData = true
 let dontHideOnBlur = false
 let lastHeaderStatus = ""
 let lastTooltipText = ""
-let updateUserKeysInterval = undefined
 let currentFileVersion = 1
-let currentAuthVersion = 1
 
 const apiRequest = async (endpoint, data, callback) => {
 	try{
@@ -216,23 +213,21 @@ const hashPassword = (password) => {
 	return sha512(sha384(sha256(sha1(password)))) + sha512(md5(md4(md2(password))))
 }
 
-const deriveKeyFromPassword = async (password, salt, iterations = 100000, hash = "SHA-512", bitLength = 8192) => {
+const deriveKeyFromPassword = async (password, salt, iterations = 200000, hash = "SHA-512", bitLength = 512) => {
     try{
         var bits = await window.crypto.subtle.deriveBits({
             name: "PBKDF2",
-          salt: new TextEncoder().encode(salt),
-          iterations: iterations,
-          hash: {
-            name: hash
-          }
+          	salt: new TextEncoder().encode(salt),
+          	iterations: iterations,
+          	hash: {
+            	name: hash
+          	}
         }, await window.crypto.subtle.importKey("raw", new TextEncoder().encode(password), {
             name: "PBKDF2"
         }, false, ["deriveBits"]), bitLength)
     }
     catch(e){
-        console.log(e)
-        
-        return null
+        throw new Error(e)
     }
   
     return buf2hex(bits)
@@ -1077,10 +1072,8 @@ const initFns = () => {
    			twoFactorKey = "XXXXXX"
    		}
 
-   		apiRequest("/v1/login", {
-   			email,
-   			password: passwordHashed,
-   			twoFactorKey
+   		apiRequest("/v1/auth/info", {
+   			email
    		}, async (err, res) => {
 	   		$("#login-2fa-input").val("")
 
@@ -1130,7 +1123,7 @@ const initFns = () => {
 			}
 			else if(authVersion == 2){
 				try{
-					let derivedKey = await deriveKeyFromPassword(password, salt, 100000, "SHA-512", 8192) //PBKDF2, 100.000 iterations, sha-512, 8192 bit key, first half (from left) = master key, second half = auth key
+					let derivedKey = await deriveKeyFromPassword(password, salt, 200000, "SHA-512", 512) //PBKDF2, 200.000 iterations, sha-512, 512 bit key, first half (from left) = master key, second half = auth key
 
 					mKey = derivedKey.substring(0, (derivedKey.length / 2))
 			  		passwordToSend = derivedKey.substring((derivedKey.length / 2), derivedKey.length)
@@ -1223,8 +1216,6 @@ const initFns = () => {
 
 					return console.log(e)
 				}
-
-				updateUserKeys()
 
 				$("#login-status").html(`
 					<br>
@@ -1653,22 +1644,8 @@ const fillContent = async (callback) => {
 const doSetup = async (callback) => {
 	const setupDone = () => {
 		initSocket()
-		updateUserKeys()
-		getUserUsage()
 
-		/*clearInterval(updateUserKeysInterval)
-
-		updateUserKeysInterval = setInterval(() => {
-			updateUserKeys()
-		}, 60000)*/
-
-		syncingPaused = false
-
-		setTimeout(() => {
-			startSyncing()
-		}, 3000)
-
-		fillContent((err) => {
+		updateUserKeys((err) => {
 			if(err){
 				if(typeof callback == "function"){
 					return callback(err)
@@ -1677,11 +1654,29 @@ const doSetup = async (callback) => {
 				return console.log(err)
 			}
 
-			if(typeof callback == "function"){
-				return callback(null)
-			}
+			getUserUsage()
 
-			return false
+			syncingPaused = false
+
+			setTimeout(() => {
+				startSyncing()
+			}, 3000)
+
+			fillContent((err) => {
+				if(err){
+					if(typeof callback == "function"){
+						return callback(err)
+					}
+
+					return console.log(err)
+				}
+
+				if(typeof callback == "function"){
+					return callback(null)
+				}
+
+				return false
+			})
 		})
 	}
 
@@ -1810,17 +1805,25 @@ const doSetup = async (callback) => {
 	})
 }
 
-const updateUserKeys = async () => {
+const updateUserKeys = async (callback) => {
 	let loggedIn = false
 
 	try{
 		loggedIn = await isLoggedIn()
 	}
 	catch(e){
+		if(typeof callback == "function"){
+			callback(e)
+		}
+
 		return console.log(e)
 	}
 
 	if(!loggedIn){
+		if(typeof callback == "function"){
+			callback(false)
+		}
+
 		return false
 	}
 
@@ -1828,6 +1831,10 @@ const updateUserKeys = async () => {
 		var userMasterKeys = await getUserMasterKeys()
 	}
 	catch(e){
+		if(typeof callback == "function"){
+			callback(e)
+		}
+
 		return console.log(e)
 	}
 
@@ -1886,12 +1893,6 @@ const updateUserKeys = async () => {
 				}
 				else{
 					console.log("Could not decrypt private key.")
-
-					if(updateUserKeysPKTries < 16){
-						updateUserKeysPKTries += 1
-
-						updateUserKeys()
-					}
 				}
 			}
 		})
@@ -1902,6 +1903,10 @@ const updateUserKeys = async () => {
 		masterKeys: CryptoJS.AES.encrypt(userMasterKeys.join("|"), userMasterKeys[userMasterKeys.length - 1]).toString()
 	}, async (err, res) => {
 		if(err){
+			if(typeof callback == "function"){
+				callback(err)
+			}
+
 			return console.log(err)
 		}
 
@@ -1910,10 +1915,18 @@ const updateUserKeys = async () => {
 				return doLogout()
 			}
 
+			if(typeof callback == "function"){
+				callback(res.message)
+			}
+
 			return console.log(res.message)
 		}
 
 		if(res.data.keys.length == 0){
+			if(typeof callback == "function"){
+				callback("Received master keys length is null.")
+			}
+
 			return console.log("Received master keys length is null.")
 		}
 
@@ -1935,16 +1948,28 @@ const updateUserKeys = async () => {
 				try{
 					await db.put("userMasterKeys", newKeys)
 				}
-				catch(e){
-					return console.log(e)
+				catch(err){
+					if(typeof callback == "function"){
+						callback(err)
+					}
+
+					return console.log(err)
 				}
 
 				console.log("Master keys updated.")
+
+				if(typeof callback == "function"){
+					callback(null)
+				}
 			}
 
 			updatePubAndPrivKeys()
 		}
 		catch(e){
+			if(typeof callback == "function"){
+				callback(e)
+			}
+
 			return console.log(e)
 		}
 	})
@@ -3105,6 +3130,10 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 		}
 
 		if(!res.status){
+			if(res.message.toLowerCase().indexOf("api key not found") !== -1){
+				return doLogout()
+			}
+
 			return callback(res.message)
 		}
 
@@ -4420,7 +4449,10 @@ const doLogout = async () => {
 		return console.log(e)
 	}
 
-	return routeTo("login")
+	remote.app.relaunch()
+	remote.app.exit()
+
+	return true
 }
 
 const getDiskSpace = () => {
