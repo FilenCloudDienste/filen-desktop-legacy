@@ -80,6 +80,7 @@ const downloadSemaphore = new Semaphore(50)
 const uploadSemaphore = new Semaphore(50)
 const logSyncTasksSemaphore = new Semaphore(1)
 const doSyncSempahore = new Semaphore(1)
+const syncTaskLimiterSemaphore = new Semaphore(50)
 
 let currentAppVersion = "1"
 let thisDeviceId = undefined
@@ -163,7 +164,6 @@ let dontHideOnBlur = false
 let lastHeaderStatus = ""
 let lastTooltipText = ""
 let currentFileVersion = 1
-let syncTastLimiter = 0
 
 const apiRequest = async (endpoint, data, callback) => {
 	try{
@@ -3369,11 +3369,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 	currentSyncTasks.push(taskId)
 
-	if(currentSyncTasks.length >= 50){
-		return setTimeout(() => {
-			syncTask(where, task, taskInfo, userMasterKeys)
-		}, getRandomArbitrary(50, 100)) 
-	}
+	let syncTaskLimiterSemaphoreRelease = await syncTaskLimiterSemaphore.acquire()
 
 	console.log(where, task, JSON.stringify(taskInfo))
 
@@ -3391,17 +3387,17 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 						if(err){
 							console.log(err)
 
-							return setTimeout(() => {
-								removeFromSyncTasks(taskId)
-							}, syncTimeout)
+							syncTaskLimiterSemaphoreRelease()
+
+							return removeFromSyncTasks(taskId)
 						}
 
 						if(!res.status){
 							console.log(res.message)
 
-							return setTimeout(() => {
-								removeFromSyncTasks(taskId)
-							}, syncTimeout)
+							syncTaskLimiterSemaphoreRelease()
+
+							return removeFromSyncTasks(taskId)
 						}
 
 						if(res.data.exists){
@@ -3409,9 +3405,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 							localFolderExisted[taskInfo.path] = true
 
-							return setTimeout(() => {
-								removeFromSyncTasks(taskId)
-							}, syncTimeout)
+							syncTaskLimiterSemaphoreRelease()
+
+							return removeFromSyncTasks(taskId)
 						}
 
 						let newFolderUUID = uuidv4()
@@ -3428,17 +3424,17 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 							if(err){
 								console.log(err)
 
-								return setTimeout(() => {
-									removeFromSyncTasks(taskId)
-								}, syncTimeout)
+								syncTaskLimiterSemaphoreRelease()
+
+								return removeFromSyncTasks(taskId)
 							}
 
 							if(!res.status){
 								console.log(res.message)
 
-								return setTimeout(() => {
-									removeFromSyncTasks(taskId)
-								}, syncTimeout)
+								syncTaskLimiterSemaphoreRelease()
+
+								return removeFromSyncTasks(taskId)
 							}
 
 							console.log(res.message)
@@ -3451,9 +3447,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 								addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
 
-								return setTimeout(() => {
-									removeFromSyncTasks(taskId)
-								}, syncTimeout)
+								syncTaskLimiterSemaphoreRelease()
+
+								return removeFromSyncTasks(taskId)
 							})
 						})
 					})
@@ -3466,9 +3462,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 						if(err){
 							console.log(err)
 
-							return setTimeout(() => {
-								removeFromSyncTasks(taskId)
-							}, syncTimeout)
+							syncTaskLimiterSemaphoreRelease()
+
+							return removeFromSyncTasks(taskId)
 						}
 
 						if(!res.status){
@@ -3481,9 +3477,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 								delete localFileExisted[taskInfo.filePath]
 							}
 
-							return setTimeout(() => {
-								removeFromSyncTasks(taskId)
-							}, syncTimeout)
+							syncTaskLimiterSemaphoreRelease()
+
+							return removeFromSyncTasks(taskId)
 						}
 
 						addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
@@ -3495,9 +3491,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 						delete remoteFileUUIDs[taskInfo.filePath]
 						delete localFileExisted[taskInfo.filePath]
 
-						return setTimeout(() => {
-							removeFromSyncTasks(taskId)
-						}, syncTimeout)
+						syncTaskLimiterSemaphoreRelease()
+
+						return removeFromSyncTasks(taskId)
 					})
 				break
 				case "rmdir":
@@ -3510,9 +3506,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 							removeFromDeletingRemoteFolders(taskId)
 
-							return setTimeout(() => {
-								removeFromSyncTasks(taskId)
-							}, syncTimeout)
+							syncTaskLimiterSemaphoreRelease()
+
+							return removeFromSyncTasks(taskId)
 						}
 
 						if(!res.status){
@@ -3524,9 +3520,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 							removeFromDeletingRemoteFolders(taskId)
 
-							return setTimeout(() => {
-								removeFromSyncTasks(taskId)
-							}, syncTimeout)
+							syncTaskLimiterSemaphoreRelease()
+
+							return removeFromSyncTasks(taskId)
 						}
 
 						addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
@@ -3535,12 +3531,12 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 						delete localFolderExisted[taskInfo.path]
 
-						removeFoldersAndFilesFromExistingDir(taskInfo.path, () => {
+						return removeFoldersAndFilesFromExistingDir(taskInfo.path, () => {
 							removeFromDeletingRemoteFolders(taskId)
 
-							setTimeout(() => {
-								removeFromSyncTasks(taskId)
-							}, syncTimeout)
+							syncTaskLimiterSemaphoreRelease()
+
+							removeFromSyncTasks(taskId)
 						})
 					})
 				break
@@ -3554,17 +3550,17 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 						if(err){
 							console.log(err)
 
-							return setTimeout(() => {
-								removeFromSyncTasks(taskId)
-							}, syncTimeout)
+							syncTaskLimiterSemaphoreRelease()
+
+							return removeFromSyncTasks(taskId)
 						}
 
 						if(!res.status){
 							console.log(res.message)
 
-							return setTimeout(() => {
-								removeFromSyncTasks(taskId)
-							}, syncTimeout)
+							syncTaskLimiterSemaphoreRelease()
+
+							return removeFromSyncTasks(taskId)
 						}
 
 						let newFileUUID = uuidv4()
@@ -3574,9 +3570,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 								if(err){
 									console.log(err)
 
-									return setTimeout(() => {
-										removeFromSyncTasks(taskId)
-									}, syncTimeout)
+									syncTaskLimiterSemaphoreRelease()
+
+									return removeFromSyncTasks(taskId)
 								}
 
 								console.log(task + " " + taskInfo.path + " " + task + " done")
@@ -3597,9 +3593,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 									console.log(e)
 								}
 
-								return setTimeout(async () => {
-									removeFromSyncTasks(taskId)
-								}, syncTimeout)
+								syncTaskLimiterSemaphoreRelease()
+
+								return removeFromSyncTasks(taskId)
 							})
 						}
 
@@ -3622,9 +3618,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 									console.log(e)
 								}
 
-								return setTimeout(async () => {
-									removeFromSyncTasks(taskId)
-								}, syncTimeout)
+								syncTaskLimiterSemaphoreRelease()
+
+								return removeFromSyncTasks(taskId)
 							}
 						}
 						else{
@@ -3637,26 +3633,26 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 									if(err){
 										console.log(err)
 
-										return setTimeout(() => {
-											removeFromSyncTasks(taskId)
-										}, syncTimeout)
+										syncTaskLimiterSemaphoreRelease()
+
+										return removeFromSyncTasks(taskId)
 									}
 
 									if(!res.status){
 										console.log(res.message)
 
-										return setTimeout(() => {
-											removeFromSyncTasks(taskId)
-										}, syncTimeout)
+										syncTaskLimiterSemaphoreRelease()
+
+										return removeFromSyncTasks(taskId)
 									}
 
 									doUpload()
 								})
 							}
 							else{
-								return setTimeout(() => {
-									removeFromSyncTasks(taskId)
-								}, syncTimeout)
+								syncTaskLimiterSemaphoreRelease()
+
+								return removeFromSyncTasks(taskId)
 							}
 						}
 					})
@@ -3681,9 +3677,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 						skipCheckLocalExistedFoldersAndFiles = (unixTimestamp() + 60)
 
-						return setTimeout(() => {
-							removeFromSyncTasks(taskId)
-						}, syncTimeout)
+						syncTaskLimiterSemaphoreRelease()
+
+						return removeFromSyncTasks(taskId)
 					})
 				break
 				case "rmdir":
@@ -3694,19 +3690,19 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 						delete localFolderExisted[taskInfo.path]
 
-						removeFoldersAndFilesFromExistingDir(taskInfo.path, () => {
+						return removeFoldersAndFilesFromExistingDir(taskInfo.path, () => {
 							removeFromDeletingLocalFolders(taskId)
 							
-							setTimeout(() => {
-								removeFromSyncTasks(taskId)
-							}, syncTimeout)
+							syncTaskLimiterSemaphoreRelease()
+
+							removeFromSyncTasks(taskId)
 						})
 					})
 				break
 				case "rmfile":
 					let rmFilePath = userHomePath + "/" + taskInfo.path
 
-					rimraf(winOrUnixFilePath(rmFilePath), () => {
+					return rimraf(winOrUnixFilePath(rmFilePath), () => {
 						addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
 
 						delete localFileModifications[taskInfo.filePath]
@@ -3714,19 +3710,23 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 						delete remoteFileUUIDs[taskInfo.filePath]
 						delete localFileExisted[taskInfo.filePath]
 
-						return setTimeout(() => {
-							removeFromSyncTasks(taskId)
-						}, syncTimeout)
+						syncTaskLimiterSemaphoreRelease()
+
+						removeFromSyncTasks(taskId)
 					})
 				break
 				case "download":
 				case "update":
 					if(taskInfo.file.size <= 0){
+						syncTaskLimiterSemaphoreRelease()
+
 						return removeFromSyncTasks(taskId)
 					}
 
 					if(taskInfo.file.size >= diskSpaceFree){
 						console.log("NO SPACE AVAILABLE")
+
+						syncTaskLimiterSemaphoreRelease()
 
 						return removeFromSyncTasks(taskId)
 					}
@@ -3737,9 +3737,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 						if(err){
 							console.log(err)
 
-							return setTimeout(() => {
-								removeFromSyncTasks(taskId)
-							}, syncTimeout)
+							syncTaskLimiterSemaphoreRelease()
+
+							return removeFromSyncTasks(taskId)
 						}
 
 						try{
@@ -3763,9 +3763,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 						addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
 
-						return setTimeout(async () => {
-							removeFromSyncTasks(taskId)
-						}, syncTimeout)
+						syncTaskLimiterSemaphoreRelease()
+
+						return removeFromSyncTasks(taskId)
 					})
 				break
 				default:
