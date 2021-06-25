@@ -163,6 +163,7 @@ let dontHideOnBlur = false
 let lastHeaderStatus = ""
 let lastTooltipText = ""
 let currentFileVersion = 1
+let syncTastLimiter = 0
 
 const apiRequest = async (endpoint, data, callback) => {
 	try{
@@ -3367,6 +3368,12 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 	}
 
 	currentSyncTasks.push(taskId)
+
+	if(currentSyncTasks.length >= 50){
+		return setTimeout(() => {
+			syncTask(where, task, taskInfo, userMasterKeys)
+		}, getRandomArbitrary(50, 100)) 
+	}
 
 	console.log(where, task, JSON.stringify(taskInfo))
 
