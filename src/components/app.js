@@ -75,10 +75,11 @@ catch(e){
 	})
 }
 
-const apiSemaphore = new Semaphore(30)
-const downloadSemaphore = new Semaphore(40)
-const uploadSemaphore = new Semaphore(20)
+const apiSemaphore = new Semaphore(50)
+const downloadSemaphore = new Semaphore(50)
+const uploadSemaphore = new Semaphore(50)
 const logSyncTasksSemaphore = new Semaphore(1)
+const doSyncSempahore = new Semaphore(1)
 
 let currentAppVersion = "1"
 let thisDeviceId = undefined
@@ -155,7 +156,6 @@ let currentDownloadFolderStopped = {}
 let downloadFolderDoneInterval = undefined
 let localDataChangedFiles = {}
 let lastSavedDataHash = undefined
-let appId = undefined
 let lastReceivedSyncData = undefined
 let firstDataRequest = true
 let skipNextRequestData = true
@@ -209,7 +209,7 @@ const hashFnFast = (val) => {
 	return val
 }
 
-const hashPassword = (password) => {
+const hashPassword = (password) => { //old
 	return sha512(sha384(sha256(sha1(password)))) + sha512(md5(md4(md2(password))))
 }
 
@@ -1526,6 +1526,10 @@ const renderSyncTask = (task, prepend = true) => {
 	}
 	else{
 		$("#sync-task-tbody").append(taskHTML)
+	}
+
+	if($("#sync-task-tbody").children().length >= 100){
+		$("#sync-task-tbody").children().last().remove()
 	}
 
 	$("#no-syncs").hide()
@@ -2964,7 +2968,7 @@ const addFinishedSyncTaskToStorage = async (where, task, taskInfo) => {
 		timestamp: Math.floor((+new Date()) / 1000)
 	}
 
-	if(currentStorageData.length >= 1000){
+	if(currentStorageData.length >= 100){
 		currentStorageData.shift()
 	}
 
@@ -3785,6 +3789,8 @@ const doSync = async () => {
 		return false
 	}
 
+	let releaseSyncSemaphore = await doSyncSempahore.acquire()
+
 	try{
 		var userMasterKeys = await getUserMasterKeys()
 	}
@@ -3794,6 +3800,8 @@ const doSync = async () => {
 		if(currentSyncTasks.length <= 0){
 			isSyncing = false
 		}
+
+		releaseSyncSemaphore()
 
 		return false
 	}
@@ -3839,6 +3847,8 @@ const doSync = async () => {
 
 			remoteDecryptedCache = {}
 
+			releaseSyncSemaphore()
+
 			return ipcRenderer.send("exit-app")
 		}
 		else{
@@ -3847,6 +3857,8 @@ const doSync = async () => {
 					if(currentSyncTasks.length <= 0){
 						isSyncing = false
 					}
+
+					releaseSyncSemaphore()
 
 					return console.log(err)
 				}
@@ -3857,6 +3869,8 @@ const doSync = async () => {
 							isSyncing = false
 						}
 
+						releaseSyncSemaphore()
+
 						return console.log(err)
 					}
 
@@ -3864,6 +3878,8 @@ const doSync = async () => {
 						if(currentSyncTasks.length <= 0){
 							isSyncing = false
 						}
+
+						releaseSyncSemaphore()
 
 						return false
 					}
@@ -3875,7 +3891,7 @@ const doSync = async () => {
 						if(currentDatasetHash == lastDatasetHash){
 							//console.log("Dataset didnt change, skipping syncing cycle.")
 
-							let currLastSavedDataHash = hashFnFast(currentDatasetHash)
+							let currLastSavedDataHash = currentDatasetHash
 
 							if(typeof lastSavedDataHash !== "undefined"){
 								if(currLastSavedDataHash == lastSavedDataHash){
@@ -3885,7 +3901,9 @@ const doSync = async () => {
 										if(currentSyncTasks.length <= 0){
 											isSyncing = false
 										}
-									}, 1000)
+
+										releaseSyncSemaphore()
+									}, 1)
 								}
 							}
 
@@ -3919,7 +3937,9 @@ const doSync = async () => {
 								if(currentSyncTasks.length <= 0){
 									isSyncing = false
 								}
-							}, 1000)
+
+								releaseSyncSemaphore()
+							}, 1)
 						}
 					}
 
@@ -4263,7 +4283,6 @@ const doSync = async () => {
 									localFolderExisted = folders
 									localFileExisted = files
 								}
-								
 
 								try{
 									let userEmail = await db.get("userEmail")
@@ -4288,12 +4307,17 @@ const doSync = async () => {
 
 								console.log("Sync cycle done.")
 
-								skipNextRequestData = true
+								//skipNextRequestData = true
 
-								return isSyncing = false
+								releaseSyncSemaphore()
+									
+								isIndexing = false
+								isSyncing = false
+
+								return true
 							})
 						}
-					}, 50)
+					}, 100)
 				})
 			})
 		}
@@ -4303,9 +4327,9 @@ const doSync = async () => {
 const initChokidar = async () => {
 	chokidarWatcher = undefined
 
-	chokidarWatcher = chokidar.watch(userSyncDir, {
+	/*chokidarWatcher = chokidar.watch(userSyncDir, {
 		persistent: true,
-		ignoreInitial: false,
+		ignoreInitial: true,
 		followSymlinks: false,
 		usePolling: false,
 		depth: 99999999999,
@@ -4316,13 +4340,24 @@ const initChokidar = async () => {
 		setTimeout(() => {
 			localDataChanged = true
 		}, (syncTimeout / 2))
+	}).on("ready", () => {
+		localDataChanged = true
 	})
 
 	localDataChanged = true
 
 	setTimeout(() => {
 		localDataChanged = true
-	}, (syncTimeout / 2))
+	}, (syncTimeout / 2))*/
+
+	fs.watch(userSyncDir, {
+		recursive: true,
+		persistent: true
+	}, (event, path) => {
+		localDataChanged = true
+	})
+
+	localDataChanged = true
 }
 
 const startSyncing = async () => {
@@ -4416,19 +4451,13 @@ const startSyncing = async () => {
 
 		initChokidar()
 
-		appId = generateRandomString(32)
-
 		console.log("Syncing started.")
-
-		localDataChanged = true
-
-		setTimeout(() => {
-			localDataChanged = true
-		}, (syncTimeout * 2))
 
 		doSync()
 
 		setInterval(doSync, syncTimeout)
+
+		return true
 	})
 }
 
@@ -4579,7 +4608,7 @@ const setupIntervals = () => {
 
 	updateVisualStatus()
 
-	setInterval(updateVisualStatus, 3000)
+	setInterval(updateVisualStatus, 5000)
 }
 
 const darkModeEnabled = async () => {
