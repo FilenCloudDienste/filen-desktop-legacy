@@ -3,23 +3,28 @@ process.noAsar = true
 process.on("uncaughtException", (err) => {
 	console.error(err)
 
-	if(err.toString().toLowerCase().indexOf("openerror") !== -1 || err.toString().toLowerCase().indexOf("corruption") !== -1 && err.toString().toLowerCase().indexOf("level") !== -1){
-		let electron = require("electron")
-		let rimraf = require("rimraf")
-		let dbPath = (electron.app || electron.remote.app).getPath("userData") + "/db/level"
+	try{
+		if(err.toString().toLowerCase().indexOf("openerror") !== -1 || err.toString().toLowerCase().indexOf("corruption") !== -1 && err.toString().toLowerCase().indexOf("level") !== -1){
+			let electron = require("electron")
+			let rimraf = require("rimraf")
+			let dbPath = (electron.app || electron.remote.app).getPath("userData") + "/db/level"
 
-		if(process.platform == "linux" || process.platform == "darwin"){
-			dbPath = (electron.app || electron.remote.app).getPath("userData") + "/level"
+			if(process.platform == "linux" || process.platform == "darwin"){
+				dbPath = (electron.app || electron.remote.app).getPath("userData") + "/level"
+			}
+
+			return rimraf(dbPath, () => {
+				try{
+					ipcRenderer.send("exit-app")
+				}
+				catch(e){
+					console.log(e)
+				}
+			})
 		}
-
-		return rimraf(dbPath, () => {
-			try{
-				ipcRenderer.send("exit-app")
-			}
-			catch(e){
-				console.log(e)
-			}
-		})
+	}
+	catch(err){
+		return console.log(err)
 	}
 })
 
@@ -163,6 +168,8 @@ let skipNextRequestData = true
 let dontHideOnBlur = false
 let lastHeaderStatus = ""
 let lastTooltipText = ""
+let syncTasksToWrite = []
+
 let currentFileVersion = 1
 
 let defaultBlockedFiles = [
@@ -1535,7 +1542,7 @@ const renderSyncTask = (task, prepend = true) => {
 		$("#sync-task-tbody").append(taskHTML)
 	}
 
-	if($("#sync-task-tbody").children().length >= 100){
+	if($("#sync-task-tbody").children().length >= 250){
 		$("#sync-task-tbody").children().last().remove()
 	}
 
@@ -2944,15 +2951,10 @@ const uploadFileToRemote = async (path, uuid, parent, name, userMasterKeys, call
 	})
 }
 
-const addFinishedSyncTaskToStorage = async (where, task, taskInfo) => {
-	let taskData = {
-		where,
-		task,
-		taskInfo,
-		timestamp: Math.floor((+new Date()) / 1000)
+const writeSyncTasks = async () => {
+	if(syncTasksToWrite.length == 0){
+		return false
 	}
-
-	renderSyncTask(taskData, true)
 
 	try{
 		var release = await logSyncTasksSemaphore.acquire()
@@ -2973,13 +2975,13 @@ const addFinishedSyncTaskToStorage = async (where, task, taskInfo) => {
 		currentStorageData = []
 	}
 
-	if(currentStorageData.length >= 100){
-		currentStorageData.shift()
+	for(let i = 0; i < syncTasksToWrite.length; i++){
+		currentStorageData.push(syncTasksToWrite[i])
+
+		if(currentStorageData.length >= 250){
+			currentStorageData.shift()
+		}
 	}
-
-	currentStorageData.push(taskData)
-
-	lastSyncedItem = taskData
 
 	try{
 		await db.put(userEmail + "_finishedSyncTasks", JSON.stringify(currentStorageData))
@@ -2989,6 +2991,21 @@ const addFinishedSyncTaskToStorage = async (where, task, taskInfo) => {
 	}
 
 	return release()
+}
+
+const addFinishedSyncTaskToStorage = async (where, task, taskInfo) => {
+	let taskData = {
+		where,
+		task,
+		taskInfo,
+		timestamp: Math.floor((+new Date()) / 1000)
+	}
+
+	lastSyncedItem = taskData
+
+	renderSyncTask(taskData, true)
+
+	return syncTasksToWrite.push(taskData)
 }
 
 var skipCheckLocalExistedFoldersAndFiles = 0
@@ -3118,7 +3135,7 @@ const getLocalSyncDirContents = async (callback) => {
 	//$("#account-sync-stats-files-text").html(Object.keys(files).length)
 	//$("#account-sync-stats-folders-text").html(Object.keys(folders).length - 1)
 
-	return callback(null, folders, files, (JSON.stringify(folders) + JSON.stringify(files)).length)
+	return callback(null, folders, files, (JSON.stringify(folders) + JSON.stringify(files)))
 }
 
 const getRemoteSyncDirContents = async (folderUUID, callback) => {
@@ -3246,13 +3263,15 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 					let parent = folders[res.data.folders[i].parent]
 
 					if(typeof parent !== "undefined"){
-						if(typeof folderNamesExisting[self.parent + "_" + selfName.toLowerCase()] == "undefined"){
-							folderNamesExisting[self.parent + "_" + selfName.toLowerCase()] = true
+						if(!defaultBlockedFiles.includes(selfName.toLowerCase())){
+							if(typeof folderNamesExisting[self.parent + "_" + selfName.toLowerCase()] == "undefined"){
+								folderNamesExisting[self.parent + "_" + selfName.toLowerCase()] = true
 
-							folders[self.uuid] = {
-								uuid: self.uuid,
-								name: selfName,
-								parent: self.parent
+								folders[self.uuid] = {
+									uuid: self.uuid,
+									name: selfName,
+									parent: self.parent
+								}
 							}
 						}
 					}
@@ -3299,20 +3318,22 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 
 				if(metadata.name.length > 0){
 					if(typeof newPath !== "undefined" && metadata.size > 0){
-						if(typeof fileNamesExisting[self.parent + "_" + metadata.name.toLowerCase()] == "undefined"){
-							fileNamesExisting[self.parent + "_" + metadata.name.toLowerCase()] = true
+						if(!defaultBlockedFiles.includes(metadata.name.toLowerCase())){
+							if(typeof fileNamesExisting[self.parent + "_" + metadata.name.toLowerCase()] == "undefined"){
+								fileNamesExisting[self.parent + "_" + metadata.name.toLowerCase()] = true
 
-							files[newPath] = {
-								uuid: self.uuid,
-								region: self.region,
-								bucket: self.bucket,
-								chunks: self.chunks,
-								name: metadata.name,
-								size: metadata.size,
-								mime: metadata.mime,
-								key: metadata.key,
-								parent: self.parent,
-								version: self.version
+								files[newPath] = {
+									uuid: self.uuid,
+									region: self.region,
+									bucket: self.bucket,
+									chunks: self.chunks,
+									name: metadata.name,
+									size: metadata.size,
+									mime: metadata.mime,
+									key: metadata.key,
+									parent: self.parent,
+									version: self.version
+								}
 							}
 						}
 					}
@@ -3888,7 +3909,7 @@ const doSync = async () => {
 					}
 
 					//Did the remote and local dataset even change? If not we can save cpu usage by skipping the sync cycle
-					let currentDatasetHash = (remoteCombinedLength + localCombinedLength)
+					let currentDatasetHash = (remoteCombinedLength.toString() + localCombinedLength)
 
 					if(typeof lastDatasetHash !== "undefined"){
 						if(currentDatasetHash == lastDatasetHash){
@@ -4314,6 +4335,8 @@ const doSync = async () => {
 									
 								isIndexing = false
 								isSyncing = false
+
+								writeSyncTasks()
 
 								return true
 							})

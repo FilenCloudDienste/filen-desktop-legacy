@@ -3,18 +3,23 @@ process.noAsar = true
 process.on("uncaughtException", (err) => {
 	console.error(err)
 
-	if(err.toString().toLowerCase().indexOf("openerror") !== -1 || err.toString().toLowerCase().indexOf("corruption") !== -1 && err.toString().toLowerCase().indexOf("level") !== -1){
-		let electron = require("electron")
-		let rmrf = require("rimraf")
-		let dbPath = electron.app.getPath("userData") + "/db/index"
+	try{
+		if(err.toString().toLowerCase().indexOf("openerror") !== -1 || err.toString().toLowerCase().indexOf("corruption") !== -1 && err.toString().toLowerCase().indexOf("level") !== -1){
+			let electron = require("electron")
+			let rmrf = require("rimraf")
+			let dbPath = electron.app.getPath("userData") + "/db/index"
 
-		if(process.platform == "linux" || process.platform == "darwin"){
-			dbPath = electron.app.getPath("userData") + "/index"
+			if(process.platform == "linux" || process.platform == "darwin"){
+				dbPath = electron.app.getPath("userData") + "/index"
+			}
+
+			return rmrf(dbPath, () => {
+				electron.app.exit(0)
+			})
 		}
-
-		return rmrf(dbPath, () => {
-			electron.app.exit(0)
-		})
+	}
+	catch(e){
+		console.log(e)
 	}
 })
 
