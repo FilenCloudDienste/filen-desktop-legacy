@@ -261,3 +261,58 @@ const cleanString = (str) => {
 function buf2hex(buffer) { // buffer is an ArrayBuffer
   return [...new Uint8Array(buffer)].map(x => x.toString(16).padStart(2, '0')).join('');
 }
+
+const vkThreadJSONStringify = (obj) => {
+  function job(arg){
+    return JSON.stringify(arg)
+  }
+
+  return new Promise((resolve, reject) => {
+    vkthread.exec({
+      fn: job,
+      args: [obj]
+    }).then((data) => {
+      return resolve(data)
+    }, (err) => {
+      return resolve(JSON.stringify({}))
+    })
+  })
+}
+
+const vkThreadJSONParse = (str) => {
+  function job(arg){
+    return JSON.parse(arg)
+  }
+
+  return new Promise((resolve, reject) => {
+    vkthread.exec({
+      fn: job,
+      args: [str]
+    }).then((data) => {
+      return resolve(data)
+    }, (err) => {
+      return resolve("")
+    })
+  })
+}
+
+const vkThreadCompareStringLengthJSONStringifyFirstArg = (str1, str2) => {
+  function job(arg1, arg2){
+    if(JSON.stringify(arg1) == arg2){
+      return true
+    }
+
+    return false
+  }
+
+  return new Promise((resolve, reject) => {
+    vkthread.exec({
+      fn: job,
+      args: [str1, str2]
+    }).then((data) => {
+      return resolve(data)
+    }, (err) => {
+      return resolve(true)
+    })
+  })
+}

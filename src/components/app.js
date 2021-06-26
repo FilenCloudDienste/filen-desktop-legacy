@@ -2663,18 +2663,14 @@ const downloadFileToLocal = async (path, file, isSync, callback) => {
 						clearInterval(waitForChunksToWriteInterval)
 
 						if(isSync){
-							return setTimeout(() => {
-								downloadWriteStreams[file.uuid].end()
+							downloadWriteStreams[file.uuid].end()
 
-								callback(null)
-							}, syncTimeout)
+							return callback(null)
 						}
 						else{
-							return setTimeout(() => {
-								downloadWriteStreams[file.uuid].end()
+							downloadWriteStreams[file.uuid].end()
 
-								callback(null)
-							}, 1000)
+							return callback(null)
 						}
 					}
 				}
@@ -2943,6 +2939,15 @@ const uploadFileToRemote = async (path, uuid, parent, name, userMasterKeys, call
 }
 
 const addFinishedSyncTaskToStorage = async (where, task, taskInfo) => {
+	let taskData = {
+		where,
+		task,
+		taskInfo,
+		timestamp: Math.floor((+new Date()) / 1000)
+	}
+	
+	renderSyncTask(taskData, true)
+
 	try{
 		var release = await logSyncTasksSemaphore.acquire()
 	}
@@ -2962,13 +2967,6 @@ const addFinishedSyncTaskToStorage = async (where, task, taskInfo) => {
 		currentStorageData = []
 	}
 
-	let taskData = {
-		where,
-		task,
-		taskInfo,
-		timestamp: Math.floor((+new Date()) / 1000)
-	}
-
 	if(currentStorageData.length >= 100){
 		currentStorageData.shift()
 	}
@@ -2976,8 +2974,6 @@ const addFinishedSyncTaskToStorage = async (where, task, taskInfo) => {
 	currentStorageData.push(taskData)
 
 	lastSyncedItem = taskData
-
-	renderSyncTask(taskData, true)
 
 	try{
 		await db.put(userEmail + "_finishedSyncTasks", JSON.stringify(currentStorageData))
@@ -3068,7 +3064,7 @@ const getLocalSyncDirContents = async (callback) => {
 	if(!localDataChanged){
 		//console.log("Local data did not change from last sync cycle, serving cache.")
 
-		return callback(null, lastLocalSyncFolders, lastLocalSyncFiles)
+		return callback(null, lastLocalSyncFolders, lastLocalSyncFiles, (JSON.stringify(lastLocalSyncFolders) + JSON.stringify(lastLocalSyncFiles)).length)
 	}
 
 	localDataChanged = false
@@ -3112,7 +3108,7 @@ const getLocalSyncDirContents = async (callback) => {
 	//$("#account-sync-stats-files-text").html(Object.keys(files).length)
 	//$("#account-sync-stats-folders-text").html(Object.keys(folders).length - 1)
 
-	return callback(null, folders, files)
+	return callback(null, folders, files, (JSON.stringify(folders) + JSON.stringify(files)).length)
 }
 
 const getRemoteSyncDirContents = async (folderUUID, callback) => {
@@ -3157,15 +3153,17 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 			lastReceivedSyncData = res.data
 		}
 
+		let receivedDataLength = JSON.stringify(res.data).length
+
 		if(typeof lastRemoteSyncDataHash !== "undefined"){
-			if(hashFnFast(JSON.stringify(res.data)) == lastRemoteSyncDataHash){
+			if(receivedDataLength == lastRemoteSyncDataHash){
 				//console.log("Last remote sync data identical to current one, serving from cache.")
 
-				return callback(null, lastRemoteSyncFolders, lastRemoteSyncFiles) 
+				return callback(null, lastRemoteSyncFolders, lastRemoteSyncFiles, receivedDataLength) 
 			}
 
 			if(currentSyncTasks.length >= 10){
-				return callback(null, lastRemoteSyncFolders, lastRemoteSyncFiles) 
+				return callback(null, lastRemoteSyncFolders, lastRemoteSyncFiles, receivedDataLength) 
 			}
 		}
 
@@ -3314,9 +3312,9 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 
 		remoteSyncFolders = folderPaths
 		remoteSyncFiles = files
-		lastRemoteSyncDataHash = hashFnFast(JSON.stringify(res.data))
+		lastRemoteSyncDataHash = receivedDataLength
 
-		return callback(null, folderPaths, files)
+		return callback(null, folderPaths, files, receivedDataLength)
 	})
 }
 
@@ -3360,7 +3358,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 	if(isIndexing){
 		return setTimeout(() => {
 			syncTask(where, task, taskInfo, userMasterKeys)
-		}, getRandomArbitrary(100, 1000))
+		}, syncTimeout)
 	}
 
 	if(currentSyncTasks.includes(taskId)){
@@ -3781,18 +3779,10 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 const doSync = async () => {
 	if(isSyncing || isIndexing){
-		if(currentSyncTasks.length <= 0){
-			isSyncing = false
-		}
-
 		return false
 	}
 
 	if(syncingPaused){
-		if(currentSyncTasks.length <= 0){
-			isSyncing = false
-		}
-
 		return false
 	}
 
@@ -3804,9 +3794,8 @@ const doSync = async () => {
 	catch(e){
 		console.log(e)
 
-		if(currentSyncTasks.length <= 0){
-			isSyncing = false
-		}
+		isSyncing = false
+		isIndexing = false
 
 		releaseSyncSemaphore()
 
@@ -3859,22 +3848,20 @@ const doSync = async () => {
 			return ipcRenderer.send("exit-app")
 		}
 		else{
-			getRemoteSyncDirContents(folderUUID, (err, remoteFolders, remoteFiles) => {
+			getRemoteSyncDirContents(folderUUID, (err, remoteFolders, remoteFiles, remoteCombinedLength) => {
 				if(err){
-					if(currentSyncTasks.length <= 0){
-						isSyncing = false
-					}
+					isSyncing = false
+					isIndexing = false
 
 					releaseSyncSemaphore()
 
 					return console.log(err)
 				}
 
-				getLocalSyncDirContents(async (err, localFolders, localFiles) => {
+				getLocalSyncDirContents(async (err, localFolders, localFiles, localCombinedLength) => {
 					if(err){
-						if(currentSyncTasks.length <= 0){
-							isSyncing = false
-						}
+						isSyncing = false
+						isIndexing = false
 
 						releaseSyncSemaphore()
 
@@ -3882,9 +3869,8 @@ const doSync = async () => {
 					}
 
 					if(syncingPaused){
-						if(currentSyncTasks.length <= 0){
-							isSyncing = false
-						}
+						isSyncing = false
+						isIndexing = false
 
 						releaseSyncSemaphore()
 
@@ -3892,7 +3878,7 @@ const doSync = async () => {
 					}
 
 					//Did the remote and local dataset even change? If not we can save cpu usage by skipping the sync cycle
-					let currentDatasetHash = hashFnFast(JSON.stringify(remoteFolders) + JSON.stringify(remoteFiles) + JSON.stringify(localFolders) + JSON.stringify(localFiles))
+					let currentDatasetHash = (remoteCombinedLength + localCombinedLength)
 
 					if(typeof lastDatasetHash !== "undefined"){
 						if(currentDatasetHash == lastDatasetHash){
@@ -3905,9 +3891,8 @@ const doSync = async () => {
 									//console.log("Last write dataset didnt change, not writing.")
 
 									return setTimeout(() => {
-										if(currentSyncTasks.length <= 0){
-											isSyncing = false
-										}
+										isSyncing = false
+										isIndexing = false
 
 										releaseSyncSemaphore()
 									}, 1)
@@ -3941,9 +3926,8 @@ const doSync = async () => {
 							}
 
 							return setTimeout(() => {
-								if(currentSyncTasks.length <= 0){
-									isSyncing = false
-								}
+								isSyncing = false
+								isIndexing = false
 
 								releaseSyncSemaphore()
 							}, 1)
