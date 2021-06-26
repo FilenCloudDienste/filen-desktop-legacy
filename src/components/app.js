@@ -165,6 +165,12 @@ let lastHeaderStatus = ""
 let lastTooltipText = ""
 let currentFileVersion = 1
 
+let defaultBlockedFiles = [
+	".ds_store",
+	"desktop.ini",
+	"thumbs.db"
+]
+
 const apiRequest = async (endpoint, data, callback) => {
 	try{
 		var release = await apiSemaphore.acquire()
@@ -2945,7 +2951,7 @@ const addFinishedSyncTaskToStorage = async (where, task, taskInfo) => {
 		taskInfo,
 		timestamp: Math.floor((+new Date()) / 1000)
 	}
-	
+
 	renderSyncTask(taskData, true)
 
 	try{
@@ -3082,17 +3088,21 @@ const getLocalSyncDirContents = async (callback) => {
 		  		let filePathEx = filePath.split("/")
 
 		  		if(file.stats.isDirectory() && typeof filePathEx[filePathEx.length - 1] !== "undefined"){
-		  			folders[filePath + "/"] = {
-						name: filePathEx[filePathEx.length - 1]
-					}
+		  			if(!defaultBlockedFiles.includes(filePathEx[filePathEx.length - 1].toLowerCase())){
+		  				folders[filePath + "/"] = {
+							name: filePathEx[filePathEx.length - 1]
+						}
+		  			}
 		  		}
 		  		else if(typeof filePathEx[filePathEx.length - 1] !== "undefined"){
 		  			if(file.stats.size > 0){
-		  				files[filePath] = {
-							name: filePathEx[filePathEx.length - 1],
-							modTime: file.stats.mtimeMs,
-							size: file.stats.size
-						}
+		  				if(!defaultBlockedFiles.includes(filePathEx[filePathEx.length - 1].toLowerCase())){
+		  					files[filePath] = {
+								name: filePathEx[filePathEx.length - 1],
+								modTime: file.stats.mtimeMs,
+								size: file.stats.size
+							}
+		  				}
 		  			}
 		  		}
 		  	}
