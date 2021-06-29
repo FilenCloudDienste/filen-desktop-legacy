@@ -178,6 +178,40 @@ let defaultBlockedFiles = [
 	"thumbs.db"
 ]
 
+const isFileNameBlocked = (name) => {
+	if(typeof name !== "string"){
+		return false
+	}
+
+	if(name.length <= 0){
+		return false
+	}
+
+	name = name.toLowerCase().trim()
+
+	if(defaultBlockedFiles.includes(name)){
+		return true
+	}
+
+	if(name.substring(0, 7) == ".~lock."){
+		return true
+	}
+
+	if(name.substring(0, 2) == "~$"){
+		return true
+	}
+
+	if(name.substring(name.length - 4) == ".tmp"){
+		return true
+	}
+
+	if(name.substring(name.length - 5) == ".temp"){
+		return true
+	}
+
+	return false
+}
+
 const apiRequest = async (endpoint, data, callback) => {
 	try{
 		var release = await apiSemaphore.acquire()
@@ -3105,7 +3139,7 @@ const getLocalSyncDirContents = async (callback) => {
 		  		let filePathEx = filePath.split("/")
 
 		  		if(file.stats.isDirectory() && typeof filePathEx[filePathEx.length - 1] !== "undefined"){
-		  			if(!defaultBlockedFiles.includes(filePathEx[filePathEx.length - 1].toLowerCase())){
+		  			if(!isFileNameBlocked(filePathEx[filePathEx.length - 1])){
 		  				folders[filePath + "/"] = {
 							name: filePathEx[filePathEx.length - 1]
 						}
@@ -3113,7 +3147,7 @@ const getLocalSyncDirContents = async (callback) => {
 		  		}
 		  		else if(typeof filePathEx[filePathEx.length - 1] !== "undefined"){
 		  			if(file.stats.size > 0){
-		  				if(!defaultBlockedFiles.includes(filePathEx[filePathEx.length - 1].toLowerCase())){
+		  				if(!isFileNameBlocked(filePathEx[filePathEx.length - 1])){
 		  					files[filePath] = {
 								name: filePathEx[filePathEx.length - 1],
 								modTime: file.stats.mtimeMs,
@@ -3263,7 +3297,7 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 					let parent = folders[res.data.folders[i].parent]
 
 					if(typeof parent !== "undefined"){
-						if(!defaultBlockedFiles.includes(selfName.toLowerCase())){
+						if(!isFileNameBlocked(selfName)){
 							if(typeof folderNamesExisting[self.parent + "_" + selfName.toLowerCase()] == "undefined"){
 								folderNamesExisting[self.parent + "_" + selfName.toLowerCase()] = true
 
@@ -3318,7 +3352,7 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 
 				if(metadata.name.length > 0){
 					if(typeof newPath !== "undefined" && metadata.size > 0){
-						if(!defaultBlockedFiles.includes(metadata.name.toLowerCase())){
+						if(!isFileNameBlocked(metadata.name)){
 							if(typeof fileNamesExisting[self.parent + "_" + metadata.name.toLowerCase()] == "undefined"){
 								fileNamesExisting[self.parent + "_" + metadata.name.toLowerCase()] = true
 
@@ -3418,7 +3452,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 							syncTaskLimiterSemaphoreRelease()
 
-							return removeFromSyncTasks(taskId)
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
 						}
 
 						if(!res.status){
@@ -3426,7 +3462,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 							syncTaskLimiterSemaphoreRelease()
 
-							return removeFromSyncTasks(taskId)
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
 						}
 
 						if(res.data.exists){
@@ -3436,7 +3474,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 							syncTaskLimiterSemaphoreRelease()
 
-							return removeFromSyncTasks(taskId)
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
 						}
 
 						let newFolderUUID = uuidv4()
@@ -3455,7 +3495,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 								syncTaskLimiterSemaphoreRelease()
 
-								return removeFromSyncTasks(taskId)
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
 							}
 
 							if(!res.status){
@@ -3463,7 +3505,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 								syncTaskLimiterSemaphoreRelease()
 
-								return removeFromSyncTasks(taskId)
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
 							}
 
 							console.log(res.message)
@@ -3478,7 +3522,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 								syncTaskLimiterSemaphoreRelease()
 
-								return removeFromSyncTasks(taskId)
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
 							})
 						})
 					})
@@ -3493,7 +3539,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 							syncTaskLimiterSemaphoreRelease()
 
-							return removeFromSyncTasks(taskId)
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
 						}
 
 						if(!res.status){
@@ -3508,7 +3556,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 							syncTaskLimiterSemaphoreRelease()
 
-							return removeFromSyncTasks(taskId)
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
 						}
 
 						addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
@@ -3522,7 +3572,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 						syncTaskLimiterSemaphoreRelease()
 
-						return removeFromSyncTasks(taskId)
+						return setTimeout(() => {
+							removeFromSyncTasks(taskId)
+						}, syncTimeout)
 					})
 				break
 				case "rmdir":
@@ -3537,7 +3589,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 							syncTaskLimiterSemaphoreRelease()
 
-							return removeFromSyncTasks(taskId)
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
 						}
 
 						if(!res.status){
@@ -3551,7 +3605,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 							syncTaskLimiterSemaphoreRelease()
 
-							return removeFromSyncTasks(taskId)
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
 						}
 
 						addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
@@ -3565,7 +3621,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 							syncTaskLimiterSemaphoreRelease()
 
-							removeFromSyncTasks(taskId)
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
 						})
 					})
 				break
@@ -3581,7 +3639,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 							syncTaskLimiterSemaphoreRelease()
 
-							return removeFromSyncTasks(taskId)
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
 						}
 
 						if(!res.status){
@@ -3589,7 +3649,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 							syncTaskLimiterSemaphoreRelease()
 
-							return removeFromSyncTasks(taskId)
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
 						}
 
 						let newFileUUID = uuidv4()
@@ -3601,7 +3663,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 									syncTaskLimiterSemaphoreRelease()
 
-									return removeFromSyncTasks(taskId)
+									return setTimeout(() => {
+										removeFromSyncTasks(taskId)
+									}, syncTimeout)
 								}
 
 								console.log(task + " " + taskInfo.path + " " + task + " done")
@@ -3624,7 +3688,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 								syncTaskLimiterSemaphoreRelease()
 
-								return removeFromSyncTasks(taskId)
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
 							})
 						}
 
@@ -3649,7 +3715,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 								syncTaskLimiterSemaphoreRelease()
 
-								return removeFromSyncTasks(taskId)
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
 							}
 						}
 						else{
@@ -3664,7 +3732,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 										syncTaskLimiterSemaphoreRelease()
 
-										return removeFromSyncTasks(taskId)
+										return setTimeout(() => {
+											removeFromSyncTasks(taskId)
+										}, syncTimeout)
 									}
 
 									if(!res.status){
@@ -3672,7 +3742,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 										syncTaskLimiterSemaphoreRelease()
 
-										return removeFromSyncTasks(taskId)
+										return setTimeout(() => {
+											removeFromSyncTasks(taskId)
+										}, syncTimeout)
 									}
 
 									doUpload()
@@ -3681,7 +3753,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 							else{
 								syncTaskLimiterSemaphoreRelease()
 
-								return removeFromSyncTasks(taskId)
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
 							}
 						}
 					})
@@ -3708,7 +3782,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 						syncTaskLimiterSemaphoreRelease()
 
-						return removeFromSyncTasks(taskId)
+						return setTimeout(() => {
+							removeFromSyncTasks(taskId)
+						}, syncTimeout)
 					})
 				break
 				case "rmdir":
@@ -3724,7 +3800,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 							
 							syncTaskLimiterSemaphoreRelease()
 
-							removeFromSyncTasks(taskId)
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
 						})
 					})
 				break
@@ -3741,7 +3819,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 						syncTaskLimiterSemaphoreRelease()
 
-						removeFromSyncTasks(taskId)
+						return setTimeout(() => {
+							removeFromSyncTasks(taskId)
+						}, syncTimeout)
 					})
 				break
 				case "download":
@@ -3749,7 +3829,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 					if(taskInfo.file.size <= 0){
 						syncTaskLimiterSemaphoreRelease()
 
-						return removeFromSyncTasks(taskId)
+						return setTimeout(() => {
+							removeFromSyncTasks(taskId)
+						}, syncTimeout)
 					}
 
 					if(taskInfo.file.size >= diskSpaceFree){
@@ -3757,7 +3839,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 						syncTaskLimiterSemaphoreRelease()
 
-						return removeFromSyncTasks(taskId)
+						return setTimeout(() => {
+							removeFromSyncTasks(taskId)
+						}, syncTimeout)
 					}
 
 					let filePath = userHomePath + "/" + taskInfo.path
@@ -3768,7 +3852,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 							syncTaskLimiterSemaphoreRelease()
 
-							return removeFromSyncTasks(taskId)
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
 						}
 
 						try{
@@ -3794,7 +3880,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 						syncTaskLimiterSemaphoreRelease()
 
-						return removeFromSyncTasks(taskId)
+						return setTimeout(() => {
+							removeFromSyncTasks(taskId)
+						}, syncTimeout)
 					})
 				break
 				default:
@@ -4327,18 +4415,18 @@ const doSync = async () => {
 									console.log(e)
 								}
 
-								console.log("Sync cycle done.")
+								return setTimeout(() => {
+									console.log("Sync cycle done.")
 
-								//skipNextRequestData = true
+									//skipNextRequestData = true
 
-								releaseSyncSemaphore()
-									
-								isIndexing = false
-								isSyncing = false
+									releaseSyncSemaphore()
+										
+									isIndexing = false
+									isSyncing = false
 
-								writeSyncTasks()
-
-								return true
+									writeSyncTasks()
+								}, syncTimeout)
 							})
 						}
 					}, 100)
