@@ -629,9 +629,11 @@ const createWindow = async () => {
 
   	moveWindow()
 
+  	autoUpdater.checkForUpdatesAndNotify()
+
   	setInterval(() => {
   		autoUpdater.checkForUpdatesAndNotify()
-  	}, (3600000 * 3))
+  	}, (3600000 * 1))
 
   	autoUpdater.on("update-downloaded", () => {
 		return browserWindow.webContents.send("update-available")

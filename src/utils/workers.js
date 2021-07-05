@@ -6081,9 +6081,10 @@ const createEncryptionWorker = () => {
 
 		onmessage = (e) => {
 			let preKey = new TextEncoder().encode(e.data.key)
-			let iv = preKey.slice(0, 16)
 
 			if(e.data.version == 1){
+				let iv = preKey.slice(0, 16)
+
 				nativeCrypto.subtle.importKey("raw", preKey, "AES-CBC", false, ["encrypt"]).then((key) => {
 					nativeCrypto.subtle.encrypt({
 						name: "AES-CBC",
@@ -6103,6 +6104,8 @@ const createEncryptionWorker = () => {
 				})
 			}
 			else if(e.data.version == 2){
+				let iv = preKey.slice(0, 12)
+
 				nativeCrypto.subtle.importKey("raw", preKey, "AES-GCM", false, ["encrypt"]).then((key) => {
 					nativeCrypto.subtle.encrypt({
 						name: "AES-GCM",
@@ -6229,9 +6232,10 @@ const createDecryptionWorker = () => {
 
 		onmessage = (e) => {
 			let preKey = new TextEncoder().encode(e.data.key)
-			let iv = preKey.slice(0, 16)
 
 			if(e.data.version == 1){
+				let iv = preKey.slice(0, 16)
+
 				nativeCrypto.subtle.importKey("raw", preKey, "AES-CBC", false, ["decrypt"]).then((genKey) => {
 					let sliced = convertUint8ArrayToBinaryString(new Uint8Array(e.data.data.slice(0, 16)))
 
@@ -6271,6 +6275,8 @@ const createDecryptionWorker = () => {
 				})
 			}
 			else if(e.data.version == 2){
+				let iv = preKey.slice(0, 12)
+
 				nativeCrypto.subtle.importKey("raw", preKey, "AES-GCM", false, ["decrypt"]).then((genKey) => {
 					nativeCrypto.subtle.decrypt({
 						name: "AES-GCM",

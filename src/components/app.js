@@ -178,6 +178,11 @@ let defaultBlockedFiles = [
 	"thumbs.db"
 ]
 
+let defaultBlockedFileExt = [
+	".tmp",
+	".temp"
+]
+
 const isFileNameBlocked = (name) => {
 	if(typeof name !== "string"){
 		return false
@@ -4439,35 +4444,37 @@ const doSync = async () => {
 const initChokidar = async () => {
 	chokidarWatcher = undefined
 
-	/*chokidarWatcher = chokidar.watch(userSyncDir, {
-		persistent: true,
-		ignoreInitial: true,
-		followSymlinks: false,
-		usePolling: false,
-		depth: 99999999999,
-		awaitWriteFinish: true
-	}).on("all", (e, path) => {
-		localDataChanged = true
-
-		setTimeout(() => {
+	try{
+		fs.watch(userSyncDir, {
+			recursive: true,
+			persistent: true
+		}, (event, path) => {
 			localDataChanged = true
-		}, (syncTimeout / 2))
-	}).on("ready", () => {
-		localDataChanged = true
-	})
+		})
+	}
+	catch(e){
+		console.log(e)
 
-	localDataChanged = true
+		try{
+			chokidarWatcher = chokidar.watch(userSyncDir, {
+				persistent: true,
+				ignoreInitial: true,
+				followSymlinks: false,
+				usePolling: false,
+				depth: 99999999999,
+				awaitWriteFinish: true
+			}).on("all", (e, path) => {
+				localDataChanged = true
+			})
+		}
+		catch(err){
+			console.log(err)
 
-	setTimeout(() => {
-		localDataChanged = true
-	}, (syncTimeout / 2))*/
-
-	fs.watch(userSyncDir, {
-		recursive: true,
-		persistent: true
-	}, (event, path) => {
-		localDataChanged = true
-	})
+			setInterval(() => {
+				localDataChanged = true
+			}, 60000)
+		}
+	}
 
 	localDataChanged = true
 }
