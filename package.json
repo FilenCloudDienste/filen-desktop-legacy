@@ -1,6 +1,6 @@
 {
 	"name": "filen-desktop-client",
-	"version": "1.4.1",
+	"version": "1.4.2",
 	"description": "Filen Desktop Client",
 	"main": "index.js",
 	"dependencies": {
@@ -72,8 +72,7 @@
 		"win": {
 			"icon": "./icons/win/icon.ico",
 			"target": [
-				"nsis",
-				"zip"
+				"nsis"
 			]
 		},
 		"nsis": {
@@ -84,7 +83,7 @@
 			"icon": "./icons/png/256x256.png",
 			"target": [
 				"AppImage",
-				"zip"
+				"deb"
 			]
 		},
 		"mac": {
@@ -93,8 +92,7 @@
 			"entitlements": "build/entitlements.mac.plist",
 			"entitlementsInherit": "build/entitlements.mac.plist",
 			"target": [
-				"dmg",
-				"zip"
+				"dmg"
 			],
 			"icon": "./icons/png/512x512.png"
 		},

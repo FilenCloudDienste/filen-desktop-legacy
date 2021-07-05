@@ -268,6 +268,7 @@ const createWindow = async () => {
 	browserWindow.setVisibleOnAllWorkspaces(true)
 	browserWindow.setMenuBarVisibility(false)
 	browserWindow.setAlwaysOnTop(true, "screen")
+	browserWindow.setSkipTaskbar(true)
 
 	tray = new Tray(nativeImageTrayIconNormal)
 
@@ -346,6 +347,8 @@ const createWindow = async () => {
 
     if(is.macOS()){
     	browserWindow.setTitle("Filen")
+
+    	app.dock.hide()
     }
 
 	tray.setContextMenu(normalTrayMenu)
@@ -716,8 +719,10 @@ app.on("window-all-closed", () => {
 })
 
 app.on("activate", () => {
-  	if(BrowserWindow.getAllWindows().length == 0){
-    	return createWindow()
+  	if(typeof BrowserWindow !== "undefined"){
+  		if(BrowserWindow.getAllWindows().length == 0){
+	    	return createWindow()
+	  	}
   	}
 })
 
@@ -734,6 +739,10 @@ app.on("browser-window-focus", () => {
 app.on("browser-window-blur", () => {
     globalShortcut.unregister("CommandOrControl+R")
     globalShortcut.unregister("F5")
+
+    if(!is.dev()){
+    	hideWindow()
+    }
 })
 
 powerMonitor.on("shutdown", () => {
