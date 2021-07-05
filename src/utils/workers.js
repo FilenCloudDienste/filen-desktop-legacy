@@ -6067,6 +6067,8 @@ const cryptoJSString = `
 
 const createEncryptionWorker = () => {
 	let blob = new Blob([`
+		const nativeCrypto = self.crypto || window.crypto
+
  		const convertUint8ArrayToBinaryString = (u8Array) => {
 			let i, len = u8Array.length, b_str = ""
 
@@ -6077,7 +6079,9 @@ const createEncryptionWorker = () => {
 			return b_str
 		}
 
- 		const nativeCrypto = self.crypto || window.crypto
+		const generateRandomString = (length = 32) => {
+		    return self.btoa(Array.from(nativeCrypto.getRandomValues(new Uint8Array(length * 2))).map((b) => String.fromCharCode(b)).join("")).replace(/[+/]/g, "").substring(0, length)
+		}
 
 		onmessage = (e) => {
 			let preKey = new TextEncoder().encode(e.data.key)
@@ -6104,17 +6108,17 @@ const createEncryptionWorker = () => {
 				})
 			}
 			else if(e.data.version == 2){
-				let iv = preKey.slice(0, 12)
+				let iv = generateRandomString(12)
 
 				nativeCrypto.subtle.importKey("raw", preKey, "AES-GCM", false, ["encrypt"]).then((key) => {
 					nativeCrypto.subtle.encrypt({
 						name: "AES-GCM",
-						iv: iv
+						iv: new TextEncoder().encode(iv)
 					}, key, e.data.data).then((encrypted) => {
 						return postMessage({
 							uuid: e.data.uuid,
 							index: e.data.index,
-							data: convertUint8ArrayToBinaryString(new Uint8Array(encrypted)),
+							data: iv + convertUint8ArrayToBinaryString(new Uint8Array(encrypted)),
 							version: e.data.version
 						})
 					}).catch((err) => {
@@ -6275,13 +6279,14 @@ const createDecryptionWorker = () => {
 				})
 			}
 			else if(e.data.version == 2){
-				let iv = preKey.slice(0, 12)
+				let iv = e.data.data.slice(0, 12)
+				let encData = e.data.data.slice(12)
 
 				nativeCrypto.subtle.importKey("raw", preKey, "AES-GCM", false, ["decrypt"]).then((genKey) => {
 					nativeCrypto.subtle.decrypt({
 						name: "AES-GCM",
 						iv: iv
-					}, genKey, e.data.data).then((decrypted) => {
+					}, genKey, encData).then((decrypted) => {
 						return postMessage({
 							uuid: e.data.uuid,
 							index: e.data.index,
