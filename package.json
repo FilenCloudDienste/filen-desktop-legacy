@@ -61,7 +61,7 @@
 		"artifactName": "${productName}-setup.${ext}",
 		"afterSign": "build/notarize.js",
 		"directories": {
-			"output": "./build/"
+			"output": "./build/bin/"
 		},
 		"publish": [
 			{
