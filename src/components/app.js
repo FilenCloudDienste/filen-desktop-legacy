@@ -3985,8 +3985,6 @@ const doSync = async () => {
 						return console.log(err)
 					}
 
-					//console.log("remoteFolders", Object.keys(remoteFolders).length, "remoteFiles", Object.keys(remoteFiles).length, "localFolders", Object.keys(localFolders).length, "localFiles", Object.keys(localFiles).length)
-
 					if(syncingPaused){
 						isSyncing = false
 						isIndexing = false
