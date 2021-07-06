@@ -169,6 +169,7 @@ let dontHideOnBlur = false
 let lastHeaderStatus = ""
 let lastTooltipText = ""
 let syncTasksToWrite = []
+let deletedLastCycle = {}
 
 let currentFileVersion = 1
 
@@ -3123,10 +3124,10 @@ const getLocalSyncDirContents = async (callback) => {
 		return callback(new Error("Sync dir is not defined"))
 	}
 
-	if(!localDataChanged){
+	if(!localDataChanged && typeof lastLocalSyncFolders !== "undefined" && typeof lastLocalSyncFiles !== "undefined"){
 		//console.log("Local data did not change from last sync cycle, serving cache.")
 
-		return callback(null, lastLocalSyncFolders, lastLocalSyncFiles, (JSON.stringify(lastLocalSyncFolders) + JSON.stringify(lastLocalSyncFiles)).length)
+		return callback(null, lastLocalSyncFolders, lastLocalSyncFiles)
 	}
 
 	localDataChanged = false
@@ -3171,10 +3172,7 @@ const getLocalSyncDirContents = async (callback) => {
 	lastLocalSyncFolders = folders
 	lastLocalSyncFiles = files
 
-	//$("#account-sync-stats-files-text").html(Object.keys(files).length)
-	//$("#account-sync-stats-folders-text").html(Object.keys(folders).length - 1)
-
-	return callback(null, folders, files, (JSON.stringify(folders) + JSON.stringify(files)))
+	return callback(null, folders, files)
 }
 
 const getRemoteSyncDirContents = async (folderUUID, callback) => {
@@ -3184,8 +3182,6 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 	catch(e){
 		return callback(e)
 	}
-
-	//console.log("Get remote contents, firstDataRequest = " + firstDataRequest + ", skipNextRequestData = " + skipNextRequestData)
 
 	apiRequest("/v1/get/dir", {
 		apiKey: await getUserAPIKey(),
@@ -3206,7 +3202,7 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 
 		firstDataRequest = false
 
-		if(skipNextRequestData){
+		if(skipNextRequestData){ //reset fresh data
 			skipNextRequestData = false
 		}
 
@@ -3219,19 +3215,17 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 			lastReceivedSyncData = res.data
 		}
 
-		let receivedDataLength = JSON.stringify(res.data).length
+		let receivedDataHash = JSON.stringify(res.data)
 
 		if(typeof lastRemoteSyncDataHash !== "undefined"){
-			if(receivedDataLength == lastRemoteSyncDataHash){
+			if(receivedDataHash == lastRemoteSyncDataHash && typeof lastRemoteSyncFolders !== "undefined" && typeof lastRemoteSyncFiles !== "undefined"){
 				//console.log("Last remote sync data identical to current one, serving from cache.")
 
-				return callback(null, lastRemoteSyncFolders, lastRemoteSyncFiles, receivedDataLength) 
-			}
-
-			if(currentSyncTasks.length >= 10){
-				return callback(null, lastRemoteSyncFolders, lastRemoteSyncFiles, receivedDataLength) 
+				return callback(null, lastRemoteSyncFolders, lastRemoteSyncFiles) 
 			}
 		}
+
+		lastRemoteSyncDataHash = receivedDataHash
 
 		let paths = []
 		let folders = {}
@@ -3382,9 +3376,8 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 
 		remoteSyncFolders = folderPaths
 		remoteSyncFiles = files
-		lastRemoteSyncDataHash = receivedDataLength
 
-		return callback(null, folderPaths, files, receivedDataLength)
+		return callback(null, folderPaths, files)
 	})
 }
 
@@ -3972,7 +3965,7 @@ const doSync = async () => {
 			return ipcRenderer.send("exit-app")
 		}
 		else{
-			getRemoteSyncDirContents(folderUUID, (err, remoteFolders, remoteFiles, remoteCombinedLength) => {
+			getRemoteSyncDirContents(folderUUID, (err, remoteFolders, remoteFiles) => {
 				if(err){
 					isSyncing = false
 					isIndexing = false
@@ -3982,7 +3975,7 @@ const doSync = async () => {
 					return console.log(err)
 				}
 
-				getLocalSyncDirContents(async (err, localFolders, localFiles, localCombinedLength) => {
+				getLocalSyncDirContents(async (err, localFolders, localFiles) => {
 					if(err){
 						isSyncing = false
 						isIndexing = false
@@ -3991,6 +3984,8 @@ const doSync = async () => {
 
 						return console.log(err)
 					}
+
+					console.log("remoteFolders", Object.keys(remoteFolders).length, "remoteFiles", Object.keys(remoteFiles).length, "localFolders", Object.keys(localFolders).length, "localFiles", Object.keys(localFiles).length)
 
 					if(syncingPaused){
 						isSyncing = false
@@ -4002,7 +3997,7 @@ const doSync = async () => {
 					}
 
 					//Did the remote and local dataset even change? If not we can save cpu usage by skipping the sync cycle
-					let currentDatasetHash = (remoteCombinedLength.toString() + localCombinedLength)
+					let currentDatasetHash = JSON.stringify(localFolders) + JSON.stringify(localFiles) + JSON.stringify(remoteFolders) + JSON.stringify(remoteFiles) 
 
 					if(typeof lastDatasetHash !== "undefined"){
 						if(currentDatasetHash == lastDatasetHash){
@@ -4019,7 +4014,7 @@ const doSync = async () => {
 										isIndexing = false
 
 										releaseSyncSemaphore()
-									}, 1)
+									}, 1000)
 								}
 							}
 
@@ -4054,7 +4049,7 @@ const doSync = async () => {
 								isIndexing = false
 
 								releaseSyncSemaphore()
-							}, 1)
+							}, 1000)
 						}
 					}
 
@@ -4390,6 +4385,8 @@ const doSync = async () => {
 							lastLocalSyncFolders = localFolders
 							lastLocalSyncFiles = localFiles
 
+							localDataChanged = true
+
 							getLocalSyncDirContents(async (err, folders, files) => {
 								if(err){
 									console.log(err)							
@@ -4423,18 +4420,18 @@ const doSync = async () => {
 								return setTimeout(() => {
 									console.log("Sync cycle done.")
 
-									//skipNextRequestData = true
-
 									releaseSyncSemaphore()
 										
 									isIndexing = false
 									isSyncing = false
+									localDataChanged = true
+									//skipNextRequestData = true
 
 									writeSyncTasks()
 								}, syncTimeout)
 							})
 						}
-					}, 100)
+					}, 50)
 				})
 			})
 		}
