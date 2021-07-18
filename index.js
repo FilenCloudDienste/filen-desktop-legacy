@@ -613,11 +613,7 @@ const createWindow = async () => {
 		let altHomePathDb = await db.get("altHomePath")
 
 		if(altHomePathDb.length > 0){
-			altHomePath = altHomePathDb.split("\\").join("/")
-
-			if(altHomePath.slice(-1) == "/"){
-				altHomePath.substring(0, altHomePath.length - 1)
-			}
+			altHomePath = altHomePathDb
 		}
 	}
 	catch(e){
@@ -631,7 +627,11 @@ const createWindow = async () => {
 		userHomePath = app.getPath("home").split("\\").join("/")
 	}
 
-	console.log("userHomePath = " + userHomePath)
+	if(userHomePath.slice(-1) == "/"){
+		userHomePath.substring(0, userHomePath.length - 1)
+	}
+
+	console.log("userHomePath = " + userHomePath + "/Filen Sync")
 
 	appPath = app.getAppPath().split("\\").join("/")
 	userDownloadPath = app.getPath("downloads").split("\\").join("/")
