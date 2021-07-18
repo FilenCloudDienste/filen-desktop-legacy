@@ -96,6 +96,9 @@
 				"dmg",
                 "zip"
 			],
+			"extendInfo": {
+			    "LSUIElement": 1
+			 },
 			"icon": "./icons/png/512x512.png"
 		},
 		"dmg": {
