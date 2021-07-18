@@ -162,7 +162,13 @@ const winOrUnixFilePath = (path) => {
 
 const checkIfSyncDirectoryExists = () => {
 	if(!doCheckIfSyncDirectoryExists){
-		return
+		return false
+	}
+
+	userHomePath = userHomePath.split("\\").join("/")
+
+	if(userHomePath.slice(-1) == "/"){
+		userHomePath.substring(0, userHomePath.length - 1)
 	}
 
 	let syncDirPath = userHomePath + "/" + "Filen Sync"
@@ -510,6 +516,10 @@ const createWindow = async () => {
 
 				let selectedPath = result.filePaths[0].split("\\").join("/")
 
+				if(selectedPath.slice(-1) == "/"){
+					selectedPath = selectedPath.substring(0, selectedPath.length - 1)
+				}
+
 				userHomePath = selectedPath
 
 				let newSyncDirPath = userHomePath + "/" + "Filen Sync"
@@ -572,6 +582,8 @@ const createWindow = async () => {
     		if(syncTasks == 0){
     			clearInterval(waitForSyncToFinishInterval)
 
+    			app.relaunch()
+
     			return app.exit(0)
     		}
     	}, 100)
@@ -601,7 +613,11 @@ const createWindow = async () => {
 		let altHomePathDb = await db.get("altHomePath")
 
 		if(altHomePathDb.length > 0){
-			altHomePath = altHomePathDb
+			altHomePath = altHomePathDb.split("\\").join("/")
+
+			if(altHomePath.slice(-1) == "/"){
+				altHomePath.substring(0, altHomePath.length - 1)
+			}
 		}
 	}
 	catch(e){
@@ -614,6 +630,8 @@ const createWindow = async () => {
 	else{
 		userHomePath = app.getPath("home").split("\\").join("/")
 	}
+
+	console.log("userHomePath = " + userHomePath)
 
 	appPath = app.getAppPath().split("\\").join("/")
 	userDownloadPath = app.getPath("downloads").split("\\").join("/")

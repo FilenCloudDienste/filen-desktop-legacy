@@ -3924,45 +3924,50 @@ const doSync = async () => {
 	let folderUUID = await getSyncFolderUUID()
 
 	fs.access(winOrUnixFilePath(userSyncDir), async (err) => {
-		if(err && err.code == "ENOENT"){
-			try{
-				let userEmail = await db.get("userEmail")
+		if(err){
+			if(err.code == "ENOENT"){
+				try{
+					let userEmail = await db.get("userEmail")
 
-				await db.put(userEmail + "_localFileModifications", JSON.stringify({}))
-				await db.put(userEmail + "_remoteFileUUIDs", JSON.stringify({}))
-				await db.put(userEmail + "_remoteFileSizes", JSON.stringify({}))
+					await db.put(userEmail + "_localFileModifications", JSON.stringify({}))
+					await db.put(userEmail + "_remoteFileUUIDs", JSON.stringify({}))
+					await db.put(userEmail + "_remoteFileSizes", JSON.stringify({}))
 
-				await db.put(userEmail + "_lastRemoteSyncFolders", JSON.stringify({}))
-				await db.put(userEmail + "_lastRemoteSyncFiles", JSON.stringify({}))
-				await db.put(userEmail + "_lastLocalSyncFolders", JSON.stringify({}))
-				await db.put(userEmail + "_lastLocalSyncFiles", JSON.stringify({}))
+					await db.put(userEmail + "_lastRemoteSyncFolders", JSON.stringify({}))
+					await db.put(userEmail + "_lastRemoteSyncFiles", JSON.stringify({}))
+					await db.put(userEmail + "_lastLocalSyncFolders", JSON.stringify({}))
+					await db.put(userEmail + "_lastLocalSyncFiles", JSON.stringify({}))
 
-				await db.put(userEmail + "_localFileExisted", JSON.stringify({}))
-				await db.put(userEmail + "_localFolderExisted", JSON.stringify({}))
+					await db.put(userEmail + "_localFileExisted", JSON.stringify({}))
+					await db.put(userEmail + "_localFolderExisted", JSON.stringify({}))
 
-				await db.put(userEmail + "_remoteDecryptedCache", JSON.stringify({}))
+					await db.put(userEmail + "_remoteDecryptedCache", JSON.stringify({}))
+				}
+				catch(e){
+					console.log(e)
+				}
+
+				localFileModifications = {}
+				remoteFileUUIDs = {}
+				remoteFileSizes = {}
+
+				lastRemoteSyncFolders = {}
+				lastRemoteSyncFiles = {}
+				lastLocalSyncFolders = {}
+				lastLocalSyncFiles = {}
+
+				localFileExisted = {}
+				localFolderExisted = {}
+
+				remoteDecryptedCache = {}
+
+				releaseSyncSemaphore()
+
+				return ipcRenderer.send("exit-app")
 			}
-			catch(e){
-				console.log(e)
+			else{
+				console.log(err)
 			}
-
-			localFileModifications = {}
-			remoteFileUUIDs = {}
-			remoteFileSizes = {}
-
-			lastRemoteSyncFolders = {}
-			lastRemoteSyncFiles = {}
-			lastLocalSyncFolders = {}
-			lastLocalSyncFiles = {}
-
-			localFileExisted = {}
-			localFolderExisted = {}
-
-			remoteDecryptedCache = {}
-
-			releaseSyncSemaphore()
-
-			return ipcRenderer.send("exit-app")
 		}
 		else{
 			getRemoteSyncDirContents(folderUUID, (err, remoteFolders, remoteFiles) => {
@@ -4440,7 +4445,7 @@ const initChokidar = async () => {
 	chokidarWatcher = undefined
 
 	try{
-		fs.watch(userSyncDir, {
+		chokidarWatcher = fs.watch(userSyncDir, {
 			recursive: true,
 			persistent: true
 		}, (event, path) => {
@@ -4464,6 +4469,8 @@ const initChokidar = async () => {
 		}
 		catch(err){
 			console.log(err)
+
+			chokidarWatcher = undefined
 
 			setInterval(() => {
 				localDataChanged = true
