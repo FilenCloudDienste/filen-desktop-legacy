@@ -28,7 +28,7 @@ $.ajax = (opts) => {
 	let legacySuccess = opts.success
 	let legacyError = opts.err
 
-	doLegacyAjaxRequest(opts, 0, 512, (err, data) => {
+	doLegacyAjaxRequest(opts, 0, 256, (err, data) => {
 		if(err){
 			return legacyError(err)
 		}
