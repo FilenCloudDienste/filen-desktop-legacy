@@ -271,7 +271,7 @@ const createWindow = async () => {
 	})
 
 	browserWindow.setResizable(false)
-	browserWindow.setVisibleOnAllWorkspaces(true)
+	//browserWindow.setVisibleOnAllWorkspaces(true)
 	browserWindow.setMenuBarVisibility(false)
 	browserWindow.setAlwaysOnTop(true, "screen")
 	browserWindow.setSkipTaskbar(true)
