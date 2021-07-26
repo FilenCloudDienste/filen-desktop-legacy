@@ -627,6 +627,8 @@ const createWindow = async () => {
 		userHomePath = app.getPath("home").split("\\").join("/")
 	}
 
+	userHomePath = userHomePath.split("\\").join("/")
+
 	if(userHomePath.slice(-1) == "/"){
 		userHomePath.substring(0, userHomePath.length - 1)
 	}
