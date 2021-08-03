@@ -357,9 +357,7 @@ async function decryptMetadata(data, key, version = 1){
       return CryptoJS.AES.decrypt(data.toString(), key.toString()).toString(CryptoJS.enc.Utf8)
     }
     catch(e){
-      console.log(e)
-
-      return ""
+      //console.log(e)
     }
   }
   else if(version == 2){

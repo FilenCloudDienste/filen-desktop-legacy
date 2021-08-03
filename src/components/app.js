@@ -103,7 +103,6 @@ let userHomePath = undefined
 let userDownloadPath = undefined
 let appPath = undefined
 let syncStarted = false
-let decryptCryptoJSFolderNameTries = 0
 let remoteSyncFolders = undefined
 let remoteSyncFiles = undefined
 let currentSyncTasks = []
@@ -172,6 +171,7 @@ let syncTasksToWrite = []
 let deletedLastCycle = {}
 
 let currentFileVersion = 1
+let metadataVersion = 1
 
 let defaultBlockedFiles = [
 	".ds_store",
@@ -409,18 +409,18 @@ const initSocket = () => {
 
 		let args = undefined
 
-		userMasterKeys.forEach((key) => {
+		for(let i = 0; i < userMasterKeys.length; i++){
 			try{
-				let obj = JSON.parse(CryptoJS.AES.decrypt(data.args, key).toString(CryptoJS.enc.Utf8))
+				let obj = JSON.parse(await decryptMetadata(data.args, userMasterKeys[i], metadataVersion))
 
 				if(obj && typeof obj == "object"){
 					args = obj
 				}
 			}
 			catch(e){
-				return
+				console.log(e)
 			}
-		})
+		}
 
 		if(typeof args == "undefined"){
 			return false
@@ -552,10 +552,10 @@ const getDownloadFolderContents = async (folderUUID, callback) => {
 			}
 		}
 		else if(currentDownloadFolderIsLink){
-			basePath = decryptFolderNameLink(res.data.folders[0].name, currentDownloadFolderLinkKey)
+			basePath = await decryptFolderNameLink(res.data.folders[0].name, currentDownloadFolderLinkKey)
 		}
 		else{
-			basePath = decryptCryptoJSFolderName(res.data.folders[0].name, userMasterKeys)
+			basePath = await decryptFolderMetadata(res.data.folders[0].name, userMasterKeys)
 		}
 
 		if(basePath.length == 0){
@@ -619,10 +619,10 @@ const getDownloadFolderContents = async (folderUUID, callback) => {
 				}
 			}
 			else if(currentDownloadFolderIsLink){
-				selfName = decryptFolderNameLink(self.name, currentDownloadFolderLinkKey)
+				selfName = await decryptFolderNameLink(self.name, currentDownloadFolderLinkKey)
 			}
 			else{
-				selfName = decryptCryptoJSFolderName(self.name, userMasterKeys)
+				selfName = await decryptFolderMetadata(self.name, userMasterKeys)
 			}
 
 			selfName = cleanString(selfName)
@@ -687,10 +687,10 @@ const getDownloadFolderContents = async (folderUUID, callback) => {
 					}
 				}
 				else if(currentDownloadFolderIsLink){
-					metadata = decryptFileMetadataLink(self.metadata, currentDownloadFolderLinkKey)
+					metadata = await decryptFileMetadataLink(self.metadata, currentDownloadFolderLinkKey)
 				}
 				else{
-					metadata = decryptFileMetadata(self.metadata, userMasterKeys)
+					metadata = await decryptFileMetadata(self.metadata, userMasterKeys)
 				}
 
 				metadata.name = cleanString(metadata.name)
@@ -1813,9 +1813,9 @@ const doSetup = async (callback) => {
 			apiRequest("/v1/dir/create", {
 				apiKey: await getUserAPIKey(),
 				uuid: syncFolderUUID,
-				name: CryptoJS.AES.encrypt(JSON.stringify({
+				name: await encryptMetadata(JSON.stringify({
 					name: "Filen Sync"
-				}), userMasterKeys[userMasterKeys.length - 1]).toString(),
+				}), userMasterKeys[userMasterKeys.length - 1], metadataVersion),
 				nameHashed: hashFn("filen sync"),
 				type: "sync"
 			}, async (err, res) => {
@@ -1923,20 +1923,20 @@ const updateUserKeys = async (callback) => {
 				let prvKeyFound = false
 				let prvKey = ""
 
-				usrMasterKeys.forEach((key) => {
+				for(let i = 0; i < usrMasterKeys.length; i++){
 					if(!prvKeyFound){
 						try{
-							prvKey = CryptoJS.AES.decrypt(res.data.privateKey, key).toString(CryptoJS.enc.Utf8)
-
+							prvKey = await decryptMetadata(res.data.privateKey, usrMasterKeys[i], metadataVersion)
+						
 							if(prvKey.length > 16){
 								prvKeyFound = true
 							}
 						}
 						catch(e){
-							return
+							console.log(e)
 						}
 					}
-				})
+				}
 
 				if(prvKey.length > 16){
 					try{
@@ -1958,7 +1958,7 @@ const updateUserKeys = async (callback) => {
 
 	apiRequest("/v1/user/masterKeys", {
 		apiKey: await getUserAPIKey(),
-		masterKeys: CryptoJS.AES.encrypt(userMasterKeys.join("|"), userMasterKeys[userMasterKeys.length - 1]).toString()
+		masterKeys: await encryptMetadata(userMasterKeys.join("|"), userMasterKeys[userMasterKeys.length - 1], metadataVersion)
 	}, async (err, res) => {
 		if(err){
 			if(typeof callback == "function"){
@@ -1991,16 +1991,16 @@ const updateUserKeys = async (callback) => {
 		try{
 			let newKeys = ""
 
-			userMasterKeys.forEach((key) => {
+			for (let i = 0; i < userMasterKeys.length; i++){
 				try{
 					if(newKeys.length < 16){
-						newKeys = CryptoJS.AES.decrypt(res.data.keys, key).toString(CryptoJS.enc.Utf8)
+						newKeys = await decryptMetadata(res.data.keys, userMasterKeys[i], metadataVersion)
 					}
 				}
 				catch(e){
-					return
+					console.log(e)
 				}
-			})
+			}
 
 			if(newKeys.length > 16){
 				try{
@@ -2033,11 +2033,11 @@ const updateUserKeys = async (callback) => {
 	})
 }
 
-function decryptFolderNameLink(metadata, linkKey, uuid){
+async function decryptFolderNameLink(metadata, linkKey, uuid){
     let folderName = ""
 
     try{
-        let obj = JSON.parse(CryptoJS.AES.decrypt(metadata, linkKey).toString(CryptoJS.enc.Utf8))
+        let obj = JSON.parse(await decryptMetadata(metadata, linkKey, 1))
 
         if(obj && typeof obj == "object"){
             folderName = obj.name
@@ -2050,14 +2050,14 @@ function decryptFolderNameLink(metadata, linkKey, uuid){
     return folderName
 }
 
-function decryptFileMetadataLink(metadata, linkKey, uuid){
+async function decryptFileMetadataLink(metadata, linkKey, uuid){
     let fileName = ""
     let fileSize = 0
     let fileMime = ""
     let fileKey = ""
 
     try{
-        let obj = JSON.parse(CryptoJS.AES.decrypt(metadata, linkKey).toString(CryptoJS.enc.Utf8))
+        let obj = JSON.parse(await decryptMetadata(metadata, linkKey, 1))
 
         if(obj && typeof obj == "object"){
             fileName = obj.name
@@ -2080,28 +2080,28 @@ function decryptFileMetadataLink(metadata, linkKey, uuid){
     return obj
 }
 
-const decryptCryptoJSFolderName = (str, userMasterKeys) => {
+const decryptFolderMetadata = async (str, userMasterKeys) => {
 	let folderName = ""
 
 	userMasterKeys = userMasterKeys.reverse()
 
-	userMasterKeys.forEach((key) => {
+	for(let i = 0; i < userMasterKeys.length; i++){
 		try{
-			let obj = JSON.parse(CryptoJS.AES.decrypt(str, key).toString(CryptoJS.enc.Utf8))
+			let obj = JSON.parse(await decryptMetadata(str, userMasterKeys[i], metadataVersion))
 
 			if(obj && typeof obj == "object"){
 				folderName = obj.name
 			}
 		}
 		catch(e){
-			return
+			console.log(e)
 		}
-	})
+	}
 
 	return folderName
 }
 
-const decryptFileMetadata = (metadata, userMasterKeys) => {
+const decryptFileMetadata = async (metadata, userMasterKeys) => {
 	let fileName = ""
 	let fileSize = 0
 	let fileMime = ""
@@ -2109,9 +2109,9 @@ const decryptFileMetadata = (metadata, userMasterKeys) => {
 
 	userMasterKeys = userMasterKeys.reverse()
 
-	userMasterKeys.forEach((key) => {
+	for(let i = 0; i < userMasterKeys.length; i++){
 		try{
-			let obj = JSON.parse(CryptoJS.AES.decrypt(metadata, key).toString(CryptoJS.enc.Utf8))
+			let obj = JSON.parse(await decryptMetadata(metadata, userMasterKeys[i], metadataVersion))
 
 			if(obj && typeof obj == "object"){
 				fileName = obj.name
@@ -2121,9 +2121,9 @@ const decryptFileMetadata = (metadata, userMasterKeys) => {
 			}
 		}
 		catch(e){
-			return
+			console.log(e)
 		}
-	})
+	}
 
 	return {
 		name: fileName,
@@ -2171,16 +2171,14 @@ const checkIfFileExistsLocallyOtherwiseDelete = async (path, callback) => {
 	}
 }
 
-function decryptFolderLinkKey(str, userMasterKeys){
+async function decryptFolderLinkKey(str, userMasterKeys){
 	let link = ""
 
-    if(userMasterKeys.length > 1){
-      	userMasterKeys = userMasterKeys.reverse()
-    }
+	userMasterKeys = userMasterKeys.reverse()
 
-    userMasterKeys.forEach((key) => {
-        try{
-            let obj = CryptoJS.AES.decrypt(str, key).toString(CryptoJS.enc.Utf8)
+    for(let i = 0; i < userMasterKeys.length; i++){
+    	try{
+            let obj = await decryptMetadata(str, userMasterKeys[i], metadataVersion)
 
             if(obj && typeof obj == "string"){
                 if(obj.length >= 16){
@@ -2189,9 +2187,9 @@ function decryptFolderLinkKey(str, userMasterKeys){
             }
         }
         catch(e){
-            return
+            console.log(e)
         }
-    })
+    }
 
     return link
 }
@@ -2450,7 +2448,7 @@ const checkIfItemParentIsBeingShared = async (parentUUID, type, metaData, option
 		})
 	})
 
-	checkIfIsInFolderLink(parentUUID, 0, 32, (status, links) => {
+	checkIfIsInFolderLink(parentUUID, 0, 32, async (status, links) => {
 		if(!status){
 			linkCheckDone = true
 
@@ -2470,8 +2468,10 @@ const checkIfItemParentIsBeingShared = async (parentUUID, type, metaData, option
 			}
 		}
 
-		links.forEach((link) => {
-			let key = decryptFolderLinkKey(link.linkKey, userMasterKeys)
+		for(let i = 0; i < links.length; i++){
+			let link = links[i]
+
+			let key = await decryptFolderLinkKey(link.linkKey, userMasterKeys)
 
 			let mData = ""
 
@@ -2489,7 +2489,7 @@ const checkIfItemParentIsBeingShared = async (parentUUID, type, metaData, option
 				})
 			}
 
-			mData = CryptoJS.AES.encrypt(mData, key).toString()
+			mData = await encryptMetadata(mData, key, 1)
 
 			addItem(JSON.stringify({
 				apiKey: usrAPIKey,
@@ -2510,7 +2510,7 @@ const checkIfItemParentIsBeingShared = async (parentUUID, type, metaData, option
 
 				doneAddingToLink()
 			})
-		})
+		}
 	})
 }
 
@@ -2860,9 +2860,9 @@ const uploadFileToRemote = async (path, uuid, parent, name, userMasterKeys, call
 
 	let chunkSizeToUse = ((1024 * 1024) * 1)
 
-	let nameEnc = CryptoJS.AES.encrypt(name, key).toString()
+	let nameEnc = await encryptMetadata(name, key, metadataVersion)
 	let nameH = hashFn(name.toLowerCase())
-	let mimeEnc = CryptoJS.AES.encrypt(mime, key).toString()
+	let mimeEnc = await encryptMetadata(mime, key, metadataVersion)
 
 	fs.stat(winOrUnixFilePath(path), async (err, stats) => {
 		if(err){
@@ -2879,14 +2879,14 @@ const uploadFileToRemote = async (path, uuid, parent, name, userMasterKeys, call
 			return callback(new Error("user storage exceeded"))
 		}
 
-		let sizeEnc = CryptoJS.AES.encrypt(size.toString(), key).toString()
+		let sizeEnc = await encryptMetadata(size.toString(), key, metadataVersion)
 		
-		let metaData = CryptoJS.AES.encrypt(JSON.stringify({
+		let metaData = await encryptMetadata(JSON.stringify({
 			name,
 			size,
 			mime,
 			key
-		}), userMasterKeys[userMasterKeys.length - 1]).toString()
+		}), userMasterKeys[userMasterKeys.length - 1], metadataVersion)
 
 		let dummyOffset = 0
 		let fileChunks = 0
@@ -3284,7 +3284,7 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 				selfName = remoteDecryptedCache["folder_" + self.uuid + "_" + self.name]
 			}
 			else{
-				selfName = decryptCryptoJSFolderName(self.name, userMasterKeys)
+				selfName = await decryptFolderMetadata(self.name, userMasterKeys)
 
 				remoteDecryptedCache["folder_" + self.uuid + "_" + self.name] = selfName
 			}
@@ -3335,7 +3335,7 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 					metadata = JSON.parse(remoteDecryptedCache["file_" + self.uuid + "_" + self.metadata])
 				}
 				else{
-					metadata = decryptFileMetadata(self.metadata, userMasterKeys)
+					metadata = await decryptFileMetadata(self.metadata, userMasterKeys)
 
 					if(metadata.name.length > 0){
 						remoteDecryptedCache["file_" + self.uuid + "_" + self.metadata] = JSON.stringify(metadata)
@@ -3482,9 +3482,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 						apiRequest("/v1/dir/sub/create", {
 							apiKey: await getUserAPIKey(),
 							uuid: newFolderUUID,
-							name: CryptoJS.AES.encrypt(JSON.stringify({
+							name: await encryptMetadata(JSON.stringify({
 								name: taskInfo.name
-							}), userMasterKeys[userMasterKeys.length - 1]).toString(),
+							}), userMasterKeys[userMasterKeys.length - 1], metadataVersion),
 							nameHashed: hashFn(taskInfo.name.toLowerCase()),
 							parent: taskInfo.parent
 						}, (err, res) => {
