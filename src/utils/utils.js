@@ -358,6 +358,8 @@ async function decryptMetadata(data, key, version = 1){
     }
     catch(e){
       //console.log(e)
+
+      return ""
     }
   }
   else if(version == 2){
@@ -366,8 +368,8 @@ async function decryptMetadata(data, key, version = 1){
       let textEncoder = new TextEncoder()
 
       let preKey = textEncoder.encode(key.toString())
-      let iv = textEncoder(e.data.data.slice(0, 12))
-      let encrypted = _base64ToArrayBuffer(e.data.data.slice(12))
+      let iv = textEncoder.encode(data.slice(0, 12))
+      let encrypted = _base64ToArrayBuffer(data.slice(12))
 
       let decrypted = await window.crypto.subtle.decrypt({
         name: "AES-GCM",
