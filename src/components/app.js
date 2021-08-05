@@ -267,26 +267,6 @@ const hashPassword = (password) => { //old
 	return sha512(sha384(sha256(sha1(password)))) + sha512(md5(md4(md2(password))))
 }
 
-const deriveKeyFromPassword = async (password, salt, iterations = 200000, hash = "SHA-512", bitLength = 512) => {
-    try{
-        var bits = await window.crypto.subtle.deriveBits({
-            name: "PBKDF2",
-          	salt: new TextEncoder().encode(salt),
-          	iterations: iterations,
-          	hash: {
-            	name: hash
-          	}
-        }, await window.crypto.subtle.importKey("raw", new TextEncoder().encode(password), {
-            name: "PBKDF2"
-        }, false, ["deriveBits"]), bitLength)
-    }
-    catch(e){
-        throw new Error(e)
-    }
-  
-    return buf2hex(bits)
-}
-
 const showPage = (page) => {
 	$(".content").each(function(){
 		if($(this).attr("data-type") == page){

@@ -317,10 +317,37 @@ const vkThreadCompareStringLengthJSONStringifyFirstArg = (str1, str2) => {
   })
 }
 
-async function encryptMetadata(data, key, version = 1){
-  if(version == 1){
+const deriveKeyFromPassword = async (password, salt, iterations = 200000, hash = "SHA-512", bitLength = 512, returnHex = true) => {
     try{
-      return CryptoJS.AES.encrypt(data.toString(), key.toString()).toString()
+        var bits = await window.crypto.subtle.deriveBits({
+            name: "PBKDF2",
+          salt: new TextEncoder().encode(salt),
+          iterations: iterations,
+          hash: {
+            name: hash
+          }
+        }, await window.crypto.subtle.importKey("raw", new TextEncoder().encode(password), {
+            name: "PBKDF2"
+        }, false, ["deriveBits"]), bitLength)
+    }
+    catch(e){
+        throw new Error(e)
+    }
+  
+    if(returnHex){
+      return buf2hex(bits)
+    }
+
+    return bits
+}
+
+async function encryptMetadata(data, key){
+  data = data.toString()
+  key = key.toString()
+
+  if(metadataVersion == 1){ //old deprecated
+    try{
+      return CryptoJS.AES.encrypt(data, key).toString()
     }
     catch(e){
       console.log(e)
@@ -328,20 +355,19 @@ async function encryptMetadata(data, key, version = 1){
       return ""
     }
   }
-  else if(version == 2){
+  else if(metadataVersion == 2){
     try{
-      let textEncoder = new TextEncoder()
+      key = await deriveKeyFromPassword(key, key, 1, "SHA-512", 256, false) //transform variable length input key to 256 bit (32 bytes) as fast as possible since it's already derived and safe
 
-      let preKey = textEncoder.encode(key.toString())
       let iv = generateRandomString(12)
-      let string = textEncoder.encode(data.toString())
+      let string = new TextEncoder().encode(data)
 
       let encrypted = await window.crypto.subtle.encrypt({
         name: "AES-GCM",
-        iv: textEncoder.encode(iv)
-      }, await window.crypto.subtle.importKey("raw", preKey, "AES-GCM", false, ["encrypt"]), string)
+        iv: new TextEncoder().encode(iv)
+      }, await window.crypto.subtle.importKey("raw", key, "AES-GCM", false, ["encrypt"]), string)
 
-      return iv + base64ArrayBuffer(new Uint8Array(encrypted))
+      return "002" + iv + base64ArrayBuffer(new Uint8Array(encrypted))
     }
     catch(e){
       console.log(e)
@@ -351,36 +377,44 @@ async function encryptMetadata(data, key, version = 1){
   }
 }
 
-async function decryptMetadata(data, key, version = 1){
-  if(version == 1){
+async function decryptMetadata(data, key){
+  data = data.toString()
+  key = key.toString()
+
+  let sliced = data.slice(0, 8)
+
+  if(sliced == "U2FsdGVk"){ //old deprecated
     try{
-      return CryptoJS.AES.decrypt(data.toString(), key.toString()).toString(CryptoJS.enc.Utf8)
+      let dec = CryptoJS.AES.decrypt(data, key).toString(CryptoJS.enc.Utf8)
+
+      return dec
     }
     catch(e){
-      //console.log(e)
-
-      return ""
-    }
+          return ""
+      }
   }
-  else if(version == 2){
-    try{
-      let textDecoder = new TextDecoder()
-      let textEncoder = new TextEncoder()
+  else{
+    let version = data.slice(0, 3)
 
-      let preKey = textEncoder.encode(key.toString())
-      let iv = textEncoder.encode(data.slice(0, 12))
-      let encrypted = _base64ToArrayBuffer(data.slice(12))
+    if(version == "002"){
+      try{
+        key = await deriveKeyFromPassword(key, key, 1, "SHA-512", 256, false) //transform variable length input key to 256 bit (32 bytes) as fast as possible since it's already derived and safe
 
-      let decrypted = await window.crypto.subtle.decrypt({
-        name: "AES-GCM",
-        iv
-      }, await window.crypto.subtle.importKey("raw", preKey, "AES-GCM", false, ["decrypt"]), encrypted)
+        let iv = new TextEncoder().encode(data.slice(3, 15))
+        let encrypted = _base64ToArrayBuffer(data.slice(15))
 
-      return textDecoder.decode(decrypted)
+        let decrypted = await window.crypto.subtle.decrypt({
+          name: "AES-GCM",
+          iv
+        }, await window.crypto.subtle.importKey("raw", key, "AES-GCM", false, ["decrypt"]), encrypted)
+
+        return new TextDecoder().decode(new Uint8Array(decrypted))
+      }
+      catch(e){
+        return ""
+      }
     }
-    catch(e){
-      console.log(e)
-
+    else{
       return ""
     }
   }
