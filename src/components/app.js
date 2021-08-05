@@ -237,7 +237,7 @@ const apiRequest = async (endpoint, data, callback) => {
 		data: JSON.stringify(data),
 		processData: false,
 		cache: false,
-		timeout: 60000,
+		timeout: 300000,
 		success: (res) => {
 			release()
 
@@ -255,15 +255,15 @@ const apiRequest = async (endpoint, data, callback) => {
 	})
 }
 
-const hashFn = (val) => {
+const hashFn = (val) => { //old deprecated
   	return CryptoJS.SHA1(CryptoJS.SHA512(val).toString()).toString()
 }
 
-const hashFnFast = (val) => {
+const hashFnFast = (val) => { 
 	return val
 }
 
-const hashPassword = (password) => { //old
+const hashPassword = (password) => { //old deprecated
 	return sha512(sha384(sha256(sha1(password)))) + sha512(md5(md4(md2(password))))
 }
 
@@ -391,7 +391,7 @@ const initSocket = () => {
 
 		for(let i = 0; i < userMasterKeys.length; i++){
 			try{
-				let obj = JSON.parse(await decryptMetadata(data.args, userMasterKeys[i], metadataVersion))
+				let obj = JSON.parse(await decryptMetadata(data.args, userMasterKeys[i]))
 
 				if(obj && typeof obj == "object"){
 					args = obj
@@ -1795,7 +1795,7 @@ const doSetup = async (callback) => {
 				uuid: syncFolderUUID,
 				name: await encryptMetadata(JSON.stringify({
 					name: "Filen Sync"
-				}), userMasterKeys[userMasterKeys.length - 1], metadataVersion),
+				}), userMasterKeys[userMasterKeys.length - 1]),
 				nameHashed: hashFn("filen sync"),
 				type: "sync"
 			}, async (err, res) => {
@@ -1906,7 +1906,7 @@ const updateUserKeys = async (callback) => {
 				for(let i = 0; i < usrMasterKeys.length; i++){
 					if(!prvKeyFound){
 						try{
-							prvKey = await decryptMetadata(res.data.privateKey, usrMasterKeys[i], metadataVersion)
+							prvKey = await decryptMetadata(res.data.privateKey, usrMasterKeys[i])
 						
 							if(prvKey.length > 16){
 								prvKeyFound = true
@@ -1938,7 +1938,7 @@ const updateUserKeys = async (callback) => {
 
 	apiRequest("/v1/user/masterKeys", {
 		apiKey: await getUserAPIKey(),
-		masterKeys: await encryptMetadata(userMasterKeys.join("|"), userMasterKeys[userMasterKeys.length - 1], metadataVersion)
+		masterKeys: await encryptMetadata(userMasterKeys.join("|"), userMasterKeys[userMasterKeys.length - 1])
 	}, async (err, res) => {
 		if(err){
 			if(typeof callback == "function"){
@@ -1974,7 +1974,7 @@ const updateUserKeys = async (callback) => {
 			for (let i = 0; i < userMasterKeys.length; i++){
 				try{
 					if(newKeys.length < 16){
-						newKeys = await decryptMetadata(res.data.keys, userMasterKeys[i], metadataVersion)
+						newKeys = await decryptMetadata(res.data.keys, userMasterKeys[i])
 					}
 				}
 				catch(e){
@@ -2067,7 +2067,7 @@ const decryptFolderMetadata = async (str, userMasterKeys) => {
 
 	for(let i = 0; i < userMasterKeys.length; i++){
 		try{
-			let obj = JSON.parse(await decryptMetadata(str, userMasterKeys[i], metadataVersion))
+			let obj = JSON.parse(await decryptMetadata(str, userMasterKeys[i]))
 
 			if(obj && typeof obj == "object"){
 				folderName = obj.name
@@ -2091,7 +2091,7 @@ const decryptFileMetadata = async (metadata, userMasterKeys) => {
 
 	for(let i = 0; i < userMasterKeys.length; i++){
 		try{
-			let obj = JSON.parse(await decryptMetadata(metadata, userMasterKeys[i], metadataVersion))
+			let obj = JSON.parse(await decryptMetadata(metadata, userMasterKeys[i]))
 
 			if(obj && typeof obj == "object"){
 				fileName = obj.name
@@ -2158,7 +2158,7 @@ async function decryptFolderLinkKey(str, userMasterKeys){
 
     for(let i = 0; i < userMasterKeys.length; i++){
     	try{
-            let obj = await decryptMetadata(str, userMasterKeys[i], metadataVersion)
+            let obj = await decryptMetadata(str, userMasterKeys[i])
 
             if(obj && typeof obj == "string"){
                 if(obj.length >= 16){
@@ -2840,9 +2840,9 @@ const uploadFileToRemote = async (path, uuid, parent, name, userMasterKeys, call
 
 	let chunkSizeToUse = ((1024 * 1024) * 1)
 
-	let nameEnc = await encryptMetadata(name, key, metadataVersion)
+	let nameEnc = await encryptMetadata(name, key)
 	let nameH = hashFn(name.toLowerCase())
-	let mimeEnc = await encryptMetadata(mime, key, metadataVersion)
+	let mimeEnc = await encryptMetadata(mime, key)
 
 	fs.stat(winOrUnixFilePath(path), async (err, stats) => {
 		if(err){
@@ -2859,14 +2859,14 @@ const uploadFileToRemote = async (path, uuid, parent, name, userMasterKeys, call
 			return callback(new Error("user storage exceeded"))
 		}
 
-		let sizeEnc = await encryptMetadata(size.toString(), key, metadataVersion)
+		let sizeEnc = await encryptMetadata(size.toString(), key)
 		
 		let metaData = await encryptMetadata(JSON.stringify({
 			name,
 			size,
 			mime,
 			key
-		}), userMasterKeys[userMasterKeys.length - 1], metadataVersion)
+		}), userMasterKeys[userMasterKeys.length - 1])
 
 		let dummyOffset = 0
 		let fileChunks = 0
@@ -3464,7 +3464,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 							uuid: newFolderUUID,
 							name: await encryptMetadata(JSON.stringify({
 								name: taskInfo.name
-							}), userMasterKeys[userMasterKeys.length - 1], metadataVersion),
+							}), userMasterKeys[userMasterKeys.length - 1]),
 							nameHashed: hashFn(taskInfo.name.toLowerCase()),
 							parent: taskInfo.parent
 						}, (err, res) => {
@@ -4428,8 +4428,22 @@ const initChokidar = async () => {
 		chokidarWatcher = fs.watch(userSyncDir, {
 			recursive: true,
 			persistent: true
-		}, (event, path) => {
-			localDataChanged = true
+		}, async (event, path) => {
+			try{
+				let stat = await fs.stat(userSyncDir + "/" + path)
+				let diff = 100
+
+				if(typeof stat.birthtimeMs == "number"){
+					if(stat.birthtimeMs > 0){
+						diff = (Math.floor(+new Date()) - Math.floor(stat.birthtimeMs))
+					}
+				}
+
+				if(diff >= 100){
+					localDataChanged = true
+				}
+			}
+			catch(err){ }
 		})
 	}
 	catch(e){
