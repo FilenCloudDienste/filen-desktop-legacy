@@ -4428,9 +4428,9 @@ const initChokidar = async () => {
 		chokidarWatcher = fs.watch(userSyncDir, {
 			recursive: true,
 			persistent: true
-		}, async (event, path) => {
+		}, async (event, ePath) => {
 			try{
-				let stat = await fs.stat(userSyncDir + "/" + path)
+				let stat = await fs.stat(path.join(userSyncDir, ePath))
 				let diff = 100
 
 				if(typeof stat.birthtimeMs == "number"){
@@ -4457,8 +4457,22 @@ const initChokidar = async () => {
 				usePolling: false,
 				depth: 99999999999,
 				awaitWriteFinish: true
-			}).on("all", (e, path) => {
-				localDataChanged = true
+			}).on("all", async (event, ePath) => {
+				try{
+					let stat = await fs.stat(ePath)
+					let diff = 100
+
+					if(typeof stat.birthtimeMs == "number"){
+						if(stat.birthtimeMs > 0){
+							diff = (Math.floor(+new Date()) - Math.floor(stat.birthtimeMs))
+						}
+					}
+
+					if(diff >= 100){
+						localDataChanged = true
+					}
+				}
+				catch(err){ }
 			})
 		}
 		catch(err){
