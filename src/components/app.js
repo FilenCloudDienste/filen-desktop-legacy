@@ -169,6 +169,7 @@ let lastHeaderStatus = ""
 let lastTooltipText = ""
 let syncTasksToWrite = []
 let deletedLastCycle = {}
+let isDoingRealtimeWork = false
 
 let currentFileVersion = 1
 let metadataVersion = 1
@@ -395,10 +396,12 @@ const initSocket = () => {
 
 				if(obj && typeof obj == "object"){
 					args = obj
+
+					break
 				}
 			}
 			catch(e){
-				console.log(e)
+				continue
 			}
 		}
 
@@ -495,7 +498,7 @@ const getDownloadFolderContents = async (folderUUID, callback) => {
 		data = {
 			uuid: currentDownloadFolderLinkUUID,
 			parent: folderUUID,
-			password: hashFn(currentDownloadFolderLinkPassword)
+			password: (currentDownloadFolderLinkPassword.length < 32 ? hashFn(currentDownloadFolderLinkPassword) : currentDownloadFolderLinkPassword) //if under 32 chars, old deprecated, if over -> pbkdf2
 		}
 	}
 
@@ -535,7 +538,7 @@ const getDownloadFolderContents = async (folderUUID, callback) => {
 			basePath = await decryptFolderNameLink(res.data.folders[0].name, currentDownloadFolderLinkKey)
 		}
 		else{
-			basePath = await decryptFolderMetadata(res.data.folders[0].name, userMasterKeys)
+			basePath = await decryptFolderMetadata(res.data.folders[0].name, userMasterKeys, res.data.folders[0].uuid)
 		}
 
 		if(basePath.length == 0){
@@ -561,9 +564,17 @@ const getDownloadFolderContents = async (folderUUID, callback) => {
 		}
 
 		const getPathRecursively = (uuid) => {
+			if(typeof folders[uuid] == "undefined"){
+				return undefined
+			}
+
 			let thisPath = []
 
 			const build = (parentUUID) => {
+				if(typeof folders[parentUUID] == "undefined"){
+					return undefined
+				}
+
 				if(folders[parentUUID].parent == "base"){
 					return basePath + "/" + thisPath.reverse().join("/")  + "/"
 				}
@@ -602,7 +613,7 @@ const getDownloadFolderContents = async (folderUUID, callback) => {
 				selfName = await decryptFolderNameLink(self.name, currentDownloadFolderLinkKey)
 			}
 			else{
-				selfName = await decryptFolderMetadata(self.name, userMasterKeys)
+				selfName = await decryptFolderMetadata(self.name, userMasterKeys, self.uuid)
 			}
 
 			selfName = cleanString(selfName)
@@ -630,11 +641,13 @@ const getDownloadFolderContents = async (folderUUID, callback) => {
 			let self = res.data.folders[i]
 
 			if(self.parent !== "base"){
-				let newPath = getPathRecursively(self.uuid)
+				if(typeof folders[self.uuid] !== "undefined"){
+					let newPath = getPathRecursively(self.uuid)
 				
-				if(typeof newPath !== "undefined"){
-					pathsForFiles[self.uuid] = newPath
-					folderPaths[newPath] = folders[self.uuid]
+					if(typeof newPath !== "undefined"){
+						pathsForFiles[self.uuid] = newPath
+						folderPaths[newPath] = folders[self.uuid]
+					}
 				}
 			}
 		}
@@ -670,7 +683,7 @@ const getDownloadFolderContents = async (folderUUID, callback) => {
 					metadata = await decryptFileMetadataLink(self.metadata, currentDownloadFolderLinkKey)
 				}
 				else{
-					metadata = await decryptFileMetadata(self.metadata, userMasterKeys)
+					metadata = await decryptFileMetadata(self.metadata, userMasterKeys, self.uuid)
 				}
 
 				metadata.name = cleanString(metadata.name)
@@ -2060,7 +2073,15 @@ async function decryptFileMetadataLink(metadata, linkKey, uuid){
     return obj
 }
 
-const decryptFolderMetadata = async (str, userMasterKeys) => {
+const decryptFolderMetadata = async (str, userMasterKeys, uuid) => {
+	let cacheKey = "folder_" + str + "_" + uuid
+
+	if(typeof remoteDecryptedCache[cacheKey] == "string"){
+		if(remoteDecryptedCache[cacheKey].length > 0){
+			return remoteDecryptedCache[cacheKey]
+		}
+	}
+
 	let folderName = ""
 
 	userMasterKeys = userMasterKeys.reverse()
@@ -2071,23 +2092,44 @@ const decryptFolderMetadata = async (str, userMasterKeys) => {
 
 			if(obj && typeof obj == "object"){
 				folderName = obj.name
+
+				break
 			}
 		}
 		catch(e){
-			console.log(e)
+			continue
 		}
+	}
+
+	if(folderName.length > 0){
+		remoteDecryptedCache[cacheKey] = folderName
 	}
 
 	return folderName
 }
 
-const decryptFileMetadata = async (metadata, userMasterKeys) => {
+const decryptFileMetadata = async (metadata, userMasterKeys, uuid) => {
+	let cacheKey = "file_" + metadata + "_" + uuid
+
+	if(typeof remoteDecryptedCache[cacheKey] == "string"){
+		try{
+			let obj = JSON.parse(remoteDecryptedCache[cacheKey])
+
+			if(obj.name.length > 0){
+				return obj
+			}
+		}
+		catch(e){ }
+	}
+
 	let fileName = ""
 	let fileSize = 0
 	let fileMime = ""
 	let fileKey = ""
 
-	userMasterKeys = userMasterKeys.reverse()
+	if(userMasterKeys.length > 0){
+		userMasterKeys = userMasterKeys.reverse()
+	}
 
 	for(let i = 0; i < userMasterKeys.length; i++){
 		try{
@@ -2098,19 +2140,27 @@ const decryptFileMetadata = async (metadata, userMasterKeys) => {
 				fileSize = parseInt(obj.size)
 				fileMime = obj.mime
 				fileKey = obj.key
+
+				break
 			}
 		}
 		catch(e){
-			console.log(e)
+			continue
 		}
 	}
 
-	return {
+	let obj = {
 		name: fileName,
 		size: fileSize,
 		mime: fileMime,
 		key: fileKey
 	}
+
+	if(obj.name.length > 0){
+		remoteDecryptedCache[cacheKey] = JSON.stringify(obj)
+	}
+
+	return obj
 }
 
 const removeFromSyncTasks = (taskId) => {
@@ -2154,7 +2204,9 @@ const checkIfFileExistsLocallyOtherwiseDelete = async (path, callback) => {
 async function decryptFolderLinkKey(str, userMasterKeys){
 	let link = ""
 
-	userMasterKeys = userMasterKeys.reverse()
+	if(userMasterKeys.length > 0){
+		userMasterKeys = userMasterKeys.reverse()
+	}
 
     for(let i = 0; i < userMasterKeys.length; i++){
     	try{
@@ -2163,11 +2215,13 @@ async function decryptFolderLinkKey(str, userMasterKeys){
             if(obj && typeof obj == "string"){
                 if(obj.length >= 16){
                 	link = obj
+
+                	break
                 }
             }
         }
         catch(e){
-            console.log(e)
+           	continue
         }
     }
 
@@ -3235,9 +3289,17 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 		}
 
 		const getPathRecursively = (uuid) => {
+			if(typeof folders[uuid] == "undefined"){
+				return undefined
+			}
+
 			let thisPath = []
 
 			const build = (parentUUID) => {
+				if(typeof folders[parentUUID] == "undefined"){
+					return undefined
+				}
+
 				if(folders[parentUUID].parent == "base"){
 					return basePath + "/" + thisPath.reverse().join("/")  + "/"
 				}
@@ -3258,16 +3320,7 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 		
 		for(let i = 0; i < res.data.folders.length; i++){
 			let self = res.data.folders[i]
-			let selfName = ""
-
-			if(typeof remoteDecryptedCache["folder_" + self.uuid + "_" + self.name] !== "undefined"){
-				selfName = remoteDecryptedCache["folder_" + self.uuid + "_" + self.name]
-			}
-			else{
-				selfName = await decryptFolderMetadata(self.name, userMasterKeys)
-
-				remoteDecryptedCache["folder_" + self.uuid + "_" + self.name] = selfName
-			}
+			let selfName = await decryptFolderMetadata(self.name, userMasterKeys, self.uuid)
 
 			selfName = cleanString(selfName)
 
@@ -3296,11 +3349,13 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 			let self = res.data.folders[i]
 
 			if(self.parent !== "base"){
-				let newPath = getPathRecursively(self.uuid)
+				if(typeof folders[self.uuid] !== "undefined"){
+					let newPath = getPathRecursively(self.uuid)
 				
-				if(typeof newPath !== "undefined"){
-					pathsForFiles[self.uuid] = newPath
-					folderPaths[newPath] = folders[self.uuid]
+					if(typeof newPath !== "undefined"){
+						pathsForFiles[self.uuid] = newPath
+						folderPaths[newPath] = folders[self.uuid]
+					}
 				}
 			}
 		}
@@ -3309,18 +3364,7 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 			let self = res.data.files[i]
 
 			if(pathsForFiles[self.parent] !== "undefined"){
-				let metadata = undefined
-
-				if(typeof remoteDecryptedCache["file_" + self.uuid + "_" + self.metadata] !== "undefined"){
-					metadata = JSON.parse(remoteDecryptedCache["file_" + self.uuid + "_" + self.metadata])
-				}
-				else{
-					metadata = await decryptFileMetadata(self.metadata, userMasterKeys)
-
-					if(metadata.name.length > 0){
-						remoteDecryptedCache["file_" + self.uuid + "_" + self.metadata] = JSON.stringify(metadata)
-					}
-				}
+				let metadata = await decryptFileMetadata(self.metadata, userMasterKeys, self.uuid)
 
 				metadata.name = cleanString(metadata.name)
 				metadata.key = cleanString(metadata.key)
@@ -3879,9 +3923,11 @@ const doSync = async () => {
 		return false
 	}
 
-	if(syncingPaused){
+	if(syncingPaused || isDoingRealtimeWork){
 		return false
 	}
+
+	isSyncing = true
 
 	let releaseSyncSemaphore = await doSyncSempahore.acquire()
 
@@ -3899,9 +3945,18 @@ const doSync = async () => {
 		return false
 	}
 
-	isSyncing = true
-
 	let folderUUID = await getSyncFolderUUID()
+
+	try{
+  		fs.accessSync(winOrUnixFilePath(userSyncDir), fs.constants.R_OK | fs.constants.W_OK)
+	}
+	catch(e){
+		$("#error-screen-msg").html("No permissions to read/write sync directory. Please change permissions or sync path.")
+
+		routeTo("error-screen")
+
+  		throw new Error(e)
+	}
 
 	fs.access(winOrUnixFilePath(userSyncDir), async (err) => {
 		if(err){
@@ -3970,7 +4025,7 @@ const doSync = async () => {
 						return console.log(err)
 					}
 
-					if(syncingPaused){
+					if(syncingPaused || isDoingRealtimeWork){
 						isSyncing = false
 						isIndexing = false
 
@@ -4037,6 +4092,15 @@ const doSync = async () => {
 					}
 
 					lastDatasetHash = currentDatasetHash
+
+					if(syncingPaused || isDoingRealtimeWork){
+						isSyncing = false
+						isIndexing = false
+
+						releaseSyncSemaphore()
+
+						return false
+					}
 
 					isIndexing = true
 
@@ -4421,72 +4485,110 @@ const doSync = async () => {
 	})
 }
 
+const setLocalDataChangedTrue = () => {
+	if(isSyncing || isIndexing){
+		return setTimeout(setLocalDataChangedTrue, 1000)
+	}
+
+	return localDataChanged = true
+}
+
 const initChokidar = async () => {
-	chokidarWatcher = undefined
-
 	try{
-		chokidarWatcher = fs.watch(userSyncDir, {
-			recursive: true,
-			persistent: true
-		}, async (event, ePath) => {
-			try{
-				let stat = await fs.stat(path.join(userSyncDir, ePath))
-				let diff = 100
-
-				if(typeof stat.birthtimeMs == "number"){
-					if(stat.birthtimeMs > 0){
-						diff = (Math.floor(+new Date()) - Math.floor(stat.birthtimeMs))
-					}
-				}
-
-				if(diff >= 100){
-					localDataChanged = true
-				}
-			}
-			catch(err){ }
-		})
+  		fs.accessSync(winOrUnixFilePath(userSyncDir), fs.constants.R_OK | fs.constants.W_OK)
 	}
 	catch(e){
-		console.log(e)
+		$("#error-screen-msg").html("No permissions to read/write sync directory. Please change permissions or sync path.")
 
-		try{
-			chokidarWatcher = chokidar.watch(userSyncDir, {
-				persistent: true,
-				ignoreInitial: true,
-				followSymlinks: false,
-				usePolling: false,
-				depth: 99999999999,
-				awaitWriteFinish: true
-			}).on("all", async (event, ePath) => {
-				try{
-					let stat = await fs.stat(ePath)
-					let diff = 100
+		routeTo("error-screen")
 
-					if(typeof stat.birthtimeMs == "number"){
-						if(stat.birthtimeMs > 0){
-							diff = (Math.floor(+new Date()) - Math.floor(stat.birthtimeMs))
-						}
-					}
-
-					if(diff >= 100){
-						localDataChanged = true
-					}
-				}
-				catch(err){ }
-			})
-		}
-		catch(err){
-			console.log(err)
-
-			chokidarWatcher = undefined
-
-			setInterval(() => {
-				localDataChanged = true
-			}, 60000)
-		}
+  		throw new Error(e)
 	}
 
-	localDataChanged = true
+	const handleEvent = async (event, ePath) => {
+		if(isSyncing || isIndexing){
+			return setTimeout(() => {
+				handleEvent(event, ePath)
+			}, 100)
+		}
+
+		let releaseSyncSemaphore = await doSyncSempahore.acquire()
+
+		isDoingRealtimeWork = true
+
+		await new Promise((resolve) => {
+			setTimeout(resolve, 100)
+		})
+
+		try{
+			await fs.stat(path.join(winOrUnixFilePath(userSyncDir), ePath))
+		}
+		catch(e){
+			if(e.code == "ENOENT"){
+				let thisPath = "Filen Sync/" + ePath.split("\\").join("/") + "/"
+				let filePath = thisPath.slice(0, (thisPath.length - 1))
+
+				if(typeof lastRemoteSyncFolders[thisPath] !== "undefined" && typeof localFolderExisted[thisPath] !== "undefined"){
+					try{
+						let userMasterKeys = await getUserMasterKeys()
+
+						syncTask("remote", "rmdir", {
+							path: thisPath,
+							name: lastRemoteSyncFolders[thisPath].name,
+							dir: lastRemoteSyncFolders[thisPath]
+						}, userMasterKeys)
+					}
+					catch(err){
+						console.log(err)
+					}
+				}
+				else if(typeof lastRemoteSyncFiles[filePath] !== "undefined" && typeof localFileExisted[filePath] !== "undefined" && typeof userHomePath == "string"){
+					try{
+						let userMasterKeys = await getUserMasterKeys()
+
+						syncTask("remote", "rmfile", {
+							path: filePath,
+							name: lastRemoteSyncFiles[filePath].name,
+							file: lastRemoteSyncFiles[filePath],
+							filePath: userHomePath + "/" + filePath
+						}, userMasterKeys)
+					}
+					catch(err){
+						console.log(err)
+					}
+				}
+			}
+		}
+
+		await new Promise((resolve) => {
+			let ready = setInterval(() => {
+				if(currentSyncTasks.length <= 0){
+					clearInterval(ready)
+
+					isDoingRealtimeWork = false
+
+					setLocalDataChangedTrue()
+
+					return resolve(true)
+				}
+			}, 100)
+		})
+
+		releaseSyncSemaphore()
+
+		return true
+	}
+
+	chokidarWatcher = undefined
+
+	chokidarWatcher = fs.watch(winOrUnixFilePath(userSyncDir), {
+		recursive: true,
+		persistent: true
+	}, (event, ePath) => {
+		return handleEvent(event, ePath)
+	})
+
+	setLocalDataChangedTrue()
 }
 
 const startSyncing = async () => {
