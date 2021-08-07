@@ -60,3 +60,9 @@ input {
     background: #121212 !important;
     border: 1px solid #2E2E2E !important;
 }
+
+select {
+    background-color: #121212 !important;
+    color: #A7B1B1 !important;
+    border: 1px solid #2E2E2E !important;
+}

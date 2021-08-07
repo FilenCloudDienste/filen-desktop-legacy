@@ -170,6 +170,7 @@ let lastTooltipText = ""
 let syncTasksToWrite = []
 let deletedLastCycle = {}
 let isDoingRealtimeWork = false
+let syncMode = "twoWay"
 
 let currentFileVersion = 1
 let metadataVersion = 1
@@ -1110,6 +1111,23 @@ const initFns = () => {
    		}
    	})
 
+   	$("#sync-mode-select").on("change", async () => {
+   		let mode = $("#sync-mode-select").val()
+
+   		try{
+   			await db.put("syncMode", mode)
+
+   			syncMode = mode
+
+   			localDataChanged = true
+   		}
+   		catch(e){
+   			return console.log(e)
+   		}
+
+   		return true
+   	})
+
    	$("#login-btn").click(() => {
    		let email = $("#login-email-input").val()
    		let password = $("#login-password-input").val()
@@ -1771,6 +1789,19 @@ const doSetup = async (callback) => {
 		thisDeviceId = deviceId
 
 		console.log("Device Id: " + thisDeviceId)
+
+		try{
+			let getSyncMode = await db.get("syncMode")
+
+			if(typeof getSyncMode == "string"){
+				syncMode = getSyncMode
+			}
+		}
+		catch(e){ }
+
+		$("#sync-mode-select").val(syncMode)
+
+		console.log("syncMode: " + syncMode)
 
 		if(exists){
 			try{
@@ -3434,6 +3465,14 @@ const removeFoldersAndFilesFromExistingDir = (path, callback) => {
 }
 
 const syncTask = async (where, task, taskInfo, userMasterKeys) => {
+	if(syncMode == "localToCloud" && where == "local"){
+		return false
+	}
+
+	if(syncMode == "cloudToLocal" && where == "remote"){
+		return false
+	}
+
 	let taskId = taskInfo.path
 
 	if(syncingPaused){
@@ -3951,9 +3990,7 @@ const doSync = async () => {
   		fs.accessSync(winOrUnixFilePath(userSyncDir), fs.constants.R_OK | fs.constants.W_OK)
 	}
 	catch(e){
-		$("#error-screen-msg").html("No permissions to read/write sync directory. Please change permissions or sync path.")
-
-		routeTo("error-screen")
+		showBigErrorMessage("No permissions to read/write sync directory. Please change permissions or sync path.")
 
   		throw new Error(e)
 	}
@@ -4103,6 +4140,9 @@ const doSync = async () => {
 					}
 
 					isIndexing = true
+
+					currentDeletingLocalFolders = []
+					currentDeletingRemoteFolders = []
 
 					if(typeof lastLocalSyncFiles !== "undefined" && typeof lastRemoteSyncFiles !== "undefined" && typeof lastRemoteSyncFolders !== "undefined"){
 						//Did the remote file UUID (versioning) change?
@@ -4255,7 +4295,7 @@ const doSync = async () => {
 						for(let prop in localFolders){
 							if(typeof remoteFolders[prop] == "undefined" && prop !== "Filen Sync/"){
 								if(typeof lastRemoteSyncFolders[prop] !== "undefined" && typeof localFolderExisted[prop] !== "undefined"){
-									/*let isDeletingParentFolder = false
+									let isDeletingParentFolder = false
 
 									if(currentDeletingLocalFolders.length > 0){
 										for(let i = 0; i < currentDeletingLocalFolders.length; i++){
@@ -4272,14 +4312,14 @@ const doSync = async () => {
 											path: prop,
 											name: lastRemoteSyncFolders[prop].name
 										}, userMasterKeys)
-									}*/
+									}
 
 									currentDeletingLocalFolders.push(prop)
 
-									syncTask("local", "rmdir", {
+									/*syncTask("local", "rmdir", {
 										path: prop,
 										name: lastRemoteSyncFolders[prop].name
-									}, userMasterKeys)									
+									}, userMasterKeys)*/							
 								}
 								else{
 									let parentPath = prop.split("/")
@@ -4365,7 +4405,7 @@ const doSync = async () => {
 								let filePath = userHomePath + "/" + prop
 
 								if(typeof lastRemoteSyncFiles[prop] !== "undefined" && typeof localFileExisted[prop] !== "undefined"){
-									/*let isDeletingParentFolder = false
+									let isDeletingParentFolder = false
 
 									if(currentDeletingLocalFolders.length > 0){
 										for(let i = 0; i < currentDeletingLocalFolders.length; i++){
@@ -4381,13 +4421,13 @@ const doSync = async () => {
 											name: lastRemoteSyncFiles[prop].name,
 											filePath: filePath
 										}, userMasterKeys)
-									}*/
+									}
 
-									syncTask("local", "rmfile", {
+									/*syncTask("local", "rmfile", {
 										path: prop,
 										name: lastRemoteSyncFiles[prop].name,
 										filePath: filePath
-									}, userMasterKeys)
+									}, userMasterKeys)*/
 								}
 								else{
 									let fileParentPath = prop.split("/")
@@ -4498,9 +4538,7 @@ const initChokidar = async () => {
   		fs.accessSync(winOrUnixFilePath(userSyncDir), fs.constants.R_OK | fs.constants.W_OK)
 	}
 	catch(e){
-		$("#error-screen-msg").html("No permissions to read/write sync directory. Please change permissions or sync path.")
-
-		routeTo("error-screen")
+		showBigErrorMessage("No permissions to read/write sync directory. Please change permissions or sync path.")
 
   		throw new Error(e)
 	}
@@ -4511,8 +4549,6 @@ const initChokidar = async () => {
 				handleEvent(event, ePath)
 			}, 100)
 		}
-
-		let releaseSyncSemaphore = await doSyncSempahore.acquire()
 
 		isDoingRealtimeWork = true
 
@@ -4525,17 +4561,17 @@ const initChokidar = async () => {
 		}
 		catch(e){
 			if(e.code == "ENOENT"){
-				let thisPath = "Filen Sync/" + ePath.split("\\").join("/") + "/"
-				let filePath = thisPath.slice(0, (thisPath.length - 1))
+				let folderPath = "Filen Sync/" + ePath.split("\\").join("/") + "/"
+				let filePath = folderPath.slice(0, (folderPath.length - 1))
 
-				if(typeof lastRemoteSyncFolders[thisPath] !== "undefined" && typeof localFolderExisted[thisPath] !== "undefined"){
+				if(typeof lastRemoteSyncFolders[folderPath] !== "undefined" && typeof localFolderExisted[folderPath] !== "undefined"){
 					try{
 						let userMasterKeys = await getUserMasterKeys()
 
 						syncTask("remote", "rmdir", {
-							path: thisPath,
-							name: lastRemoteSyncFolders[thisPath].name,
-							dir: lastRemoteSyncFolders[thisPath]
+							path: folderPath,
+							name: lastRemoteSyncFolders[folderPath].name,
+							dir: lastRemoteSyncFolders[folderPath]
 						}, userMasterKeys)
 					}
 					catch(err){
@@ -4565,16 +4601,14 @@ const initChokidar = async () => {
 				if(currentSyncTasks.length <= 0){
 					clearInterval(ready)
 
-					isDoingRealtimeWork = false
-
-					setLocalDataChangedTrue()
-
 					return resolve(true)
 				}
 			}, 100)
 		})
 
-		releaseSyncSemaphore()
+		isDoingRealtimeWork = false
+
+		setLocalDataChangedTrue()
 
 		return true
 	}
@@ -4706,6 +4740,8 @@ const doLogout = async () => {
 		await db.clear()
 	}
 	catch(e){
+		showBigErrorMessage("Could not clear the local database, please restart the application and try again.")
+
 		return console.log(e)
 	}
 
@@ -4739,6 +4775,12 @@ const getDiskSpace = () => {
 
 const showSettings = () => {
 	return ipcRenderer.send("show-settings")
+}
+
+const showBigErrorMessage = (msg) => {
+	$("#error-screen-msg").html(msg)
+
+	return routeTo("error-screen")
 }
 
 const setupErrorReporter = () => {

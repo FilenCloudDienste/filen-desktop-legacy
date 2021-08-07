@@ -228,3 +228,17 @@ hr {
     font-size: 10pt;
     display: none;
 }
+
+select {
+    background-color: white;
+    color: #444;
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+select, option {
+    outline: none;
+}
+
+select:hover, option:hover, select:active, option:active, select:focus, option:focus {
+    outline: none;
+}
