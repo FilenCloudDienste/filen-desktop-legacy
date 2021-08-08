@@ -171,6 +171,7 @@ let syncTasksToWrite = []
 let deletedLastCycle = {}
 let isDoingRealtimeWork = false
 let syncMode = "twoWay"
+let reloadAll = true
 
 let currentFileVersion = 1
 let metadataVersion = 1
@@ -1120,6 +1121,8 @@ const initFns = () => {
    			syncMode = mode
 
    			localDataChanged = true
+   			skipNextRequestData = true
+   			reloadAll = true
    		}
    		catch(e){
    			return console.log(e)
@@ -1726,6 +1729,9 @@ const doSetup = async (callback) => {
 			getUserUsage()
 
 			syncingPaused = false
+			localDataChanged = true
+   			skipNextRequestData = true
+   			reloadAll = true
 
 			setTimeout(() => {
 				startSyncing()
@@ -2146,8 +2152,12 @@ const decryptFileMetadata = async (metadata, userMasterKeys, uuid) => {
 		try{
 			let obj = JSON.parse(remoteDecryptedCache[cacheKey])
 
-			if(obj.name.length > 0){
-				return obj
+			if(typeof obj == "object"){
+				if(typeof obj.name == "string"){
+					if(obj.name.length > 0){
+						return obj
+					}
+				}
 			}
 		}
 		catch(e){ }
@@ -3189,7 +3199,7 @@ const getLocalSyncDirContents = async (callback) => {
 		return callback(new Error("Sync dir is not defined"))
 	}
 
-	if(!localDataChanged && typeof lastLocalSyncFolders !== "undefined" && typeof lastLocalSyncFiles !== "undefined"){
+	if(!localDataChanged && !reloadAll && typeof lastLocalSyncFolders !== "undefined" && typeof lastLocalSyncFiles !== "undefined"){
 		//console.log("Local data did not change from last sync cycle, serving cache.")
 
 		return callback(null, lastLocalSyncFolders, lastLocalSyncFiles)
@@ -3251,7 +3261,7 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 	apiRequest("/v1/get/dir", {
 		apiKey: await getUserAPIKey(),
 		uuid: folderUUID,
-		firstRequest: (firstDataRequest || skipNextRequestData ? "true" : "false")
+		firstRequest: (firstDataRequest || skipNextRequestData || reloadAll ? "true" : "false")
 	}, async (err, res) => {
 		if(err){
 			return callback(err)
@@ -3280,17 +3290,19 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 			lastReceivedSyncData = res.data
 		}
 
-		let receivedDataHash = JSON.stringify(res.data)
+		if(!reloadAll){
+			let receivedDataHash = JSON.stringify(res.data)
 
-		if(typeof lastRemoteSyncDataHash !== "undefined"){
-			if(receivedDataHash == lastRemoteSyncDataHash && typeof lastRemoteSyncFolders !== "undefined" && typeof lastRemoteSyncFiles !== "undefined"){
-				//console.log("Last remote sync data identical to current one, serving from cache.")
+			if(typeof lastRemoteSyncDataHash !== "undefined"){
+				if(receivedDataHash == lastRemoteSyncDataHash && typeof lastRemoteSyncFolders !== "undefined" && typeof lastRemoteSyncFiles !== "undefined"){
+					//console.log("Last remote sync data identical to current one, serving from cache.")
 
-				return callback(null, lastRemoteSyncFolders, lastRemoteSyncFiles) 
+					return callback(null, lastRemoteSyncFolders, lastRemoteSyncFiles) 
+				}
 			}
-		}
 
-		lastRemoteSyncDataHash = receivedDataHash
+			lastRemoteSyncDataHash = receivedDataHash
+		}
 
 		let paths = []
 		let folders = {}
@@ -4071,64 +4083,66 @@ const doSync = async () => {
 						return false
 					}
 
-					//Did the remote and local dataset even change? If not we can save cpu usage by skipping the sync cycle
-					let currentDatasetHash = JSON.stringify(localFolders) + JSON.stringify(localFiles) + JSON.stringify(remoteFolders) + JSON.stringify(remoteFiles) 
+					if(!reloadAll){
+						//Did the remote and local dataset even change? If not we can save cpu usage by skipping the sync cycle
+						let currentDatasetHash = JSON.stringify(localFolders) + JSON.stringify(localFiles) + JSON.stringify(remoteFolders) + JSON.stringify(remoteFiles) 
 
-					if(typeof lastDatasetHash !== "undefined"){
-						if(currentDatasetHash == lastDatasetHash){
-							//console.log("Dataset didnt change, skipping syncing cycle.")
+						if(typeof lastDatasetHash !== "undefined"){
+							if(currentDatasetHash == lastDatasetHash){
+								//console.log("Dataset didnt change, skipping syncing cycle.")
 
-							let currLastSavedDataHash = currentDatasetHash
+								let currLastSavedDataHash = currentDatasetHash
 
-							if(typeof lastSavedDataHash !== "undefined"){
-								if(currLastSavedDataHash == lastSavedDataHash){
-									//console.log("Last write dataset didnt change, not writing.")
+								if(typeof lastSavedDataHash !== "undefined"){
+									if(currLastSavedDataHash == lastSavedDataHash){
+										//console.log("Last write dataset didnt change, not writing.")
 
-									return setTimeout(() => {
-										isSyncing = false
-										isIndexing = false
+										return setTimeout(() => {
+											isSyncing = false
+											isIndexing = false
 
-										releaseSyncSemaphore()
-									}, 1000)
+											releaseSyncSemaphore()
+										}, 1000)
+									}
 								}
+
+								lastSavedDataHash = currLastSavedDataHash
+
+								lastRemoteSyncFolders = remoteFolders
+								lastRemoteSyncFiles = remoteFiles
+								lastLocalSyncFolders = localFolders
+								lastLocalSyncFiles = localFiles
+
+								try{
+									let userEmail = await db.get("userEmail")
+
+									await db.put(userEmail + "_localFileModifications", JSON.stringify(localFileModifications))
+									await db.put(userEmail + "_remoteFileUUIDs", JSON.stringify(remoteFileUUIDs))
+									await db.put(userEmail + "_remoteFileSizes", JSON.stringify(remoteFileSizes))
+
+									await db.put(userEmail + "_lastRemoteSyncFolders", JSON.stringify(lastRemoteSyncFolders))
+									await db.put(userEmail + "_lastRemoteSyncFiles", JSON.stringify(lastRemoteSyncFiles))
+									await db.put(userEmail + "_lastLocalSyncFolders", JSON.stringify(lastLocalSyncFolders))
+									await db.put(userEmail + "_lastLocalSyncFiles", JSON.stringify(lastLocalSyncFiles))
+
+									await db.put(userEmail + "_localFileExisted", JSON.stringify(localFileExisted))
+									await db.put(userEmail + "_localFolderExisted", JSON.stringify(localFolderExisted))
+								}
+								catch(e){
+									console.log(e)
+								}
+
+								return setTimeout(() => {
+									isSyncing = false
+									isIndexing = false
+
+									releaseSyncSemaphore()
+								}, 1000)
 							}
-
-							lastSavedDataHash = currLastSavedDataHash
-
-							lastRemoteSyncFolders = remoteFolders
-							lastRemoteSyncFiles = remoteFiles
-							lastLocalSyncFolders = localFolders
-							lastLocalSyncFiles = localFiles
-
-							try{
-								let userEmail = await db.get("userEmail")
-
-								await db.put(userEmail + "_localFileModifications", JSON.stringify(localFileModifications))
-								await db.put(userEmail + "_remoteFileUUIDs", JSON.stringify(remoteFileUUIDs))
-								await db.put(userEmail + "_remoteFileSizes", JSON.stringify(remoteFileSizes))
-
-								await db.put(userEmail + "_lastRemoteSyncFolders", JSON.stringify(lastRemoteSyncFolders))
-								await db.put(userEmail + "_lastRemoteSyncFiles", JSON.stringify(lastRemoteSyncFiles))
-								await db.put(userEmail + "_lastLocalSyncFolders", JSON.stringify(lastLocalSyncFolders))
-								await db.put(userEmail + "_lastLocalSyncFiles", JSON.stringify(lastLocalSyncFiles))
-
-								await db.put(userEmail + "_localFileExisted", JSON.stringify(localFileExisted))
-								await db.put(userEmail + "_localFolderExisted", JSON.stringify(localFolderExisted))
-							}
-							catch(e){
-								console.log(e)
-							}
-
-							return setTimeout(() => {
-								isSyncing = false
-								isIndexing = false
-
-								releaseSyncSemaphore()
-							}, 1000)
 						}
-					}
 
-					lastDatasetHash = currentDatasetHash
+						lastDatasetHash = currentDatasetHash
+					}
 
 					if(syncingPaused || isDoingRealtimeWork){
 						isSyncing = false
@@ -4145,66 +4159,70 @@ const doSync = async () => {
 					currentDeletingRemoteFolders = []
 
 					if(typeof lastLocalSyncFiles !== "undefined" && typeof lastRemoteSyncFiles !== "undefined" && typeof lastRemoteSyncFolders !== "undefined"){
-						//Did the remote file UUID (versioning) change?
-						for(let prop in remoteFiles){
-							if(typeof localFiles[prop] !== "undefined" && typeof lastLocalSyncFiles[prop] !== "undefined" && typeof lastRemoteSyncFiles[prop] !== "undefined"){
-								let filePath = userHomePath + "/" + prop
+						if(syncMode == "twoWay" || syncMode == "cloudToLocal"){
+							//Did the remote file UUID (versioning) change?
+							for(let prop in remoteFiles){
+								if(typeof localFiles[prop] !== "undefined" && typeof lastLocalSyncFiles[prop] !== "undefined" && typeof lastRemoteSyncFiles[prop] !== "undefined"){
+									let filePath = userHomePath + "/" + prop
 
-								if(typeof remoteFileUUIDs[filePath] == "undefined"){
-									remoteFileUUIDs[filePath] = remoteFiles[prop].uuid
-								}
-								else{
-									if(remoteFileUUIDs[filePath] !== remoteFiles[prop].uuid){
-										if(remoteFiles[prop].size > 0){
-											syncTask("local", "update", {
-												path: prop,
-												file: remoteFiles[prop],
-												filePath: filePath,
-												size: remoteFiles[prop].size
-											}, userMasterKeys)
+									if(typeof remoteFileUUIDs[filePath] == "undefined"){
+										remoteFileUUIDs[filePath] = remoteFiles[prop].uuid
+									}
+									else{
+										if(remoteFileUUIDs[filePath] !== remoteFiles[prop].uuid){
+											if(remoteFiles[prop].size > 0){
+												syncTask("local", "update", {
+													path: prop,
+													file: remoteFiles[prop],
+													filePath: filePath,
+													size: remoteFiles[prop].size
+												}, userMasterKeys)
+											}
 										}
 									}
 								}
 							}
 						}
 
-						//Did the local mod time change from previous sync?
-						for(let prop in localFiles){
-							if(typeof remoteFiles[prop] !== "undefined" && typeof lastLocalSyncFiles[prop] !== "undefined" && typeof lastRemoteSyncFiles[prop] !== "undefined"){
-								let filePath = userHomePath + "/" + prop
-								let taskIdPath = prop
+						if(syncMode == "twoWay" || syncMode == "localToCloud"){
+							//Did the local mod time change from previous sync?
+							for(let prop in localFiles){
+								if(typeof remoteFiles[prop] !== "undefined" && typeof lastLocalSyncFiles[prop] !== "undefined" && typeof lastRemoteSyncFiles[prop] !== "undefined"){
+									let filePath = userHomePath + "/" + prop
+									let taskIdPath = prop
 
-								let fileStat = {}
+									let fileStat = {}
 
-								fileStat.mtimeMs = localFiles[prop].modTime
+									fileStat.mtimeMs = localFiles[prop].modTime
 
-								if(fileStat){
-									if(typeof localFileModifications[filePath] == "undefined"){
-										if(fileStat.mtimeMs > 1399784066403){
-											localFileModifications[filePath] = fileStat.mtimeMs
+									if(fileStat){
+										if(typeof localFileModifications[filePath] == "undefined"){
+											if(fileStat.mtimeMs > 1399784066403){
+												localFileModifications[filePath] = fileStat.mtimeMs
+											}
+											else{
+												delete localFileModifications[filePath]
+											}
 										}
 										else{
-											delete localFileModifications[filePath]
-										}
-									}
-									else{
-										if(fileStat.mtimeMs > localFileModifications[filePath] && fileStat.mtimeMs > 1399784066403 && localFileModifications[filePath] > 1399784066403){
-											let fileParentPath = prop.split("/")
+											if(fileStat.mtimeMs > localFileModifications[filePath] && fileStat.mtimeMs > 1399784066403 && localFileModifications[filePath] > 1399784066403){
+												let fileParentPath = prop.split("/")
 
-											fileParentPath = fileParentPath.splice(0, (fileParentPath.length - 1)).join("/")
+												fileParentPath = fileParentPath.splice(0, (fileParentPath.length - 1)).join("/")
 
-											if(fileParentPath !== "Filen Sync/"){
-												fileParentPath = fileParentPath + "/"
-											}
+												if(fileParentPath !== "Filen Sync/"){
+													fileParentPath = fileParentPath + "/"
+												}
 
-											if(typeof remoteSyncFolders[fileParentPath] !== "undefined"){
-												syncTask("remote", "update", {
-													path: prop,
-													realPath: userHomePath + "/" + prop,
-													name: localFiles[prop].name,
-													parent: remoteSyncFolders[fileParentPath].uuid,
-													filePath: filePath
-												}, userMasterKeys)
+												if(typeof remoteSyncFolders[fileParentPath] !== "undefined"){
+													syncTask("remote", "update", {
+														path: prop,
+														realPath: userHomePath + "/" + prop,
+														name: localFiles[prop].name,
+														parent: remoteSyncFolders[fileParentPath].uuid,
+														filePath: filePath
+													}, userMasterKeys)
+												}
 											}
 										}
 									}
@@ -4261,32 +4279,63 @@ const doSync = async () => {
 						//Create directory locally because we dont have it or delete remote dir because we deleted the local one
 						for(let prop in remoteFolders){
 							if(typeof localFolders[prop] == "undefined" && prop !== "Filen Sync/"){
-								if(typeof lastRemoteSyncFolders[prop] !== "undefined" && typeof localFolderExisted[prop] !== "undefined"){
-									let isDeletingParentFolder = false
+								if(syncMode == "twoWay"){
+									if(typeof lastRemoteSyncFolders[prop] !== "undefined" && typeof localFolderExisted[prop] !== "undefined"){
+										let isDeletingParentFolder = false
 
-									if(currentDeletingRemoteFolders.length > 0){
-										for(let i = 0; i < currentDeletingRemoteFolders.length; i++){
-											if(prop.indexOf(currentDeletingRemoteFolders[i]) !== -1){
-												isDeletingParentFolder = true
+										if(currentDeletingRemoteFolders.length > 0){
+											for(let i = 0; i < currentDeletingRemoteFolders.length; i++){
+												if(prop.indexOf(currentDeletingRemoteFolders[i]) !== -1){
+													isDeletingParentFolder = true
+												}
 											}
 										}
-									}
-									
-									if(!isDeletingParentFolder){
-										currentDeletingRemoteFolders.push(prop)
+										
+										if(!isDeletingParentFolder){
+											currentDeletingRemoteFolders.push(prop)
 
-										syncTask("remote", "rmdir", {
+											syncTask("remote", "rmdir", {
+												path: prop,
+												name: lastRemoteSyncFolders[prop].name,
+												dir: lastRemoteSyncFolders[prop]
+											}, userMasterKeys)
+										}
+									}
+									else{
+										syncTask("local", "mkdir", {
 											path: prop,
-											name: lastRemoteSyncFolders[prop].name,
-											dir: lastRemoteSyncFolders[prop]
+											name: remoteFolders[prop].name
 										}, userMasterKeys)
 									}
 								}
-								else{
+								else if(syncMode == "cloudToLocal"){
 									syncTask("local", "mkdir", {
 										path: prop,
 										name: remoteFolders[prop].name
 									}, userMasterKeys)
+								}
+								else if(syncMode == "localToCloud"){
+									if(typeof lastRemoteSyncFolders[prop] !== "undefined" && typeof localFolderExisted[prop] !== "undefined"){
+										let isDeletingParentFolder = false
+
+										if(currentDeletingRemoteFolders.length > 0){
+											for(let i = 0; i < currentDeletingRemoteFolders.length; i++){
+												if(prop.indexOf(currentDeletingRemoteFolders[i]) !== -1){
+													isDeletingParentFolder = true
+												}
+											}
+										}
+										
+										if(!isDeletingParentFolder){
+											currentDeletingRemoteFolders.push(prop)
+
+											syncTask("remote", "rmdir", {
+												path: prop,
+												name: lastRemoteSyncFolders[prop].name,
+												dir: lastRemoteSyncFolders[prop]
+											}, userMasterKeys)
+										}
+									}
 								}
 							}
 						}
@@ -4294,34 +4343,84 @@ const doSync = async () => {
 						//Create directory remotely because the server does not have it
 						for(let prop in localFolders){
 							if(typeof remoteFolders[prop] == "undefined" && prop !== "Filen Sync/"){
-								if(typeof lastRemoteSyncFolders[prop] !== "undefined" && typeof localFolderExisted[prop] !== "undefined"){
-									let isDeletingParentFolder = false
+								if(syncMode == "twoWay"){
+									if(typeof lastRemoteSyncFolders[prop] !== "undefined" && typeof localFolderExisted[prop] !== "undefined"){
+										let isDeletingParentFolder = false
 
-									if(currentDeletingLocalFolders.length > 0){
-										for(let i = 0; i < currentDeletingLocalFolders.length; i++){
-											if(prop.indexOf(currentDeletingLocalFolders[i]) !== -1){
-												isDeletingParentFolder = true
+										if(currentDeletingLocalFolders.length > 0){
+											for(let i = 0; i < currentDeletingLocalFolders.length; i++){
+												if(prop.indexOf(currentDeletingLocalFolders[i]) !== -1){
+													isDeletingParentFolder = true
+												}
 											}
 										}
+
+										if(!isDeletingParentFolder){
+											currentDeletingLocalFolders.push(prop)
+
+											syncTask("local", "rmdir", {
+												path: prop,
+												name: lastRemoteSyncFolders[prop].name
+											}, userMasterKeys)
+										}
+
+										currentDeletingLocalFolders.push(prop)						
 									}
+									else{
+										let parentPath = prop.split("/")
 
-									if(!isDeletingParentFolder){
-										currentDeletingLocalFolders.push(prop)
+										parentPath.pop()
+										parentPath.pop()
 
-										syncTask("local", "rmdir", {
-											path: prop,
-											name: lastRemoteSyncFolders[prop].name
-										}, userMasterKeys)
+										parentPath = parentPath.join("/") + "/"
+
+										if(parentPath == "/"){
+											parentPath = "Filen Sync/"
+										}
+
+										if(typeof remoteSyncFolders[parentPath] !== "undefined"){
+											let folderName = prop
+
+											if(prop.slice(-1) == "/"){
+												folderName = prop.substring(0, (prop.length - 1))
+											}
+
+											folderName = folderName.split("/")
+											folderName = folderName[folderName.length - 1]
+
+											syncTask("remote", "mkdir", {
+												path: prop,
+												name: folderName,
+												parent: remoteSyncFolders[parentPath].uuid
+											}, userMasterKeys)
+										}
 									}
-
-									currentDeletingLocalFolders.push(prop)
-
-									/*syncTask("local", "rmdir", {
-										path: prop,
-										name: lastRemoteSyncFolders[prop].name
-									}, userMasterKeys)*/							
 								}
-								else{
+								else if(syncMode == "cloudToLocal"){
+									if(typeof lastRemoteSyncFolders[prop] !== "undefined" && typeof localFolderExisted[prop] !== "undefined"){
+										let isDeletingParentFolder = false
+
+										if(currentDeletingLocalFolders.length > 0){
+											for(let i = 0; i < currentDeletingLocalFolders.length; i++){
+												if(prop.indexOf(currentDeletingLocalFolders[i]) !== -1){
+													isDeletingParentFolder = true
+												}
+											}
+										}
+
+										if(!isDeletingParentFolder){
+											currentDeletingLocalFolders.push(prop)
+
+											syncTask("local", "rmdir", {
+												path: prop,
+												name: lastRemoteSyncFolders[prop].name
+											}, userMasterKeys)
+										}
+
+										currentDeletingLocalFolders.push(prop)						
+									}
+								}
+								else if(syncMode == "localToCloud"){
 									let parentPath = prop.split("/")
 
 									parentPath.pop()
@@ -4377,23 +4476,46 @@ const doSync = async () => {
 									}
 								}
 
-								if(typeof lastRemoteSyncFiles[prop] !== "undefined" && typeof localFileExisted[prop] !== "undefined"){
-									if(!isDeletingParentFolder){
-										syncTask("remote", "rmfile", {
-											path: prop,
-											name: lastRemoteSyncFiles[prop].name,
-											file: lastRemoteSyncFiles[prop],
-											filePath: filePath
-										}, userMasterKeys)
+								if(syncMode == "twoWay"){
+									if(typeof lastRemoteSyncFiles[prop] !== "undefined" && typeof localFileExisted[prop] !== "undefined"){
+										if(!isDeletingParentFolder){
+											syncTask("remote", "rmfile", {
+												path: prop,
+												name: lastRemoteSyncFiles[prop].name,
+												file: lastRemoteSyncFiles[prop],
+												filePath: filePath
+											}, userMasterKeys)
+										}
+									}
+									else{
+										if(remoteFiles[prop].size > 0 && !isDeletingParentFolder && !isDeletingParentFolderLocal){
+											syncTask("local", "download", {
+												path: prop,
+												file: remoteFiles[prop],
+												filePath: filePath
+											}, userMasterKeys)
+										}
 									}
 								}
-								else{
+								else if(syncMode == "cloudToLocal"){
 									if(remoteFiles[prop].size > 0 && !isDeletingParentFolder && !isDeletingParentFolderLocal){
 										syncTask("local", "download", {
 											path: prop,
 											file: remoteFiles[prop],
 											filePath: filePath
 										}, userMasterKeys)
+									}
+								}
+								else if(syncMode == "localToCloud"){
+									if(typeof lastRemoteSyncFiles[prop] !== "undefined" && typeof localFileExisted[prop] !== "undefined"){
+										if(!isDeletingParentFolder){
+											syncTask("remote", "rmfile", {
+												path: prop,
+												name: lastRemoteSyncFiles[prop].name,
+												file: lastRemoteSyncFiles[prop],
+												filePath: filePath
+											}, userMasterKeys)
+										}
 									}
 								}
 							}
@@ -4404,32 +4526,73 @@ const doSync = async () => {
 							if(typeof remoteFiles[prop] == "undefined"){
 								let filePath = userHomePath + "/" + prop
 
-								if(typeof lastRemoteSyncFiles[prop] !== "undefined" && typeof localFileExisted[prop] !== "undefined"){
-									let isDeletingParentFolder = false
+								if(syncMode == "twoWay"){
+									if(typeof lastRemoteSyncFiles[prop] !== "undefined" && typeof localFileExisted[prop] !== "undefined"){
+										let isDeletingParentFolder = false
 
-									if(currentDeletingLocalFolders.length > 0){
-										for(let i = 0; i < currentDeletingLocalFolders.length; i++){
-											if(prop.indexOf(currentDeletingLocalFolders[i]) !== -1){
-												isDeletingParentFolder = true
+										if(currentDeletingLocalFolders.length > 0){
+											for(let i = 0; i < currentDeletingLocalFolders.length; i++){
+												if(prop.indexOf(currentDeletingLocalFolders[i]) !== -1){
+													isDeletingParentFolder = true
+												}
 											}
 										}
-									}
 
-									if(!isDeletingParentFolder){
-										syncTask("local", "rmfile", {
-											path: prop,
-											name: lastRemoteSyncFiles[prop].name,
-											filePath: filePath
-										}, userMasterKeys)
+										if(!isDeletingParentFolder){
+											syncTask("local", "rmfile", {
+												path: prop,
+												name: lastRemoteSyncFiles[prop].name,
+												filePath: filePath
+											}, userMasterKeys)
+										}
 									}
+									else{
+										let fileParentPath = prop.split("/")
 
-									/*syncTask("local", "rmfile", {
-										path: prop,
-										name: lastRemoteSyncFiles[prop].name,
-										filePath: filePath
-									}, userMasterKeys)*/
+										fileParentPath = fileParentPath.splice(0, (fileParentPath.length - 1)).join("/")
+
+										if(fileParentPath !== "Filen Sync/"){
+											fileParentPath = fileParentPath + "/"
+										}
+
+										if(typeof remoteSyncFolders[fileParentPath] !== "undefined"){
+											let fileName = prop
+
+											fileName = prop.split("/")
+											fileName = fileName[fileName.length - 1]
+
+											syncTask("remote", "upload", {
+												path: prop,
+												realPath: userHomePath + "/" + prop,
+												name: fileName,
+												parent: remoteSyncFolders[fileParentPath].uuid,
+												filePath: filePath
+											}, userMasterKeys)
+										}
+									}
 								}
-								else{
+								else if(syncMode == "cloudToLocal"){
+									if(typeof lastRemoteSyncFiles[prop] !== "undefined" && typeof localFileExisted[prop] !== "undefined"){
+										let isDeletingParentFolder = false
+
+										if(currentDeletingLocalFolders.length > 0){
+											for(let i = 0; i < currentDeletingLocalFolders.length; i++){
+												if(prop.indexOf(currentDeletingLocalFolders[i]) !== -1){
+													isDeletingParentFolder = true
+												}
+											}
+										}
+
+										if(!isDeletingParentFolder){
+											syncTask("local", "rmfile", {
+												path: prop,
+												name: lastRemoteSyncFiles[prop].name,
+												filePath: filePath
+											}, userMasterKeys)
+										}
+									}
+								}
+								else if(syncMode == "localToCloud"){
 									let fileParentPath = prop.split("/")
 
 									fileParentPath = fileParentPath.splice(0, (fileParentPath.length - 1)).join("/")
@@ -4512,7 +4675,7 @@ const doSync = async () => {
 									isIndexing = false
 									isSyncing = false
 									localDataChanged = true
-									//skipNextRequestData = true
+									reloadAll = false
 
 									writeSyncTasks()
 								}, syncTimeout)
@@ -4608,19 +4771,26 @@ const initChokidar = async () => {
 
 		isDoingRealtimeWork = false
 
-		setLocalDataChangedTrue()
+		setTimeout(setLocalDataChangedTrue, 20000)
 
 		return true
 	}
 
 	chokidarWatcher = undefined
 
-	chokidarWatcher = fs.watch(winOrUnixFilePath(userSyncDir), {
-		recursive: true,
-		persistent: true
-	}, (event, ePath) => {
-		return handleEvent(event, ePath)
-	})
+	try{
+		chokidarWatcher = fs.watch(winOrUnixFilePath(userSyncDir), {
+			recursive: true,
+			persistent: true
+		}, (event, ePath) => {
+			return handleEvent(event, ePath)
+		})
+	}
+	catch(e){
+		showBigErrorMessage("Could not initialize directory watcher.")
+
+		throw new Error(e)
+	}
 
 	setLocalDataChangedTrue()
 }
