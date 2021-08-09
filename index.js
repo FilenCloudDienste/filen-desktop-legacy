@@ -264,7 +264,7 @@ const createWindow = async () => {
 		minimizable: false,
 		fullscreenable: false,
 		resizable: false,
-		show: true,
+		show: false,
 		frame: false,
 		skipTaskbar: true,
 		transparent: true
