@@ -4003,8 +4003,6 @@ const doSync = async () => {
 
 	isSyncing = true
 
-	clearCurrentSyncTasksExtra()
-
 	let releaseSyncSemaphore = await doSyncSempahore.acquire()
 
 	try{
@@ -4033,6 +4031,7 @@ const doSync = async () => {
 		isIndexing = false
 
 		releaseSyncSemaphore()
+		clearCurrentSyncTasksExtra()
 
   		throw new Error(e)
 	}
@@ -4076,6 +4075,7 @@ const doSync = async () => {
 				remoteDecryptedCache = {}
 
 				releaseSyncSemaphore()
+				clearCurrentSyncTasksExtra()
 
 				return ipcRenderer.send("exit-app")
 			}
@@ -4090,6 +4090,7 @@ const doSync = async () => {
 					isIndexing = false
 
 					releaseSyncSemaphore()
+					clearCurrentSyncTasksExtra()
 
 					return console.log(err)
 				}
@@ -4100,6 +4101,7 @@ const doSync = async () => {
 						isIndexing = false
 
 						releaseSyncSemaphore()
+						clearCurrentSyncTasksExtra()
 
 						return console.log(err)
 					}
@@ -4109,6 +4111,7 @@ const doSync = async () => {
 						isIndexing = false
 
 						releaseSyncSemaphore()
+						clearCurrentSyncTasksExtra()
 
 						return false
 					}
@@ -4132,6 +4135,7 @@ const doSync = async () => {
 											isIndexing = false
 
 											releaseSyncSemaphore()
+											clearCurrentSyncTasksExtra()
 										}, 1000)
 									}
 								}
@@ -4167,6 +4171,7 @@ const doSync = async () => {
 									isIndexing = false
 
 									releaseSyncSemaphore()
+									clearCurrentSyncTasksExtra()
 								}, 1000)
 							}
 						}
@@ -4179,6 +4184,7 @@ const doSync = async () => {
 						isIndexing = false
 
 						releaseSyncSemaphore()
+						clearCurrentSyncTasksExtra()
 
 						return false
 					}
@@ -4701,6 +4707,7 @@ const doSync = async () => {
 									console.log("Sync cycle done.")
 
 									releaseSyncSemaphore()
+									clearCurrentSyncTasksExtra()
 										
 									isIndexing = false
 									isSyncing = false
