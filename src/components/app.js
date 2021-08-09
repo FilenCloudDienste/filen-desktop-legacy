@@ -4771,7 +4771,7 @@ const initChokidar = async () => {
 
 		isDoingRealtimeWork = false
 
-		setTimeout(setLocalDataChangedTrue, 20000)
+		setTimeout(setLocalDataChangedTrue, 15000)
 
 		return true
 	}

@@ -559,15 +559,20 @@ const createWindow = async () => {
 				}
 
 				fs.access(winOrUnixFilePath(newSyncDirPath), (err) => {
-					if(err && err.code == "ENOENT"){
-						fs.mkdir(winOrUnixFilePath(newSyncDirPath), (err) => {
-							if(err){
-								console.log(err)
-							}
-							else{
-								copyOldFilesOver()
-							}
-						})
+					if(err){
+						if(err.code == "ENOENT"){
+							fs.mkdir(winOrUnixFilePath(newSyncDirPath), (err) => {
+								if(err){
+									console.log(err)
+								}
+								else{
+									copyOldFilesOver()
+								}
+							})
+						}
+						else{
+							console.log(err)
+						}
 					}
 					else{
 						copyOldFilesOver()
