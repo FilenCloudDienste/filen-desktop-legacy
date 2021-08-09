@@ -264,7 +264,7 @@ const createWindow = async () => {
 		minimizable: false,
 		fullscreenable: false,
 		resizable: false,
-		show: false,
+		show: true,
 		frame: false,
 		skipTaskbar: true,
 		transparent: true
@@ -765,9 +765,11 @@ app.on("browser-window-blur", () => {
     globalShortcut.unregister("CommandOrControl+R")
     globalShortcut.unregister("F5")
 
-    if(!is.dev()){
-    	hideWindow()
+    if(is.dev()){
+    	return false
     }
+
+    return hideWindow()
 })
 
 powerMonitor.on("shutdown", () => {

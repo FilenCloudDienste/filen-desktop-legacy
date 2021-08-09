@@ -2916,7 +2916,7 @@ const markUploadAsDone = (uuid, uploadKey, tries, maxTries, callback) => {
 	})
 }
 
-const uploadFileToRemote = async (path, uuid, parent, name, userMasterKeys, callback) => {
+const uploadFileToRemote = async (path, uuid, parent, name, userMasterKeys, lastModified, callback) => {
 	try{
 		var usrAPIKey = await getUserAPIKey()
 	}
@@ -2960,7 +2960,8 @@ const uploadFileToRemote = async (path, uuid, parent, name, userMasterKeys, call
 			name,
 			size,
 			mime,
-			key
+			key,
+			lastModified: lastModified || Math.floor((+new Date()) / 1000)
 		}), userMasterKeys[userMasterKeys.length - 1])
 
 		let dummyOffset = 0
@@ -3730,34 +3731,44 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 						let newFileUUID = uuidv4()
 
 						const doUpload = async () => {
-							uploadFileToRemote(taskInfo.realPath, newFileUUID, taskInfo.parent, taskInfo.name, userMasterKeys, async (err) => {
-								if(err){
-									console.log(err)
+							fs.stat(winOrUnixFilePath(taskInfo.realPath)).then(async (fileInfo) => {
+								uploadFileToRemote(taskInfo.realPath, newFileUUID, taskInfo.parent, taskInfo.name, userMasterKeys, Math.floor(fileInfo.mtimeMs / 1000), async (err) => {
+									if(err){
+										console.log(err)
+
+										syncTaskLimiterSemaphoreRelease()
+
+										return setTimeout(() => {
+											removeFromSyncTasks(taskId)
+										}, syncTimeout)
+									}
+
+									console.log(task + " " + taskInfo.path + " " + task + " done")
+
+									addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
+
+									try{
+										let stat = await fs.stat(winOrUnixFilePath(taskInfo.realPath))
+
+										if(stat){
+											localFileModifications[taskInfo.filePath] = stat.mtimeMs
+											remoteFileSizes[taskInfo.filePath] = stat.size
+											remoteFileUUIDs[taskInfo.filePath] = newFileUUID
+											localFileExisted[taskInfo.path] = true
+										}
+									}
+									catch(e){
+										console.log(e)
+									}
 
 									syncTaskLimiterSemaphoreRelease()
 
 									return setTimeout(() => {
 										removeFromSyncTasks(taskId)
 									}, syncTimeout)
-								}
-
-								console.log(task + " " + taskInfo.path + " " + task + " done")
-
-								addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
-
-								try{
-									let stat = await fs.stat(winOrUnixFilePath(taskInfo.realPath))
-
-									if(stat){
-										localFileModifications[taskInfo.filePath] = stat.mtimeMs
-										remoteFileSizes[taskInfo.filePath] = stat.size
-										remoteFileUUIDs[taskInfo.filePath] = newFileUUID
-										localFileExisted[taskInfo.path] = true
-									}
-								}
-								catch(e){
-									console.log(e)
-								}
+								})
+							}).catch((err) => {
+								console.log(err)
 
 								syncTaskLimiterSemaphoreRelease()
 
@@ -5167,7 +5178,9 @@ const init = async () => {
 
 	doSetup((err) => {
 		if(err){
-			return console.log(err)
+			console.log(err)
+
+			return showBigErrorMessage("Error while trying to setup the client.")
 		}
 
 		return routeTo("syncs")
