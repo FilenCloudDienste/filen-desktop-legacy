@@ -737,6 +737,18 @@ else{
 	})
 }
 
+app.on("before-quit", (event) => {
+	event.preventDefault()
+
+	let waitForSyncToFinishInterval = setInterval(() => {
+		if(syncTasks == 0){
+			clearInterval(waitForSyncToFinishInterval)
+
+			return app.exit(0)
+		}
+	}, 100)
+})
+
 app.on("window-all-closed", () => {
   	if(!is.macOS()){
     	return app.exit(0)
@@ -773,5 +785,11 @@ app.on("browser-window-blur", () => {
 })
 
 powerMonitor.on("shutdown", () => {
-  	return app.exit(0)
+	let waitForSyncToFinishInterval = setInterval(() => {
+		if(syncTasks == 0){
+			clearInterval(waitForSyncToFinishInterval)
+
+			return app.exit(0)
+		}
+	}, 100)
 })

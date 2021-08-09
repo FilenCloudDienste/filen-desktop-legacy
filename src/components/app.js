@@ -172,6 +172,8 @@ let deletedLastCycle = {}
 let isDoingRealtimeWork = false
 let syncMode = "twoWay"
 let reloadAll = true
+let handleRealtimeWorkTimeout = undefined
+let currentSyncTasksExtra = []
 
 let currentFileVersion = 1
 let metadataVersion = 1
@@ -1488,7 +1490,7 @@ const toggleAutostart = () => {
 }
 
 const changeHomePath = () => {
-	if(currentSyncTasks.length > 0){
+	if((currentSyncTasks.length + currentSyncTasksExtra.length) > 0){
 		return false
 	}
 
@@ -2210,6 +2212,16 @@ const removeFromSyncTasks = (taskId) => {
 	currentSyncTasks = currentSyncTasks.filter((item) => {
 		return item !== taskId
 	})
+}
+
+const removeFromSyncTasksExtra = (taskId) => {
+	currentSyncTasksExtra = currentSyncTasksExtra.filter((item) => {
+		return item !== taskId
+	})
+}
+
+const clearCurrentSyncTasksExtra = () => {
+	currentSyncTasksExtra = []
 }
 
 const removeFromDeletingRemoteFolders = (taskId) => {
@@ -3991,6 +4003,8 @@ const doSync = async () => {
 
 	isSyncing = true
 
+	clearCurrentSyncTasksExtra()
+
 	let releaseSyncSemaphore = await doSyncSempahore.acquire()
 
 	try{
@@ -4014,6 +4028,11 @@ const doSync = async () => {
 	}
 	catch(e){
 		showBigErrorMessage("No permissions to read/write sync directory. Please change permissions or sync path.")
+
+		isSyncing = false
+		isIndexing = false
+
+		releaseSyncSemaphore()
 
   		throw new Error(e)
 	}
@@ -4636,7 +4655,7 @@ const doSync = async () => {
 					updateVisualStatus()
 
 					let waitForQueueToFinishInterval = setInterval(async () => {
-						if(currentSyncTasks.length <= 0){
+						if(currentSyncTasks.length <= 0){ //no extra
 							clearInterval(waitForQueueToFinishInterval)
 
 							updateVisualStatus()
@@ -4700,9 +4719,9 @@ const doSync = async () => {
 }
 
 const setLocalDataChangedTrue = () => {
-	if(isSyncing || isIndexing){
-		return setTimeout(setLocalDataChangedTrue, 1000)
-	}
+	//if(isSyncing || isIndexing || currentSyncTasks.length > 0 || syncingPaused){
+	//	return setTimeout(setLocalDataChangedTrue, 1000)
+	//}
 
 	return localDataChanged = true
 }
@@ -4724,10 +4743,14 @@ const initChokidar = async () => {
 			}, 100)
 		}
 
+		let taskId = uuidv4()
+
+		currentSyncTasksExtra.push(taskId)
+
 		isDoingRealtimeWork = true
 
 		await new Promise((resolve) => {
-			setTimeout(resolve, 100)
+			return setTimeout(resolve, 100)
 		})
 
 		try{
@@ -4770,19 +4793,15 @@ const initChokidar = async () => {
 			}
 		}
 
-		await new Promise((resolve) => {
-			let ready = setInterval(() => {
-				if(currentSyncTasks.length <= 0){
-					clearInterval(ready)
+		clearTimeout(handleRealtimeWorkTimeout)
 
-					return resolve(true)
-				}
-			}, 100)
-		})
+		handleRealtimeWorkTimeout = setTimeout(async () => {
+			isDoingRealtimeWork = false
 
-		isDoingRealtimeWork = false
+			clearCurrentSyncTasksExtra()
 
-		setTimeout(setLocalDataChangedTrue, 15000)
+			setLocalDataChangedTrue()
+		}, 30000)
 
 		return true
 	}
@@ -4803,7 +4822,7 @@ const initChokidar = async () => {
 		throw new Error(e)
 	}
 
-	setLocalDataChangedTrue()
+	return setLocalDataChangedTrue()
 }
 
 const startSyncing = async () => {
@@ -5014,7 +5033,7 @@ const updateVisualStatus = async () => {
 	let headerStatus = ""
 	let tooltipText = ""
 
-	if(currentSyncTasks.length > 0){
+	if((currentSyncTasks.length + currentSyncTasksExtra.length) > 0){
 		headerStatus = `
 			<center>
 				<i class="fas fa-spinner fa-spin"></i>&nbsp;&nbsp;Filen is synchronizing
@@ -5044,7 +5063,7 @@ const updateVisualStatus = async () => {
 
 		ipcRenderer.send("set-tray-tooltip", {
 			tooltip: tooltipText,
-			tasks: currentSyncTasks.length
+			tasks: (currentSyncTasks.length + currentSyncTasksExtra.length)
 		})
 	}
 }
