@@ -1735,10 +1735,6 @@ const doSetup = async (callback) => {
    			skipNextRequestData = true
    			reloadAll = true
 
-			setTimeout(() => {
-				startSyncing()
-			}, 3000)
-
 			fillContent((err) => {
 				if(err){
 					if(typeof callback == "function"){
@@ -1747,6 +1743,8 @@ const doSetup = async (callback) => {
 
 					return console.log(err)
 				}
+
+				startSyncing()
 
 				if(typeof callback == "function"){
 					return callback(null)

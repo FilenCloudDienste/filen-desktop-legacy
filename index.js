@@ -205,6 +205,35 @@ const checkIfSyncDirectoryExists = () => {
 	})
 }
 
+const showBeforeCloseDialog = async () => {
+	let res = await dialog.showMessageBox({
+		icon: nativeImage.createFromPath(path.join(__dirname, "icons", "png", "512x512.png")),
+		title: "Filen Sync",
+		buttons: [
+			"Close anyway",
+			"Keep open"
+		],
+		defaultId: 1,
+		cancelId: 0,
+		type: "warning",
+		message: "Filen is still syncing with the cloud. Closing the application now could result into loss of data."
+	})
+
+	if(res.response == 0){
+		return app.exit(0)
+	}
+
+	return true
+}
+
+const attemptGracefulClose = () => {
+	if(syncTasks > 0){
+		return showBeforeCloseDialog()
+	}
+
+	return app.exit(0)
+}
+
 const toggleAutoLaunch = async (enable = true) => {
 	if(typeof app == "undefined" || typeof autoLauncher == "undefined"){
 		return false
@@ -311,7 +340,7 @@ const createWindow = async () => {
 	        {
 	            label: "Quit",
 	            click: () => {
-	            	return app.exit(0)
+	            	return attemptGracefulClose()
 	            }
 	        }
     	]
@@ -345,7 +374,7 @@ const createWindow = async () => {
 	        {
 	            label: "Quit",
 	            click: () => {
-	            	return app.exit(0)
+	            	return attemptGracefulClose()
 	            }
 	        }
     	]
@@ -595,7 +624,7 @@ const createWindow = async () => {
 	})
 
 	ipcMain.on("exit-app", (event, data) => {
-		return app.exit(0)
+		return attemptGracefulClose()
 	})
 
 	ipcMain.on("restart-for-update", (event, data) => {
@@ -740,13 +769,7 @@ else{
 app.on("before-quit", (event) => {
 	event.preventDefault()
 
-	let waitForSyncToFinishInterval = setInterval(() => {
-		if(syncTasks == 0){
-			clearInterval(waitForSyncToFinishInterval)
-
-			return app.exit(0)
-		}
-	}, 100)
+	return attemptGracefulClose()
 })
 
 app.on("window-all-closed", () => {
@@ -785,11 +808,5 @@ app.on("browser-window-blur", () => {
 })
 
 powerMonitor.on("shutdown", () => {
-	let waitForSyncToFinishInterval = setInterval(() => {
-		if(syncTasks == 0){
-			clearInterval(waitForSyncToFinishInterval)
-
-			return app.exit(0)
-		}
-	}, 100)
+	return attemptGracefulClose()
 })
