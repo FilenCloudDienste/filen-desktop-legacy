@@ -1504,13 +1504,13 @@ const downloadUpdateLink = () => {
 	let href = ""
 
 	if(process.platform == "linux"){
-		href = "https://cdn.filen.io/sync/updates/Filen%20Sync-setup.AppImage"
+		href = "https://cdn.filen.io/sync/updates/filen-setup.AppImage"
 	}
 	else if(process.platform == "darwin"){
-		href = "https://cdn.filen.io/sync/updates/Filen%20Sync-setup.dmg"
+		href = "https://cdn.filen.io/sync/updates/filen-setup.dmg"
 	}
 	else{
-		href = "https://cdn.filen.io/sync/updates/Filen%20Sync-setup.exe"
+		href = "https://cdn.filen.io/sync/updates/filen-setup.exe"
 	}
 
 	try{

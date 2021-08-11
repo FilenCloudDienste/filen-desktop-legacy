@@ -46,10 +46,10 @@
 		"start": "electron .",
 		"postinstall": "electron-builder install-app-deps",
 		"rebuild": "./node_modules/.bin/electron-rebuild.cmd",
-		"dist": "npm run postinstall && electron-builder -wlm",
-		"build-linux": "npm run postinstall && electron-builder -l",
-		"build-mac": "npm run postinstall && electron-builder -m",
-		"build-win": "npm run postinstall && electron-builder -w",
+		"dist": "electron-builder -wlm",
+		"build-linux": "electron-builder -l",
+		"build-mac": "electron-builder -m",
+		"build-win": "electron-builder -w",
 		"misc": "-c.mac.identity=null"
 	},
 	"build": {
@@ -58,7 +58,7 @@
 		"asar": false,
 		"npmRebuild": true,
 		"nodeGypRebuild": false,
-		"artifactName": "${productName}-setup.${ext}",
+		"artifactName": "filen-setup.${ext}",
 		"afterSign": "build/notarize.js",
 		"directories": {
 			"output": "./build/bin/"
@@ -73,7 +73,7 @@
 			"icon": "./icons/win/icon.ico",
 			"target": [
 				"nsis",
-                "zip"
+				"zip"
 			]
 		},
 		"nsis": {
@@ -84,7 +84,7 @@
 			"icon": "./icons/png/256x256.png",
 			"target": [
 				"AppImage",
-                "zip"
+				"zip"
 			]
 		},
 		"mac": {
@@ -94,17 +94,17 @@
 			"entitlementsInherit": "build/entitlements.mac.plist",
 			"target": [
 				"dmg",
-                "zip"
+				"zip"
 			],
 			"extendInfo": {
-			    "LSUIElement": 1
-			 },
+				"LSUIElement": 1
+			},
 			"icon": "./icons/png/512x512.png"
 		},
 		"dmg": {
-		  	"sign": false
+			"sign": false
 		}
 	},
 	"author": "Filen Cloud Dienste UG (haftungsbeschränkt)",
-	"license": "https://github.com/Dwynr/filen-desktop-client/blob/master/LICENSE.md"
+	"license": "https://github.com/FilenCloudDienste/filen-desktop/blob/master/LICENSE.md"
 }
