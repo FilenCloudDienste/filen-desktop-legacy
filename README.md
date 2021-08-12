@@ -3,11 +3,11 @@
 
 # Installation
 
-Use node 13.14.0
+Use node 14.17.1
 
 ``` bash
-nvm install 13.14.0
-nvm use 13.14.0
+nvm install 14.17.1
+nvm use 14.17.1
 ```
 
 Use npm

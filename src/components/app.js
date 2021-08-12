@@ -2498,7 +2498,8 @@ const checkIfItemParentIsBeingShared = async (parentUUID, type, metaData, option
 	    				name: metaData.name,
 	    				size: parseInt(metaData.size),
 	    				mime: metaData.mime,
-	    				key: metaData.key
+	    				key: metaData.key,
+	    				lastModified: metaData.lastModified || Math.floor((+new Date()) / 1000)
 	    			})
 				}
 				else{
@@ -2565,7 +2566,8 @@ const checkIfItemParentIsBeingShared = async (parentUUID, type, metaData, option
 					name: metaData.name,
 					size: parseInt(metaData.size),
 					mime: metaData.mime,
-					key: metaData.key
+					key: metaData.key,
+					lastModified: metaData.lastModified || Math.floor((+new Date()) / 1000)
 				})
 			}
 			else{
@@ -3056,7 +3058,8 @@ const uploadFileToRemote = async (path, uuid, parent, name, userMasterKeys, last
 													name: name,
 													size: parseInt(size),
 													mime: mime,
-													key: key
+													key: key,
+													lastModified: lastModified || Math.floor((+new Date()) / 1000)
 												}, () => {
 													return callback(null)
 												})
@@ -4742,6 +4745,10 @@ const initChokidar = async () => {
 	}
 
 	const handleEvent = async (event, ePath) => {
+		if(syncMode == "cloudToLocal"){
+			return false
+		}
+
 		if(isSyncing || isIndexing){
 			return setTimeout(() => {
 				handleEvent(event, ePath)
