@@ -131,11 +131,11 @@ let localFolderExisted = {}
 let currentDownloadTasks = 0
 let maxDownloadTasks = 10
 let currentDownloadThreads = 0
-let maxDownloadThreads = 30
+let maxDownloadThreads = 32
 let currentUploadTasks = 0
 let maxUploadTasks = 10
 let currentUploadThreads = 0
-let maxUploadThreads = 10
+let maxUploadThreads = 16
 let downloadWriteChunk = {}
 let downloadIndex = {}
 let downloadWriteStreams = {}
@@ -174,6 +174,8 @@ let syncMode = "twoWay"
 let reloadAll = true
 let handleRealtimeWorkTimeout = undefined
 let currentSyncTasksExtra = []
+let currentWriteThreads = 0
+let maxWriteThreads = 512
 
 let currentFileVersion = 1
 let metadataVersion = 1
@@ -437,10 +439,16 @@ const initSocket = () => {
 				$("#download-folder-path-text").val(lastDownloadFolderPath)
 			}
 
+			clearInterval(downloadFolderDoneInterval)
+
 			$("#download-folder-change-path-btn").prop("disabled", false)
 			$("#download-folder-btn-container").show()
 			$("#download-folder-progress-container").hide()
 			$("#download-folder-progress-text-container").hide()
+			$("#download-folder-progress-bytes-text").html("")
+			$("#download-folder-progress-percent-text").html("")
+			$("#download-folder-progress").css("width", "0%")
+			$("#download-folder-progress").attr("aria-valuenow", "0")
 			$("#download-folder-foldername-text").html(currentDownloadFolderName)
 
 			routeTo("download-folder")
@@ -806,16 +814,27 @@ const startDownloadFolder = () => {
 				$("#download-folder-progress").attr("aria-valuenow", percentDone)
 				$("#download-folder-progress").css("width", percentDone + "%")
 
-				$("#download-folder-progress-bytes-text").html(formatBytes(currentDownloadFolderLoaded[currentDownloadFolderUUID]) + "/" + formatBytes(totalFolderSize))
+				let doneBytes = currentDownloadFolderLoaded[currentDownloadFolderUUID]
+
+				if(doneBytes >= totalFolderSize){
+					doneBytes = totalFolderSize
+				}
+
+				$("#download-folder-progress-bytes-text").html(formatBytes(doneBytes) + "/" + formatBytes(totalFolderSize))
 				$("#download-folder-progress-percent-text").html(percentDone + "%")
 
 				if(percentDone >= 100 || downloadedFiles >= totalFiles){
-					clearInterval(downloadFolderDoneInterval)
+					if(downloadedFiles >= totalFiles){
+						clearInterval(downloadFolderDoneInterval)
 
-					$("#download-folder-progress-percent-text").html("Done")
+						$("#download-folder-progress-percent-text").html("Done")
 
-					isCurrentlyDownloadigRemote = false
-					//currentDownloadFolderStopped[currentDownloadFolderUUID] = true
+						isCurrentlyDownloadigRemote = false
+						//currentDownloadFolderStopped[currentDownloadFolderUUID] = true
+					}
+					else{
+						$("#download-folder-progress-percent-text").html("<i class='fa fa-spinner fa-spin'></i>&nbsp;&nbsp;Writing to disk..")
+					}
 				}
 			}, 100)
 
@@ -2664,10 +2683,14 @@ const downloadFileChunk = async (file, index, tries, maxTries, isSync, callback)
 const writeFileChunk = (file, index, data) => {
 	if(index == downloadWriteChunk[file.uuid]){
 		if(typeof downloadWriteStreams[file.uuid] == "undefined"){
+			currentWriteThreads -= 1
+
 			return false
 		}
 
 		if(downloadWriteStreams[file.uuid].closed){
+			currentWriteThreads -= 1
+
 			return false
 		}
 
@@ -2676,6 +2699,7 @@ const writeFileChunk = (file, index, data) => {
 				chunksWritten[file.uuid] = 0
 			}
 
+			currentWriteThreads -= 1
 			chunksWritten[file.uuid] += 1
 
 			return downloadWriteChunk[file.uuid] += 1
@@ -2683,6 +2707,8 @@ const writeFileChunk = (file, index, data) => {
 
 		try{
 			downloadWriteStreams[file.uuid].write(data, (err) => {
+				currentWriteThreads -= 1
+
 				if(err){
 					return console.log(err)
 				}
@@ -2697,20 +2723,23 @@ const writeFileChunk = (file, index, data) => {
 			})
 		}
 		catch(e){
+			currentWriteThreads -= 1
+
 			return console.log(e)
 		}
 	}
 	else{
 		return setTimeout(() => {
 			writeFileChunk(file, index, data)
-		}, 100)
+		}, 10)
 	}
 }
 
 const downloadFileChunksAndWrite = (path, file, isSync, callback) => {
 	let maxDownloadThreadsInterval = setInterval(() => {
-		if(currentDownloadThreads < maxDownloadThreads){
+		if(currentDownloadThreads < maxDownloadThreads && currentWriteThreads < maxWriteThreads){
 			currentDownloadThreads += 1
+			currentWriteThreads += 1
 			downloadIndex[file.uuid] += 1
 
 			let thisIndex = downloadIndex[file.uuid]
@@ -2720,6 +2749,7 @@ const downloadFileChunksAndWrite = (path, file, isSync, callback) => {
 					clearInterval(maxDownloadThreadsInterval)
 
 					currentDownloadThreads -= 1
+					currentWriteThreads -= 1
 
 					return callback(err)
 				}
@@ -2743,7 +2773,7 @@ const downloadFileChunksAndWrite = (path, file, isSync, callback) => {
 				currentDownloadThreads -= 1
 			})
 		}
-	}, getRandomArbitrary(50, 100))
+	}, 10)
 }
 
 const downloadFileToLocal = async (path, file, isSync, callback) => {
@@ -2752,13 +2782,11 @@ const downloadFileToLocal = async (path, file, isSync, callback) => {
 	}
 
 	let dummyPath = path.split("\\").join("/")
-
 	let pathEx = dummyPath.split("/")
 
 	pathEx.pop()
 
 	let fileDirPath = pathEx.join("/") + "/"
-
 	let fileDirPathExists = false
 
 	try{
@@ -2814,7 +2842,7 @@ const downloadFileToLocal = async (path, file, isSync, callback) => {
 						}
 					}
 				}
-			}, 100)
+			}, 10)
 		})
 	})
 }
@@ -5044,8 +5072,9 @@ const updateVisualStatus = async () => {
 	let darkMode = await darkModeEnabled()
 	let headerStatus = ""
 	let tooltipText = ""
+	let totalSyncTasks = (currentSyncTasks.length + currentSyncTasksExtra.length) 
 
-	if((currentSyncTasks.length + currentSyncTasksExtra.length) > 0){
+	if(totalSyncTasks > 0){
 		headerStatus = `
 			<center>
 				<i class="fas fa-spinner fa-spin"></i>&nbsp;&nbsp;Filen is synchronizing
@@ -5053,6 +5082,8 @@ const updateVisualStatus = async () => {
 		`
 
 		tooltipText = "Filen Sync v" + currentAppVersion + "\nSynchronizing.."
+
+		$("#sync-mode-select").prop("disabled", true)
 	}
 	else{
 		headerStatus = `
@@ -5062,6 +5093,8 @@ const updateVisualStatus = async () => {
 		`
 
 		tooltipText = "Filen Sync v" + currentAppVersion + "\nUp to date"
+
+		$("#sync-mode-select").prop("disabled", false)
 	}
 
 	if(lastHeaderStatus !== headerStatus){
@@ -5075,7 +5108,7 @@ const updateVisualStatus = async () => {
 
 		ipcRenderer.send("set-tray-tooltip", {
 			tooltip: tooltipText,
-			tasks: (currentSyncTasks.length + currentSyncTasksExtra.length)
+			tasks: totalSyncTasks
 		})
 	}
 }
