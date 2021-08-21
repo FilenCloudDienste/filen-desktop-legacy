@@ -175,7 +175,7 @@ let reloadAll = true
 let handleRealtimeWorkTimeout = undefined
 let currentSyncTasksExtra = []
 let currentWriteThreads = 0
-let maxWriteThreads = 512
+let maxWriteThreads = 1024
 
 let currentFileVersion = 1
 let metadataVersion = 1
@@ -747,117 +747,132 @@ const startDownloadFolder = () => {
 		return false
 	}
 
+	if(downloadPath.slice(-1) == "/"){
+		downloadPath.substring(0, downloadPath.length - 1)
+	}
+
 	$("#download-folder-btn").html('<i class="fas fa-spinner fa-spin"></i>')
 	$("#download-folder-btn").prop("disabled", true)
 	$("#download-folder-change-path-btn").prop("disabled", true)
 	$("#download-folder-progress").attr("aria-valuenow", "0")
 	$("#download-folder-progress").css("width", "0%")
 
-	lastDownloadFolderPath = downloadPath
-	currentDownloadFolderLoaded[currentDownloadFolderUUID] = 0
-	currentDownloadFolderStopped[currentDownloadFolderUUID] = false
+	try{
+		fs.accessSync(winOrUnixFilePath(downloadPath), fs.constants.R_OK | fs.constants.W_OK)
+	}
+	catch(e){
+		showBigErrorMessage("No permissions to read/write download directory. Please change permissions or download path.")
 
-	getDownloadFolderContents(currentDownloadFolderUUID, async (err, folders, files) => {
-		if(err){
-			$("#download-folder-btn-container").show()
-			$("#download-folder-change-path-btn").prop("disabled", false)
+		throw new Error(e)
+	}
+
+	rimraf(winOrUnixFilePath(downloadPath + "/" + currentDownloadFolderName), () => {
+		lastDownloadFolderPath = downloadPath
+		currentDownloadFolderLoaded[currentDownloadFolderUUID] = 0
+		currentDownloadFolderStopped[currentDownloadFolderUUID] = false
+
+		getDownloadFolderContents(currentDownloadFolderUUID, async (err, folders, files) => {
+			if(err){
+				$("#download-folder-btn-container").show()
+				$("#download-folder-change-path-btn").prop("disabled", false)
+				$("#download-folder-btn").html("Download")
+				$("#download-folder-btn").prop("disabled", false)
+				$("#download-folder-change-path-btn").prop("disabled", false)
+
+				return console.log(err)
+			}
+
+			$("#download-folder-btn-container").hide()
 			$("#download-folder-btn").html("Download")
 			$("#download-folder-btn").prop("disabled", false)
-			$("#download-folder-change-path-btn").prop("disabled", false)
 
-			return console.log(err)
-		}
+			let foldersCreated = 0
 
-		$("#download-folder-btn-container").hide()
-		$("#download-folder-btn").html("Download")
-		$("#download-folder-btn").prop("disabled", false)
-
-		let foldersCreated = 0
-
-		for(let prop in folders){
-			let path = downloadPath + "/" + prop
-
-			try{
-				let res = await fs.mkdir(winOrUnixFilePath(path), {
-					recursive: true,
-					overwrite: true
-				})
-
-				foldersCreated += 1
-			}
-			catch(e){
-				console.log(e)
-			}
-		}
-
-		if(foldersCreated == Object.keys(folders).length){
-			console.log("all folders created, downloading files now..")
-
-			let totalFolderSize = 0
-			let totalFiles = Object.keys(files).length
-			let downloadedFiles = 0
-
-			for(let prop in files){
-				totalFolderSize += files[prop].size
-			}
-
-			if(totalFolderSize >= diskSpaceFree){
-				return console.log("NO SPACE AVAILABLE")
-			}
-
-			downloadFolderDoneInterval = setInterval(() => {
-				let percentDone = ((currentDownloadFolderLoaded[currentDownloadFolderUUID] / totalFolderSize) * 100).toFixed(2)
-
-				$("#download-folder-progress-text-container").show()
-				$("#download-folder-change-path-btn").prop("disabled", true)
-				$("#download-folder-progress-container").show()
-				$("#download-folder-progress").attr("aria-valuenow", percentDone)
-				$("#download-folder-progress").css("width", percentDone + "%")
-
-				let doneBytes = currentDownloadFolderLoaded[currentDownloadFolderUUID]
-
-				if(doneBytes >= totalFolderSize){
-					doneBytes = totalFolderSize
-				}
-
-				$("#download-folder-progress-bytes-text").html(formatBytes(doneBytes) + "/" + formatBytes(totalFolderSize))
-				$("#download-folder-progress-percent-text").html(percentDone + "%")
-
-				if(percentDone >= 100 || downloadedFiles >= totalFiles){
-					if(downloadedFiles >= totalFiles){
-						clearInterval(downloadFolderDoneInterval)
-
-						$("#download-folder-progress-percent-text").html("Done")
-
-						isCurrentlyDownloadigRemote = false
-						//currentDownloadFolderStopped[currentDownloadFolderUUID] = true
-					}
-					else{
-						$("#download-folder-progress-percent-text").html("<i class='fa fa-spinner fa-spin'></i>&nbsp;&nbsp;Writing to disk..")
-					}
-				}
-			}, 100)
-
-			for(let prop in files){
+			for(let prop in folders){
 				let path = downloadPath + "/" + prop
 
-				downloadFileToLocal(winOrUnixFilePath(path), files[prop], false, (err) => {
-					if(err){
-						console.log(err)
-					}
-					else{
-						//isCurrentlyDownloadigRemote = false
-						//currentDownloadFolderStopped[currentDownloadFolderUUID] = true
+				try{
+					let res = await fs.mkdir(winOrUnixFilePath(path), {
+						recursive: true,
+						overwrite: true
+					})
 
-						downloadedFiles += 1
-					}
-				})
+					foldersCreated += 1
+				}
+				catch(e){
+					console.log(e)
+				}
 			}
-		}
-		else{
-			$("#download-folder-btn-container").show()
-			$("#download-folder-change-path-btn").prop("disabled", false)
-		}
+
+			if(foldersCreated == Object.keys(folders).length){
+				console.log("all folders created, downloading files now..")
+
+				let totalFolderSize = 0
+				let totalFiles = Object.keys(files).length
+				let downloadedFiles = 0
+
+				for(let prop in files){
+					totalFolderSize += files[prop].size
+				}
+
+				if(totalFolderSize >= diskSpaceFree){
+					return console.log("NO SPACE AVAILABLE")
+				}
+
+				downloadFolderDoneInterval = setInterval(() => {
+					let percentDone = ((currentDownloadFolderLoaded[currentDownloadFolderUUID] / totalFolderSize) * 100).toFixed(2)
+
+					$("#download-folder-progress-text-container").show()
+					$("#download-folder-change-path-btn").prop("disabled", true)
+					$("#download-folder-progress-container").show()
+					$("#download-folder-progress").attr("aria-valuenow", percentDone)
+					$("#download-folder-progress").css("width", percentDone + "%")
+
+					let doneBytes = currentDownloadFolderLoaded[currentDownloadFolderUUID]
+
+					if(doneBytes >= totalFolderSize){
+						doneBytes = totalFolderSize
+					}
+
+					$("#download-folder-progress-bytes-text").html(formatBytes(doneBytes) + "/" + formatBytes(totalFolderSize))
+					$("#download-folder-progress-percent-text").html(percentDone + "%")
+
+					if(percentDone >= 100 || downloadedFiles >= totalFiles){
+						if(downloadedFiles >= totalFiles){
+							clearInterval(downloadFolderDoneInterval)
+
+							$("#download-folder-progress-percent-text").html("Done")
+
+							isCurrentlyDownloadigRemote = false
+							//currentDownloadFolderStopped[currentDownloadFolderUUID] = true
+						}
+						else{
+							$("#download-folder-progress-percent-text").html("<i class='fa fa-spinner fa-spin'></i>&nbsp;&nbsp;Writing to disk..")
+						}
+					}
+				}, 100)
+
+				for(let prop in files){
+					let path = downloadPath + "/" + prop
+
+					downloadFileToLocal(winOrUnixFilePath(path), files[prop], false, (err) => {
+						if(err){
+							console.log(err)
+						}
+						else{
+							//isCurrentlyDownloadigRemote = false
+							//currentDownloadFolderStopped[currentDownloadFolderUUID] = true
+
+							downloadedFiles += 1
+						}
+					})
+				}
+			}
+			else{
+				$("#download-folder-btn-container").show()
+				$("#download-folder-change-path-btn").prop("disabled", false)
+			}
+		})
 	})
 }
 
@@ -2731,7 +2746,7 @@ const writeFileChunk = (file, index, data) => {
 	else{
 		return setTimeout(() => {
 			writeFileChunk(file, index, data)
-		}, 10)
+		}, 5)
 	}
 }
 
