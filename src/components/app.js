@@ -535,15 +535,20 @@ const getDownloadFolderContents = async (folderUUID, callback) => {
 		let basePath = ""
 
 		if(currentDownloadFolderIsShared){
-			try{
-				let decrypted = await window.crypto.subtle.decrypt({
-		      		name: "RSA-OAEP"
-		    	}, usrPrivKey, _base64ToArrayBuffer(res.data.folders[0].name))
-
-		    	basePath = JSON.parse(new TextDecoder().decode(decrypted)).name
+			if(res.data.folders[0].name == "default"){
+				basePath = "Default"
 			}
-			catch(e){
-				return callback(e)
+			else{
+				try{
+					let decrypted = await window.crypto.subtle.decrypt({
+						name: "RSA-OAEP"
+					}, usrPrivKey, _base64ToArrayBuffer(res.data.folders[0].name))
+	
+					basePath = JSON.parse(new TextDecoder().decode(decrypted)).name
+				}
+				catch(e){
+					return callback(e)
+				}
 			}
 		}
 		else if(currentDownloadFolderIsLink){
@@ -610,15 +615,20 @@ const getDownloadFolderContents = async (folderUUID, callback) => {
 			let selfName = ""
 
 			if(currentDownloadFolderIsShared){
-				try{
-					let decrypted = await window.crypto.subtle.decrypt({
-			      		name: "RSA-OAEP"
-			    	}, usrPrivKey, _base64ToArrayBuffer(self.name))
-
-			    	selfName = JSON.parse(new TextDecoder().decode(decrypted)).name
+				if(self.name == "default"){
+					selfName = "Default"
 				}
-				catch(e){
-					return callback(e)
+				else{
+					try{
+						let decrypted = await window.crypto.subtle.decrypt({
+							name: "RSA-OAEP"
+						}, usrPrivKey, _base64ToArrayBuffer(self.name))
+	
+						selfName = JSON.parse(new TextDecoder().decode(decrypted)).name
+					}
+					catch(e){
+						return callback(e)
+					}
 				}
 			}
 			else if(currentDownloadFolderIsLink){
@@ -2098,6 +2108,10 @@ const updateUserKeys = async (callback) => {
 }
 
 async function decryptFolderNameLink(metadata, linkKey, uuid){
+	if(metadata == "default"){
+		return "Default"
+	}
+
     let folderName = ""
 
     try{
@@ -2145,6 +2159,10 @@ async function decryptFileMetadataLink(metadata, linkKey, uuid){
 }
 
 const decryptFolderMetadata = async (str, userMasterKeys, uuid) => {
+	if(str == "default"){
+		return "Default"
+	}
+
 	let cacheKey = "folder_" + str + "_" + uuid
 
 	if(typeof remoteDecryptedCache[cacheKey] == "string"){
