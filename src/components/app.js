@@ -129,7 +129,7 @@ let localDataChanged = true
 let localFileExisted = {}
 let localFolderExisted = {}
 let currentDownloadTasks = 0
-let maxDownloadTasks = 10
+let maxDownloadTasks = 1
 let currentDownloadThreads = 0
 let maxDownloadThreads = 32
 let currentUploadTasks = 0
@@ -2814,6 +2814,18 @@ const downloadFileToLocal = async (path, file, isSync, callback) => {
 		return callback(new Error("file size is zero"))
 	}
 
+	await new Promise((resolve) => {
+		let interval = setInterval(() => {
+			if(currentDownloadTasks < maxDownloadTasks){
+				clearInterval(interval)
+
+				return resolve()
+			}
+		}, 5)
+	})
+
+	currentDownloadTasks += 1
+
 	let dummyPath = path.split("\\").join("/")
 	let pathEx = dummyPath.split("/")
 
@@ -2832,15 +2844,21 @@ const downloadFileToLocal = async (path, file, isSync, callback) => {
 		}
 	}
 	catch(e){
+		currentDownloadTasks -= 1
+		
 		return callback(e)
 	}
 
 	if(!fileDirPathExists){
+		currentDownloadTasks -= 1
+		
 		return callback(new Error("file parent dir does not exist locally -> " + fileDirPath))
 	}
 
-	checkIfFileExistsLocallyOtherwiseDelete(winOrUnixFilePath(path), (err) => {
+	checkIfFileExistsLocallyOtherwiseDelete(winOrUnixFilePath(path), async (err) => {
 		if(err){
+			currentDownloadTasks -= 1
+
 			return callback(err)
 		}
 
@@ -2855,6 +2873,8 @@ const downloadFileToLocal = async (path, file, isSync, callback) => {
 			if(err){
 				downloadWriteStreams[file.uuid].end()
 
+				currentDownloadTasks -= 1
+
 				return callback(err)
 			}
 
@@ -2862,6 +2882,8 @@ const downloadFileToLocal = async (path, file, isSync, callback) => {
 				if(typeof chunksWritten[file.uuid] !== "undefined"){
 					if(chunksWritten[file.uuid] >= file.chunks){
 						clearInterval(waitForChunksToWriteInterval)
+
+						currentDownloadTasks -= 1
 
 						if(isSync){
 							downloadWriteStreams[file.uuid].end()
@@ -2875,7 +2897,7 @@ const downloadFileToLocal = async (path, file, isSync, callback) => {
 						}
 					}
 				}
-			}, 10)
+			}, 5)
 		})
 	})
 }
