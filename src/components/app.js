@@ -1721,10 +1721,6 @@ const fillContent = async (callback) => {
 			}
 		}
 
-		if(res.data.email !== userEmail){
-			return doLogout()
-		}
-
 		$("#account-email-text").html(res.data.email)
 
 		let storageUsedPercent = ((res.data.storageUsed / res.data.maxStorage) * 100).toFixed(2)
