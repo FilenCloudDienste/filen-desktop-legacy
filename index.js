@@ -186,8 +186,7 @@ const checkIfSyncDirectoryExists = () => {
 			}
 
 			fs.mkdir(winOrUnixFilePath(syncDirPath), {
-				recursive: true,
-				overwrite: true
+				recursive: true
 			}, (err) => {
 				if(err){
 					console.log("Could not create sync dir:", err)

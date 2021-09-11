@@ -1371,14 +1371,6 @@ const getUserAPIKey = async () => {
 		return ""
 	}
 
-	if(typeof res !== "string"){
-		return doLogout()
-	}
-
-	if(res.length <= 16){
-		return doLogout()
-	}
-
 	return res
 }
 
