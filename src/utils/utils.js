@@ -255,7 +255,7 @@ const cleanString = (str) => {
     return str
   }
   
-    return removeIllegalCharsFromString(escapeHTML(str))
+    return escapeHTML(str)
 }
 
 function buf2hex(buffer) { // buffer is an ArrayBuffer
