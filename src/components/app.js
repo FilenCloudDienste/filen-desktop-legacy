@@ -2275,21 +2275,7 @@ const removeFromDeletingLocalFolders = (taskId) => {
 }
 
 const checkIfFileExistsLocallyOtherwiseDelete = async (path, callback) => {
-	try{
-		let stat = await fs.stat(path)
-
-		if(stat){
-			rimraf(path, () => {
-				return callback(null)
-			})
-		}
-		else{
-			return callback(null)
-		}
-	}
-	catch(e){
-		return callback(null)
-	}
+	return callback(null)
 }
 
 async function decryptFolderLinkKey(str, userMasterKeys){
@@ -2701,15 +2687,15 @@ const downloadFileChunk = async (file, index, tries, maxTries, isSync, callback)
 	})
 }
 
-const writeFileChunk = (file, index, data) => {
+const writeFileChunk = (file, index, data, stream) => {
 	if(index == downloadWriteChunk[file.uuid]){
-		if(typeof downloadWriteStreams[file.uuid] == "undefined"){
+		if(typeof stream == "undefined"){
 			currentWriteThreads -= 1
 
 			return false
 		}
 
-		if(downloadWriteStreams[file.uuid].closed){
+		if(stream.closed){
 			currentWriteThreads -= 1
 
 			return false
@@ -2727,7 +2713,7 @@ const writeFileChunk = (file, index, data) => {
 		}
 
 		try{
-			downloadWriteStreams[file.uuid].write(data, (err) => {
+			stream.write(Buffer.from(data), (err) => {
 				currentWriteThreads -= 1
 
 				if(err){
@@ -2751,12 +2737,12 @@ const writeFileChunk = (file, index, data) => {
 	}
 	else{
 		return setTimeout(() => {
-			writeFileChunk(file, index, data)
+			writeFileChunk(file, index, data, stream)
 		}, 5)
 	}
 }
 
-const downloadFileChunksAndWrite = (path, file, isSync, callback) => {
+const downloadFileChunksAndWrite = (path, file, isSync, stream, callback) => {
 	let maxDownloadThreadsInterval = setInterval(() => {
 		if(currentDownloadThreads < maxDownloadThreads && currentWriteThreads < maxWriteThreads){
 			currentDownloadThreads += 1
@@ -2776,7 +2762,7 @@ const downloadFileChunksAndWrite = (path, file, isSync, callback) => {
 				}
 
 				if(typeof data !== "undefined"){
-					writeFileChunk(file, index, data)
+					writeFileChunk(file, index, data, stream)
 
 					if(!isSync && isCurrentlyDownloadigRemote && typeof currentDownloadFolderUUID !== "undefined"){
 						currentDownloadFolderLoaded[currentDownloadFolderUUID] += data.length
@@ -2852,36 +2838,53 @@ const downloadFileToLocal = async (path, file, isSync, callback) => {
 
 		downloadWriteChunk[file.uuid] = 0
 		downloadIndex[file.uuid] = -1
+		chunksWritten[file.uuid] = 0
 
-		downloadWriteStreams[file.uuid] = fs.createWriteStream(winOrUnixFilePath(path), {
-			flags: "w"
-		})
+		try{
+			var stream = fs.createWriteStream(winOrUnixFilePath(path), {
+				flags: "w+",
+				autoClose: false
+			})
+		}
+		catch(e){
+			return callback(e)
+		}
 
-		downloadFileChunksAndWrite(winOrUnixFilePath(path), file, isSync, (err) => {
+		downloadFileChunksAndWrite(winOrUnixFilePath(path), file, isSync, stream, (err) => {
 			if(err){
-				downloadWriteStreams[file.uuid].end()
+				stream.end()
 
 				currentDownloadTasks -= 1
 
 				return callback(err)
 			}
 
-			let waitForChunksToWriteInterval = setInterval(() => {
+			let waitForChunksToWriteInterval = setInterval(async () => {
 				if(typeof chunksWritten[file.uuid] !== "undefined"){
 					if(chunksWritten[file.uuid] >= file.chunks){
 						clearInterval(waitForChunksToWriteInterval)
 
 						currentDownloadTasks -= 1
 
-						if(isSync){
-							downloadWriteStreams[file.uuid].end()
+						stream.end()
 
-							return callback(null)
+						try{
+							let stat = await fs.stat(winOrUnixFilePath(path))
+
+							if(stat){
+								if(stat.size > 0){
+									return callback(null)
+								}
+								else{
+									return callback(new Error(path + " empty after downloading"))
+								}
+							}
+							else{
+								return callback(new Error(path + " does not exist after downloading"))
+							}
 						}
-						else{
-							downloadWriteStreams[file.uuid].end()
-
-							return callback(null)
+						catch(e){
+							return callback(e)
 						}
 					}
 				}
