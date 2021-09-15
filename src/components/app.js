@@ -129,7 +129,7 @@ let localDataChanged = true
 let localFileExisted = {}
 let localFolderExisted = {}
 let currentDownloadTasks = 0
-let maxDownloadTasks = 1
+let maxDownloadTasks = 16
 let currentDownloadThreads = 0
 let maxDownloadThreads = 32
 let currentUploadTasks = 0
@@ -175,7 +175,7 @@ let reloadAll = true
 let handleRealtimeWorkTimeout = undefined
 let currentSyncTasksExtra = []
 let currentWriteThreads = 0
-let maxWriteThreads = 1024
+let maxWriteThreads = 2048
 
 let currentFileVersion = 1
 let metadataVersion = 1
@@ -1572,38 +1572,38 @@ const renderSyncTask = (task, prepend = true) => {
 	let isFile = true
 
 	if(task.where == "remote" && task.task == "upload"){
-		taskName = '<i class="fas fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-up"></i>'
+		taskName = '<i class="fa fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-up"></i>'
 	}
 	else if(task.where == "remote" && task.task == "rmdir"){
-		taskName = '<i class="fas fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-trash"></i>'
+		taskName = '<i class="fa fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-trash"></i>'
 		isFile = false
 	}
 	else if(task.where == "remote" && task.task == "rmfile"){
-		taskName = '<i class="fas fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-trash"></i>'
+		taskName = '<i class="fa fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-trash"></i>'
 	}
 	else if(task.where == "remote" && task.task == "mkdir"){
-		taskName = '<i class="fas fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-up"></i>'
+		taskName = '<i class="fa fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-up"></i>'
 		isFile = false
 	}
 	else if(task.where == "remote" && task.task == "update"){
-		taskName = '<i class="fas fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-up"></i>'
+		taskName = '<i class="fa fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-up"></i>'
 	}
 	else if(task.where == "local" && task.task == "download"){
-		taskName = '<i class="fas fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-down"></i>'
+		taskName = '<i class="fa fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-down"></i>'
 	}
 	else if(task.where == "local" && task.task == "rmdir"){
-		taskName = '<i class="fas fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-trash"></i>'
+		taskName = '<i class="fa fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-trash"></i>'
 		isFile = false
 	}
 	else if(task.where == "local" && task.task == "rmfile"){
-		taskName = '<i class="fas fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-trash"></i>'
+		taskName = '<i class="fa fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-trash"></i>'
 	}
 	else if(task.where == "local" && task.task == "mkdir"){
-		taskName = '<i class="fas fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-down"></i>'
+		taskName = '<i class="fa fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-down"></i>'
 		isFile = false
 	}
 	else if(task.where == "local" && task.task == "update"){
-		taskName = '<i class="fas fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-down"></i>'
+		taskName = '<i class="fa fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-down"></i>'
 	}
 
 	let fileNameEx = JSON.parse(task.taskInfo).path.split("/")
@@ -1616,7 +1616,7 @@ const renderSyncTask = (task, prepend = true) => {
 	let taskHTML = `
 		<div>
 			<div class="overflow-ellipsis" style="width: 8%; float: left;">
-	    		` + (isFile ? `<i class="fas fa-file"></i>` : `<i class="fas fa-folder" style="color: #F6C358;"></i>`) + `
+	    		` + (isFile ? `<i class="far fa-file"></i>` : `<i class="far fa-folder" style="color: #F6C358;"></i>`) + `
 	        </div>
 	        <div class="overflow-ellipsis" style="width: 72%; float: left; padding-right: 25px;">
 	            ` + fileName + `
@@ -2897,7 +2897,7 @@ const uploadChunk = async (uuid, queryParams, blob, tries, maxTries, callback) =
 	if(syncingPaused){
 		return setTimeout(() => {
 			uploadChunk(uuid, queryParams, blob, tries, maxTries, callback)
-		}, getRandomArbitrary(25, 100))
+		}, 10)
 	}
 
 	if(tries >= maxTries){
@@ -2926,16 +2926,9 @@ const uploadChunk = async (uuid, queryParams, blob, tries, maxTries, callback) =
 		contentType: false,
 		timeout: (3600 * 1000),
 		success: (res) => {
-			if(blob.length >= 810000){
-				setTimeout(() => {
-					release()
-				}, getRandomArbitrary(75, 125))
-			}
-			else{
-				setTimeout(() => {
-					release()
-				}, getRandomArbitrary(750, 1250))
-			}
+			setTimeout(() => {
+				release()
+			}, getRandomArbitrary(50, 1000))
 
 			if(!res){
 				return setTimeout(() => {
@@ -2961,16 +2954,9 @@ const uploadChunk = async (uuid, queryParams, blob, tries, maxTries, callback) =
 			}
 		},
 		error: (err) => {
-			if(blob.length >= 810000){
-				setTimeout(() => {
-					release()
-				}, getRandomArbitrary(75, 125))
-			}
-			else{
-				setTimeout(() => {
-					release()
-				}, getRandomArbitrary(750, 1250))
-			}
+			setTimeout(() => {
+				release()
+			}, getRandomArbitrary(50, 1000))
 
 			return setTimeout(() => {
 				uploadChunk(uuid, queryParams, blob, (tries + 1), maxTries, callback)
