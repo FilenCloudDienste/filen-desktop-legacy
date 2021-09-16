@@ -4824,7 +4824,7 @@ const initChokidar = async () => {
 		})
 
 		try{
-			let stat = await fs.stat(path.join(winOrUnixFilePath(userSyncDir), ePath))
+			await fs.stat(path.join(winOrUnixFilePath(userSyncDir), ePath))
 		}
 		catch(e){
 			if(e.code == "ENOENT" || e.toString().indexOf("ENOENT") !== -1){
@@ -4880,18 +4880,40 @@ const initChokidar = async () => {
 
 	chokidarWatcher = undefined
 
-	try{
-		chokidarWatcher = fs.watch(winOrUnixFilePath(userSyncDir), {
-			recursive: true,
-			persistent: true
-		}, (event, ePath) => {
-			return handleEvent(event, ePath)
-		})
-	}
-	catch(e){
-		showBigErrorMessage("Could not initialize directory watcher.")
+	if(is.linux()){
+		try{
+			chokidarWatcher = chokidar.watch(winOrUnixFilePath(userSyncDir), {
+				persistent: true,
+				ignoreInitial: true,
+				followSymlinks: false,
+				usePolling: false,
+				depth: 99999999999
+			}).on("all", async (event, ePath) => {
+				ePath = ePath.slice(userSyncDir.length + 1)
 
-		throw new Error(e)
+				return handleEvent(event, ePath)
+			})
+		}
+		catch(e){
+			showBigErrorMessage("Could not initialize directory watcher.")
+	
+			throw new Error(e)
+		}
+	}
+	else{
+		try{
+			chokidarWatcher = fs.watch(winOrUnixFilePath(userSyncDir), {
+				recursive: true,
+				persistent: true
+			}, (event, ePath) => {
+				return handleEvent(event, ePath)
+			})
+		}
+		catch(e){
+			showBigErrorMessage("Could not initialize directory watcher.")
+	
+			throw new Error(e)
+		}
 	}
 
 	return setLocalDataChangedTrue()
