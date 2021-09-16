@@ -3528,11 +3528,9 @@ const removeFoldersAndFilesFromExistingDir = (path, callback) => {
 	path = userHomePath + "/" + path
 
 	for(let prop in localFolderExisted){
-		let p = userHomePath + "/" + oldPath
-
-		if(p.indexOf(path) !== -1){
+		if(prop.indexOf(oldPath) !== -1){
 			delete localFolderExisted[prop]
-		}	
+		}
 	}
 
 	for(let prop in localFileExisted){
@@ -3547,7 +3545,7 @@ const removeFoldersAndFilesFromExistingDir = (path, callback) => {
 		}	
 	}
 
-	return callback()
+	return callback(null)
 }
 
 const syncTask = async (where, task, taskInfo, userMasterKeys) => {
@@ -4826,12 +4824,14 @@ const initChokidar = async () => {
 		})
 
 		try{
-			await fs.stat(path.join(winOrUnixFilePath(userSyncDir), ePath))
+			let stat = await fs.stat(path.join(winOrUnixFilePath(userSyncDir), ePath))
 		}
 		catch(e){
-			if(e.code == "ENOENT"){
+			if(e.code == "ENOENT" || e.toString().indexOf("ENOENT") !== -1){
 				let folderPath = "Filen Sync/" + ePath.split("\\").join("/") + "/"
 				let filePath = folderPath.slice(0, (folderPath.length - 1))
+
+				console.log(typeof lastRemoteSyncFolders[folderPath], typeof localFolderExisted[folderPath])
 
 				if(typeof lastRemoteSyncFolders[folderPath] !== "undefined" && typeof localFolderExisted[folderPath] !== "undefined"){
 					try{
