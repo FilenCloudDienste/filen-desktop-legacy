@@ -4826,24 +4826,22 @@ const initChokidar = async () => {
 			await fs.stat(path.join(winOrUnixFilePath(userSyncDir), ePath))
 		}
 		catch(e){
-			if(e.code == "ENOENT" || e.toString().indexOf("ENOENT") !== -1){
+			if(e.code == "ENOENT" || e.toString().indexOf("ENOENT") !== -1 && process.platform !== "linux"){
 				let folderPath = "Filen Sync/" + ePath.split("\\").join("/") + "/"
 				let filePath = folderPath.slice(0, (folderPath.length - 1))
 
 				if(typeof lastRemoteSyncFolders[folderPath] !== "undefined" && typeof localFolderExisted[folderPath] !== "undefined"){
-					if(process.platform !== "linux"){
-						try{
-							let userMasterKeys = await getUserMasterKeys()
-	
-							syncTask("remote", "rmdir", {
-								path: folderPath,
-								name: lastRemoteSyncFolders[folderPath].name,
-								dir: lastRemoteSyncFolders[folderPath]
-							}, userMasterKeys)
-						}
-						catch(err){
-							console.log(err)
-						}
+					try{
+						let userMasterKeys = await getUserMasterKeys()
+
+						syncTask("remote", "rmdir", {
+							path: folderPath,
+							name: lastRemoteSyncFolders[folderPath].name,
+							dir: lastRemoteSyncFolders[folderPath]
+						}, userMasterKeys)
+					}
+					catch(err){
+						console.log(err)
 					}
 				}
 				else if(typeof lastRemoteSyncFiles[filePath] !== "undefined" && typeof localFileExisted[filePath] !== "undefined" && typeof userHomePath == "string"){
