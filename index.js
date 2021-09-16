@@ -88,7 +88,7 @@ let nativeImageTrayIconNormal = path.join(__dirname, "src", "img", "logo.png")
 let nativeImageTrayIconSyncing = path.join(__dirname, "src", "img", "tray_sync.png")
 let nativeImageTrayIconPaused = path.join(__dirname, "src", "img", "tray_paused.png")
 
-if(is.macOS()){
+if(is.macOS() || is.windows() || is.linux()){
 	nativeImageTrayIconNormal = path.join(__dirname, "src", "img", "logo_16.png")
 	nativeImageTrayIconSyncing = path.join(__dirname, "src", "img", "tray_sync_16.png")
 	nativeImageTrayIconPaused = path.join(__dirname, "src", "img", "tray_paused_16.png")
