@@ -4826,37 +4826,39 @@ const initChokidar = async () => {
 			await fs.stat(path.join(winOrUnixFilePath(userSyncDir), ePath))
 		}
 		catch(e){
-			if(e.code == "ENOENT" || e.toString().indexOf("ENOENT") !== -1 && process.platform !== "linux"){
-				let folderPath = "Filen Sync/" + ePath.split("\\").join("/") + "/"
-				let filePath = folderPath.slice(0, (folderPath.length - 1))
+			if(e.code == "ENOENT" || e.toString().indexOf("ENOENT") !== -1){
+				if(process.platform !== "linux"){
+					let folderPath = "Filen Sync/" + ePath.split("\\").join("/") + "/"
+					let filePath = folderPath.slice(0, (folderPath.length - 1))
 
-				if(typeof lastRemoteSyncFolders[folderPath] !== "undefined" && typeof localFolderExisted[folderPath] !== "undefined"){
-					try{
-						let userMasterKeys = await getUserMasterKeys()
+					if(typeof lastRemoteSyncFolders[folderPath] !== "undefined" && typeof localFolderExisted[folderPath] !== "undefined"){
+						try{
+							let userMasterKeys = await getUserMasterKeys()
 
-						syncTask("remote", "rmdir", {
-							path: folderPath,
-							name: lastRemoteSyncFolders[folderPath].name,
-							dir: lastRemoteSyncFolders[folderPath]
-						}, userMasterKeys)
+							syncTask("remote", "rmdir", {
+								path: folderPath,
+								name: lastRemoteSyncFolders[folderPath].name,
+								dir: lastRemoteSyncFolders[folderPath]
+							}, userMasterKeys)
+						}
+						catch(err){
+							console.log(err)
+						}
 					}
-					catch(err){
-						console.log(err)
-					}
-				}
-				else if(typeof lastRemoteSyncFiles[filePath] !== "undefined" && typeof localFileExisted[filePath] !== "undefined" && typeof userHomePath == "string"){
-					try{
-						let userMasterKeys = await getUserMasterKeys()
+					else if(typeof lastRemoteSyncFiles[filePath] !== "undefined" && typeof localFileExisted[filePath] !== "undefined" && typeof userHomePath == "string"){
+						try{
+							let userMasterKeys = await getUserMasterKeys()
 
-						syncTask("remote", "rmfile", {
-							path: filePath,
-							name: lastRemoteSyncFiles[filePath].name,
-							file: lastRemoteSyncFiles[filePath],
-							filePath: userHomePath + "/" + filePath
-						}, userMasterKeys)
-					}
-					catch(err){
-						console.log(err)
+							syncTask("remote", "rmfile", {
+								path: filePath,
+								name: lastRemoteSyncFiles[filePath].name,
+								file: lastRemoteSyncFiles[filePath],
+								filePath: userHomePath + "/" + filePath
+							}, userMasterKeys)
+						}
+						catch(err){
+							console.log(err)
+						}
 					}
 				}
 			}
