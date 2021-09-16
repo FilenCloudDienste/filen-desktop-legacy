@@ -94,7 +94,6 @@ let lastSyncTasksData = undefined
 let lastSyncedItem = undefined
 let diskSpaceFree = 5114639114240
 let idleTimeSeconds = 0
-let chokidarWatcher = undefined
 let socket = undefined
 let socketReady = false
 let socketHeartbeatInterval = undefined
@@ -4831,20 +4830,20 @@ const initChokidar = async () => {
 				let folderPath = "Filen Sync/" + ePath.split("\\").join("/") + "/"
 				let filePath = folderPath.slice(0, (folderPath.length - 1))
 
-				console.log(typeof lastRemoteSyncFolders[folderPath], typeof localFolderExisted[folderPath])
-
 				if(typeof lastRemoteSyncFolders[folderPath] !== "undefined" && typeof localFolderExisted[folderPath] !== "undefined"){
-					try{
-						let userMasterKeys = await getUserMasterKeys()
-
-						syncTask("remote", "rmdir", {
-							path: folderPath,
-							name: lastRemoteSyncFolders[folderPath].name,
-							dir: lastRemoteSyncFolders[folderPath]
-						}, userMasterKeys)
-					}
-					catch(err){
-						console.log(err)
+					if(process.platform !== "linux"){
+						try{
+							let userMasterKeys = await getUserMasterKeys()
+	
+							syncTask("remote", "rmdir", {
+								path: folderPath,
+								name: lastRemoteSyncFolders[folderPath].name,
+								dir: lastRemoteSyncFolders[folderPath]
+							}, userMasterKeys)
+						}
+						catch(err){
+							console.log(err)
+						}
 					}
 				}
 				else if(typeof lastRemoteSyncFiles[filePath] !== "undefined" && typeof localFileExisted[filePath] !== "undefined" && typeof userHomePath == "string"){
@@ -4878,11 +4877,9 @@ const initChokidar = async () => {
 		return true
 	}
 
-	chokidarWatcher = undefined
-
-	if(is.linux()){
-		try{
-			chokidarWatcher = chokidar.watch(winOrUnixFilePath(userSyncDir), {
+	try{
+		if(process.platform == "linux"){
+			chokidar.watch(winOrUnixFilePath(userSyncDir), {
 				persistent: true,
 				ignoreInitial: true,
 				followSymlinks: false,
@@ -4894,26 +4891,19 @@ const initChokidar = async () => {
 				return handleEvent(event, ePath)
 			})
 		}
-		catch(e){
-			showBigErrorMessage("Could not initialize directory watcher.")
-	
-			throw new Error(e)
-		}
-	}
-	else{
-		try{
-			chokidarWatcher = fs.watch(winOrUnixFilePath(userSyncDir), {
+		else{
+			fs.watch(winOrUnixFilePath(userSyncDir), {
 				recursive: true,
 				persistent: true
 			}, (event, ePath) => {
 				return handleEvent(event, ePath)
 			})
 		}
-		catch(e){
-			showBigErrorMessage("Could not initialize directory watcher.")
-	
-			throw new Error(e)
-		}
+	}
+	catch(e){
+		showBigErrorMessage("Could not initialize directory watcher.")
+
+		throw new Error(e)
 	}
 
 	return setLocalDataChangedTrue()
