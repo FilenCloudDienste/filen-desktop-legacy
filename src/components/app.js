@@ -53,6 +53,7 @@ const sha1 = require("js-sha1")
 const sha512 = require("js-sha512")
 const sha384 = require("js-sha512").sha384
 const is = require("electron-is")
+const nodeWatch = require("node-watch-fs-extra")
 
 let db = undefined
 let dbPath = undefined
@@ -4827,38 +4828,36 @@ const initChokidar = async () => {
 		}
 		catch(e){
 			if(e.code == "ENOENT" || e.toString().indexOf("ENOENT") !== -1){
-				if(process.platform !== "linux"){
-					let folderPath = "Filen Sync/" + ePath.split("\\").join("/") + "/"
-					let filePath = folderPath.slice(0, (folderPath.length - 1))
+				let folderPath = "Filen Sync/" + ePath.split("\\").join("/") + "/"
+				let filePath = folderPath.slice(0, (folderPath.length - 1))
 
-					if(typeof lastRemoteSyncFolders[folderPath] !== "undefined" && typeof localFolderExisted[folderPath] !== "undefined"){
-						try{
-							let userMasterKeys = await getUserMasterKeys()
+				if(typeof lastRemoteSyncFolders[folderPath] !== "undefined" && typeof localFolderExisted[folderPath] !== "undefined"){
+					try{
+						let userMasterKeys = await getUserMasterKeys()
 
-							syncTask("remote", "rmdir", {
-								path: folderPath,
-								name: lastRemoteSyncFolders[folderPath].name,
-								dir: lastRemoteSyncFolders[folderPath]
-							}, userMasterKeys)
-						}
-						catch(err){
-							console.log(err)
-						}
+						syncTask("remote", "rmdir", {
+							path: folderPath,
+							name: lastRemoteSyncFolders[folderPath].name,
+							dir: lastRemoteSyncFolders[folderPath]
+						}, userMasterKeys)
 					}
-					else if(typeof lastRemoteSyncFiles[filePath] !== "undefined" && typeof localFileExisted[filePath] !== "undefined" && typeof userHomePath == "string"){
-						try{
-							let userMasterKeys = await getUserMasterKeys()
+					catch(err){
+						console.log(err)
+					}
+				}
+				else if(typeof lastRemoteSyncFiles[filePath] !== "undefined" && typeof localFileExisted[filePath] !== "undefined" && typeof userHomePath == "string"){
+					try{
+						let userMasterKeys = await getUserMasterKeys()
 
-							syncTask("remote", "rmfile", {
-								path: filePath,
-								name: lastRemoteSyncFiles[filePath].name,
-								file: lastRemoteSyncFiles[filePath],
-								filePath: userHomePath + "/" + filePath
-							}, userMasterKeys)
-						}
-						catch(err){
-							console.log(err)
-						}
+						syncTask("remote", "rmfile", {
+							path: filePath,
+							name: lastRemoteSyncFiles[filePath].name,
+							file: lastRemoteSyncFiles[filePath],
+							filePath: userHomePath + "/" + filePath
+						}, userMasterKeys)
+					}
+					catch(err){
+						console.log(err)
 					}
 				}
 			}
@@ -4878,27 +4877,15 @@ const initChokidar = async () => {
 	}
 
 	try{
-		if(process.platform == "linux"){
-			chokidar.watch(winOrUnixFilePath(userSyncDir), {
-				persistent: true,
-				ignoreInitial: true,
-				followSymlinks: false,
-				usePolling: false,
-				depth: 99999999999
-			}).on("all", async (event, ePath) => {
-				ePath = ePath.slice(userSyncDir.length + 1)
+		nodeWatch(winOrUnixFilePath(userSyncDir), {
+			recursive: true,
+			persistent: true,
+			encoding: "utf8"
+		}, (event, ePath) => {
+			ePath = ePath.slice(userSyncDir.length + 1)
 
-				return handleEvent(event, ePath)
-			})
-		}
-		else{
-			fs.watch(winOrUnixFilePath(userSyncDir), {
-				recursive: true,
-				persistent: true
-			}, (event, ePath) => {
-				return handleEvent(event, ePath)
-			})
-		}
+			return handleEvent(event, ePath)
+		})
 	}
 	catch(e){
 		showBigErrorMessage("Could not initialize directory watcher.")

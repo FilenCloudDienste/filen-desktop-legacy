@@ -1,6 +1,6 @@
 {
 	"name": "filen-desktop-client",
-	"version": "1.5.5",
+	"version": "1.5.6",
 	"description": "Filen Desktop Client",
 	"main": "index.js",
 	"dependencies": {
@@ -9,6 +9,7 @@
 		"check-disk-space": "^2.1.0",
 		"chokidar": "^3.4.3",
 		"chokidar-fs-extra": "git+https://github.com/FilenCloudDienste/chokidar-fs-extra.git",
+		"node-watch-fs-extra": "git+https://github.com/FilenCloudDienste/node-watch-fs-extra.git",
 		"crypto-js": "^4.0.0",
 		"electron-is": "^3.0.0",
 		"electron-log": "^4.2.4",
