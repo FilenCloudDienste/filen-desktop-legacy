@@ -78,7 +78,12 @@
 			]
 		},
 		"nsis": {
-			"oneClick": false,
+			"oneClick": true,
+      		"perMachine": false,
+      		"allowElevation": true,
+		    "createDesktopShortcut": false,
+		    "createStartMenuShortcut": true,
+		    "deleteAppDataOnUninstall": true,
 			"allowToChangeInstallationDirectory": false
 		},
 		"linux": {
