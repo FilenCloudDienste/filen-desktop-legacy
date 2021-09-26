@@ -1,4 +1,5 @@
 process.noAsar = true
+process.env.CHOKIDAR_USEPOLLING = 1
 
 process.on("uncaughtException", (err) => {
 	console.error(err)
@@ -176,6 +177,14 @@ let handleRealtimeWorkTimeout = undefined
 let currentSyncTasksExtra = []
 let currentWriteThreads = 0
 let maxWriteThreads = 2048
+let startReceiveingFSEvents = false
+let iNodeMap = {}
+let deletedTimer = {}
+let deletedDebouncer = undefined
+let deletedPaths = []
+let checkingDeletedPaths = false
+let iNodeMapINodes = {}
+let iNodeMapPaths = {}
 
 let currentFileVersion = 1
 let metadataVersion = 1
@@ -693,7 +702,8 @@ const getDownloadFolderContents = async (folderUUID, callback) => {
 								name: decrypted.name,
 								size: parseInt(decrypted.size),
 								mime: decrypted.mime,
-								key: decrypted.key
+								key: decrypted.key,
+								lastModified: decrypted.lastModified || (+new Date())
 							}
 				    	}
 					}
@@ -1588,6 +1598,13 @@ const renderSyncTask = (task, prepend = true) => {
 	else if(task.where == "remote" && task.task == "update"){
 		taskName = '<i class="fa fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-up"></i>'
 	}
+	else if(task.where == "remote" && task.task == "renamefile"){
+		taskName = '<i class="fa fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-edit"></i>'
+	}
+	else if(task.where == "remote" && task.task == "renamedir"){
+		taskName = '<i class="fa fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-edit"></i>'
+		isFile = false
+	}
 	else if(task.where == "local" && task.task == "download"){
 		taskName = '<i class="fa fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-down"></i>'
 	}
@@ -2121,6 +2138,7 @@ async function decryptFileMetadataLink(metadata, linkKey, uuid){
     let fileSize = 0
     let fileMime = ""
     let fileKey = ""
+	let fileLastModified = 0
 
     try{
         let obj = JSON.parse(await decryptMetadata(metadata, linkKey, 1))
@@ -2130,6 +2148,7 @@ async function decryptFileMetadataLink(metadata, linkKey, uuid){
             fileSize = parseInt(obj.size)
             fileMime = obj.mime
             fileKey = obj.key
+			fileLastModified = obj.lastModified || (+new Date())
         }
     }
     catch(e){
@@ -2140,7 +2159,8 @@ async function decryptFileMetadataLink(metadata, linkKey, uuid){
         name: fileName,
         size: fileSize,
         mime: fileMime,
-        key: fileKey
+        key: fileKey,
+		lastModified: fileLastModified
     }
 
     return obj
@@ -2207,6 +2227,7 @@ const decryptFileMetadata = async (metadata, userMasterKeys, uuid) => {
 	let fileSize = 0
 	let fileMime = ""
 	let fileKey = ""
+	let fileLastModified = undefined
 
 	if(userMasterKeys.length > 0){
 		userMasterKeys = userMasterKeys.reverse()
@@ -2221,6 +2242,7 @@ const decryptFileMetadata = async (metadata, userMasterKeys, uuid) => {
 				fileSize = parseInt(obj.size)
 				fileMime = obj.mime
 				fileKey = obj.key
+				fileLastModified = obj.lastModified || (+new Date())
 
 				break
 			}
@@ -2234,7 +2256,8 @@ const decryptFileMetadata = async (metadata, userMasterKeys, uuid) => {
 		name: fileName,
 		size: fileSize,
 		mime: fileMime,
-		key: fileKey
+		key: fileKey,
+		lastModified: fileLastModified
 	}
 
 	if(obj.name.length > 0){
@@ -2616,6 +2639,319 @@ const checkIfItemParentIsBeingShared = async (parentUUID, type, metaData, option
 				password: "empty",
 				passwordHashed: hashFn("empty"),
 				downloadBtn: "enable"
+			}), 0, 32, (err) => {
+				if(err){
+					console.log(err)
+				}
+
+				doneAddingToLink()
+			})
+		}
+	})
+}
+
+const checkIfItemIsBeingSharedForRename = async (type, uuid, metaData, optionalCallback) => {
+	try{
+		var usrAPIKey = await getUserAPIKey()
+		var userMasterKeys = await getUserMasterKeys()
+	}
+	catch(e){
+		console.log(e)
+
+		return callback()
+	}
+
+	let shareCheckDone = false
+	let linkCheckDone = false
+
+	let isItDoneInterval = undefined
+	let callbackFired = false
+
+	const isItDone = () => {
+		if(shareCheckDone && linkCheckDone){
+			clearInterval(isItDoneInterval)
+
+			if(typeof optionalCallback == "function" && !callbackFired){
+				callbackFired = true
+
+			 	optionalCallback()
+			}
+
+			return true
+		}
+	}
+
+	isItDoneInterval = setInterval(isItDone, 100)
+
+	const checkIfIsSharing = (itemUUID, tries, maxTries, callback) => {
+		if(tries >= maxTries){
+			return callback(false)
+		}
+
+		$.ajax({
+			url: getAPIServer() + "/v1/user/shared/item/status",
+			type: "POST",
+			contentType: "application/json",
+			data: JSON.stringify({
+				apiKey: usrAPIKey,
+				uuid: itemUUID
+			}),
+			processData: false,
+			cache: false,
+			timeout: 300000,
+			success: (res) => {
+				if(!res){
+					console.log("Request error")
+
+					return setTimeout(() => {
+						checkIfIsSharing(itemUUID, (tries + 1), maxTries, callback)
+					}, 1000)
+				}
+
+				if(!res.status){
+					callback(false)
+
+					return console.log(res.message)
+				}
+
+				return callback(res.data.sharing, res.data.users)
+			},
+			error: (err) => {
+				console.log(err)
+
+				return setTimeout(() => {
+					checkIfIsSharing(itemUUID, (tries + 1), maxTries, callback)
+				}, 1000)
+			}
+		})
+	}
+
+	const checkIfIsInFolderLink = (itemUUID, tries, maxTries, callback) => {
+		if(tries >= maxTries){
+			return callback(false)
+		}
+
+		$.ajax({
+			url: getAPIServer() + "/v1/link/dir/item/status",
+			type: "POST",
+			contentType: "application/json",
+			data: JSON.stringify({
+				apiKey: usrAPIKey,
+				uuid: itemUUID
+			}),
+			processData: false,
+			cache: false,
+			timeout: 300000,
+			success: (res) => {
+				if(!res){
+					console.log("Request error")
+
+					return setTimeout(() => {
+						checkIfIsInFolderLink(itemUUID, (tries + 1), maxTries, callback)
+					}, 1000)
+				}
+
+				if(!res.status){
+					callback(false)
+
+					return console.log(res.message)
+				}
+
+				return callback(res.data.link, res.data.links)
+			},
+			error: (err) => {
+				console.log(err)
+
+				return setTimeout(() => {
+					checkIfIsInFolderLink(itemUUID, (tries + 1), maxTries, callback)
+				}, 1000)
+			}
+		})
+	}
+
+	const renameItem = (data, tries, maxTries, callback) => {
+		if(tries >= maxTries){
+			return callback(new Error("Max requests reached"))
+		}
+
+		$.ajax({
+			url: getAPIServer() + "/v1/link/dir/item/rename",
+			type: "POST",
+			contentType: "application/json",
+			data: data,
+			processData: false,
+			cache: false,
+			timeout: 300000,
+			success: (res) => {
+				if(!res){
+					console.log("Request error")
+
+					return setTimeout(() => {
+						renameItem(data, (tries + 1), maxTries, callback)
+					}, 1000)
+				}
+
+				return callback(null)
+			},
+			error: (err) => {
+				console.log(err)
+
+				return setTimeout(() => {
+					renameItem(data, (tries + 1), maxTries, callback)
+				}, 1000)
+			}
+		})
+	}
+
+	const shareItem = (data, tries, maxTries, callback) => {
+		if(tries >= maxTries){
+			return callback(new Error("Max requests reached"))
+		}
+
+		$.ajax({
+			url: getAPIServer() + "/v1/user/shared/item/rename",
+			type: "POST",
+			contentType: "application/json",
+			data: data,
+			processData: false,
+			cache: false,
+			timeout: 300000,
+			success: (res) => {
+				if(!res){
+					console.log("Request error")
+
+					return setTimeout(() => {
+						shareItem(data, (tries + 1), maxTries, callback)
+					}, 1000)
+				}
+
+				return callback(null)
+			},
+			error: (err) => {
+				console.log(err)
+
+				return setTimeout(() => {
+					shareItem(data, (tries + 1), maxTries, callback)
+				}, 1000)
+			}
+		})
+	}
+
+	checkIfIsSharing(uuid, 0, 32, (isSharing, users) => {
+		if(!isSharing){
+			shareCheckDone = true
+
+			return isItDone()
+		}
+
+		let totalUsers = users.length
+		let doneUsers = 0
+
+		const doneSharingToUsers = () => {
+			doneUsers += 1
+
+			if(doneUsers >= totalUsers){
+				shareCheckDone = true
+
+				return isItDone()
+			}
+		}
+
+		users.forEach((user) => {
+			window.crypto.subtle.importKey("spki", _base64ToArrayBuffer(user.publicKey), {
+      			name: "RSA-OAEP",
+        		hash: "SHA-512"
+    		}, true, ["encrypt"]).then((usrPubKey) => {
+    			let mData = ""
+
+    			if(type == "file"){
+    				mData = JSON.stringify({
+	    				name: metaData.name,
+	    				size: parseInt(metaData.size),
+	    				mime: metaData.mime,
+	    				key: metaData.key,
+						lastModified: metaData.lastModified
+	    			})
+				}
+				else{
+					mData = JSON.stringify({
+						name: metaData.name
+					})
+				}
+
+				window.crypto.subtle.encrypt({
+    				name: "RSA-OAEP"
+    			}, usrPubKey, new TextEncoder().encode(mData)).then((encrypted) => {
+    				shareItem(JSON.stringify({
+						apiKey: usrAPIKey,
+						uuid: uuid,
+						receiverId: user.id,
+						metadata: base64ArrayBuffer(encrypted)
+					}), 0, 32, (err) => {
+    					if(err){
+    						console.log(err)
+    					}
+
+    					doneSharingToUsers()
+    				})
+    			}).catch((err) => {
+	    			doneSharingToUsers()
+	    		})
+    		}).catch((err) => {
+    			doneSharingToUsers()
+    		})
+		})
+	})
+
+	checkIfIsInFolderLink(uuid, 0, 32, async (isLinking, links) => {
+		if(!isLinking){
+			linkCheckDone = true
+
+			return isItDone()
+		}
+
+		let totalLinks = links.length
+		let linksDone = 0
+
+		const doneAddingToLink = () => {
+			linksDone += 1
+
+			if(linksDone >= totalLinks){
+				linkCheckDone = true
+
+				return isItDone()
+			}
+		}
+
+		for(let i = 0; i < links.length; i++){
+			let link = links[i]
+
+			let key = await decryptFolderLinkKey(link.linkKey, userMasterKeys)
+
+			let mData = ""
+
+			if(type == "file"){
+				mData = JSON.stringify({
+    				name: metaData.name,
+    				size: parseInt(metaData.size),
+    				mime: metaData.mime,
+    				key: metaData.key,
+					lastModified: metaData.lastModified
+    			})
+			}
+			else{
+				mData = JSON.stringify({
+					name: metaData.name
+				})
+			}
+
+			mData = await encryptMetadata(mData, key)
+
+			renameItem(JSON.stringify({
+				apiKey: usrAPIKey,
+				uuid: uuid,
+				linkUUID: link.linkUUID,
+				metadata: mData
 			}), 0, 32, (err) => {
 				if(err){
 					console.log(err)
@@ -3285,7 +3621,7 @@ const getLocalSyncDirContents = async (callback) => {
 	let folders = {}
 
 	try{
-		for await (let file of klaw(userSyncDir, {
+		for await (let file of klaw(winOrUnixFilePath(userSyncDir), {
 			depthLimit: -1,
 			preserveSymlinks: true
 		})){
@@ -3298,6 +3634,9 @@ const getLocalSyncDirContents = async (callback) => {
 		  				folders[filePath + "/"] = {
 							name: filePathEx[filePathEx.length - 1]
 						}
+
+						iNodeMapPaths[filePath + "/"] = file.stats.ino
+						iNodeMapINodes[file.stats.ino] = filePath + "/"
 		  			}
 		  		}
 		  		else if(typeof filePathEx[filePathEx.length - 1] !== "undefined"){
@@ -3308,6 +3647,9 @@ const getLocalSyncDirContents = async (callback) => {
 								modTime: file.stats.mtimeMs,
 								size: file.stats.size
 							}
+
+							iNodeMapPaths[filePath] = file.stats.ino
+							iNodeMapINodes[file.stats.ino] = filePath
 		  				}
 		  			}
 		  		}
@@ -3586,6 +3928,171 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 	switch(where){
 		case "remote":
 			switch(task){
+				case "renamedir":
+					apiRequest("/v1/dir/exists", {
+						apiKey: await getUserAPIKey(),
+						parent: taskInfo.parent,
+						nameHashed: hashFn(taskInfo.name.toLowerCase())
+					}, async (err, res) => {
+						if(err){
+							console.log(err)
+
+							syncTaskLimiterSemaphoreRelease()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						}
+
+						if(!res.status){
+							console.log(res.message)
+
+							syncTaskLimiterSemaphoreRelease()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						}
+
+						if(res.data.exists){
+							console.log(taskInfo.path + " already exists remotely.")
+
+							syncTaskLimiterSemaphoreRelease()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						}
+
+						apiRequest("/v1/dir/rename", {
+							apiKey: await getUserAPIKey(),
+							uuid: taskInfo.uuid,
+							name: await encryptMetadata(JSON.stringify({
+								name: taskInfo.name
+							}), userMasterKeys[userMasterKeys.length - 1]),
+							nameHashed: hashFn(taskInfo.name.toLowerCase())
+						}, (err, res) => {
+							if(err){
+								console.log(err)
+
+								syncTaskLimiterSemaphoreRelease()
+
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+
+							if(!res.status){
+								console.log(res.message)
+
+								syncTaskLimiterSemaphoreRelease()
+
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+
+							checkIfItemIsBeingSharedForRename("folder", taskInfo.uuid, {
+								name: taskInfo.name
+							}, () => {
+								addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
+
+								syncTaskLimiterSemaphoreRelease()
+
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							})
+						})
+					})
+				break
+				case "renamefile":
+					apiRequest("/v1/file/exists", {
+						apiKey: await getUserAPIKey(),
+						parent: taskInfo.parent,
+						nameHashed: hashFn(taskInfo.name.toLowerCase())
+					}, async (err, res) => {
+						if(err){
+							console.log(err)
+
+							syncTaskLimiterSemaphoreRelease()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						}
+
+						if(!res.status){
+							console.log(res.message)
+
+							syncTaskLimiterSemaphoreRelease()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						}
+
+						if(res.data.exists){
+							console.log(taskInfo.path + " already exists remotely.")
+
+							syncTaskLimiterSemaphoreRelease()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						}
+
+						apiRequest("/v1/file/rename", {
+							apiKey: await getUserAPIKey(),
+							uuid: taskInfo.uuid,
+							name: await encryptMetadata(taskInfo.name, userMasterKeys[userMasterKeys.length - 1]),
+							nameHashed: hashFn(taskInfo.name.toLowerCase()),
+							metaData: await encryptMetadata(JSON.stringify({
+								name: taskInfo.name,
+								size: parseInt(taskInfo.file.size),
+								mime: taskInfo.file.mime,
+								key: taskInfo.file.key,
+								lastModified: taskInfo.file.lastModified
+							}), userMasterKeys[userMasterKeys.length - 1])
+						}, (err, res) => {
+							if(err){
+								console.log(err)
+
+								syncTaskLimiterSemaphoreRelease()
+
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+
+							if(!res.status){
+								console.log(res.message)
+
+								syncTaskLimiterSemaphoreRelease()
+
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+
+							checkIfItemIsBeingSharedForRename("file", taskInfo.uuid, {
+								name: taskInfo.name,
+								size: parseInt(taskInfo.file.size),
+								mime: taskInfo.file.mime,
+								key: taskInfo.file.key,
+								lastModified: taskInfo.file.lastModified
+							}, () => {
+								addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
+
+								syncTaskLimiterSemaphoreRelease()
+
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							})
+						})
+					})
+				break
 				case "mkdir":
 					apiRequest("/v1/dir/exists", {
 						apiKey: await getUserAPIKey(),
@@ -4802,6 +5309,90 @@ const initChokidar = async () => {
   		throw new Error(e)
 	}
 
+	const checkDeletedPaths = async () => {
+		if(checkingDeletedPaths){
+			return setTimeout(checkDeletedPaths, 1000)
+		}
+	
+		checkingDeletedPaths = true
+	
+		let unique = [...new Set(deletedPaths)]
+		let parents = []
+	
+		const getParentRecursive = (passedPath) => {
+			const getParent = (path) => {
+				let ex = path.split("/")
+	
+				ex.pop()
+				
+				let neededParent = ex.join("/")
+	
+				for(let i = 0; i < unique.length; i++){
+					if(unique[i] == neededParent){
+						return getParent(neededParent)
+					}
+				}
+	
+				return path
+			}
+	
+			return getParent(passedPath)
+		}
+	
+		for(let i = 0; i < unique.length; i++){
+			parents.push(getParentRecursive(unique[i]))
+		}
+	
+		parents = [...new Set(parents)]
+	
+		for(let i = 0; i < parents.length; i++){
+			deletedPaths = deletedPaths.filter((item) => {
+				return item.indexOf(parents[i]) !== -1 || item == parents[i]
+			})
+	
+			console.log("deleted", parents[i])
+
+			let folderPath = "Filen Sync/" + parents[i].split("\\").join("/") + "/"
+			let filePath = folderPath.slice(0, (folderPath.length - 1))
+
+			if(typeof lastRemoteSyncFolders[folderPath] !== "undefined" && typeof localFolderExisted[folderPath] !== "undefined"){
+				try{
+					let userMasterKeys = await getUserMasterKeys()
+
+					syncTask("remote", "rmdir", {
+						path: folderPath,
+						name: lastRemoteSyncFolders[folderPath].name,
+						dir: lastRemoteSyncFolders[folderPath]
+					}, userMasterKeys)
+				}
+				catch(err){
+					console.log(err)
+				}
+			}
+			else if(typeof lastRemoteSyncFiles[filePath] !== "undefined" && typeof localFileExisted[filePath] !== "undefined" && typeof userHomePath == "string"){
+				try{
+					let userMasterKeys = await getUserMasterKeys()
+
+					syncTask("remote", "rmfile", {
+						path: filePath,
+						name: lastRemoteSyncFiles[filePath].name,
+						file: lastRemoteSyncFiles[filePath],
+						filePath: userHomePath + "/" + filePath
+					}, userMasterKeys)
+				}
+				catch(err){
+					console.log(err)
+				}
+			}
+		}
+	
+		setTimeout(() => {
+			checkingDeletedPaths = false
+		}, 1000)
+	
+		return true
+	}
+
 	const handleEvent = async (event, ePath) => {
 		if(syncMode == "cloudToLocal"){
 			return false
@@ -4819,11 +5410,7 @@ const initChokidar = async () => {
 
 		isDoingRealtimeWork = true
 
-		await new Promise((resolve) => {
-			return setTimeout(resolve, 100)
-		})
-
-		try{
+		/*try{
 			await fs.stat(path.join(winOrUnixFilePath(userSyncDir), ePath))
 		}
 		catch(e){
@@ -4862,6 +5449,88 @@ const initChokidar = async () => {
 				}
 			}
 		}
+	
+		if(startReceiveingFSEvents){
+			deletedPaths = deletedPaths.filter((item) => {
+				return item !== ePath
+			})
+	
+			if(typeof stat !== "undefined" && typeof statError == "undefined"){
+				if(typeof iNodeMap[stat.ino] == "undefined"){
+					iNodeMap[stat.ino] = ePath
+				}
+				else{
+					let lastINodePath = iNodeMap[stat.ino]
+	
+					if(ePath !== lastINodePath){
+						clearTimeout(deletedTimer[lastINodePath])
+	
+						delete deletedTimer[lastINodePath]
+	
+						let ePathEx = ePath.split("/")
+						let lastINodePathEx = lastINodePath.split("/")
+	
+						if(ePathEx[ePathEx.length - 1] !== lastINodePathEx[lastINodePathEx.length - 1]){
+							console.log(lastINodePath, "renamed to", ePath)
+
+							let folderPath = "Filen Sync/" + lastINodePath.split("\\").join("/") + "/"
+							let filePath = folderPath.slice(0, (folderPath.length - 1))
+							let newNameEx = ePath.split("\\").join("/").split("/")
+							let newName = newNameEx.pop()
+
+							if(typeof lastRemoteSyncFolders[folderPath] !== "undefined" && typeof localFolderExisted[folderPath] !== "undefined"){
+								try{
+									let userMasterKeys = await getUserMasterKeys()
+
+									syncTask("remote", "renamedir", {
+										path: folderPath,
+										name: newName,
+										uuid: lastRemoteSyncFolders[folderPath].uuid,
+										parent: lastRemoteSyncFolders[folderPath].parent,
+										dir: lastRemoteSyncFolders[folderPath]
+									}, userMasterKeys)
+								}
+								catch(err){
+									console.log(err)
+								}
+							}
+							else if(typeof lastRemoteSyncFiles[filePath] !== "undefined" && typeof localFileExisted[filePath] !== "undefined" && typeof userHomePath == "string"){
+								try{
+									let userMasterKeys = await getUserMasterKeys()
+
+									syncTask("remote", "renamefile", {
+										path: filePath,
+										name: newName,
+										uuid: lastRemoteSyncFiles[filePath].uuid,
+										parent: lastRemoteSyncFiles[filePath].parent,
+										file: lastRemoteSyncFiles[filePath],
+										filePath: userHomePath + "/" + filePath
+									}, userMasterKeys)
+								}
+								catch(err){
+									console.log(err)
+								}
+							}
+						}
+					}
+				}
+			}
+			else{
+				if(typeof statError !== "undefined"){
+					if(statError.code == "ENOENT" || statError.toString().indexOf("ENOENT") !== -1){
+						deletedTimer[ePath] = setTimeout(() => {
+							deletedPaths.push(ePath)
+			
+							clearTimeout(deletedDebouncer)
+			
+							deletedDebouncer = setTimeout(() => {
+								checkDeletedPaths()
+							}, 2500)
+						}, 5000)
+					}
+				}
+			}
+		}*/
 
 		clearTimeout(handleRealtimeWorkTimeout)
 
@@ -4870,14 +5539,14 @@ const initChokidar = async () => {
 
 			clearCurrentSyncTasksExtra()
 
-			setLocalDataChangedTrue()
+			//setLocalDataChangedTrue()
 		}, 30000)
 
 		return true
 	}
 
 	try{
-		nodeWatch(winOrUnixFilePath(userSyncDir), {
+		/*nodeWatch(winOrUnixFilePath(userSyncDir), {
 			recursive: true,
 			persistent: true,
 			encoding: "utf8"
@@ -4885,6 +5554,33 @@ const initChokidar = async () => {
 			ePath = ePath.slice(userSyncDir.length + 1)
 
 			return handleEvent(event, ePath)
+		})*/
+
+		chokidar.watch(winOrUnixFilePath(userSyncDir), {
+			persistent: true,
+			recursive: true,
+			ignoreInitial: false,
+			followSymlinks: false,
+			cwd: winOrUnixFilePath(userSyncDir),
+			disableGlobbing: false,
+			usePolling: true,
+			interval: 1500,
+			binaryInterval: 1500,
+			depth: Infinity,
+			awaitWriteFinish: false,
+			ignorePermissionErrors: false,
+			useFsEvents: false,
+			disableGlobbing: true,
+			ignorePermissionErrors: true,
+			alwaysStat: false
+		}).on("all", async (event, ePath) => {
+			ePath = ePath.split("\\").join("/")
+
+			return handleEvent(event, ePath)
+		}).on("ready", () => {
+			console.log("Chokidar ready")
+		}).on("error", (err) => {
+			console.log(err)
 		})
 	}
 	catch(e){
