@@ -160,7 +160,7 @@ const winOrUnixFilePath = (path) => {
 	}
 }
 
-const checkIfSyncDirectoryExists = () => {
+const checkIfSyncDirectoryExists = async () => {
 	if(!doCheckIfSyncDirectoryExists){
 		return false
 	}
@@ -172,6 +172,19 @@ const checkIfSyncDirectoryExists = () => {
 	}
 
 	let syncDirPath = userHomePath + "/" + "Filen Sync"
+
+	try{
+		let res = await db.get("removeFilenSyncEnding")
+
+		if(typeof res == "string"){
+			if(res == "true"){
+				syncDirPath = userHomePath
+			}
+		}
+	}
+	catch(e){
+		syncDirPath = userHomePath + "/" + "Filen Sync"
+	}
 	
 	userSyncDir = syncDirPath
 
@@ -207,20 +220,15 @@ const checkIfSyncDirectoryExists = () => {
 const showBeforeCloseDialog = async () => {
 	let res = await dialog.showMessageBox({
 		icon: nativeImage.createFromPath(path.join(__dirname, "icons", "png", "512x512.png")),
-		title: "Filen Sync",
+		title: "Filen",
 		buttons: [
-			"Close anyway",
 			"Keep open"
 		],
-		defaultId: 1,
+		defaultId: 0,
 		cancelId: 0,
 		type: "warning",
-		message: "Filen is still syncing with the cloud. Closing the application now could result into loss of data."
+		message: "Filen is still syncing with the cloud. Closing the application now could result into loss or corruption of data."
 	})
-
-	if(res.response == 0){
-		return app.exit(0)
-	}
 
 	return true
 }
@@ -287,7 +295,7 @@ const createWindow = async () => {
 			backgroundThrottling: false,
 			enableRemoteModule: true
 		},
-		title: "Filen Sync",
+		title: "Filen",
 		maximizable: false,
 		minimizable: false,
 		fullscreenable: false,
@@ -550,10 +558,11 @@ const createWindow = async () => {
 
 				userHomePath = selectedPath
 
-				let newSyncDirPath = userHomePath + "/" + "Filen Sync"
+				let newSyncDirPath = userHomePath
 
 				try{
 					await db.put("altHomePath", selectedPath)
+					await db.put("removeFilenSyncEnding", "true")
 				}
 				catch(e){
 					return console.log(e)
@@ -665,8 +674,6 @@ const createWindow = async () => {
 	if(userHomePath.slice(-1) == "/"){
 		userHomePath.substring(0, userHomePath.length - 1)
 	}
-
-	console.log("userHomePath = " + userHomePath + "/Filen Sync")
 
 	appPath = app.getAppPath().split("\\").join("/")
 	userDownloadPath = app.getPath("downloads").split("\\").join("/")
