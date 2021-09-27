@@ -188,6 +188,7 @@ let iNodeMapINodes = {}
 let iNodeMapPaths = {}
 let doIndexCleanup = true
 let canRemoveFromSyncTasks = true
+let lastRemoteUUIDs = {}
 
 let currentFileVersion = 1
 let metadataVersion = 1
@@ -966,6 +967,7 @@ const initIPC = () => {
 
 			await db.put(userEmail + "_iNodeMapINodes", JSON.stringify({}))
 			await db.put(userEmail + "_iNodeMapPaths", JSON.stringify({}))
+			await db.put(userEmail + "_lastRemoteUUIDs", JSON.stringify({}))
 		}
 		catch(e){
 			console.log(e)
@@ -1065,6 +1067,7 @@ const initIPC = () => {
 
 					await db.put(userEmail + "_iNodeMapINodes", JSON.stringify({}))
 					await db.put(userEmail + "_iNodeMapPaths", JSON.stringify({}))
+					await db.put(userEmail + "_lastRemoteUUIDs", JSON.stringify({}))
 				}
 				catch(e){
 					return console.log(e)
@@ -3573,7 +3576,7 @@ const getLocalSyncDirContents = async (callback) => {
 			depthLimit: -1,
 			preserveSymlinks: true
 		})){
-		  	if(file.stats){
+		  	if(file.stats && file.path !== userSyncDir){
 		  		let filePath = file.path.substring(userHomePath.length + 1).split("\\").join("/")
 
 				if(filePath.substring(0, 11) !== "Filen Sync/"){
@@ -3682,6 +3685,7 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 		let folderPaths = {}
 		let folderNamesExisting = {}
 		let fileNamesExisting = {}
+		let remoteUUIDsRes = {}
 
 		let basePath = "Filen Sync"
 
@@ -3768,6 +3772,10 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 					if(typeof newPath !== "undefined"){
 						pathsForFiles[self.uuid] = newPath
 						folderPaths[newPath] = folders[self.uuid]
+						remoteUUIDsRes[self.uuid] = {
+							path: newPath,
+							folder: folders[self.uuid]
+						}
 					}
 				}
 			}
@@ -3804,6 +3812,11 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 									parent: self.parent,
 									version: self.version
 								}
+
+								remoteUUIDsRes[self.uuid] = {
+									path: newPath,
+									file: files[newPath]
+								}
 							}
 						}
 					}
@@ -3814,7 +3827,7 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 		remoteSyncFolders = folderPaths
 		remoteSyncFiles = files
 
-		return callback(null, folderPaths, files)
+		return callback(null, folderPaths, files, remoteUUIDsRes)
 	})
 }
 
@@ -3874,6 +3887,14 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 	}
 
 	if(where == "remote" && task == "renamefile"){
+		taskId = taskInfo.path + "|" + taskInfo.oldPath
+	}
+
+	if(where == "local" && task == "renamedir"){
+		taskId = taskInfo.path + "|" + taskInfo.oldPath
+	}
+
+	if(where == "local" && task == "renamefile"){
 		taskId = taskInfo.path + "|" + taskInfo.oldPath
 	}
 
@@ -4429,6 +4450,98 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 		break
 		case "local":
 			switch(task){
+				case "renamedir":
+					fs.access(winOrUnixFilePath(taskInfo.realPath), (err) => {
+						if(err){
+							console.log(err)
+
+							syncTaskLimiterSemaphoreRelease()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						}
+
+						fs.rename(winOrUnixFilePath(taskInfo.realPath), winOrUnixFilePath(taskInfo.realPathNew), (err) => {
+							if(err){
+								console.log(err)
+	
+								syncTaskLimiterSemaphoreRelease()
+	
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+
+							console.log(task + " " + taskInfo.path + " " + task + " done")
+
+							addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
+
+							localFolderExisted[taskInfo.path] = true
+							delete localFolderExisted[taskInfo.oldPath]
+
+							syncTaskLimiterSemaphoreRelease()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						})
+					})
+				break
+				case "renamefile":
+					fs.access(winOrUnixFilePath(taskInfo.realPath), (err) => {
+						if(err){
+							console.log(err)
+
+							syncTaskLimiterSemaphoreRelease()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						}
+
+						fs.rename(winOrUnixFilePath(taskInfo.realPath), winOrUnixFilePath(taskInfo.realPathNew), async (err) => {
+							if(err){
+								console.log(err)
+	
+								syncTaskLimiterSemaphoreRelease()
+	
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+
+							console.log(task + " " + taskInfo.path + " " + task + " done")
+
+							addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
+
+							try{
+								let stat = await fs.stat(winOrUnixFilePath(taskInfo.realPathNew))
+
+								if(stat){
+									localFileModifications[taskInfo.path] = stat.mtimeMs
+									remoteFileSizes[taskInfo.path] = stat.size
+									remoteFileUUIDs[taskInfo.path] = taskInfo.uuid
+									localFileExisted[taskInfo.path] = true
+								}
+							}
+							catch(e){
+								console.log(e)
+							}
+
+							delete localFileModifications[taskInfo.oldPath]
+							delete remoteFileSizes[taskInfo.oldPath]
+							delete remoteFileUUIDs[taskInfo.oldPath]
+							delete localFileExisted[taskInfo.oldPath]
+
+							syncTaskLimiterSemaphoreRelease()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						})
+					})
+				break
 				case "mkdir":
 					let dirPath = userHomePath + "/" + taskInfo.path
 
@@ -4638,6 +4751,7 @@ const doSync = async () => {
 
 					await db.put(userEmail + "_iNodeMapINodes", JSON.stringify({}))
 					await db.put(userEmail + "_iNodeMapPaths", JSON.stringify({}))
+					await db.put(userEmail + "_lastRemoteUUIDs", JSON.stringify({}))
 				}
 				catch(e){
 					console.log(e)
@@ -4667,7 +4781,7 @@ const doSync = async () => {
 			}
 		}
 		else{
-			getRemoteSyncDirContents(folderUUID, (err, remoteFolders, remoteFiles) => {
+			getRemoteSyncDirContents(folderUUID, (err, remoteFolders, remoteFiles, remoteUUIDsRes) => {
 				if(err){
 					isSyncing = false
 					isIndexing = false
@@ -4753,6 +4867,7 @@ const doSync = async () => {
 
 									await db.put(userEmail + "_iNodeMapINodes", JSON.stringify(iNodeMapINodes))
 									await db.put(userEmail + "_iNodeMapPaths", JSON.stringify(iNodeMapPaths))
+									await db.put(userEmail + "_lastRemoteUUIDs", JSON.stringify(lastRemoteUUIDs))
 								}
 								catch(e){
 									console.log(e)
@@ -4863,53 +4978,118 @@ const doSync = async () => {
 							}
 						}
 
-						if(typeof iNodeMapINodesRes !== "undefined" && typeof iNodeMapINodes !== "undefined" && typeof iNodeMapPathsRes !== "undefined" && typeof iNodeMapPaths !== "undefined"){
-							//Did a local folder or file name change?
-							for(let prop in iNodeMapINodesRes){
-								if(typeof iNodeMapINodes[prop] !== "undefined"){
-									if(iNodeMapINodesRes[prop] !== iNodeMapINodes[prop]){
-										let oldPath = iNodeMapINodes[prop]
-										let newPath = iNodeMapINodesRes[prop]
-										
-										let newName = newPath
-
-										if(newPath.slice(-1) == "/"){
-											newName = newPath.substring(0, (newPath.length - 1))
-										}
-
-										newName = newName.split("/")
-										newName = newName[newName.length - 1]
-
-										let oldName = oldPath
-
-										if(oldPath.slice(-1) == "/"){
-											oldName = oldPath.substring(0, (oldPath.length - 1))
-										}
-
-										oldName = oldName.split("/")
-										oldName = oldName[oldName.length - 1]
-
-										if(newName !== oldName){
-											if(typeof remoteFolders[oldPath] !== "undefined"){
-												syncTask("remote", "renamedir", {
-													path: newPath,
-													oldPath: oldPath,
-													uuid: remoteFolders[oldPath].uuid,
-													parent: remoteFolders[oldPath].parent,
-													name: newName
-												}, userMasterKeys)
-											}
+						if(syncMode == "twoWay" || syncMode == "localToCloud"){
+							if(typeof iNodeMapINodesRes !== "undefined" && typeof iNodeMapINodes !== "undefined" && typeof iNodeMapPathsRes !== "undefined" && typeof iNodeMapPaths !== "undefined"){
+								//Did a local folder or file name change?
+								for(let prop in iNodeMapINodesRes){
+									if(typeof iNodeMapINodes[prop] !== "undefined"){
+										if(iNodeMapINodesRes[prop] !== iNodeMapINodes[prop]){
+											let oldPath = iNodeMapINodes[prop]
+											let newPath = iNodeMapINodesRes[prop]
 											
-											if(typeof remoteFiles[oldPath] !== "undefined"){
-												syncTask("remote", "renamefile", {
-													path: newPath,
-													oldPath: oldPath,
-													uuid: remoteFiles[oldPath].uuid,
-													parent: remoteFiles[oldPath].parent,
-													name: newName,
-													file: remoteFiles[oldPath],
-													realPath: userSyncDir + "/" + newPath.slice(11)
-												}, userMasterKeys)
+											let newName = newPath
+	
+											if(newPath.slice(-1) == "/"){
+												newName = newPath.substring(0, (newPath.length - 1))
+											}
+	
+											newName = newName.split("/")
+											newName = newName[newName.length - 1]
+	
+											let oldName = oldPath
+	
+											if(oldPath.slice(-1) == "/"){
+												oldName = oldPath.substring(0, (oldPath.length - 1))
+											}
+	
+											oldName = oldName.split("/")
+											oldName = oldName[oldName.length - 1]
+	
+											if(newName !== oldName){
+												if(typeof remoteFolders[oldPath] !== "undefined"){
+													syncTask("remote", "renamedir", {
+														path: newPath,
+														newPath: newPath,
+														oldPath: oldPath,
+														uuid: remoteFolders[oldPath].uuid,
+														parent: remoteFolders[oldPath].parent,
+														name: newName
+													}, userMasterKeys)
+												}
+												
+												if(typeof remoteFiles[oldPath] !== "undefined"){
+													syncTask("remote", "renamefile", {
+														path: newPath,
+														newPath: newPath,
+														oldPath: oldPath,
+														uuid: remoteFiles[oldPath].uuid,
+														parent: remoteFiles[oldPath].parent,
+														name: newName,
+														file: remoteFiles[oldPath],
+														realPath: userSyncDir + "/" + newPath.slice(11)
+													}, userMasterKeys)
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+
+						if(syncMode == "twoWay" || syncMode == "cloudToLocal"){
+							//Did a remote folder or file name change?
+							if(typeof lastRemoteUUIDs !== "undefined" && typeof remoteUUIDsRes !== "undefined"){
+								for(let prop in remoteUUIDsRes){
+									if(typeof lastRemoteUUIDs[prop] !== "undefined"){
+										if(remoteUUIDsRes[prop].path !== lastRemoteUUIDs[prop].path){
+											let oldPath = lastRemoteUUIDs[prop].path
+											let newPath = remoteUUIDsRes[prop].path
+											
+											let newName = newPath
+	
+											if(newPath.slice(-1) == "/"){
+												newName = newPath.substring(0, (newPath.length - 1))
+											}
+	
+											newName = newName.split("/")
+											newName = newName[newName.length - 1]
+	
+											let oldName = oldPath
+	
+											if(oldPath.slice(-1) == "/"){
+												oldName = oldPath.substring(0, (oldPath.length - 1))
+											}
+	
+											oldName = oldName.split("/")
+											oldName = oldName[oldName.length - 1]
+
+											if(oldName !== newName){
+												if(typeof lastRemoteUUIDs[prop].folder !== "undefined"){
+													if(typeof localFolders[oldPath] !== "undefined"){
+														syncTask("local", "renamedir", {
+															path: newPath,
+															uuid: lastRemoteUUIDs[prop].folder.uuid,
+															newPath: newPath,
+															oldPath: oldPath,
+															name: newName,
+															realPath: userSyncDir + "/" + oldPath.slice(11),
+															realPathNew: userSyncDir + "/" + newPath.slice(11)
+														}, userMasterKeys)
+													}
+												}
+												else{
+													if(typeof localFiles[oldPath] !== "undefined"){
+														syncTask("local", "renamefile", {
+															path: newPath,
+															uuid: lastRemoteUUIDs[prop].file.uuid,
+															newPath: newPath,
+															oldPath: oldPath,
+															name: newName,
+															realPath: userSyncDir + "/" + oldPath.slice(11),
+															realPathNew: userSyncDir + "/" + newPath.slice(11)
+														}, userMasterKeys)
+													}
+												}
 											}
 										}
 									}
@@ -5278,10 +5458,11 @@ const doSync = async () => {
 							lastLocalSyncFiles = localFiles
 							iNodeMapINodes = iNodeMapINodesRes
 							iNodeMapPaths = iNodeMapPathsRes
+							lastRemoteUUIDs = remoteUUIDsRes
 
 							localDataChanged = true
 
-							getLocalSyncDirContents(async (err, folders, files, iNodeMapINodesRes, iNodeMapPathsRes) => {
+							getLocalSyncDirContents(async (err, folders, files) => {
 								if(err){
 									console.log(err)							
 								}
@@ -5309,6 +5490,7 @@ const doSync = async () => {
 
 									await db.put(userEmail + "_iNodeMapINodes", JSON.stringify(iNodeMapINodes))
 									await db.put(userEmail + "_iNodeMapPaths", JSON.stringify(iNodeMapPaths))
+									await db.put(userEmail + "_lastRemoteUUIDs", JSON.stringify(lastRemoteUUIDs))
 								}
 								catch(e){
 									console.log(e)
