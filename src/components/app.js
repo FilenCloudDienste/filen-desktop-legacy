@@ -55,6 +55,7 @@ const sha512 = require("js-sha512")
 const sha384 = require("js-sha512").sha384
 const is = require("electron-is")
 const nodeWatch = require("node-watch-fs-extra")
+const mv = require("mv")
 
 let db = undefined
 let dbPath = undefined
@@ -89,6 +90,7 @@ const logSyncTasksSemaphore = new Semaphore(1)
 const doSyncSempahore = new Semaphore(1)
 const syncTaskLimiterSemaphore = new Semaphore(50)
 const checkSyncTaskForDuplicateSemaphore = new Semaphore(1)
+const moveSemaphore = new Semaphore(1)
 
 let currentAppVersion = "1"
 let thisDeviceId = undefined
@@ -3837,19 +3839,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 	let taskId = taskInfo.path
 
-	if(where == "remote" && task == "renamedir"){
-		taskId = taskInfo.path + "|" + taskInfo.oldPath
-	}
-
-	if(where == "remote" && task == "renamefile"){
-		taskId = taskInfo.path + "|" + taskInfo.oldPath
-	}
-
-	if(where == "local" && task == "renamedir"){
-		taskId = taskInfo.path + "|" + taskInfo.oldPath
-	}
-
-	if(where == "local" && task == "renamefile"){
+	if(["renamedir", "renamefile", "movedir", "movefile"].includes(task)){
 		taskId = taskInfo.path + "|" + taskInfo.oldPath
 	}
 
@@ -4405,13 +4395,29 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 		break
 		case "local":
 			switch(task){
-				case "renamedir":
-					rimraf(winOrUnixFilePath(taskInfo.realPath), () => {
-						fs.rename(winOrUnixFilePath(taskInfo.realPath), winOrUnixFilePath(taskInfo.realPathNew), (err) => {
+				case "movedir":
+					var releaseMoveSemaphore = await moveSemaphore.acquire()
+
+					fs.access(winOrUnixFilePath(taskInfo.realPath), (err) => {
+						if(err){
+							console.log(err)
+		
+							syncTaskLimiterSemaphoreRelease()
+							releaseMoveSemaphore()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						}
+
+						fs.move(winOrUnixFilePath(taskInfo.realPath), winOrUnixFilePath(taskInfo.realPathNew), {
+							overwrite: true
+						}, async (err) => {
 							if(err){
 								console.log(err)
 	
 								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
 	
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4427,6 +4433,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 							delete localFolderExisted[taskInfo.oldPath]
 
 							syncTaskLimiterSemaphoreRelease()
+							releaseMoveSemaphore()
 
 							return setTimeout(() => {
 								removeFromSyncTasks(taskId)
@@ -4434,13 +4441,29 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 						})
 					})
 				break
-				case "renamefile":
-					rimraf(winOrUnixFilePath(taskInfo.realPath), () => {
-						fs.rename(winOrUnixFilePath(taskInfo.realPath), winOrUnixFilePath(taskInfo.realPathNew), async (err) => {
+				case "movefile":
+					var releaseMoveSemaphore = await moveSemaphore.acquire()
+
+					fs.access(winOrUnixFilePath(taskInfo.realPath), (err) => {
+						if(err){
+							console.log(err)
+		
+							syncTaskLimiterSemaphoreRelease()
+							releaseMoveSemaphore()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						}
+
+						fs.move(winOrUnixFilePath(taskInfo.realPath), winOrUnixFilePath(taskInfo.realPathNew), {
+							overwrite: true
+						}, async (err) => {
 							if(err){
 								console.log(err)
 	
 								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
 	
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4471,10 +4494,108 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 							delete localFileExisted[taskInfo.oldPath]
 
 							syncTaskLimiterSemaphoreRelease()
+							releaseMoveSemaphore()
 
 							return setTimeout(() => {
 								removeFromSyncTasks(taskId)
 							}, syncTimeout)
+						})
+					})
+				break
+				case "renamedir":
+					fs.access(winOrUnixFilePath(taskInfo.realPath), (err) => {
+						if(err){
+							console.log(err)
+		
+							syncTaskLimiterSemaphoreRelease()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						}
+
+						rimraf(winOrUnixFilePath(taskInfo.realPathNew), () => {
+							fs.rename(winOrUnixFilePath(taskInfo.realPath), winOrUnixFilePath(taskInfo.realPathNew), (err) => {
+								if(err){
+									console.log(err)
+		
+									syncTaskLimiterSemaphoreRelease()
+		
+									return setTimeout(() => {
+										removeFromSyncTasks(taskId)
+									}, syncTimeout)
+								}
+	
+								console.log(task + " " + taskInfo.path + " " + task + " done")
+	
+								addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
+	
+								localFolderExisted[taskInfo.path] = true
+	
+								delete localFolderExisted[taskInfo.oldPath]
+	
+								syncTaskLimiterSemaphoreRelease()
+	
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							})
+						})
+					})
+				break
+				case "renamefile":
+					fs.access(winOrUnixFilePath(taskInfo.realPath), (err) => {
+						if(err){
+							console.log(err)
+		
+							syncTaskLimiterSemaphoreRelease()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						}
+
+						rimraf(winOrUnixFilePath(taskInfo.realPathNew), () => {
+							fs.rename(winOrUnixFilePath(taskInfo.realPath), winOrUnixFilePath(taskInfo.realPathNew), async (err) => {
+								if(err){
+									console.log(err)
+		
+									syncTaskLimiterSemaphoreRelease()
+		
+									return setTimeout(() => {
+										removeFromSyncTasks(taskId)
+									}, syncTimeout)
+								}
+	
+								console.log(task + " " + taskInfo.path + " " + task + " done")
+	
+								addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
+	
+								try{
+									let stat = await fs.stat(winOrUnixFilePath(taskInfo.realPathNew))
+	
+									if(stat){
+										localFileModifications[taskInfo.path] = stat.mtimeMs
+										remoteFileSizes[taskInfo.path] = stat.size
+										remoteFileUUIDs[taskInfo.path] = taskInfo.uuid
+										localFileExisted[taskInfo.path] = true
+									}
+								}
+								catch(e){
+									console.log(e)
+								}
+	
+								delete localFileModifications[taskInfo.oldPath]
+								delete remoteFileSizes[taskInfo.oldPath]
+								delete remoteFileUUIDs[taskInfo.oldPath]
+								delete localFileExisted[taskInfo.oldPath]
+	
+								syncTaskLimiterSemaphoreRelease()
+	
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							})
 						})
 					})
 				break
@@ -5104,7 +5225,30 @@ const doSync = async () => {
 												}
 											}
 											else{
-												console.log(oldPath, "moved to", newPath)
+												if(typeof lastRemoteUUIDs[prop].folder !== "undefined"){
+													if(typeof localFolders[oldPath] !== "undefined"){
+														syncTask("local", "movedir", {
+															path: newPath,
+															uuid: lastRemoteUUIDs[prop].folder.uuid,
+															newPath: newPath,
+															oldPath: oldPath,
+															realPath: userSyncDir + "/" + oldPath.slice(11),
+															realPathNew: userSyncDir + "/" + newPath.slice(11)
+														}, userMasterKeys)
+													}
+												}
+												else{
+													if(typeof localFiles[oldPath] !== "undefined"){
+														syncTask("local", "movefile", {
+															path: newPath,
+															uuid: lastRemoteUUIDs[prop].file.uuid,
+															newPath: newPath,
+															oldPath: oldPath,
+															realPath: userSyncDir + "/" + oldPath.slice(11),
+															realPathNew: userSyncDir + "/" + newPath.slice(11)
+														}, userMasterKeys)
+													}
+												}
 											}
 										}
 									}
