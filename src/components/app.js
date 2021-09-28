@@ -948,30 +948,7 @@ const initIPC = () => {
 	})
 
 	ipcRenderer.on("clear-db", async (e, data) => {
-		try{
-			let userEmail = await db.get("userEmail")
-
-			await db.put(userEmail + "_localFileModifications", JSON.stringify({}))
-			await db.put(userEmail + "_remoteFileUUIDs", JSON.stringify({}))
-			await db.put(userEmail + "_remoteFileSizes", JSON.stringify({}))
-
-			await db.put(userEmail + "_lastRemoteSyncFolders", JSON.stringify({}))
-			await db.put(userEmail + "_lastRemoteSyncFiles", JSON.stringify({}))
-			await db.put(userEmail + "_lastLocalSyncFolders", JSON.stringify({}))
-			await db.put(userEmail + "_lastLocalSyncFiles", JSON.stringify({}))
-
-			await db.put(userEmail + "_localFileExisted", JSON.stringify({}))
-			await db.put(userEmail + "_localFolderExisted", JSON.stringify({}))
-
-			await db.put(userEmail + "_remoteDecryptedCache", JSON.stringify({}))
-
-			await db.put(userEmail + "_iNodeMapINodes", JSON.stringify({}))
-			await db.put(userEmail + "_iNodeMapPaths", JSON.stringify({}))
-			await db.put(userEmail + "_lastRemoteUUIDs", JSON.stringify({}))
-		}
-		catch(e){
-			console.log(e)
-		}
+		await saveSyncData(true)
 
 		localFileModifications = {}
 		remoteFileUUIDs = {}
@@ -1048,30 +1025,7 @@ const initIPC = () => {
 
 				clearInterval(waitForSyncingDoneInterval)
 
-				try{
-					let userEmail = await db.get("userEmail")
-
-					await db.put(userEmail + "_localFileModifications", JSON.stringify({}))
-					await db.put(userEmail + "_remoteFileUUIDs", JSON.stringify({}))
-					await db.put(userEmail + "_remoteFileSizes", JSON.stringify({}))
-
-					await db.put(userEmail + "_lastRemoteSyncFolders", JSON.stringify({}))
-					await db.put(userEmail + "_lastRemoteSyncFiles", JSON.stringify({}))
-					await db.put(userEmail + "_lastLocalSyncFolders", JSON.stringify({}))
-					await db.put(userEmail + "_lastLocalSyncFiles", JSON.stringify({}))
-
-					await db.put(userEmail + "_localFileExisted", JSON.stringify({}))
-					await db.put(userEmail + "_localFolderExisted", JSON.stringify({}))
-
-					await db.put(userEmail + "_remoteDecryptedCache", JSON.stringify({}))
-
-					await db.put(userEmail + "_iNodeMapINodes", JSON.stringify({}))
-					await db.put(userEmail + "_iNodeMapPaths", JSON.stringify({}))
-					await db.put(userEmail + "_lastRemoteUUIDs", JSON.stringify({}))
-				}
-				catch(e){
-					return console.log(e)
-				}
+				await saveSyncData(true)
 
 				return ipcRenderer.send("rewrite-saved-sync-data-done")
 			}
@@ -3667,10 +3621,10 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 			let receivedDataHash = JSON.stringify(res.data)
 
 			if(typeof lastRemoteSyncDataHash !== "undefined"){
-				if(receivedDataHash == lastRemoteSyncDataHash && typeof lastRemoteSyncFolders !== "undefined" && typeof lastRemoteSyncFiles !== "undefined"){
+				if(receivedDataHash == lastRemoteSyncDataHash && typeof lastRemoteSyncFolders !== "undefined" && typeof lastRemoteSyncFiles !== "undefined" && typeof lastRemoteUUIDs !== "undefined"){
 					//console.log("Last remote sync data identical to current one, serving from cache.")
 
-					return callback(null, lastRemoteSyncFolders, lastRemoteSyncFiles) 
+					return callback(null, lastRemoteSyncFolders, lastRemoteSyncFiles, lastRemoteUUIDs) 
 				}
 			}
 
@@ -3772,6 +3726,7 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 					if(typeof newPath !== "undefined"){
 						pathsForFiles[self.uuid] = newPath
 						folderPaths[newPath] = folders[self.uuid]
+
 						remoteUUIDsRes[self.uuid] = {
 							path: newPath,
 							folder: folders[self.uuid]
@@ -4451,17 +4406,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 		case "local":
 			switch(task){
 				case "renamedir":
-					fs.access(winOrUnixFilePath(taskInfo.realPath), (err) => {
-						if(err){
-							console.log(err)
-
-							syncTaskLimiterSemaphoreRelease()
-
-							return setTimeout(() => {
-								removeFromSyncTasks(taskId)
-							}, syncTimeout)
-						}
-
+					rimraf(winOrUnixFilePath(taskInfo.realPath), () => {
 						fs.rename(winOrUnixFilePath(taskInfo.realPath), winOrUnixFilePath(taskInfo.realPathNew), (err) => {
 							if(err){
 								console.log(err)
@@ -4478,6 +4423,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 							addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
 
 							localFolderExisted[taskInfo.path] = true
+
 							delete localFolderExisted[taskInfo.oldPath]
 
 							syncTaskLimiterSemaphoreRelease()
@@ -4489,17 +4435,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 					})
 				break
 				case "renamefile":
-					fs.access(winOrUnixFilePath(taskInfo.realPath), (err) => {
-						if(err){
-							console.log(err)
-
-							syncTaskLimiterSemaphoreRelease()
-
-							return setTimeout(() => {
-								removeFromSyncTasks(taskId)
-							}, syncTimeout)
-						}
-
+					rimraf(winOrUnixFilePath(taskInfo.realPath), () => {
 						fs.rename(winOrUnixFilePath(taskInfo.realPath), winOrUnixFilePath(taskInfo.realPathNew), async (err) => {
 							if(err){
 								console.log(err)
@@ -4671,6 +4607,127 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 	}
 }
 
+const saveSyncData = async (empty = false) => {
+	let userEmail = undefined
+
+	try{
+		userEmail = await db.get("userEmail")
+	}
+	catch(e){
+		console.log(e)
+	}
+
+	if(typeof userEmail == "undefined"){
+		return showBigErrorMessage("Could not read local database, please restart the application.")
+	}
+
+	try{
+		await db.put(userEmail + "_localFileModifications", JSON.stringify((empty ? {} : (typeof localFileModifications == "object" ? localFileModifications : {}))))
+	}
+	catch(e){
+		console.log(e)
+	}
+
+	try{
+		await db.put(userEmail + "_remoteFileUUIDs", JSON.stringify((empty ? {} : (typeof remoteFileUUIDs == "object" ? remoteFileUUIDs : {}))))
+	}
+	catch(e){
+		console.log(e)
+	}
+
+	try{
+		await db.put(userEmail + "_remoteFileSizes", JSON.stringify((empty ? {} : (typeof remoteFileSizes == "object" ? remoteFileSizes : {}))))
+	}
+	catch(e){
+		console.log(e)
+	}
+
+	try{
+		await db.put(userEmail + "_lastRemoteSyncFolders", JSON.stringify((empty ? {} : (typeof lastRemoteSyncFolders == "object" ? lastRemoteSyncFolders : {}))))
+	}
+	catch(e){
+		console.log(e)
+	}
+
+	try{
+		await db.put(userEmail + "_lastRemoteSyncFiles", JSON.stringify((empty ? {} : (typeof lastRemoteSyncFiles == "object" ? lastRemoteSyncFiles : {}))))
+	}
+	catch(e){
+		console.log(e)
+	}
+
+	try{
+		await db.put(userEmail + "_lastLocalSyncFolders", JSON.stringify((empty ? {} : (typeof lastLocalSyncFolders == "object" ? lastLocalSyncFolders : {}))))
+	}
+	catch(e){
+		console.log(e)
+	}
+
+	try{
+		await db.put(userEmail + "_lastLocalSyncFiles", JSON.stringify((empty ? {} : (typeof lastLocalSyncFiles == "object" ? lastLocalSyncFiles : {}))))
+	}
+	catch(e){
+		console.log(e)
+	}
+
+
+	try{
+		await db.put(userEmail + "_localFileExisted", JSON.stringify((empty ? {} : (typeof localFileExisted == "object" ? localFileExisted : {}))))
+	}
+	catch(e){
+		console.log(e)
+	}
+
+	try{
+		await db.put(userEmail + "_localFolderExisted", JSON.stringify((empty ? {} : (typeof localFolderExisted == "object" ? localFolderExisted : {}))))
+	}
+	catch(e){
+		console.log(e)
+	}
+
+	try{
+		await db.put(userEmail + "_remoteDecryptedCache", JSON.stringify((empty ? {} : (typeof remoteDecryptedCache == "object" ? remoteDecryptedCache : {}))))
+	}
+	catch(e){
+		console.log(e)
+	}
+
+	try{
+		await db.put(userEmail + "_iNodeMapINodes", JSON.stringify((empty ? {} : (typeof iNodeMapINodes == "object" ? iNodeMapINodes : {}))))
+	}
+	catch(e){
+		console.log(e)
+	}
+
+	try{
+		await db.put(userEmail + "_iNodeMapPaths", JSON.stringify((empty ? {} : (typeof iNodeMapPaths == "object" ? iNodeMapPaths : {}))))
+	}
+	catch(e){
+		console.log(e)
+	}
+
+	try{
+		await db.put(userEmail + "_lastRemoteUUIDs", JSON.stringify((empty ? {} : (typeof lastRemoteUUIDs == "object" ? lastRemoteUUIDs : {}))))
+	}
+	catch(e){
+		console.log(e)
+	}
+
+	return true
+}
+
+const getParentPath = (path) => {
+	if(path.slice(-1) == "/"){
+		path = path.substring(0, (path.length - 1))
+	}
+
+	let ex = path.split("/")
+
+	ex.pop()
+
+	return ex.join("/") + "/"
+}
+
 const doSync = async () => {
 	if(isSyncing || isIndexing){
 		return false
@@ -4732,44 +4789,7 @@ const doSync = async () => {
 	fs.access(winOrUnixFilePath(userSyncDir), async (err) => {
 		if(err){
 			if(err.code == "ENOENT"){
-				try{
-					let userEmail = await db.get("userEmail")
-
-					await db.put(userEmail + "_localFileModifications", JSON.stringify({}))
-					await db.put(userEmail + "_remoteFileUUIDs", JSON.stringify({}))
-					await db.put(userEmail + "_remoteFileSizes", JSON.stringify({}))
-
-					await db.put(userEmail + "_lastRemoteSyncFolders", JSON.stringify({}))
-					await db.put(userEmail + "_lastRemoteSyncFiles", JSON.stringify({}))
-					await db.put(userEmail + "_lastLocalSyncFolders", JSON.stringify({}))
-					await db.put(userEmail + "_lastLocalSyncFiles", JSON.stringify({}))
-
-					await db.put(userEmail + "_localFileExisted", JSON.stringify({}))
-					await db.put(userEmail + "_localFolderExisted", JSON.stringify({}))
-
-					await db.put(userEmail + "_remoteDecryptedCache", JSON.stringify({}))
-
-					await db.put(userEmail + "_iNodeMapINodes", JSON.stringify({}))
-					await db.put(userEmail + "_iNodeMapPaths", JSON.stringify({}))
-					await db.put(userEmail + "_lastRemoteUUIDs", JSON.stringify({}))
-				}
-				catch(e){
-					console.log(e)
-				}
-
-				localFileModifications = {}
-				remoteFileUUIDs = {}
-				remoteFileSizes = {}
-
-				lastRemoteSyncFolders = {}
-				lastRemoteSyncFiles = {}
-				lastLocalSyncFolders = {}
-				lastLocalSyncFiles = {}
-
-				localFileExisted = {}
-				localFolderExisted = {}
-
-				remoteDecryptedCache = {}
+				await saveSyncData(true)
 
 				releaseSyncSemaphore()
 				clearCurrentSyncTasksExtra()
@@ -4848,30 +4868,9 @@ const doSync = async () => {
 								lastLocalSyncFolders = localFolders
 								lastLocalSyncFiles = localFiles
 
-								try{
-									let userEmail = await db.get("userEmail")
+								lastRemoteUUIDs = remoteUUIDsRes
 
-									await db.put(userEmail + "_localFileModifications", JSON.stringify(localFileModifications))
-									await db.put(userEmail + "_remoteFileUUIDs", JSON.stringify(remoteFileUUIDs))
-									await db.put(userEmail + "_remoteFileSizes", JSON.stringify(remoteFileSizes))
-
-									await db.put(userEmail + "_lastRemoteSyncFolders", JSON.stringify(lastRemoteSyncFolders))
-									await db.put(userEmail + "_lastRemoteSyncFiles", JSON.stringify(lastRemoteSyncFiles))
-									await db.put(userEmail + "_lastLocalSyncFolders", JSON.stringify(lastLocalSyncFolders))
-									await db.put(userEmail + "_lastLocalSyncFiles", JSON.stringify(lastLocalSyncFiles))
-
-									await db.put(userEmail + "_localFileExisted", JSON.stringify(localFileExisted))
-									await db.put(userEmail + "_localFolderExisted", JSON.stringify(localFolderExisted))
-
-									await db.put(userEmail + "_remoteDecryptedCache", JSON.stringify(remoteDecryptedCache))
-
-									await db.put(userEmail + "_iNodeMapINodes", JSON.stringify(iNodeMapINodes))
-									await db.put(userEmail + "_iNodeMapPaths", JSON.stringify(iNodeMapPaths))
-									await db.put(userEmail + "_lastRemoteUUIDs", JSON.stringify(lastRemoteUUIDs))
-								}
-								catch(e){
-									console.log(e)
-								}
+								await saveSyncData(false)
 
 								return setTimeout(() => {
 									isSyncing = false
@@ -4986,49 +4985,57 @@ const doSync = async () => {
 										if(iNodeMapINodesRes[prop] !== iNodeMapINodes[prop]){
 											let oldPath = iNodeMapINodes[prop]
 											let newPath = iNodeMapINodesRes[prop]
-											
-											let newName = newPath
+
+											let oldParent = getParentPath(oldPath)
+											let newParent = getParentPath(newPath)
+
+											if(newParent == oldParent){
+												let newName = newPath
 	
-											if(newPath.slice(-1) == "/"){
-												newName = newPath.substring(0, (newPath.length - 1))
-											}
-	
-											newName = newName.split("/")
-											newName = newName[newName.length - 1]
-	
-											let oldName = oldPath
-	
-											if(oldPath.slice(-1) == "/"){
-												oldName = oldPath.substring(0, (oldPath.length - 1))
-											}
-	
-											oldName = oldName.split("/")
-											oldName = oldName[oldName.length - 1]
-	
-											if(newName !== oldName){
-												if(typeof remoteFolders[oldPath] !== "undefined"){
-													syncTask("remote", "renamedir", {
-														path: newPath,
-														newPath: newPath,
-														oldPath: oldPath,
-														uuid: remoteFolders[oldPath].uuid,
-														parent: remoteFolders[oldPath].parent,
-														name: newName
-													}, userMasterKeys)
+												if(newPath.slice(-1) == "/"){
+													newName = newPath.substring(0, (newPath.length - 1))
 												}
-												
-												if(typeof remoteFiles[oldPath] !== "undefined"){
-													syncTask("remote", "renamefile", {
-														path: newPath,
-														newPath: newPath,
-														oldPath: oldPath,
-														uuid: remoteFiles[oldPath].uuid,
-														parent: remoteFiles[oldPath].parent,
-														name: newName,
-														file: remoteFiles[oldPath],
-														realPath: userSyncDir + "/" + newPath.slice(11)
-													}, userMasterKeys)
+		
+												newName = newName.split("/")
+												newName = newName[newName.length - 1]
+		
+												let oldName = oldPath
+		
+												if(oldPath.slice(-1) == "/"){
+													oldName = oldPath.substring(0, (oldPath.length - 1))
 												}
+		
+												oldName = oldName.split("/")
+												oldName = oldName[oldName.length - 1]
+		
+												if(newName !== oldName){
+													if(typeof remoteFolders[oldPath] !== "undefined"){
+														syncTask("remote", "renamedir", {
+															path: newPath,
+															newPath: newPath,
+															oldPath: oldPath,
+															uuid: remoteFolders[oldPath].uuid,
+															parent: remoteFolders[oldPath].parent,
+															name: newName
+														}, userMasterKeys)
+													}
+													
+													if(typeof remoteFiles[oldPath] !== "undefined"){
+														syncTask("remote", "renamefile", {
+															path: newPath,
+															newPath: newPath,
+															oldPath: oldPath,
+															uuid: remoteFiles[oldPath].uuid,
+															parent: remoteFiles[oldPath].parent,
+															name: newName,
+															file: remoteFiles[oldPath],
+															realPath: userSyncDir + "/" + newPath.slice(11)
+														}, userMasterKeys)
+													}
+												}
+											}
+											else{
+												console.log(oldPath, "moved to", newPath)
 											}
 										}
 									}
@@ -5044,52 +5051,60 @@ const doSync = async () => {
 										if(remoteUUIDsRes[prop].path !== lastRemoteUUIDs[prop].path){
 											let oldPath = lastRemoteUUIDs[prop].path
 											let newPath = remoteUUIDsRes[prop].path
-											
-											let newName = newPath
-	
-											if(newPath.slice(-1) == "/"){
-												newName = newPath.substring(0, (newPath.length - 1))
-											}
-	
-											newName = newName.split("/")
-											newName = newName[newName.length - 1]
-	
-											let oldName = oldPath
-	
-											if(oldPath.slice(-1) == "/"){
-												oldName = oldPath.substring(0, (oldPath.length - 1))
-											}
-	
-											oldName = oldName.split("/")
-											oldName = oldName[oldName.length - 1]
 
-											if(oldName !== newName){
-												if(typeof lastRemoteUUIDs[prop].folder !== "undefined"){
-													if(typeof localFolders[oldPath] !== "undefined"){
-														syncTask("local", "renamedir", {
-															path: newPath,
-															uuid: lastRemoteUUIDs[prop].folder.uuid,
-															newPath: newPath,
-															oldPath: oldPath,
-															name: newName,
-															realPath: userSyncDir + "/" + oldPath.slice(11),
-															realPathNew: userSyncDir + "/" + newPath.slice(11)
-														}, userMasterKeys)
+											let oldParent = getParentPath(oldPath)
+											let newParent = getParentPath(newPath)
+
+											if(newParent == oldParent){
+												let newName = newPath
+	
+												if(newPath.slice(-1) == "/"){
+													newName = newPath.substring(0, (newPath.length - 1))
+												}
+		
+												newName = newName.split("/")
+												newName = newName[newName.length - 1]
+		
+												let oldName = oldPath
+		
+												if(oldPath.slice(-1) == "/"){
+													oldName = oldPath.substring(0, (oldPath.length - 1))
+												}
+		
+												oldName = oldName.split("/")
+												oldName = oldName[oldName.length - 1]
+
+												if(oldName !== newName){
+													if(typeof lastRemoteUUIDs[prop].folder !== "undefined"){
+														if(typeof localFolders[oldPath] !== "undefined"){
+															syncTask("local", "renamedir", {
+																path: newPath,
+																uuid: lastRemoteUUIDs[prop].folder.uuid,
+																newPath: newPath,
+																oldPath: oldPath,
+																name: newName,
+																realPath: userSyncDir + "/" + oldPath.slice(11),
+																realPathNew: userSyncDir + "/" + newPath.slice(11)
+															}, userMasterKeys)
+														}
+													}
+													else{
+														if(typeof localFiles[oldPath] !== "undefined"){
+															syncTask("local", "renamefile", {
+																path: newPath,
+																uuid: lastRemoteUUIDs[prop].file.uuid,
+																newPath: newPath,
+																oldPath: oldPath,
+																name: newName,
+																realPath: userSyncDir + "/" + oldPath.slice(11),
+																realPathNew: userSyncDir + "/" + newPath.slice(11)
+															}, userMasterKeys)
+														}
 													}
 												}
-												else{
-													if(typeof localFiles[oldPath] !== "undefined"){
-														syncTask("local", "renamefile", {
-															path: newPath,
-															uuid: lastRemoteUUIDs[prop].file.uuid,
-															newPath: newPath,
-															oldPath: oldPath,
-															name: newName,
-															realPath: userSyncDir + "/" + oldPath.slice(11),
-															realPathNew: userSyncDir + "/" + newPath.slice(11)
-														}, userMasterKeys)
-													}
-												}
+											}
+											else{
+												console.log(oldPath, "moved to", newPath)
 											}
 										}
 									}
@@ -5471,30 +5486,7 @@ const doSync = async () => {
 									localFileExisted = files
 								}
 
-								try{
-									let userEmail = await db.get("userEmail")
-
-									await db.put(userEmail + "_localFileModifications", JSON.stringify(localFileModifications))
-									await db.put(userEmail + "_remoteFileUUIDs", JSON.stringify(remoteFileUUIDs))
-									await db.put(userEmail + "_remoteFileSizes", JSON.stringify(remoteFileSizes))
-
-									await db.put(userEmail + "_lastRemoteSyncFolders", JSON.stringify(lastRemoteSyncFolders))
-									await db.put(userEmail + "_lastRemoteSyncFiles", JSON.stringify(lastRemoteSyncFiles))
-									await db.put(userEmail + "_lastLocalSyncFolders", JSON.stringify(lastLocalSyncFolders))
-									await db.put(userEmail + "_lastLocalSyncFiles", JSON.stringify(lastLocalSyncFiles))
-
-									await db.put(userEmail + "_localFileExisted", JSON.stringify(localFileExisted))
-									await db.put(userEmail + "_localFolderExisted", JSON.stringify(localFolderExisted))
-
-									await db.put(userEmail + "_remoteDecryptedCache", JSON.stringify(remoteDecryptedCache))
-
-									await db.put(userEmail + "_iNodeMapINodes", JSON.stringify(iNodeMapINodes))
-									await db.put(userEmail + "_iNodeMapPaths", JSON.stringify(iNodeMapPaths))
-									await db.put(userEmail + "_lastRemoteUUIDs", JSON.stringify(lastRemoteUUIDs))
-								}
-								catch(e){
-									console.log(e)
-								}
+								await saveSyncData(false)
 
 								indexCleanup()
 
