@@ -3814,6 +3814,122 @@ const removeFoldersAndFilesFromExistingDir = (path, callback) => {
 	return callback(null)
 }
 
+const removeFileNameFromDirPath = (path) => {
+	if(path.slice(-1) == "/"){
+		return path
+	}
+
+	let ex = path.split("/")
+
+	ex.pop()
+
+	return ex.join("/") + "/"
+}
+
+const createFoldersForPath = (path, mainCallback) => {
+	const createFolder = async (uuid, name, parent, callback) => {
+		apiRequest("/v1/dir/exists", {
+			apiKey: await getUserAPIKey(),
+			parent: parent,
+			nameHashed: hashFn(name.toLowerCase())
+		}, async (err, res) => {
+			if(err){
+				return callback(err)
+			}
+
+			if(!res.status){
+				return callback(res.message)
+			}
+
+			if(res.data.exists){
+				return callback(null)
+			}
+
+			apiRequest("/v1/dir/sub/create", {
+				apiKey: await getUserAPIKey(),
+				uuid: uuid,
+				name: await encryptMetadata(JSON.stringify({
+					name: name
+				}), userMasterKeys[userMasterKeys.length - 1]),
+				nameHashed: hashFn(name.toLowerCase()),
+				parent: parent
+			}, (err, res) => {
+				if(err){
+					return callback(err)
+				}
+
+				if(!res.status){
+					return callback(res.message)
+				}
+
+				checkIfItemParentIsBeingShared(parent, "folder", {
+					uuid: uuid,
+					name: name
+				}, () => {
+					return callback(null)
+				})
+			})
+		})
+	}
+
+	const waitForParent = (currentPath, currentParent) => {
+		let waitForParentToExistInterval = setInterval(() => {
+			if(typeof lastRemoteSyncFolders[currentParent] !== "undefined"){
+				clearInterval(waitForParentToExistInterval)
+
+				let ex = currentPath.split("/")
+				
+				ex.pop()
+
+				let folderName = ex[ex.length - 1]
+				let folderUUID = uuidv4()
+				let folderParent = lastRemoteSyncFolders[currentParent].uuid
+				let folderPath = removeFileNameFromDirPath(currentPath)
+
+				console.log("create", folderName, folderPath, currentParent)
+				console.log("parent", lastRemoteSyncFolders[currentParent])
+				
+				createFolder(folderUUID, folderName, folderParent, (err) => {
+					if(err){
+						return mainCallback(err)
+					}
+
+					lastRemoteSyncFolders[folderPath] = {
+						uuid: folderUUID,
+						name: folderName,
+						parent: folderParent
+					}
+				})
+			}
+		}, 100)
+	}
+
+	let startParent = getParentPath(path)
+	let currentParent = path
+
+	while(currentParent !== "Filen Sync/"){
+		let currentPath = removeFileNameFromDirPath(currentParent)
+
+		currentParent = getParentPath(currentParent)
+
+		console.log(currentPath, currentParent, lastRemoteSyncFolders[currentParent])
+
+		if(typeof lastRemoteSyncFolders[currentPath] == "undefined"){
+			waitForParent(currentPath, currentParent)
+		}
+	}
+
+	let interval = setInterval(() => {
+		if(typeof lastRemoteSyncFolders[startParent] !== "undefined"){
+			clearInterval(interval)
+
+			return mainCallback(null)
+		}
+	}, 100)
+
+	return true
+}
+
 const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 	if(syncMode == "localToCloud" && where == "local"){
 		return false
@@ -3872,6 +3988,78 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 	switch(where){
 		case "remote":
 			switch(task){
+				case "movedir":
+
+				break
+				case "movefile":
+					var moveFile = async (uuid, parent, file) => {
+						apiRequest("/v1/file/move", {
+							apiKey: await getUserAPIKey(),
+							folderUUID: parent,
+							fileUUID: uuid
+						}, (err, res) => {
+							if(err){
+								console.log(err)
+
+								syncTaskLimiterSemaphoreRelease()
+
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+	
+							if(!res.status){
+								console.log(res.message)
+
+								syncTaskLimiterSemaphoreRelease()
+
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+
+							checkIfItemParentIsBeingShared(parent, "file", {
+								uuid: uuid,
+								name: file.name,
+								size: parseInt(file.size),
+								mime: file.mime,
+								key: file.key,
+								lastModified: file.lastModified || Math.floor((+new Date()) / 1000)
+							}, () => {
+								syncTaskLimiterSemaphoreRelease()
+
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							})
+						})
+					}
+
+					if(typeof lastRemoteSyncFolders[getParentPath(taskInfo.path)] !== "undefined"){
+						moveFile(taskInfo.uuid, taskInfo.parent, taskInfo.file)
+					}
+					else{
+						var waitForParentToExistInterval = setInterval(() => {
+							if(typeof lastRemoteSyncFolders[getParentPath(taskInfo.path)] !== "undefined"){
+								clearInterval(waitForParentToExistInterval)
+
+								moveFile(taskInfo.uuid, taskInfo.parent, taskInfo.file)
+							}
+						}, 100)
+
+						createFoldersForPath(taskInfo.path, (err) => {
+							if(err){
+								console.log(err)
+
+								syncTaskLimiterSemaphoreRelease()
+
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+						})
+					}
+				break
 				case "renamedir":
 					apiRequest("/v1/dir/exists", {
 						apiKey: await getUserAPIKey(),
@@ -5156,7 +5344,27 @@ const doSync = async () => {
 												}
 											}
 											else{
-												console.log(oldPath, "moved to", newPath)
+												if(typeof remoteFolders[oldPath] !== "undefined"){
+													syncTask("remote", "movedir", {
+														path: newPath,
+														newPath: newPath,
+														oldPath: oldPath,
+														uuid: remoteFolders[oldPath].uuid,
+														parent: remoteFolders[oldPath].parent
+													}, userMasterKeys)
+												}
+												
+												if(typeof remoteFiles[oldPath] !== "undefined"){
+													syncTask("remote", "movefile", {
+														path: newPath,
+														newPath: newPath,
+														oldPath: oldPath,
+														uuid: remoteFiles[oldPath].uuid,
+														parent: remoteFiles[oldPath].parent,
+														file: remoteFiles[oldPath],
+														realPath: userSyncDir + "/" + newPath.slice(11)
+													}, userMasterKeys)
+												}
 											}
 										}
 									}
