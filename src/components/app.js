@@ -3295,8 +3295,12 @@ const uploadFileToRemote = async (path, uuid, parent, name, userMasterKeys, last
 			return callback(new Error("file size is zero"))
 		}
 
-		if((savedUserUsage.storage + (size + 1048576)) >= savedUserUsage.max){
-			return callback(new Error("user storage exceeded"))
+		if(typeof savedUserUsage == "object"){
+			if(typeof savedUserUsage.storage !== "undefined" && typeof savedUserUsage.max !== "undefined"){
+				if((savedUserUsage.storage + (size + 1048576)) >= savedUserUsage.max){
+					return callback(new Error("user storage exceeded"))
+				}
+			}
 		}
 
 		let sizeEnc = await encryptMetadata(size.toString(), key)
@@ -3369,8 +3373,6 @@ const uploadFileToRemote = async (path, uuid, parent, name, userMasterKeys, last
 
 									currentUploadThreads -= 1
 									chunksUploaded += 1
-
-									console.log(chunksUploaded, fileChunks)
 
 									blob = null
 									firstDone = true
@@ -3501,7 +3503,7 @@ const getLocalSyncDirContents = async (callback) => {
 			alwaysStat: true,
 			lstat: false,
 			type: "files_directories",
-			depth: 99999999999
+			depth: 2147483648
 		})){
 			if(file){
 				file.path = file.fullPath
