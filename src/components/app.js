@@ -3,7 +3,7 @@ process.env.CHOKIDAR_USEPOLLING = 1
 
 const log = require("electron-log")
 
-console.log = log.log
+Object.assign(console, log.functions)
 
 process.on("uncaughtException", (err) => {
 	console.log(err)
@@ -60,6 +60,7 @@ const sha384 = require("js-sha512").sha384
 const is = require("electron-is")
 const nodeWatch = require("node-watch-fs-extra")
 const mv = require("mv")
+const readdirp = require("readdirp")
 
 let db = undefined
 let dbPath = undefined
@@ -195,6 +196,7 @@ let iNodeMapPaths = {}
 let doIndexCleanup = true
 let canRemoveFromSyncTasks = true
 let lastRemoteUUIDs = {}
+let localTrashBinName = ".filen.trash.local"
 
 let currentFileVersion = 1
 let metadataVersion = 1
@@ -203,7 +205,7 @@ let defaultBlockedFiles = [
 	".ds_store",
 	"desktop.ini",
 	"thumbs.db",
-	".filen.trash.bin"
+	localTrashBinName
 ]
 
 let defaultBlockedFileExt = [
@@ -970,6 +972,10 @@ const initIPC = () => {
 		localFolderExisted = {}
 
 		remoteDecryptedCache = {}
+
+		iNodeMapINodes = {}
+		iNodeMapPaths = {}
+		lastRemoteUUIDs = {}
 	})
 	
 	ipcRenderer.on("open-download-folder-screen", (e, data) => {
@@ -1509,6 +1515,13 @@ const renderSyncTask = (task, prepend = true) => {
 		taskName = '<i class="fa fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-edit"></i>'
 		isFile = false
 	}
+	else if(task.where == "remote" && task.task == "movedir"){
+		taskName = '<i class="fa fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrows-alt"></i>'
+		isFile = false
+	}
+	else if(task.where == "remote" && task.task == "movefile"){
+		taskName = '<i class="fa fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrows-alt"></i>'
+	}
 	else if(task.where == "local" && task.task == "download"){
 		taskName = '<i class="fa fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-down"></i>'
 	}
@@ -1525,6 +1538,20 @@ const renderSyncTask = (task, prepend = true) => {
 	}
 	else if(task.where == "local" && task.task == "update"){
 		taskName = '<i class="fa fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-down"></i>'
+	}
+	else if(task.where == "local" && task.task == "renamedir"){
+		taskName = '<i class="fa fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-edit"></i>'
+		isFile = false
+	}
+	else if(task.where == "local" && task.task == "renamefile"){
+		taskName = '<i class="fa fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-edit"></i>'
+	}
+	else if(task.where == "local" && task.task == "movedir"){
+		taskName = '<i class="fa fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrows-alt"></i>'
+		isFile = false
+	}
+	else if(task.where == "local" && task.task == "movefile"){
+		taskName = '<i class="fa fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrows-alt"></i>'
 	}
 
 	let fileNameEx = JSON.parse(task.taskInfo).path.split("/")
@@ -3470,45 +3497,55 @@ const getLocalSyncDirContents = async (callback) => {
 	let iNodeMapPathsRes = {}
 
 	try{
-		for await (let file of klaw(winOrUnixFilePath(userSyncDir), {
-			depthLimit: -1,
-			preserveSymlinks: true
+		for await (let file of readdirp(winOrUnixFilePath(userSyncDir), {
+			alwaysStat: true,
+			lstat: false,
+			type: "files_directories",
+			depth: 99999999999
 		})){
-		  	if(file.stats && file.path !== userSyncDir){
-		  		let filePath = file.path.substring(userHomePath.length + 1).split("\\").join("/")
+			if(file){
+				file.path = file.fullPath
 
-				if(filePath.substring(0, 11) !== "Filen Sync/"){
-					filePath = "Filen Sync/" + filePath
-				}
+				if(file.path && file.stats){
+					if(file.path !== userSyncDir){
+						if(!file.stats.isSymbolicLink()){
+							let filePath = file.path.substring(userHomePath.length + 1).split("\\").join("/")
 
-		  		let filePathEx = filePath.split("/")
-				let folderPath = (filePath.slice(-1) == "/" ? filePath : filePath + "/")
-
-		  		if(file.stats.isDirectory() && typeof filePathEx[filePathEx.length - 1] !== "undefined"){
-		  			if(!isFileNameBlocked(filePathEx[filePathEx.length - 1])){
-		  				folders[folderPath] = {
-							name: filePathEx[filePathEx.length - 1]
-						}
-
-						iNodeMapPathsRes[folderPath] = file.stats.ino
-						iNodeMapINodesRes[file.stats.ino] = folderPath
-		  			}
-		  		}
-		  		else if(typeof filePathEx[filePathEx.length - 1] !== "undefined"){
-		  			if(file.stats.size > 0){
-		  				if(!isFileNameBlocked(filePathEx[filePathEx.length - 1])){
-		  					files[filePath] = {
-								name: filePathEx[filePathEx.length - 1],
-								modTime: file.stats.mtimeMs,
-								size: file.stats.size
+							if(filePath.substring(0, 11) !== "Filen Sync/"){
+								filePath = "Filen Sync/" + filePath
 							}
 
-							iNodeMapPathsRes[filePath] = file.stats.ino
-							iNodeMapINodesRes[file.stats.ino] = filePath
-		  				}
-		  			}
-		  		}
-		  	}
+							let filePathEx = filePath.split("/")
+							let folderPath = (filePath.slice(-1) == "/" ? filePath : filePath + "/")
+
+							if(file.stats.isDirectory() && typeof filePathEx[filePathEx.length - 1] !== "undefined"){
+								if(!isFileNameBlocked(filePathEx[filePathEx.length - 1])){
+									folders[folderPath] = {
+										name: filePathEx[filePathEx.length - 1]
+									}
+
+									iNodeMapPathsRes[folderPath] = file.stats.ino
+									iNodeMapINodesRes[file.stats.ino] = folderPath
+								}
+							}
+							else if(typeof filePathEx[filePathEx.length - 1] !== "undefined"){
+								if(file.stats.size > 0){
+									if(!isFileNameBlocked(filePathEx[filePathEx.length - 1])){
+										files[filePath] = {
+											name: filePathEx[filePathEx.length - 1],
+											modTime: file.stats.mtimeMs,
+											size: file.stats.size
+										}
+
+										iNodeMapPathsRes[filePath] = file.stats.ino
+										iNodeMapINodesRes[file.stats.ino] = filePath
+									}
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 	catch(e){
@@ -3819,6 +3856,8 @@ const createFoldersForPath = async (path, mainCallback) => {
 	}
 
 	const waitForParent = (currentPath, currentParent) => {
+		currentParent = getParentPath(currentParent)
+
 		let waitForParentToExistInterval = setInterval(() => {
 			if(typeof lastRemoteSyncFolders[currentParent] !== "undefined"){
 				clearInterval(waitForParentToExistInterval)
@@ -3831,19 +3870,22 @@ const createFoldersForPath = async (path, mainCallback) => {
 				let folderUUID = uuidv4()
 				let folderParent = lastRemoteSyncFolders[currentParent].uuid
 				let folderPath = removeFileNameFromDirPath(currentPath)
-
-				console.log("create", folderName, folderPath, currentParent)
-				console.log("parent", lastRemoteSyncFolders[currentParent])
 				
 				createFolder(folderUUID, folderName, folderParent, (err) => {
 					if(err){
 						return mainCallback(err)
 					}
 
+					localFolderExisted[folderPath] = true
+
 					lastRemoteSyncFolders[folderPath] = {
 						uuid: folderUUID,
 						name: folderName,
 						parent: folderParent
+					}
+
+					lastLocalSyncFolders[folderPath] = {
+						name: folderName
 					}
 				})
 			}
@@ -3854,11 +3896,9 @@ const createFoldersForPath = async (path, mainCallback) => {
 	let currentParent = path
 
 	while(currentParent !== "Filen Sync/"){
-		let currentPath = removeFileNameFromDirPath(currentParent)
-
 		currentParent = getParentPath(currentParent)
 
-		console.log(currentPath, currentParent, lastRemoteSyncFolders[currentParent])
+		let currentPath = removeFileNameFromDirPath(currentParent)
 
 		if(typeof lastRemoteSyncFolders[currentPath] == "undefined"){
 			waitForParent(currentPath, currentParent)
@@ -3877,9 +3917,9 @@ const createFoldersForPath = async (path, mainCallback) => {
 }
 
 const createTrashBin = (callback) => {
-	fs.access(winOrUnixFilePath(userSyncDir + "/.filen.trash.bin"), (err) => {
+	fs.access(winOrUnixFilePath(userSyncDir + "/" + localTrashBinName), (err) => {
 		if(err && err.code == "ENOENT"){
-			fs.mkdir(winOrUnixFilePath(userSyncDir + "/.filen.trash.bin"), {
+			fs.mkdir(winOrUnixFilePath(userSyncDir + "/" + localTrashBinName), {
 				recursive: true
 			}, (err) => {
 				if(err){
@@ -3970,6 +4010,8 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 				break
 				case "movefile":
+					var releaseMoveSemaphore = await moveSemaphore.acquire()
+
 					var moveFile = async (uuid, parent, file) => {
 						apiRequest("/v1/file/move", {
 							apiKey: await getUserAPIKey(),
@@ -3980,6 +4022,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 								console.log(err)
 
 								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
 
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -3990,6 +4033,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 								console.log(res.message)
 
 								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
 
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4005,6 +4049,11 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 								lastModified: file.lastModified || Math.floor((+new Date()) / 1000)
 							}, () => {
 								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
+
+								localFileExisted[taskInfo.path] = true
+
+								delete localFileExisted[taskInfo.oldPath]
 
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4013,15 +4062,17 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 						})
 					}
 
-					if(typeof lastRemoteSyncFolders[getParentPath(taskInfo.path)] !== "undefined"){
-						moveFile(taskInfo.uuid, taskInfo.parent, taskInfo.file)
+					let neededParent = lastRemoteSyncFolders[getParentPath(taskInfo.path)]
+
+					if(typeof neededParent !== "undefined"){
+						moveFile(taskInfo.uuid, neededParent.uuid, taskInfo.file)
 					}
 					else{
 						var waitForParentToExistInterval = setInterval(() => {
-							if(typeof lastRemoteSyncFolders[getParentPath(taskInfo.path)] !== "undefined"){
+							if(typeof neededParent !== "undefined"){
 								clearInterval(waitForParentToExistInterval)
 
-								moveFile(taskInfo.uuid, taskInfo.parent, taskInfo.file)
+								moveFile(taskInfo.uuid, neededParent.uuid, taskInfo.file)
 							}
 						}, 100)
 
@@ -4030,6 +4081,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 								console.log(err)
 
 								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
 
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4801,7 +4853,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 							}, syncTimeout)
 						}
 
-						fs.move(winOrUnixFilePath(rmdirPath), winOrUnixFilePath(userSyncDir + "/.filen.trash.bin/" + name), {
+						fs.move(winOrUnixFilePath(rmdirPath), winOrUnixFilePath(userSyncDir + "/" + localTrashBinName + "/" + name), {
 							overwrite: true
 						}, (err) => {
 							if(err){
@@ -4846,7 +4898,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 							}, syncTimeout)
 						}
 
-						fs.move(winOrUnixFilePath(rmFilePath), winOrUnixFilePath(userSyncDir + "/.filen.trash.bin/" + name), {
+						fs.move(winOrUnixFilePath(rmFilePath), winOrUnixFilePath(userSyncDir + "/" + localTrashBinName + "/" + name), {
 							overwrite: true
 						}, (err) => {
 							if(err){
@@ -5982,7 +6034,7 @@ const initChokidar = async () => {
 
 		isDoingRealtimeWork = true
 
-		currentSyncTasksExtra.push(uuidv4())
+		currentSyncTasksExtra.push(uuidv4() + "_" + event.toString() + "_" + ePath.toString())
 
 		clearTimeout(handleRealtimeWorkTimeout)
 
@@ -6369,19 +6421,19 @@ const updateVisualStatus = async () => {
 
 const checkLocalTrashBin = () => {
 	console.log("Checking local trash bin")
-	
+
 	createTrashBin((err) => {
 		if(!err){
-			fs.readdir(winOrUnixFilePath(userSyncDir + "/.filen.trash.bin")).then(async (files) => {
+			fs.readdir(winOrUnixFilePath(userSyncDir + "/" + localTrashBinName)).then(async (files) => {
 				for(let i = 0; i < files.length; i++){
 					try{
-						let stat = await fs.stat(winOrUnixFilePath(userSyncDir + "/.filen.trash.bin/" + files[i]))
+						let stat = await fs.stat(winOrUnixFilePath(userSyncDir + "/" + localTrashBinName + "/" + files[i]))
 
 						if(stat){
 							let ctime = Math.floor(stat.ctimeMs)
 
 							if(Math.floor((+new Date())) > (ctime + ((86400 * 30) * 1000))){
-								rimraf(winOrUnixFilePath(userSyncDir + "/.filen.trash.bin/" + files[i]), (err) => {
+								rimraf(winOrUnixFilePath(userSyncDir + "/" + localTrashBinName + "/" + files[i]), (err) => {
 									if(err){
 										console.log(err)
 									}

@@ -30,6 +30,7 @@
 		"node-semaphore": "0.0.2",
 		"node-watch-fs-extra": "git+https://github.com/FilenCloudDienste/node-watch-fs-extra.git",
 		"read-chunk": "^3.2.0",
+		"readdirp": "^3.5.0",
 		"recursive-copy": "^2.0.11",
 		"rimraf": "^3.0.2",
 		"socket.io-client": "^2.3.1",

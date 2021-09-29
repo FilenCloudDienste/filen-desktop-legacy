@@ -2,7 +2,7 @@ process.noAsar = true
 
 const log = require("electron-log")
 
-console.log = log.log
+Object.assign(console, log.functions)
 
 process.on("uncaughtException", (err) => {
 	console.log(err)
@@ -65,7 +65,8 @@ let tray = null,
 	db = undefined,
 	dbPath = undefined,
 	autoLauncher = undefined,
-	lastTrayMenuName = ""
+	lastTrayMenuName = "",
+	localTrashBinName = ".filen.trash.local"
 
 if(is.linux() || is.macOS()){
 	dbPath = app.getPath("userData") + "/index"
@@ -164,9 +165,9 @@ const winOrUnixFilePath = (path) => {
 }
 
 const createTrashBin = (syncDirPath) => {
-	fs.access(winOrUnixFilePath(syncDirPath + "/.filen.trash.bin"), (err) => {
+	fs.access(winOrUnixFilePath(syncDirPath + "/" + localTrashBinName), (err) => {
 		if(err && err.code == "ENOENT"){
-			fs.mkdir(winOrUnixFilePath(syncDirPath + "/.filen.trash.bin"), {
+			fs.mkdir(winOrUnixFilePath(syncDirPath + "/" + localTrashBinName), {
 				recursive: true
 			}, (err) => {
 				if(err){
