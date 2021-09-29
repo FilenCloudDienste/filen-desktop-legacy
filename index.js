@@ -1,7 +1,11 @@
 process.noAsar = true
 
+const log = require("electron-log")
+
+console.log = log.log
+
 process.on("uncaughtException", (err) => {
-	console.error(err)
+	console.log(err)
 
 	try{
 		if(err.toString().toLowerCase().indexOf("openerror") !== -1 || err.toString().toLowerCase().indexOf("corruption") !== -1 && err.toString().toLowerCase().indexOf("level") !== -1){
@@ -30,7 +34,6 @@ const fs = require("fs-extra")
 const copy = require("recursive-copy")
 const rimraf = require("rimraf")
 const { autoUpdater } = require("electron-updater")
-const log = require("electron-log")
 const positioner = require("electron-traywindow-positioner")
 const child_process = require("child_process")
 const is = require("electron-is")
@@ -160,6 +163,20 @@ const winOrUnixFilePath = (path) => {
 	}
 }
 
+const createTrashBin = (syncDirPath) => {
+	fs.access(winOrUnixFilePath(syncDirPath + "/.filen.trash.bin"), (err) => {
+		if(err && err.code == "ENOENT"){
+			fs.mkdir(winOrUnixFilePath(syncDirPath + "/.filen.trash.bin"), {
+				recursive: true
+			}, (err) => {
+				if(err){
+					console.log("Could not create sync dir:", err)
+				}
+			})
+		}
+	})
+}
+
 const checkIfSyncDirectoryExists = async () => {
 	if(!doCheckIfSyncDirectoryExists){
 		return false
@@ -211,8 +228,13 @@ const checkIfSyncDirectoryExists = async () => {
 					}
 
 					console.log("Sync dir created:", syncDirPath)
+
+					createTrashBin(syncDirPath)
 				}
 			})
+		}
+		else{
+			createTrashBin(syncDirPath)
 		}
 	})
 }
@@ -692,14 +714,14 @@ const createWindow = async () => {
 
   	moveWindow()
 
-  	autoUpdater.checkForUpdatesAndNotify()
+  	autoUpdater.checkForUpdates()
 
   	setInterval(() => {
-  		autoUpdater.checkForUpdatesAndNotify()
+  		autoUpdater.checkForUpdates()
   	}, (3600000 * 1))
 
   	autoUpdater.on("update-downloaded", () => {
-		return browserWindow.webContents.send("update-available")
+		//return browserWindow.webContents.send("update-available")
 	})
 
 	setInterval(() => {

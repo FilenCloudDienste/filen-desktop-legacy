@@ -1,8 +1,12 @@
 process.noAsar = true
 process.env.CHOKIDAR_USEPOLLING = 1
 
+const log = require("electron-log")
+
+console.log = log.log
+
 process.on("uncaughtException", (err) => {
-	console.error(err)
+	console.log(err)
 
 	try{
 		if(err.toString().toLowerCase().indexOf("openerror") !== -1 || err.toString().toLowerCase().indexOf("corruption") !== -1 && err.toString().toLowerCase().indexOf("level") !== -1){
@@ -198,7 +202,8 @@ let metadataVersion = 1
 let defaultBlockedFiles = [
 	".ds_store",
 	"desktop.ini",
-	"thumbs.db"
+	"thumbs.db",
+	".filen.trash.bin"
 ]
 
 let defaultBlockedFileExt = [
@@ -3438,69 +3443,6 @@ const addFinishedSyncTaskToStorage = async (where, task, taskInfo) => {
 	return syncTasksToWrite.push(taskData)
 }
 
-var skipCheckLocalExistedFoldersAndFiles = 0
-
-const checkLocalExistedFoldersAndFiles = (folders, files, callback) => {
-	if(skipCheckLocalExistedFoldersAndFiles > unixTimestamp()){
-		return callback()
-	}
-
-	for(let prop in localFolderExisted){
-		if(typeof folders[prop] == "undefined"){
-			console.log("Removing " + prop + " from localFolderExisted, not present anymore")
-
-			delete localFolderExisted[prop]
-		}
-	}
-
-	for(let prop in localFileExisted){
-		if(typeof files[prop] == "undefined"){
-			console.log("Removing " + prop + " from localFileExisted, not present anymore")
-
-			delete localFileExisted[prop]
-		}
-	}
-
-	for(let prop in remoteFileUUIDs){
-		let oldProp = prop
-
-		prop = prop.replace(userHomePath + "/", "")
-
-		if(typeof files[prop] == "undefined"){
-			console.log("Removing " + prop + " from remoteFileUUIDs, not present anymore")
-
-			//delete remoteFileUUIDs[prop]
-		}
-	}
-
-	for(let prop in remoteFileSizes){
-		let oldProp = prop
-
-		prop = prop.replace(userHomePath + "/", "")
-
-		if(typeof files[prop] == "undefined"){
-			console.log("Removing " + prop + " from remoteFileSizes, not present anymore")
-
-			//delete remoteFileSizes[prop]
-		}
-
-	}
-
-	for(let prop in localFileModifications){
-		let oldProp = prop
-
-		prop = prop.replace(userHomePath + "/", "")
-
-		if(typeof files[prop] == "undefined"){
-			console.log("Removing " + prop + " from localFileModifications, not present anymore")
-
-			//delete localFileModifications[prop]
-		}
-	}
-
-	return callback()
-}
-
 const getLocalSyncDirContents = async (callback) => {
 	if(!syncStarted){
 		return callback(new Error("Sync not started"))
@@ -3791,7 +3733,7 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 const removeFoldersAndFilesFromExistingDir = (path, callback) => {
 	let oldPath = path
 
-	path = userHomePath + "/" + path
+	path = userSyncDir + "/" + path.slice(11)
 
 	for(let prop in localFolderExisted){
 		if(prop.indexOf(oldPath) !== -1){
@@ -3801,13 +3743,10 @@ const removeFoldersAndFilesFromExistingDir = (path, callback) => {
 
 	for(let prop in localFileExisted){
 		if(prop.indexOf(oldPath) !== -1){
-			let p = userHomePath + "/" + prop
-
 			delete localFileExisted[prop]
-
-			delete localFileModifications[p]
-			delete remoteFileSizes[p]
-			delete remoteFileUUIDs[p]
+			delete localFileModifications[prop]
+			delete remoteFileSizes[prop]
+			delete remoteFileUUIDs[prop]
 		}	
 	}
 
@@ -3826,7 +3765,14 @@ const removeFileNameFromDirPath = (path) => {
 	return ex.join("/") + "/"
 }
 
-const createFoldersForPath = (path, mainCallback) => {
+const createFoldersForPath = async (path, mainCallback) => {
+	try{
+		var userMasterKeys = await getUserMasterKeys()
+	}
+	catch(e){
+		return mainCallback(e)
+	}
+
 	const createFolder = async (uuid, name, parent, callback) => {
 		apiRequest("/v1/dir/exists", {
 			apiKey: await getUserAPIKey(),
@@ -3928,6 +3874,38 @@ const createFoldersForPath = (path, mainCallback) => {
 	}, 100)
 
 	return true
+}
+
+const createTrashBin = (callback) => {
+	fs.access(winOrUnixFilePath(userSyncDir + "/.filen.trash.bin"), (err) => {
+		if(err && err.code == "ENOENT"){
+			fs.mkdir(winOrUnixFilePath(userSyncDir + "/.filen.trash.bin"), {
+				recursive: true
+			}, (err) => {
+				if(err){
+					return callback(err)
+				}
+
+				return callback(null)
+			})
+		}
+		else{
+			return callback(null)
+		}
+	})
+}
+
+const getNameFromPath = (path) => {
+	let name = path.split("/")
+
+	if(path.slice(-1) == "/"){
+		name.pop()
+
+		return name[name.length - 1]
+	}
+	else{
+		return name[name.length - 1]
+	}
 }
 
 const syncTask = async (where, task, taskInfo, userMasterKeys) => {
@@ -4788,7 +4766,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 					})
 				break
 				case "mkdir":
-					let dirPath = userHomePath + "/" + taskInfo.path
+					let dirPath = userSyncDir + "/" + taskInfo.path.slice(11)
 
 					fs.mkdir(winOrUnixFilePath(dirPath), {
 						recursive: true,
@@ -4808,40 +4786,92 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 					})
 				break
 				case "rmdir":
-					let rmdirPath = userHomePath + "/" + taskInfo.path
+					let rmdirPath = userSyncDir + "/" + taskInfo.path.slice(11)
 
-					rimraf(winOrUnixFilePath(rmdirPath), () => {
-						addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
+					var name = getNameFromPath(taskInfo.path)
 
-						delete localFolderExisted[taskInfo.path]
-
-						return removeFoldersAndFilesFromExistingDir(taskInfo.path, () => {
-							removeFromDeletingLocalFolders(taskId)
-							
+					createTrashBin((err) => {
+						if(err){
+							console.log(err)
+	
 							syncTaskLimiterSemaphoreRelease()
 
 							return setTimeout(() => {
 								removeFromSyncTasks(taskId)
 							}, syncTimeout)
+						}
+
+						fs.move(winOrUnixFilePath(rmdirPath), winOrUnixFilePath(userSyncDir + "/.filen.trash.bin/" + name), {
+							overwrite: true
+						}, (err) => {
+							if(err){
+								console.log(err)
+	
+								syncTaskLimiterSemaphoreRelease()
+	
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+	
+							addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
+	
+							delete localFolderExisted[taskInfo.path]
+	
+							return removeFoldersAndFilesFromExistingDir(taskInfo.path, () => {
+								removeFromDeletingLocalFolders(taskId)
+								
+								syncTaskLimiterSemaphoreRelease()
+	
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							})
 						})
 					})
 				break
 				case "rmfile":
-					let rmFilePath = userHomePath + "/" + taskInfo.path
+					let rmFilePath = userSyncDir + "/" + taskInfo.path.slice(11)
 
-					return rimraf(winOrUnixFilePath(rmFilePath), () => {
-						addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
+					var name = getNameFromPath(taskInfo.path)
 
-						delete localFileModifications[taskInfo.path]
-						delete remoteFileSizes[taskInfo.path]
-						delete remoteFileUUIDs[taskInfo.path]
-						delete localFileExisted[taskInfo.path]
+					createTrashBin((err) => {
+						if(err){
+							console.log(err)
+	
+							syncTaskLimiterSemaphoreRelease()
 
-						syncTaskLimiterSemaphoreRelease()
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						}
 
-						return setTimeout(() => {
-							removeFromSyncTasks(taskId)
-						}, syncTimeout)
+						fs.move(winOrUnixFilePath(rmFilePath), winOrUnixFilePath(userSyncDir + "/.filen.trash.bin/" + name), {
+							overwrite: true
+						}, (err) => {
+							if(err){
+								console.log(err)
+	
+								syncTaskLimiterSemaphoreRelease()
+	
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+	
+							addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
+	
+							delete localFileModifications[taskInfo.path]
+							delete remoteFileSizes[taskInfo.path]
+							delete remoteFileUUIDs[taskInfo.path]
+							delete localFileExisted[taskInfo.path]
+	
+							syncTaskLimiterSemaphoreRelease()
+	
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						})
 					})
 				break
 				case "download":
@@ -4864,7 +4894,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 						}, syncTimeout)
 					}
 
-					let filePath = userHomePath + "/" + taskInfo.path
+					let filePath = userSyncDir + "/" + taskInfo.path.slice(11)
 
 					downloadFileToLocal(winOrUnixFilePath(filePath), taskInfo.file, true, async (err) => {
 						if(err){
@@ -5219,7 +5249,7 @@ const doSync = async () => {
 							//Did the remote file UUID (versioning) change?
 							for(let prop in remoteFiles){
 								if(typeof localFiles[prop] !== "undefined" && typeof lastLocalSyncFiles[prop] !== "undefined" && typeof lastRemoteSyncFiles[prop] !== "undefined"){
-									let filePath = userHomePath + "/" + prop
+									let filePath = userSyncDir + "/" + prop.slice(11)
 
 									if(typeof remoteFileUUIDs[prop] == "undefined"){
 										remoteFileUUIDs[prop] = remoteFiles[prop].uuid
@@ -5244,7 +5274,7 @@ const doSync = async () => {
 							//Did the local mod time change from previous sync?
 							for(let prop in localFiles){
 								if(typeof remoteFiles[prop] !== "undefined" && typeof lastLocalSyncFiles[prop] !== "undefined" && typeof lastRemoteSyncFiles[prop] !== "undefined"){
-									let filePath = userHomePath + "/" + prop
+									let filePath = userSyncDir + "/" + prop.slice(11)
 									let taskIdPath = prop
 
 									let fileStat = {}
@@ -5643,7 +5673,7 @@ const doSync = async () => {
 						//Download file to local because we dont have it or delete remote
 						for(let prop in remoteFiles){
 							if(typeof localFiles[prop] == "undefined"){
-								let filePath = userHomePath + "/" + prop
+								let filePath = userSyncDir + "/" + prop.slice(11)
 
 								let isDeletingParentFolder = false
 								let isDeletingParentFolderLocal = false
@@ -5712,7 +5742,7 @@ const doSync = async () => {
 						//Upload file to remote because the server does not have it
 						for(let prop in localFiles){
 							if(typeof remoteFiles[prop] == "undefined"){
-								let filePath = userHomePath + "/" + prop
+								let filePath = userSyncDir + "/" + prop.slice(11)
 
 								if(syncMode == "twoWay"){
 									if(typeof lastRemoteSyncFiles[prop] !== "undefined" && typeof localFileExisted[prop] !== "undefined"){
@@ -6337,6 +6367,39 @@ const updateVisualStatus = async () => {
 	}
 }
 
+const checkLocalTrashBin = () => {
+	console.log("Checking local trash bin")
+	
+	createTrashBin((err) => {
+		if(!err){
+			fs.readdir(winOrUnixFilePath(userSyncDir + "/.filen.trash.bin")).then(async (files) => {
+				for(let i = 0; i < files.length; i++){
+					try{
+						let stat = await fs.stat(winOrUnixFilePath(userSyncDir + "/.filen.trash.bin/" + files[i]))
+
+						if(stat){
+							let ctime = Math.floor(stat.ctimeMs)
+
+							if(Math.floor((+new Date())) > (ctime + ((86400 * 30) * 1000))){
+								rimraf(winOrUnixFilePath(userSyncDir + "/.filen.trash.bin/" + files[i]), (err) => {
+									if(err){
+										console.log(err)
+									}
+								})
+							}
+						}
+					}
+					catch(e){
+						console.log(e)
+					}
+				}
+			}).catch((err) => {
+				console.log(err)
+			})
+		}
+	})
+}
+
 const setupIntervals = () => {
 	setInterval(() => {
 		ipcRenderer.send("is-syncing-paused", {
@@ -6347,6 +6410,8 @@ const setupIntervals = () => {
 			isSyncing: isSyncing
 		})
 	}, 100)
+
+	setInterval(checkLocalTrashBin, 300000)
 
 	updateVisualStatus()
 
