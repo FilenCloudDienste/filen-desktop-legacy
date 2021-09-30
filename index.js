@@ -1,5 +1,9 @@
 process.noAsar = true
 
+BigInt.prototype.toJSON = function(){
+	return this.toString()
+}
+
 const log = require("electron-log")
 
 Object.assign(console, log.functions)

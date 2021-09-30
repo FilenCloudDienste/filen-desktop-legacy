@@ -1,6 +1,10 @@
 process.noAsar = true
 process.env.CHOKIDAR_USEPOLLING = 1
 
+BigInt.prototype.toJSON = function(){
+	return this.toString()
+}
+
 const log = require("electron-log")
 
 Object.assign(console, log.functions)
@@ -197,6 +201,12 @@ let doIndexCleanup = true
 let canRemoveFromSyncTasks = true
 let lastRemoteUUIDs = {}
 let localTrashBinName = ".filen.trash.local"
+let currentRenamingLocalFolders = []
+let currentRenamingRemoteFolders = []
+let currentMovingLocalFolders = []
+let currentMovingRemoteFolders = []
+let currentRenamingOrMovingLocalFolders = []
+let currentRenamingOrMovingRemoteFolders = []
 
 let currentFileVersion = 1
 let metadataVersion = 1
@@ -3498,10 +3508,70 @@ const getLocalSyncDirContents = async (callback) => {
 	let iNodeMapINodesRes = {}
 	let iNodeMapPathsRes = {}
 
-	try{
+	readdirp(winOrUnixFilePath(userSyncDir), {
+		alwaysStat: true,
+		lstat: true,
+		type: "all",
+		depth: 2147483648
+	}).on("data", (file) => {
+		if(file){
+			file.path = file.fullPath
+
+			if(file.path && file.stats){
+				if(file.path !== userSyncDir && !file.stats.isSymbolicLink()){
+					let filePath = file.path.substring(userHomePath.length + 1).split("\\").join("/")
+
+					if(filePath.substring(0, 11) !== "Filen Sync/"){
+						filePath = "Filen Sync/" + filePath
+					}
+
+					let filePathEx = filePath.split("/")
+					let folderPath = (filePath.slice(-1) == "/" ? filePath : filePath + "/")
+
+					if(file.stats.isDirectory() && typeof filePathEx[filePathEx.length - 1] !== "undefined"){
+						if(!isFileNameBlocked(filePathEx[filePathEx.length - 1])){
+							folders[folderPath] = {
+								name: filePathEx[filePathEx.length - 1]
+							}
+
+							iNodeMapPathsRes[folderPath] = file.stats.ino
+							iNodeMapINodesRes[file.stats.ino] = folderPath
+						}
+					}
+					else if(typeof filePathEx[filePathEx.length - 1] !== "undefined"){
+						if(file.stats.size > 0){
+							if(!isFileNameBlocked(filePathEx[filePathEx.length - 1])){
+								files[filePath] = {
+									name: filePathEx[filePathEx.length - 1],
+									modTime: file.stats.mtimeMs,
+									size: file.stats.size
+								}
+
+								iNodeMapPathsRes[filePath] = file.stats.ino
+								iNodeMapINodesRes[file.stats.ino] = filePath
+							}
+						}
+					}
+				}
+			}
+		}
+	}).on("warn", (err) => {
+		console.log(err)
+	}).on("error", (err) => {
+		console.log(err)
+
+		return callback(err)
+	}).on("end", () => {
+		lastLocalSyncFolders = folders
+		lastLocalSyncFiles = files
+
+		return callback(null, folders, files, iNodeMapINodesRes, iNodeMapPathsRes)
+	})
+
+	/*try{
 		for await (let file of readdirp(winOrUnixFilePath(userSyncDir), {
 			alwaysStat: true,
-			lstat: false,
+			lstat: true,
 			type: "files_directories",
 			depth: 2147483648
 		})){
@@ -3557,7 +3627,7 @@ const getLocalSyncDirContents = async (callback) => {
 	lastLocalSyncFolders = folders
 	lastLocalSyncFiles = files
 
-	return callback(null, folders, files, iNodeMapINodesRes, iNodeMapPathsRes)
+	return callback(null, folders, files, iNodeMapINodesRes, iNodeMapPathsRes)*/
 }
 
 const getRemoteSyncDirContents = async (folderUUID, callback) => {
@@ -5297,6 +5367,10 @@ const doSync = async () => {
 
 					currentDeletingLocalFolders = []
 					currentDeletingRemoteFolders = []
+					currentRenamingLocalFolders = []
+					currentRenamingRemoteFolders = []
+					currentMovingLocalFolders = []
+					currentMovingRemoteFolders = []
 
 					if(typeof lastLocalSyncFiles !== "undefined" && typeof lastRemoteSyncFiles !== "undefined" && typeof lastRemoteSyncFolders !== "undefined"){
 						if(syncMode == "twoWay" || syncMode == "cloudToLocal"){
@@ -5402,52 +5476,80 @@ const doSync = async () => {
 												oldName = oldName[oldName.length - 1]
 		
 												if(newName !== oldName){
+													let isRenamingOrMovingParentFolder = false
+
+													if(currentRenamingOrMovingRemoteFolders.length > 0){
+														for(let i = 0; i < currentRenamingOrMovingRemoteFolders.length; i++){
+															if(oldPath.indexOf(currentRenamingOrMovingRemoteFolders[i]) !== -1){
+																isRenamingOrMovingParentFolder = true
+															}
+														}
+													}
+
+													if(!isRenamingOrMovingParentFolder){
+														currentRenamingOrMovingRemoteFolders.push(oldPath)
+
+														if(typeof remoteFolders[oldPath] !== "undefined"){
+															syncTask("remote", "renamedir", {
+																path: newPath,
+																newPath: newPath,
+																oldPath: oldPath,
+																uuid: remoteFolders[oldPath].uuid,
+																parent: remoteFolders[oldPath].parent,
+																name: newName
+															}, userMasterKeys)
+														}
+														
+														if(typeof remoteFiles[oldPath] !== "undefined"){
+															syncTask("remote", "renamefile", {
+																path: newPath,
+																newPath: newPath,
+																oldPath: oldPath,
+																uuid: remoteFiles[oldPath].uuid,
+																parent: remoteFiles[oldPath].parent,
+																name: newName,
+																file: remoteFiles[oldPath],
+																realPath: userSyncDir + "/" + newPath.slice(11)
+															}, userMasterKeys)
+														}
+													}
+												}
+											}
+											else{
+												let isRenamingOrMovingParentFolder = false
+
+												if(currentRenamingOrMovingRemoteFolders.length > 0){
+													for(let i = 0; i < currentRenamingOrMovingRemoteFolders.length; i++){
+														if(oldPath.indexOf(currentRenamingOrMovingRemoteFolders[i]) !== -1){
+															isRenamingOrMovingParentFolder = true
+														}
+													}
+												}
+
+												if(!isRenamingOrMovingParentFolder){
+													currentRenamingOrMovingRemoteFolders.push(oldPath)
+
 													if(typeof remoteFolders[oldPath] !== "undefined"){
-														syncTask("remote", "renamedir", {
+														syncTask("remote", "movedir", {
 															path: newPath,
 															newPath: newPath,
 															oldPath: oldPath,
 															uuid: remoteFolders[oldPath].uuid,
-															parent: remoteFolders[oldPath].parent,
-															name: newName
+															parent: remoteFolders[oldPath].parent
 														}, userMasterKeys)
 													}
 													
 													if(typeof remoteFiles[oldPath] !== "undefined"){
-														syncTask("remote", "renamefile", {
+														syncTask("remote", "movefile", {
 															path: newPath,
 															newPath: newPath,
 															oldPath: oldPath,
 															uuid: remoteFiles[oldPath].uuid,
 															parent: remoteFiles[oldPath].parent,
-															name: newName,
 															file: remoteFiles[oldPath],
 															realPath: userSyncDir + "/" + newPath.slice(11)
 														}, userMasterKeys)
 													}
-												}
-											}
-											else{
-												if(typeof remoteFolders[oldPath] !== "undefined"){
-													syncTask("remote", "movedir", {
-														path: newPath,
-														newPath: newPath,
-														oldPath: oldPath,
-														uuid: remoteFolders[oldPath].uuid,
-														parent: remoteFolders[oldPath].parent
-													}, userMasterKeys)
-												}
-												
-												if(typeof remoteFiles[oldPath] !== "undefined"){
-													syncTask("remote", "movefile", {
-														path: newPath,
-														newPath: newPath,
-														oldPath: oldPath,
-														uuid: remoteFiles[oldPath].uuid,
-														parent: remoteFiles[oldPath].parent,
-														file: remoteFiles[oldPath],
-														realPath: userSyncDir + "/" + newPath.slice(11)
-													}, userMasterKeys)
 												}
 											}
 										}
@@ -5488,14 +5590,69 @@ const doSync = async () => {
 												oldName = oldName[oldName.length - 1]
 
 												if(oldName !== newName){
+													let isRenamingOrMovingParentFolder = false
+
+													if(currentRenamingOrMovingLocalFolders.length > 0){
+														for(let i = 0; i < currentRenamingOrMovingLocalFolders.length; i++){
+															if(oldPath.indexOf(currentRenamingOrMovingLocalFolders[i]) !== -1){
+																isRenamingOrMovingParentFolder = true
+															}
+														}
+													}
+
+													if(!isRenamingOrMovingParentFolder){
+														currentRenamingOrMovingLocalFolders.push(oldPath)
+
+														if(typeof lastRemoteUUIDs[prop].folder !== "undefined"){
+															if(typeof localFolders[oldPath] !== "undefined"){
+																syncTask("local", "renamedir", {
+																	path: newPath,
+																	uuid: lastRemoteUUIDs[prop].folder.uuid,
+																	newPath: newPath,
+																	oldPath: oldPath,
+																	name: newName,
+																	realPath: userSyncDir + "/" + oldPath.slice(11),
+																	realPathNew: userSyncDir + "/" + newPath.slice(11)
+																}, userMasterKeys)
+															}
+														}
+														else{
+															if(typeof localFiles[oldPath] !== "undefined"){
+																syncTask("local", "renamefile", {
+																	path: newPath,
+																	uuid: lastRemoteUUIDs[prop].file.uuid,
+																	newPath: newPath,
+																	oldPath: oldPath,
+																	name: newName,
+																	realPath: userSyncDir + "/" + oldPath.slice(11),
+																	realPathNew: userSyncDir + "/" + newPath.slice(11)
+																}, userMasterKeys)
+															}
+														}
+													}
+												}
+											}
+											else{
+												let isRenamingOrMovingParentFolder = false
+
+												if(currentRenamingOrMovingLocalFolders.length > 0){
+													for(let i = 0; i < currentRenamingOrMovingLocalFolders.length; i++){
+														if(oldPath.indexOf(currentRenamingOrMovingLocalFolders[i]) !== -1){
+															isRenamingOrMovingParentFolder = true
+														}
+													}
+												}
+
+												if(!isRenamingOrMovingParentFolder){
+													currentRenamingOrMovingLocalFolders.push(oldPath)
+
 													if(typeof lastRemoteUUIDs[prop].folder !== "undefined"){
 														if(typeof localFolders[oldPath] !== "undefined"){
-															syncTask("local", "renamedir", {
+															syncTask("local", "movedir", {
 																path: newPath,
 																uuid: lastRemoteUUIDs[prop].folder.uuid,
 																newPath: newPath,
 																oldPath: oldPath,
-																name: newName,
 																realPath: userSyncDir + "/" + oldPath.slice(11),
 																realPathNew: userSyncDir + "/" + newPath.slice(11)
 															}, userMasterKeys)
@@ -5503,42 +5660,15 @@ const doSync = async () => {
 													}
 													else{
 														if(typeof localFiles[oldPath] !== "undefined"){
-															syncTask("local", "renamefile", {
+															syncTask("local", "movefile", {
 																path: newPath,
 																uuid: lastRemoteUUIDs[prop].file.uuid,
 																newPath: newPath,
 																oldPath: oldPath,
-																name: newName,
 																realPath: userSyncDir + "/" + oldPath.slice(11),
 																realPathNew: userSyncDir + "/" + newPath.slice(11)
 															}, userMasterKeys)
 														}
-													}
-												}
-											}
-											else{
-												if(typeof lastRemoteUUIDs[prop].folder !== "undefined"){
-													if(typeof localFolders[oldPath] !== "undefined"){
-														syncTask("local", "movedir", {
-															path: newPath,
-															uuid: lastRemoteUUIDs[prop].folder.uuid,
-															newPath: newPath,
-															oldPath: oldPath,
-															realPath: userSyncDir + "/" + oldPath.slice(11),
-															realPathNew: userSyncDir + "/" + newPath.slice(11)
-														}, userMasterKeys)
-													}
-												}
-												else{
-													if(typeof localFiles[oldPath] !== "undefined"){
-														syncTask("local", "movefile", {
-															path: newPath,
-															uuid: lastRemoteUUIDs[prop].file.uuid,
-															newPath: newPath,
-															oldPath: oldPath,
-															realPath: userSyncDir + "/" + oldPath.slice(11),
-															realPathNew: userSyncDir + "/" + newPath.slice(11)
-														}, userMasterKeys)
 													}
 												}
 											}
@@ -6050,38 +6180,53 @@ const initChokidar = async () => {
 		return true
 	}
 
-	try{
-		chokidar.watch(winOrUnixFilePath(userSyncDir), {
+	if(process.platform == "linux"){
+		let watcher = chokidar.watch(winOrUnixFilePath(userSyncDir), {
 			persistent: true,
 			recursive: true,
 			ignoreInitial: true,
 			followSymlinks: false,
 			cwd: winOrUnixFilePath(userSyncDir),
-			disableGlobbing: false,
 			usePolling: true,
-			interval: 1500,
-			binaryInterval: 1500,
-			depth: Infinity,
+			interval: 2500,
+			binaryInterval: 2500,
+			depth: 999999999,
 			awaitWriteFinish: false,
-			ignorePermissionErrors: false,
 			useFsEvents: false,
-			disableGlobbing: true,
-			ignorePermissionErrors: true,
-			alwaysStat: false
-		}).on("all", async (event, ePath) => {
+			alwaysStat: false,
+			disableGlobbing: true
+		})
+		
+		watcher.on("all", async (event, ePath) => {
 			ePath = ePath.split("\\").join("/")
-
+	
 			return handleEvent(event, ePath)
-		}).on("ready", () => {
-			console.log("Chokidar ready")
-		}).on("error", (err) => {
-			console.log(err)
+		})
+		
+		watcher.on("ready", () => {
+			return console.log("Chokidar ready")
+		})
+		
+		watcher.on("error", (err) => {
+			return console.log(err)
 		})
 	}
-	catch(e){
-		showBigErrorMessage("Could not initialize directory watcher.")
+	else{
+		try{
+			fs.watch(winOrUnixFilePath(userSyncDir), {
+				persistent: true,
+				recursive: true
+			}, (event, ePath) => {
+				return handleEvent(event, ePath)
+			})
 
-		throw new Error(e)
+			console.log("FS Watch ready")
+		}
+		catch(e){
+			console.log(e)
+
+			showBigErrorMessage("Could not initialize the directory watcher, please try restarting the application.")
+		}
 	}
 
 	return setLocalDataChangedTrue()
