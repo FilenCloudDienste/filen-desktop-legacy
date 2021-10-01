@@ -213,6 +213,7 @@ let currentRenamingRemoteFiles = []
 let currentMovingLocalFiles = []
 let currentMovingRemoteFiles = []
 let selectPathRes = {}
+let pathDelimeter = "{[%@*#$_E-X_$#*@%]}"
 
 let currentFileVersion = 1
 let metadataVersion = 1
@@ -3611,7 +3612,7 @@ const getLocalSyncDirContents = async (callback) => {
 								name: filePathEx[filePathEx.length - 1]
 							}
 
-							iNodeMapINodesRes[folderPath + "/ex/" + file.stats.ino] = folderPath
+							iNodeMapINodesRes[folderPath + pathDelimeter + file.stats.ino] = folderPath
 							iNodeMapOnlyINodesRes[file.stats.ino] = folderPath
 						}
 					}
@@ -3624,7 +3625,7 @@ const getLocalSyncDirContents = async (callback) => {
 									size: file.stats.size
 								}
 
-								iNodeMapINodesRes[filePath + "/ex/" + file.stats.ino] = filePath
+								iNodeMapINodesRes[filePath + pathDelimeter + file.stats.ino] = filePath
 								iNodeMapOnlyINodesRes[file.stats.ino] = filePath
 							}
 						}
@@ -3797,7 +3798,7 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 						pathsForFiles[self.uuid] = newPath
 						folderPaths[newPath] = folders[self.uuid]
 
-						remoteUUIDsRes[newPath + "/ex/" + self.uuid] = {
+						remoteUUIDsRes[newPath + pathDelimeter + self.uuid] = {
 							path: newPath,
 							folder: folders[self.uuid]
 						}
@@ -3843,7 +3844,7 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 									version: self.version
 								}
 
-								remoteUUIDsRes[newPath + "/ex/" + self.uuid] = {
+								remoteUUIDsRes[newPath + pathDelimeter + self.uuid] = {
 									path: newPath,
 									file: files[newPath]
 								}
@@ -5517,7 +5518,7 @@ const doSync = async () => {
 							if(typeof iNodeMapINodesRes !== "undefined" && typeof iNodeMapINodes !== "undefined" && typeof iNodeMapOnlyINodes !== "undefined" && typeof iNodeMapOnlyINodesRes !== "undefined"){
 								//Did a local folder or file name change?
 								for(let prop in iNodeMapINodesRes){
-									let ex = prop.split("/ex/")
+									let ex = prop.split(pathDelimeter)
 									let ino = parseInt(ex[1])
 									let propPath = ex[0]
 									
@@ -5629,7 +5630,7 @@ const doSync = async () => {
 							//Did a remote folder or file name change?
 							if(typeof lastRemoteUUIDs !== "undefined" && typeof remoteUUIDsRes !== "undefined" && typeof lastRemoteUUIDsOnlyUUIDs !== "undefined" && typeof remoteUUIDsOnlyUUIDsRes !== "undefined"){
 								for(let prop in remoteUUIDsRes){
-									let ex = prop.split("/ex/")
+									let ex = prop.split(pathDelimeter)
 									let uuid = ex[1]
 									let propPath = ex[0]
 

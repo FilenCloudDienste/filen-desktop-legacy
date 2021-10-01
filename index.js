@@ -31,7 +31,7 @@ process.on("uncaughtException", (err) => {
 	}
 })
 
-const { app, BrowserWindow, Menu, ipcMain, Tray, dialog, powerMonitor, globalShortcut, nativeImage, screen } = require("electron")
+const { app, BrowserWindow, Menu, ipcMain, Tray, dialog, powerMonitor, globalShortcut, nativeImage, screen, shell } = require("electron")
 const path = require("path")
 const level = require("level")
 const fs = require("fs-extra")
@@ -355,7 +355,7 @@ const createWindow = async () => {
 	            }
 	        },
 	        {
-	        	label: "Open folder",
+	        	label: "Open Sync Folder",
 	        	click: () => {
 	        		return browserWindow.webContents.send("open-sync-folder", {
 	        			userHomePath,
@@ -365,6 +365,19 @@ const createWindow = async () => {
 	        		})
 	        	}
 	        },
+			{
+				label: "Open Local Trash",
+				click: () => {
+					try{
+						shell.openPath(winOrUnixFilePath(userSyncDir + "/" + localTrashBinName)).catch((err) => {
+							console.log(err)
+						})
+					}
+					catch(e){
+						console.log(e)
+					}
+				}
+			},
 	        {
 	        	label: "Pause",
 	        	click: () => {
@@ -395,7 +408,7 @@ const createWindow = async () => {
 	            }
 	        },
 	        {
-	        	label: "Open folder",
+	        	label: "Open Sync Folder",
 	        	click: () => {
 	        		return browserWindow.webContents.send("open-sync-folder", {
 	        			userHomePath,
@@ -405,6 +418,19 @@ const createWindow = async () => {
 	        		})
 	        	}
 	        },
+			{
+				label: "Open Local Trash",
+				click: () => {
+					try{
+						shell.openPath(winOrUnixFilePath(userSyncDir + "/" + localTrashBinName)).catch((err) => {
+							console.log(err)
+						})
+					}
+					catch(e){
+						console.log(e)
+					}
+				}
+			},
 	        {
 	        	label: "Resume",
 	        	click: () => {
