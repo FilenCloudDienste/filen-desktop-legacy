@@ -371,6 +371,12 @@ const createWindow = async () => {
 	        		return browserWindow.webContents.send("pause-syncing")
 	        	}
 	        },
+			{
+	        	label: "Force Sync",
+	        	click: () => {
+	        		return browserWindow.webContents.send("force-sync")
+	        	}
+	        },
 	        {
 	            label: "Quit",
 	            click: () => {
@@ -542,6 +548,43 @@ const createWindow = async () => {
 		let selectedPath = result.filePaths[0].split("\\").join("/")
 
 		return browserWindow.webContents.send("change-download-folder-path-res", {
+			path: selectedPath
+		})
+	})
+
+	ipcMain.on("select-path", async (event, data) => {
+		let result = await dialog.showOpenDialog(browserWindow, {
+		    properties: [
+		    	"openDirectory"
+		    ]
+		})
+
+		if(result.canceled){
+			return browserWindow.webContents.send("select-path-res", {
+				status: false,
+				id: data.id
+			})
+		}
+
+		if(typeof result.filePaths == "undefined"){
+			return browserWindow.webContents.send("select-path-res", {
+				status: false,
+				id: data.id
+			})
+		}
+
+		if(typeof result.filePaths[0] == "undefined"){
+			return browserWindow.webContents.send("select-path-res", {
+				status: false,
+				id: data.id
+			})
+		}
+
+		let selectedPath = result.filePaths[0].split("\\").join("/")
+
+		return browserWindow.webContents.send("select-path-res", {
+			status: true,
+			id: data.id,
 			path: selectedPath
 		})
 	})
