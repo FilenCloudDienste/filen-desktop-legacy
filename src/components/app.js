@@ -92,12 +92,12 @@ catch(e){
 	})
 }
 
-const apiSemaphore = new Semaphore(50)
-const downloadSemaphore = new Semaphore(50)
-const uploadSemaphore = new Semaphore(50)
+const apiSemaphore = new Semaphore(16)
+const downloadSemaphore = new Semaphore(16)
+const uploadSemaphore = new Semaphore(16)
 const logSyncTasksSemaphore = new Semaphore(1)
 const doSyncSempahore = new Semaphore(1)
-const syncTaskLimiterSemaphore = new Semaphore(50)
+const syncTaskLimiterSemaphore = new Semaphore(16)
 const checkSyncTaskForDuplicateSemaphore = new Semaphore(1)
 const moveSemaphore = new Semaphore(1)
 
@@ -214,6 +214,7 @@ let currentMovingLocalFiles = []
 let currentMovingRemoteFiles = []
 let selectPathRes = {}
 let pathDelimeter = "{[%@*#$_E-X_$#*@%]}"
+let isHandlingWatchEvent = false
 
 let currentFileVersion = 1
 let metadataVersion = 1
@@ -1093,6 +1094,12 @@ const initIPC = () => {
 		let wait = setInterval(() => {
 			if(!isSyncing){
 				clearInterval(wait)
+
+				currentWriteThreads = 0
+				currentDownloadThreads = 0
+				currentDownloadTasks = 0
+				currentUploadTasks = 0
+				currentUploadThreads = 0
 
 				return reloadAll = true
 			}
@@ -3051,14 +3058,10 @@ const downloadFileChunk = async (file, index, tries, maxTries, isSync, callback)
 const writeFileChunk = (file, index, data, stream) => {
 	if(index == downloadWriteChunk[file.uuid]){
 		if(typeof stream == "undefined"){
-			currentWriteThreads -= 1
-
 			return false
 		}
 
 		if(stream.closed){
-			currentWriteThreads -= 1
-
 			return false
 		}
 
@@ -3067,7 +3070,6 @@ const writeFileChunk = (file, index, data, stream) => {
 				chunksWritten[file.uuid] = 0
 			}
 
-			currentWriteThreads -= 1
 			chunksWritten[file.uuid] += 1
 
 			return downloadWriteChunk[file.uuid] += 1
@@ -3075,8 +3077,6 @@ const writeFileChunk = (file, index, data, stream) => {
 
 		try{
 			stream.write(Buffer.from(data), (err) => {
-				currentWriteThreads -= 1
-
 				if(err){
 					return console.log(err)
 				}
@@ -3091,8 +3091,6 @@ const writeFileChunk = (file, index, data, stream) => {
 			})
 		}
 		catch(e){
-			currentWriteThreads -= 1
-
 			return console.log(e)
 		}
 	}
@@ -3107,7 +3105,7 @@ const downloadFileChunksAndWrite = (path, file, isSync, stream, callback) => {
 	let maxDownloadThreadsInterval = setInterval(() => {
 		if(currentDownloadThreads < maxDownloadThreads && currentWriteThreads < maxWriteThreads){
 			currentDownloadThreads += 1
-			currentWriteThreads += 1
+			//currentWriteThreads = currentWriteThreads + file.chunks
 			downloadIndex[file.uuid] += 1
 
 			let thisIndex = downloadIndex[file.uuid]
@@ -3117,7 +3115,7 @@ const downloadFileChunksAndWrite = (path, file, isSync, stream, callback) => {
 					clearInterval(maxDownloadThreadsInterval)
 
 					currentDownloadThreads -= 1
-					currentWriteThreads -= 1
+					//currentWriteThreads = currentWriteThreads - file.chunks
 
 					return callback(err)
 				}
@@ -3134,6 +3132,7 @@ const downloadFileChunksAndWrite = (path, file, isSync, stream, callback) => {
 					clearInterval(maxDownloadThreadsInterval)
 
 					currentDownloadThreads -= 1
+					//currentWriteThreads = currentWriteThreads - file.chunks
 
 					return callback(null)
 				}
@@ -3156,7 +3155,7 @@ const downloadFileToLocal = async (path, file, isSync, callback) => {
 
 				return resolve()
 			}
-		}, 5)
+		}, 10)
 	})
 
 	currentDownloadTasks += 1
@@ -3230,26 +3229,37 @@ const downloadFileToLocal = async (path, file, isSync, callback) => {
 						stream.end()
 
 						try{
-							let stat = await fs.stat(winOrUnixFilePath(path))
+							stream.close()
+						}
+						catch(e){}
 
-							if(stat){
-								if(stat.size > 0){
-									return callback(null)
+						setTimeout(async () => {
+							delete downloadWriteChunk[file.uuid]
+							delete downloadIndex[file.uuid]
+							delete chunksWritten[file.uuid]
+
+							try{
+								let stat = await fs.stat(winOrUnixFilePath(path))
+
+								if(stat){
+									if(stat.size > 0){
+										return callback(null)
+									}
+									else{
+										return callback(new Error(path + " empty after downloading"))
+									}
 								}
 								else{
-									return callback(new Error(path + " empty after downloading"))
+									return callback(new Error(path + " does not exist after downloading"))
 								}
 							}
-							else{
-								return callback(new Error(path + " does not exist after downloading"))
+							catch(e){
+								return callback(e)
 							}
-						}
-						catch(e){
-							return callback(e)
-						}
+						}, 500)
 					}
 				}
-			}, 5)
+			}, 10)
 		})
 	})
 }
@@ -6281,20 +6291,22 @@ const initChokidar = async () => {
 			return false
 		}
 
-		if(isSyncing || isIndexing){
+		/*if(isSyncing || isIndexing){
 			return setTimeout(() => {
 				handleEvent(event, ePath)
 			}, 100)
+		}*/
+
+		if(isHandlingWatchEvent){
+			return false
 		}
 
-		isDoingRealtimeWork = true
+		isHandlingWatchEvent = true
 
-		currentSyncTasksExtra.push(uuidv4() + "_" + event.toString() + "_" + ePath.toString())
-
-		clearTimeout(handleRealtimeWorkTimeout)
-
-		handleRealtimeWorkTimeout = setTimeout(async () => {
-			isDoingRealtimeWork = false
+		currentSyncTasksExtra.push(uuidv4())
+		
+		setTimeout(async () => {
+			isHandlingWatchEvent = false
 
 			clearCurrentSyncTasksExtra()
 			setLocalDataChangedTrue()
