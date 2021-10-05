@@ -846,6 +846,7 @@ const createWindow = async () => {
 }
 
 app.commandLine.appendSwitch("disable-renderer-backgrounding")
+app.commandLine.appendSwitch("disable-pinch")
 
 if(!app.requestSingleInstanceLock()){
   	return app.quit()

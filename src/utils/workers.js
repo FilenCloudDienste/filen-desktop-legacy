@@ -6412,6 +6412,10 @@ const createUtilWorker = () => {
 			return bytes.buffer;
 		}
 
+		BigInt.prototype.toJSON = function(){
+			return this.toString()
+		}
+
 		onmessage = (e) => {
 			switch(e.data.type){
 				case "arrayBufferToBase64":
@@ -6426,6 +6430,20 @@ const createUtilWorker = () => {
 						type: e.data.type,
 						id: e.data.id,
 						data: _base64ToArrayBuffer(e.data.data)
+					})
+				break
+				case "JSONStringify":
+					return postMessage({
+						type: e.data.type,
+						id: e.data.id,
+						data: JSON.stringify(e.data.data)
+					})
+				break
+				case "JSONParse":
+					return postMessage({
+						type: e.data.type,
+						id: e.data.id,
+						data: JSON.parse(e.data.data)
 					})
 				break
 			}
@@ -6512,7 +6530,7 @@ const convertArrayBufferToBase64Worker = (data, callback) => {
 
             return callback(res)
         }
-    }, 25)
+    }, 10)
 }
 
 const convertBase64ToArrayBufferWorker = (data, callback) => {
@@ -6535,5 +6553,55 @@ const convertBase64ToArrayBufferWorker = (data, callback) => {
 
             return callback(res)
         }
-    }, 25)
+    }, 10)
+}
+
+const JSONStringifyWorker = (data) => {
+    return new Promise((resolve, reject) => {
+		let type = "JSONStringify"
+		let id = uuidv4()
+
+		utilWorker.postMessage({
+			type,
+			id,
+			data
+		})
+
+		let waitInterval = setInterval(() => {
+			if(typeof utilWorkerResults[type + "_" + id] !== "undefined"){
+				clearInterval(waitInterval)
+
+				let res = utilWorkerResults[type + "_" + id]
+
+				delete utilWorkerResults[type + "_" + id]
+
+				return resolve(res)
+			}
+		}, 10)
+	})
+}
+
+const JSONParseWorker = (data) => {
+    return new Promise((resolve, reject) => {
+		let type = "JSONParse"
+		let id = uuidv4()
+
+		utilWorker.postMessage({
+			type,
+			id,
+			data
+		})
+
+		let waitInterval = setInterval(() => {
+			if(typeof utilWorkerResults[type + "_" + id] !== "undefined"){
+				clearInterval(waitInterval)
+
+				let res = utilWorkerResults[type + "_" + id]
+
+				delete utilWorkerResults[type + "_" + id]
+
+				return resolve(res)
+			}
+		}, 10)
+	})
 }

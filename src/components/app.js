@@ -1,5 +1,4 @@
 process.noAsar = true
-process.env.CHOKIDAR_USEPOLLING = 1
 
 BigInt.prototype.toJSON = function(){
 	return this.toString()
@@ -43,13 +42,10 @@ const electron = require("electron")
 const CryptoJS = require("crypto-js")
 const level = require("level")
 const fs = require("fs-extra")
-const path = require("path")
 const $ = require("jquery")
 const socketIO = require("socket.io-client")
-const crypto = window.crypto
 const mimeTypes = require("mime-types")
 const readChunk = require("read-chunk")
-const klaw = require("klaw")
 const chokidar = require("chokidar-fs-extra")
 const { Semaphore } = require("await-semaphore")
 const rimraf = require("rimraf")
@@ -62,8 +58,6 @@ const sha1 = require("js-sha1")
 const sha512 = require("js-sha512")
 const sha384 = require("js-sha512").sha384
 const is = require("electron-is")
-const nodeWatch = require("node-watch-fs-extra")
-const mv = require("mv")
 const readdirp = require("readdirp")
 
 let db = undefined
@@ -93,7 +87,7 @@ catch(e){
 }
 
 const apiSemaphore = new Semaphore(16)
-const downloadSemaphore = new Semaphore(16)
+const downloadSemaphore = new Semaphore(32)
 const uploadSemaphore = new Semaphore(16)
 const logSyncTasksSemaphore = new Semaphore(1)
 const doSyncSempahore = new Semaphore(1)
@@ -300,7 +294,10 @@ const saveLogFile = async () => {
 	}
 
 	try{
-		await fs.copyFile(winOrUnixFilePath(log.transports.file.getFile().path), winOrUnixFilePath(path + "/filenLogs.txt"))
+		await fs.copy(winOrUnixFilePath(removeFileNameFromDirPath(log.transports.file.getFile().path.split("\\").join("/"))), winOrUnixFilePath(path + "/filenLogs/"), {
+			overwrite: true,
+			recursive: true
+		})
 	}
 	catch(e){
 		return console.log(e)
@@ -1166,18 +1163,16 @@ const initFns = () => {
 
    		try{
    			await db.put("syncMode", mode)
-
-   			syncMode = mode
-
-   			localDataChanged = true
-   			skipNextRequestData = true
-   			reloadAll = true
    		}
    		catch(e){
    			return console.log(e)
    		}
 
-   		return true
+		showBigLoader()
+
+   		return setTimeout(() => {
+			ipcRenderer.send("relaunch-app")
+		}, 2500)
    	})
 
    	$("#login-btn").click(() => {
@@ -3598,9 +3593,10 @@ const getLocalSyncDirContents = async (callback) => {
 
 	readdirp(winOrUnixFilePath(userSyncDir), {
 		alwaysStat: true,
-		lstat: true,
+		lstat: false,
 		type: "all",
-		depth: 2147483648
+		depth: 2147483648,
+		directoryFilter: ["!.filen.trash.local"]
 	}).on("data", (file) => {
 		if(file){
 			file.path = file.fullPath
@@ -3613,30 +3609,32 @@ const getLocalSyncDirContents = async (callback) => {
 						filePath = "Filen Sync/" + filePath
 					}
 
-					let filePathEx = filePath.split("/")
-					let folderPath = (filePath.slice(-1) == "/" ? filePath : filePath + "/")
+					if(filePath.substring(0, 30) !== "Filen Sync/.filen.trash.local/"){
+						let filePathEx = filePath.split("/")
+						let folderPath = (filePath.slice(-1) == "/" ? filePath : filePath + "/")
 
-					if(file.stats.isDirectory() && typeof filePathEx[filePathEx.length - 1] !== "undefined"){
-						if(!isFileNameBlocked(filePathEx[filePathEx.length - 1])){
-							folders[folderPath] = {
-								name: filePathEx[filePathEx.length - 1]
-							}
-
-							iNodeMapINodesRes[folderPath + pathDelimeter + file.stats.ino] = folderPath
-							iNodeMapOnlyINodesRes[file.stats.ino] = folderPath
-						}
-					}
-					else if(typeof filePathEx[filePathEx.length - 1] !== "undefined"){
-						if(file.stats.size > 0){
+						if(file.stats.isDirectory() && typeof filePathEx[filePathEx.length - 1] !== "undefined"){
 							if(!isFileNameBlocked(filePathEx[filePathEx.length - 1])){
-								files[filePath] = {
-									name: filePathEx[filePathEx.length - 1],
-									modTime: file.stats.mtimeMs,
-									size: file.stats.size
+								folders[folderPath] = {
+									name: filePathEx[filePathEx.length - 1]
 								}
 
-								iNodeMapINodesRes[filePath + pathDelimeter + file.stats.ino] = filePath
-								iNodeMapOnlyINodesRes[file.stats.ino] = filePath
+								iNodeMapINodesRes[folderPath + pathDelimeter + file.stats.ino] = folderPath
+								iNodeMapOnlyINodesRes[file.stats.ino] = folderPath
+							}
+						}
+						else if(typeof filePathEx[filePathEx.length - 1] !== "undefined"){
+							if(file.stats.size > 0){
+								if(!isFileNameBlocked(filePathEx[filePathEx.length - 1])){
+									files[filePath] = {
+										name: filePathEx[filePathEx.length - 1],
+										modTime: file.stats.mtimeMs,
+										size: file.stats.size
+									}
+
+									iNodeMapINodesRes[filePath + pathDelimeter + file.stats.ino] = filePath
+									iNodeMapOnlyINodesRes[file.stats.ino] = filePath
+								}
 							}
 						}
 					}
@@ -3912,7 +3910,7 @@ const removeFileNameFromDirPath = (path) => {
 	return ex.join("/") + "/"
 }
 
-const createFoldersForPath = async (path, mainCallback) => {
+const createFoldersForPathRemote = async (path, mainCallback) => {
 	try{
 		var userMasterKeys = await getUserMasterKeys()
 	}
@@ -3980,7 +3978,7 @@ const createFoldersForPath = async (path, mainCallback) => {
 				let folderUUID = uuidv4()
 				let folderParent = lastRemoteSyncFolders[currentParent].uuid
 				let folderPath = removeFileNameFromDirPath(currentPath)
-				
+
 				createFolder(folderUUID, folderName, folderParent, (err) => {
 					if(err){
 						return mainCallback(err)
@@ -4123,17 +4121,17 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 					var releaseMoveSemaphore = await moveSemaphore.acquire()
 
 					var moveFile = async (uuid, parent, file) => {
-						apiRequest("/v1/file/move", {
+						apiRequest("/v1/file/exists", {
 							apiKey: await getUserAPIKey(),
-							folderUUID: parent,
-							fileUUID: uuid
-						}, (err, res) => {
+							parent: parent,
+							nameHashed: hashFn(file.name.toLowerCase())
+						}, async (err, res) => {
 							if(err){
 								console.log(err)
-
+	
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
-
+	
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
 								}, syncTimeout)
@@ -4141,23 +4139,18 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 	
 							if(!res.status){
 								console.log(res.message)
-
+	
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
-
+	
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
 								}, syncTimeout)
 							}
 
-							checkIfItemParentIsBeingShared(parent, "file", {
-								uuid: uuid,
-								name: file.name,
-								size: parseInt(file.size),
-								mime: file.mime,
-								key: file.key,
-								lastModified: file.lastModified || Math.floor((+new Date()) / 1000)
-							}, () => {
+							if(res.data.exists){
+								console.log(taskInfo.path + " already exists remotely.")
+
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
 
@@ -4168,25 +4161,65 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
 								}, syncTimeout)
+							}
+
+							apiRequest("/v1/file/move", {
+								apiKey: await getUserAPIKey(),
+								folderUUID: parent,
+								fileUUID: uuid
+							}, (err, res) => {
+								if(err){
+									console.log(err)
+	
+									syncTaskLimiterSemaphoreRelease()
+									releaseMoveSemaphore()
+	
+									return setTimeout(() => {
+										removeFromSyncTasks(taskId)
+									}, syncTimeout)
+								}
+		
+								if(!res.status){
+									console.log(res.message)
+	
+									syncTaskLimiterSemaphoreRelease()
+									releaseMoveSemaphore()
+	
+									return setTimeout(() => {
+										removeFromSyncTasks(taskId)
+									}, syncTimeout)
+								}
+	
+								checkIfItemParentIsBeingShared(parent, "file", {
+									uuid: uuid,
+									name: file.name,
+									size: parseInt(file.size),
+									mime: file.mime,
+									key: file.key,
+									lastModified: file.lastModified || Math.floor((+new Date()) / 1000)
+								}, () => {
+									syncTaskLimiterSemaphoreRelease()
+									releaseMoveSemaphore()
+	
+									localFileExisted[taskInfo.path] = true
+	
+									delete localFileExisted[taskInfo.oldPath]
+	
+									return setTimeout(() => {
+										removeFromSyncTasks(taskId)
+									}, syncTimeout)
+								})
 							})
 						})
 					}
 
-					let neededParent = lastRemoteSyncFolders[getParentPath(taskInfo.path)]
+					let neededParent = lastRemoteSyncFolders[removeFileNameFromDirPath(taskInfo.path)]
 
 					if(typeof neededParent !== "undefined"){
 						moveFile(taskInfo.uuid, neededParent.uuid, taskInfo.file)
 					}
 					else{
-						var waitForParentToExistInterval = setInterval(() => {
-							if(typeof neededParent !== "undefined"){
-								clearInterval(waitForParentToExistInterval)
-
-								moveFile(taskInfo.uuid, neededParent.uuid, taskInfo.file)
-							}
-						}, 100)
-
-						createFoldersForPath(taskInfo.path, (err) => {
+						createFoldersForPathRemote(taskInfo.path, (err) => {
 							if(err){
 								console.log(err)
 
@@ -4197,6 +4230,10 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 									removeFromSyncTasks(taskId)
 								}, syncTimeout)
 							}
+
+							neededParent = lastRemoteSyncFolders[removeFileNameFromDirPath(taskInfo.path)]
+
+							moveFile(taskInfo.uuid, neededParent.uuid, taskInfo.file)
 						})
 					}
 				break
@@ -5123,49 +5160,49 @@ const saveSyncData = async (empty = false) => {
 	}
 
 	try{
-		await db.put(userEmail + "_localFileModifications", JSON.stringify((empty ? {} : (typeof localFileModifications == "object" ? localFileModifications : {}))))
+		await db.put(userEmail + "_localFileModifications", await JSONStringifyWorker((empty ? {} : (typeof localFileModifications == "object" ? localFileModifications : {}))))
 	}
 	catch(e){
 		console.log(e)
 	}
 
 	try{
-		await db.put(userEmail + "_remoteFileUUIDs", JSON.stringify((empty ? {} : (typeof remoteFileUUIDs == "object" ? remoteFileUUIDs : {}))))
+		await db.put(userEmail + "_remoteFileUUIDs", await JSONStringifyWorker((empty ? {} : (typeof remoteFileUUIDs == "object" ? remoteFileUUIDs : {}))))
 	}
 	catch(e){
 		console.log(e)
 	}
 
 	try{
-		await db.put(userEmail + "_remoteFileSizes", JSON.stringify((empty ? {} : (typeof remoteFileSizes == "object" ? remoteFileSizes : {}))))
+		await db.put(userEmail + "_remoteFileSizes", await JSONStringifyWorker((empty ? {} : (typeof remoteFileSizes == "object" ? remoteFileSizes : {}))))
 	}
 	catch(e){
 		console.log(e)
 	}
 
 	try{
-		await db.put(userEmail + "_lastRemoteSyncFolders", JSON.stringify((empty ? {} : (typeof lastRemoteSyncFolders == "object" ? lastRemoteSyncFolders : {}))))
+		await db.put(userEmail + "_lastRemoteSyncFolders", await JSONStringifyWorker((empty ? {} : (typeof lastRemoteSyncFolders == "object" ? lastRemoteSyncFolders : {}))))
 	}
 	catch(e){
 		console.log(e)
 	}
 
 	try{
-		await db.put(userEmail + "_lastRemoteSyncFiles", JSON.stringify((empty ? {} : (typeof lastRemoteSyncFiles == "object" ? lastRemoteSyncFiles : {}))))
+		await db.put(userEmail + "_lastRemoteSyncFiles", await JSONStringifyWorker((empty ? {} : (typeof lastRemoteSyncFiles == "object" ? lastRemoteSyncFiles : {}))))
 	}
 	catch(e){
 		console.log(e)
 	}
 
 	try{
-		await db.put(userEmail + "_lastLocalSyncFolders", JSON.stringify((empty ? {} : (typeof lastLocalSyncFolders == "object" ? lastLocalSyncFolders : {}))))
+		await db.put(userEmail + "_lastLocalSyncFolders", await JSONStringifyWorker((empty ? {} : (typeof lastLocalSyncFolders == "object" ? lastLocalSyncFolders : {}))))
 	}
 	catch(e){
 		console.log(e)
 	}
 
 	try{
-		await db.put(userEmail + "_lastLocalSyncFiles", JSON.stringify((empty ? {} : (typeof lastLocalSyncFiles == "object" ? lastLocalSyncFiles : {}))))
+		await db.put(userEmail + "_lastLocalSyncFiles", await JSONStringifyWorker((empty ? {} : (typeof lastLocalSyncFiles == "object" ? lastLocalSyncFiles : {}))))
 	}
 	catch(e){
 		console.log(e)
@@ -5173,49 +5210,49 @@ const saveSyncData = async (empty = false) => {
 
 
 	try{
-		await db.put(userEmail + "_localFileExisted", JSON.stringify((empty ? {} : (typeof localFileExisted == "object" ? localFileExisted : {}))))
+		await db.put(userEmail + "_localFileExisted", await JSONStringifyWorker((empty ? {} : (typeof localFileExisted == "object" ? localFileExisted : {}))))
 	}
 	catch(e){
 		console.log(e)
 	}
 
 	try{
-		await db.put(userEmail + "_localFolderExisted", JSON.stringify((empty ? {} : (typeof localFolderExisted == "object" ? localFolderExisted : {}))))
+		await db.put(userEmail + "_localFolderExisted", await JSONStringifyWorker((empty ? {} : (typeof localFolderExisted == "object" ? localFolderExisted : {}))))
 	}
 	catch(e){
 		console.log(e)
 	}
 
 	try{
-		await db.put(userEmail + "_remoteDecryptedCache", JSON.stringify((empty ? {} : (typeof remoteDecryptedCache == "object" ? remoteDecryptedCache : {}))))
+		await db.put(userEmail + "_remoteDecryptedCache", await JSONStringifyWorker((empty ? {} : (typeof remoteDecryptedCache == "object" ? remoteDecryptedCache : {}))))
 	}
 	catch(e){
 		console.log(e)
 	}
 
 	try{
-		await db.put(userEmail + "_iNodeMapINodes", JSON.stringify((empty ? {} : (typeof iNodeMapINodes == "object" ? iNodeMapINodes : {}))))
+		await db.put(userEmail + "_iNodeMapINodes", await JSONStringifyWorker((empty ? {} : (typeof iNodeMapINodes == "object" ? iNodeMapINodes : {}))))
 	}
 	catch(e){
 		console.log(e)
 	}
 
 	try{
-		await db.put(userEmail + "_lastRemoteUUIDs", JSON.stringify((empty ? {} : (typeof lastRemoteUUIDs == "object" ? lastRemoteUUIDs : {}))))
+		await db.put(userEmail + "_lastRemoteUUIDs", await JSONStringifyWorker((empty ? {} : (typeof lastRemoteUUIDs == "object" ? lastRemoteUUIDs : {}))))
 	}
 	catch(e){
 		console.log(e)
 	}
 
 	try{
-		await db.put(userEmail + "_lastRemoteUUIDsOnlyUUIDs", JSON.stringify((empty ? {} : (typeof lastRemoteUUIDsOnlyUUIDs == "object" ? lastRemoteUUIDsOnlyUUIDs : {}))))
+		await db.put(userEmail + "_lastRemoteUUIDsOnlyUUIDs", await JSONStringifyWorker((empty ? {} : (typeof lastRemoteUUIDsOnlyUUIDs == "object" ? lastRemoteUUIDsOnlyUUIDs : {}))))
 	}
 	catch(e){
 		console.log(e)
 	}
 
 	try{
-		await db.put(userEmail + "_iNodeMapOnlyINodes", JSON.stringify((empty ? {} : (typeof iNodeMapOnlyINodes == "object" ? iNodeMapOnlyINodes : {}))))
+		await db.put(userEmail + "_iNodeMapOnlyINodes", await JSONStringifyWorker((empty ? {} : (typeof iNodeMapOnlyINodes == "object" ? iNodeMapOnlyINodes : {}))))
 	}
 	catch(e){
 		console.log(e)
@@ -5290,6 +5327,33 @@ const canMoveLocalDir = (prop) => {
 	return false
 }
 
+const canMoveRemoteDir = (prop) => {
+	let isRenamingParentFolder = false
+	let isMovingParentFolder = false
+
+	if(currentRenamingRemoteFolders.length > 0){
+		for(let i = 0; i < currentRenamingRemoteFolders.length; i++){
+			if(prop.indexOf(currentRenamingRemoteFolders[i]) !== -1){
+				isRenamingParentFolder = true
+			}
+		}
+	}
+
+	if(currentMovingRemoteFolders.length > 0){
+		for(let i = 0; i < currentMovingRemoteFolders.length; i++){
+			if(prop.indexOf(currentMovingRemoteFolders[i]) !== -1){
+				isMovingParentFolder = true
+			}
+		}
+	}
+
+	if(!isRenamingParentFolder && !isMovingParentFolder){
+		return true
+	}
+
+	return false
+}
+
 const canDownloadFile = (prop) => {
 	let isDeletingParentFolder = false
 	let isDeletingParentFolderLocal = false
@@ -5329,6 +5393,42 @@ const canDownloadFile = (prop) => {
 	}
 
 	if(!isDeletingParentFolder && !isDeletingParentFolderLocal && !isRenamingParentFolderLocal && !isMovingParentFolderLocal){
+		return true
+	}
+
+	return false
+}
+
+const canDeleteRemoteFile = (prop) => {
+	let isDeletingParentFolder = false
+
+	if(currentDeletingRemoteFolders.length > 0){
+		for(let i = 0; i < currentDeletingRemoteFolders.length; i++){
+			if(prop.indexOf(currentDeletingRemoteFolders[i]) !== -1){
+				isDeletingParentFolder = true
+			}
+		}
+	}
+
+	if(!isDeletingParentFolder){
+		return true
+	}
+
+	return false
+}
+
+const canDeleteLocalFile = (prop) => {
+	let isDeletingParentFolder = false
+
+	if(currentDeletingLocalFolders.length > 0){
+		for(let i = 0; i < currentDeletingLocalFolders.length; i++){
+			if(prop.indexOf(currentDeletingLocalFolders[i]) !== -1){
+				isDeletingParentFolder = true
+			}
+		}
+	}
+
+	if(!isDeletingParentFolder){
 		return true
 	}
 
@@ -5445,7 +5545,7 @@ const doSync = async () => {
 
 					if(!reloadAll){
 						//Did the remote and local dataset even change? If not we can save cpu usage by skipping the sync cycle
-						let currentDatasetHash = JSON.stringify(localFolders) + JSON.stringify(localFiles) + JSON.stringify(remoteFolders) + JSON.stringify(remoteFiles) 
+						let currentDatasetHash = await JSONStringifyWorker(localFolders) + await JSONStringifyWorker(localFiles) + await JSONStringifyWorker(remoteFolders) + await JSONStringifyWorker(remoteFiles) 
 
 						if(typeof lastDatasetHash !== "undefined"){
 							if(currentDatasetHash == lastDatasetHash){
@@ -5576,9 +5676,6 @@ const doSync = async () => {
 														}
 														
 														if(typeof remoteFiles[oldPath] !== "undefined"){
-															currentRenamingRemoteFiles.push(oldPath)
-															currentRenamingRemoteFiles.push(newPath)
-
 															syncTask("remote", "renamefile", {
 																path: newPath,
 																newPath: newPath,
@@ -5593,20 +5690,11 @@ const doSync = async () => {
 													}
 												}
 												else{
-													let isRenamingOrMovingParentFolder = false
-	
-													if(currentRenamingOrMovingRemoteFolders.length > 0){
-														for(let i = 0; i < currentRenamingOrMovingRemoteFolders.length; i++){
-															if(oldPath.indexOf(currentRenamingOrMovingRemoteFolders[i]) !== -1){
-																isRenamingOrMovingParentFolder = true
-															}
-														}
-													}
-	
-													if(!isRenamingOrMovingParentFolder){
-														currentRenamingOrMovingRemoteFolders.push(oldPath)
-	
-														if(typeof remoteFolders[oldPath] !== "undefined"){
+													if(typeof remoteFolders[oldPath] !== "undefined"){
+														if(canMoveRemoteDir(prop)){
+															currentMovingRemoteFolders.push(newPath)
+															currentMovingRemoteFolders.push(oldPath)
+
 															syncTask("remote", "movedir", {
 																path: newPath,
 																newPath: newPath,
@@ -5615,8 +5703,10 @@ const doSync = async () => {
 																parent: remoteFolders[oldPath].parent
 															}, userMasterKeys)
 														}
-														
-														if(typeof remoteFiles[oldPath] !== "undefined"){
+													}
+													
+													if(typeof remoteFiles[oldPath] !== "undefined"){
+														if(canMoveRemoteDir(prop)){
 															syncTask("remote", "movefile", {
 																path: newPath,
 																newPath: newPath,
@@ -5690,9 +5780,6 @@ const doSync = async () => {
 													}
 													else{
 														if(typeof localFiles[oldPath] !== "undefined"){
-															currentRenamingLocalFiles.push(newPath)
-															currentRenamingLocalFiles.push(oldPath)
-
 															syncTask("local", "renamefile", {
 																path: newPath,
 																uuid: lastRemoteUUIDsOnlyUUIDs[uuid].file.uuid,
@@ -5710,6 +5797,9 @@ const doSync = async () => {
 												if(typeof lastRemoteUUIDsOnlyUUIDs[uuid].folder !== "undefined"){
 													if(typeof localFolders[oldPath] !== "undefined"){
 														if(canMoveLocalDir(prop)){
+															currentMovingLocalFolders.push(newPath)
+															currentMovingLocalFolders.push(oldPath)
+
 															syncTask("local", "movedir", {
 																path: newPath,
 																uuid: lastRemoteUUIDsOnlyUUIDs[uuid].folder.uuid,
@@ -5820,17 +5910,7 @@ const doSync = async () => {
 							if(typeof localFolders[prop] == "undefined" && prop !== "Filen Sync/"){
 								if(syncMode == "twoWay"){
 									if(typeof lastRemoteSyncFolders[prop] !== "undefined" && typeof localFolderExisted[prop] !== "undefined"){
-										let isDeletingParentFolder = false
-
-										if(currentDeletingRemoteFolders.length > 0){
-											for(let i = 0; i < currentDeletingRemoteFolders.length; i++){
-												if(prop.indexOf(currentDeletingRemoteFolders[i]) !== -1){
-													isDeletingParentFolder = true
-												}
-											}
-										}
-										
-										if(!isDeletingParentFolder){
+										if(canDeleteRemoteFile(prop)){
 											currentDeletingRemoteFolders.push(prop)
 
 											syncTask("remote", "rmdir", {
@@ -5859,17 +5939,7 @@ const doSync = async () => {
 								}
 								else if(syncMode == "localToCloud"){
 									if(typeof lastRemoteSyncFolders[prop] !== "undefined" && typeof localFolderExisted[prop] !== "undefined"){
-										let isDeletingParentFolder = false
-
-										if(currentDeletingRemoteFolders.length > 0){
-											for(let i = 0; i < currentDeletingRemoteFolders.length; i++){
-												if(prop.indexOf(currentDeletingRemoteFolders[i]) !== -1){
-													isDeletingParentFolder = true
-												}
-											}
-										}
-										
-										if(!isDeletingParentFolder){
+										if(canDeleteRemoteFile(prop)){
 											currentDeletingRemoteFolders.push(prop)
 
 											syncTask("remote", "rmdir", {
@@ -5888,17 +5958,7 @@ const doSync = async () => {
 							if(typeof remoteFolders[prop] == "undefined" && prop !== "Filen Sync/"){
 								if(syncMode == "twoWay"){
 									if(typeof lastRemoteSyncFolders[prop] !== "undefined" && typeof localFolderExisted[prop] !== "undefined"){
-										let isDeletingParentFolder = false
-
-										if(currentDeletingLocalFolders.length > 0){
-											for(let i = 0; i < currentDeletingLocalFolders.length; i++){
-												if(prop.indexOf(currentDeletingLocalFolders[i]) !== -1){
-													isDeletingParentFolder = true
-												}
-											}
-										}
-
-										if(!isDeletingParentFolder){
+										if(canDeleteLocalFile(prop)){
 											currentDeletingLocalFolders.push(prop)
 
 											syncTask("local", "rmdir", {
@@ -5941,17 +6001,7 @@ const doSync = async () => {
 								}
 								else if(syncMode == "cloudToLocal"){
 									if(typeof lastRemoteSyncFolders[prop] !== "undefined" && typeof localFolderExisted[prop] !== "undefined"){
-										let isDeletingParentFolder = false
-
-										if(currentDeletingLocalFolders.length > 0){
-											for(let i = 0; i < currentDeletingLocalFolders.length; i++){
-												if(prop.indexOf(currentDeletingLocalFolders[i]) !== -1){
-													isDeletingParentFolder = true
-												}
-											}
-										}
-
-										if(!isDeletingParentFolder){
+										if(canDeleteLocalFile(prop)){
 											currentDeletingLocalFolders.push(prop)
 
 											syncTask("local", "rmdir", {
@@ -6000,19 +6050,9 @@ const doSync = async () => {
 							if(typeof localFiles[prop] == "undefined"){
 								let filePath = userSyncDir + "/" + prop.slice(11)
 
-								let isDeletingParentFolder = false
-
-								if(currentDeletingRemoteFolders.length > 0){
-									for(let i = 0; i < currentDeletingRemoteFolders.length; i++){
-										if(prop.indexOf(currentDeletingRemoteFolders[i]) !== -1){
-											isDeletingParentFolder = true
-										}
-									}
-								}
-
 								if(syncMode == "twoWay"){
 									if(typeof lastRemoteSyncFiles[prop] !== "undefined" && typeof localFileExisted[prop] !== "undefined"){
-										if(!isDeletingParentFolder){
+										if(canDeleteRemoteFile(prop)){
 											syncTask("remote", "rmfile", {
 												path: prop,
 												name: lastRemoteSyncFiles[prop].name,
@@ -6042,7 +6082,7 @@ const doSync = async () => {
 								}
 								else if(syncMode == "localToCloud"){
 									if(typeof lastRemoteSyncFiles[prop] !== "undefined" && typeof localFileExisted[prop] !== "undefined"){
-										if(!isDeletingParentFolder){
+										if(canDeleteRemoteFile(prop)){
 											syncTask("remote", "rmfile", {
 												path: prop,
 												name: lastRemoteSyncFiles[prop].name,
@@ -6062,17 +6102,7 @@ const doSync = async () => {
 
 								if(syncMode == "twoWay"){
 									if(typeof lastRemoteSyncFiles[prop] !== "undefined" && typeof localFileExisted[prop] !== "undefined"){
-										let isDeletingParentFolder = false
-
-										if(currentDeletingLocalFolders.length > 0){
-											for(let i = 0; i < currentDeletingLocalFolders.length; i++){
-												if(prop.indexOf(currentDeletingLocalFolders[i]) !== -1){
-													isDeletingParentFolder = true
-												}
-											}
-										}
-
-										if(!isDeletingParentFolder){
+										if(canDeleteLocalFile(prop)){
 											syncTask("local", "rmfile", {
 												path: prop,
 												name: lastRemoteSyncFiles[prop].name,
@@ -6107,17 +6137,7 @@ const doSync = async () => {
 								}
 								else if(syncMode == "cloudToLocal"){
 									if(typeof lastRemoteSyncFiles[prop] !== "undefined" && typeof localFileExisted[prop] !== "undefined"){
-										let isDeletingParentFolder = false
-
-										if(currentDeletingLocalFolders.length > 0){
-											for(let i = 0; i < currentDeletingLocalFolders.length; i++){
-												if(prop.indexOf(currentDeletingLocalFolders[i]) !== -1){
-													isDeletingParentFolder = true
-												}
-											}
-										}
-
-										if(!isDeletingParentFolder){
+										if(canDeleteLocalFile(prop)){
 											syncTask("local", "rmfile", {
 												path: prop,
 												name: lastRemoteSyncFiles[prop].name,
@@ -6186,8 +6206,7 @@ const doSync = async () => {
 								}
 
 								await saveSyncData(false)
-
-								indexCleanup()
+								await indexCleanup()
 
 								return setTimeout(() => {
 									console.log("Sync cycle done.")
@@ -6212,7 +6231,7 @@ const doSync = async () => {
 	})
 }
 
-const indexCleanup = () => {
+const indexCleanup = async () => {
 	let existingFilesFullPaths = {}
 	let existingFolderUUIDs = {}
 	let existingFileUUIDs = {}
@@ -6320,9 +6339,9 @@ const initChokidar = async () => {
 			persistent: true,
 			recursive: true,
 			ignoreInitial: true,
-			followSymlinks: false,
+			followSymlinks: true,
 			cwd: winOrUnixFilePath(userSyncDir),
-			depth: 999999999,
+			depth: 214748364,
 			awaitWriteFinish: false,
 			useFsEvents: false,
 			alwaysStat: false,
@@ -6332,7 +6351,9 @@ const initChokidar = async () => {
 		watcher.on("all", async (event, ePath) => {
 			ePath = ePath.split("\\").join("/")
 	
-			return handleEvent(event, ePath)
+			if(ePath.indexOf(localTrashBinName) == -1){
+				return handleEvent(event, ePath)
+			}
 		})
 		
 		watcher.on("ready", () => {
@@ -6349,7 +6370,9 @@ const initChokidar = async () => {
 				persistent: true,
 				recursive: true
 			}, (event, ePath) => {
-				return handleEvent(event, ePath)
+				if(ePath.indexOf(localTrashBinName) == -1){
+					return handleEvent(event, ePath)
+				}
 			})
 
 			console.log("FS Watch ready")
@@ -6411,7 +6434,7 @@ const startSyncing = async () => {
 			let localFileModificationsDb = await db.get(userEmail + "_localFileModifications")
 
 			if(localFileModificationsDb.length > 0){
-				localFileModifications = JSON.parse(localFileModificationsDb)
+				localFileModifications = await JSONParseWorker(localFileModificationsDb)
 			}
 		}
 		catch(e){
@@ -6422,7 +6445,7 @@ const startSyncing = async () => {
 			let remoteFileUUIDsDb = await db.get(userEmail + "_remoteFileUUIDs")
 
 			if(remoteFileUUIDsDb.length > 0){
-				remoteFileUUIDs = JSON.parse(remoteFileUUIDsDb)
+				remoteFileUUIDs = await JSONParseWorker(remoteFileUUIDsDb)
 			}
 		}
 		catch(e){
@@ -6433,7 +6456,7 @@ const startSyncing = async () => {
 			let remoteFileSizesDb = await db.get(userEmail + "_remoteFileSizes")
 
 			if(remoteFileSizesDb.length > 0){
-				remoteFileSizes = JSON.parse(remoteFileSizesDb)
+				remoteFileSizes = await JSONParseWorker(remoteFileSizesDb)
 			}
 		}
 		catch(e){
@@ -6444,7 +6467,7 @@ const startSyncing = async () => {
 			let lastRemoteSyncFoldersDb = await db.get(userEmail + "_lastRemoteSyncFolders")
 
 			if(lastRemoteSyncFoldersDb.length > 0){
-				lastRemoteSyncFolders = JSON.parse(lastRemoteSyncFoldersDb)
+				lastRemoteSyncFolders = await JSONParseWorker(lastRemoteSyncFoldersDb)
 			}
 		}
 		catch(e){
@@ -6455,7 +6478,7 @@ const startSyncing = async () => {
 			let lastRemoteSyncFilesDb = await db.get(userEmail + "_lastRemoteSyncFiles")
 
 			if(lastRemoteSyncFilesDb.length > 0){
-				lastRemoteSyncFiles = JSON.parse(lastRemoteSyncFilesDb)
+				lastRemoteSyncFiles = await JSONParseWorker(lastRemoteSyncFilesDb)
 			}
 		}
 		catch(e){
@@ -6466,7 +6489,7 @@ const startSyncing = async () => {
 			let lastLocalSyncFoldersDb = await db.get(userEmail + "_lastLocalSyncFolders")
 
 			if(lastLocalSyncFoldersDb.length > 0){
-				lastLocalSyncFolders = JSON.parse(lastLocalSyncFoldersDb)
+				lastLocalSyncFolders = await JSONParseWorker(lastLocalSyncFoldersDb)
 			}
 		}
 		catch(e){
@@ -6477,7 +6500,7 @@ const startSyncing = async () => {
 			let lastLocalSyncFilesDb = await db.get(userEmail + "_lastLocalSyncFiles")
 
 			if(lastLocalSyncFilesDb.length > 0){
-				lastLocalSyncFiles = JSON.parse(lastLocalSyncFilesDb)
+				lastLocalSyncFiles = await JSONParseWorker(lastLocalSyncFilesDb)
 			}
 		}
 		catch(e){
@@ -6488,7 +6511,7 @@ const startSyncing = async () => {
 			let localFileExistedDb = await db.get(userEmail + "_localFileExisted")
 
 			if(localFileExistedDb.length > 0){
-				localFileExisted = JSON.parse(localFileExistedDb)
+				localFileExisted = await JSONParseWorker(localFileExistedDb)
 			}
 		}
 		catch(e){
@@ -6499,7 +6522,7 @@ const startSyncing = async () => {
 			let localFolderExistedDb = await db.get(userEmail + "_localFolderExisted")
 
 			if(localFolderExistedDb.length > 0){
-				localFolderExisted = JSON.parse(localFolderExistedDb)
+				localFolderExisted = await JSONParseWorker(localFolderExistedDb)
 			}
 		}
 		catch(e){
@@ -6510,7 +6533,7 @@ const startSyncing = async () => {
 			let remoteDecryptedCacheDb = await db.get(userEmail + "_remoteDecryptedCache")
 
 			if(remoteDecryptedCacheDb.length > 0){
-				remoteDecryptedCache = JSON.parse(remoteDecryptedCacheDb)
+				remoteDecryptedCache = await JSONParseWorker(remoteDecryptedCacheDb)
 			}
 		}
 		catch(e){
@@ -6521,7 +6544,7 @@ const startSyncing = async () => {
 			let iNodeMapINodesDb = await db.get(userEmail + "_iNodeMapINodes")
 
 			if(iNodeMapINodesDb.length > 0){
-				iNodeMapINodes = JSON.parse(iNodeMapINodesDb)
+				iNodeMapINodes = await JSONParseWorker(iNodeMapINodesDb)
 			}
 		}
 		catch(e){
@@ -6532,7 +6555,7 @@ const startSyncing = async () => {
 			let iNodeMapOnlyINodesDb = await db.get(userEmail + "_iNodeMapOnlyINodes")
 
 			if(iNodeMapOnlyINodesDb.length > 0){
-				iNodeMapOnlyINodes = JSON.parse(iNodeMapOnlyINodesDb)
+				iNodeMapOnlyINodes = await JSONParseWorker(iNodeMapOnlyINodesDb)
 			}
 		}
 		catch(e){
@@ -6543,7 +6566,7 @@ const startSyncing = async () => {
 			let lastRemoteUUIDsDb = await db.get(userEmail + "_lastRemoteUUIDs")
 
 			if(lastRemoteUUIDsDb.length > 0){
-				lastRemoteUUIDs = JSON.parse(lastRemoteUUIDsDb)
+				lastRemoteUUIDs = await JSONParseWorker(lastRemoteUUIDsDb)
 			}
 		}
 		catch(e){
@@ -6554,7 +6577,7 @@ const startSyncing = async () => {
 			let lastRemoteUUIDsOnlyUUIDsDb = await db.get(userEmail + "_lastRemoteUUIDsOnlyUUIDs")
 
 			if(lastRemoteUUIDsOnlyUUIDsDb.length > 0){
-				lastRemoteUUIDsOnlyUUIDs = JSON.parse(lastRemoteUUIDsOnlyUUIDsDb)
+				lastRemoteUUIDsOnlyUUIDs = await JSONParseWorker(lastRemoteUUIDsOnlyUUIDsDb)
 			}
 		}
 		catch(e){
@@ -6628,51 +6651,6 @@ const showBigErrorMessage = (msg) => {
 	$("#error-screen-msg").html(msg)
 
 	return routeTo("error-screen")
-}
-
-const setupErrorReporter = () => {
-	window.addEventListener("error", async (e) => {
-		try{
-			let errObj = {
-				message: e.message,
-				file: e.filename,
-				line: e.lineno,
-				column: e.colno,
-				stack: {
-					message: e.error.message || "none",
-					trace: e.error.stack || "none"
-				},
-				cancelable: e.cancelable,
-				timestamp: e.timeStamp,
-				type: e.type,
-				isTrusted: e.isTrusted,
-				url: window.location.href || "none"
-			}
-
-			$.ajax({
-				type: "POST",
-				url: getAPIServer() + "/v1/error/report",
-				contentType: "application/json",
-				data: JSON.stringify({
-					apiKey: await getUserAPIKey(),
-					error: JSON.stringify(errObj),
-					platform: "desktop"
-				}),
-				processData: false,
-				cache: false,
-				timeout: 180000,
-				success: (res) => {
-					return console.log("Error reported to service")
-				},
-				error: (err) => {
-					return false
-				}
-			})
-		}
-		catch(e){
-			console.log(e)
-		}
-	})
 }
 
 const updateVisualStatus = async () => {
@@ -6860,7 +6838,6 @@ const init = async () => {
 	initIPC()
 	initFns()
 	getDiskSpace()
-	setupErrorReporter()
 	setupIntervals()
 
 	let loggedIn = false
@@ -6901,7 +6878,7 @@ window.addEventListener("blur", () => {
 	if(dontHideOnBlur){
 		return setTimeout(() => {
 			dontHideOnBlur = false
-		}, 1000)
+		}, 500)
 	}
 
 	return ipcRenderer.send("minimize")

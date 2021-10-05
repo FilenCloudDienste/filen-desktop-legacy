@@ -256,6 +256,15 @@ const escapeHTML = (str) => {
   return str.replace(/(<([^>]+)>)/ig, "")
 }
 
+function strip_tags(str) {
+	if(typeof str !== "string"){
+		return str
+	}
+
+    str = str.toString();
+    return str.replace(/<\/?[^>]+>/gi, '');
+}
+
 const cleanString = (str) => {
     if(typeof str !== "string"){
     return str
