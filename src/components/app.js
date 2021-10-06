@@ -13,12 +13,12 @@ process.on("uncaughtException", (err) => {
 
 	try{
 		if(err.toString().toLowerCase().indexOf("openerror") !== -1 || err.toString().toLowerCase().indexOf("corruption") !== -1 && err.toString().toLowerCase().indexOf("level") !== -1){
-			let electron = require("electron")
+			var { app } = require("@electron/remote")
 			let rimraf = require("rimraf")
-			let dbPath = (electron.app || electron.remote.app).getPath("userData") + "/db/level"
+			let dbPath = app.getPath("userData") + "/db/level"
 
 			if(process.platform == "linux" || process.platform == "darwin"){
-				dbPath = (electron.app || electron.remote.app).getPath("userData") + "/level"
+				dbPath = app.getPath("userData") + "/level"
 			}
 
 			return rimraf(dbPath, () => {
@@ -36,9 +36,8 @@ process.on("uncaughtException", (err) => {
 	}
 })
 
-const { app, ipcRenderer, remote } = require("electron")
-const shell = require("electron").shell
-const electron = require("electron")
+const { ipcRenderer, shell } = require("electron")
+const { app } = require("@electron/remote")
 const CryptoJS = require("crypto-js")
 const level = require("level")
 const fs = require("fs-extra")
@@ -64,10 +63,10 @@ let db = undefined
 let dbPath = undefined
 
 if(is.linux() || is.macOS()){
-	dbPath = (electron.app || electron.remote.app).getPath("userData") + "/level"
+	dbPath = app.getPath("userData") + "/level"
 }
 else{
-	dbPath = (electron.app || electron.remote.app).getPath("userData") + "/db/level"
+	dbPath = app.getPath("userData") + "/db/level"
 }
 
 try{
@@ -4115,7 +4114,120 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 		case "remote":
 			switch(task){
 				case "movedir":
+					var releaseMoveSemaphore = await moveSemaphore.acquire()
 
+					var moveDir = async (uuid, parent, dir) => {
+						apiRequest("/v1/dir/exists", {
+							apiKey: await getUserAPIKey(),
+							parent: parent,
+							nameHashed: hashFn(dir.name.toLowerCase())
+						}, async (err, res) => {
+							if(err){
+								console.log(err)
+	
+								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
+	
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+	
+							if(!res.status){
+								console.log(res.message)
+	
+								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
+	
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+
+							if(res.data.exists){
+								console.log(taskInfo.path + " already exists remotely.")
+
+								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
+
+								localFolderExisted[taskInfo.path] = true
+
+								delete localFolderExisted[taskInfo.oldPath]
+
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+
+							apiRequest("/v1/dir/move", {
+								apiKey: await getUserAPIKey(),
+								folderUUID: parent,
+								uuid: uuid
+							}, (err, res) => {
+								if(err){
+									console.log(err)
+	
+									syncTaskLimiterSemaphoreRelease()
+									releaseMoveSemaphore()
+	
+									return setTimeout(() => {
+										removeFromSyncTasks(taskId)
+									}, syncTimeout)
+								}
+		
+								if(!res.status){
+									console.log(res.message)
+	
+									syncTaskLimiterSemaphoreRelease()
+									releaseMoveSemaphore()
+	
+									return setTimeout(() => {
+										removeFromSyncTasks(taskId)
+									}, syncTimeout)
+								}
+	
+								checkIfItemParentIsBeingShared(parent, "folder", {
+									uuid: uuid,
+									name: dir.name
+								}, () => {
+									syncTaskLimiterSemaphoreRelease()
+									releaseMoveSemaphore()
+	
+									localFolderExisted[taskInfo.path] = true
+
+									delete localFolderExisted[taskInfo.oldPath]
+	
+									return setTimeout(() => {
+										removeFromSyncTasks(taskId)
+									}, syncTimeout)
+								})
+							})
+						})
+					}
+
+					var neededParent = lastRemoteSyncFolders[getParentPath(taskInfo.path)]
+
+					if(typeof neededParent !== "undefined"){
+						moveDir(taskInfo.uuid, neededParent.uuid, taskInfo.folder)
+					}
+					else{
+						createFoldersForPathRemote(taskInfo.path, (err) => {
+							if(err){
+								console.log(err)
+
+								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
+
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+
+							neededParent = lastRemoteSyncFolders[getParentPath(taskInfo.path)]
+
+							moveDir(taskInfo.uuid, neededParent.uuid, taskInfo.folder)
+						})
+					}
 				break
 				case "movefile":
 					var releaseMoveSemaphore = await moveSemaphore.acquire()
@@ -4213,7 +4325,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 						})
 					}
 
-					let neededParent = lastRemoteSyncFolders[removeFileNameFromDirPath(taskInfo.path)]
+					var neededParent = lastRemoteSyncFolders[removeFileNameFromDirPath(taskInfo.path)]
 
 					if(typeof neededParent !== "undefined"){
 						moveFile(taskInfo.uuid, neededParent.uuid, taskInfo.file)
@@ -5671,7 +5783,8 @@ const doSync = async () => {
 																oldPath: oldPath,
 																uuid: remoteFolders[oldPath].uuid,
 																parent: remoteFolders[oldPath].parent,
-																name: newName
+																name: newName,
+																realPath: userSyncDir + "/" + newPath.slice(11)
 															}, userMasterKeys)
 														}
 														
@@ -5700,7 +5813,9 @@ const doSync = async () => {
 																newPath: newPath,
 																oldPath: oldPath,
 																uuid: remoteFolders[oldPath].uuid,
-																parent: remoteFolders[oldPath].parent
+																parent: remoteFolders[oldPath].parent,
+																folder: remoteFolders[oldPath],
+																realPath: userSyncDir + "/" + newPath.slice(11)
 															}, userMasterKeys)
 														}
 													}

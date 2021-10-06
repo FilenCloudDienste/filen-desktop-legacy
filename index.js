@@ -31,7 +31,7 @@ process.on("uncaughtException", (err) => {
 	}
 })
 
-const { app, BrowserWindow, Menu, ipcMain, Tray, dialog, powerMonitor, globalShortcut, nativeImage, screen, shell } = require("electron")
+const { app, BrowserWindow, Menu, ipcMain, Tray, dialog, powerMonitor, globalShortcut, nativeImage, shell } = require("electron")
 const path = require("path")
 const level = require("level")
 const fs = require("fs-extra")
@@ -39,9 +39,11 @@ const copy = require("recursive-copy")
 const rimraf = require("rimraf")
 const { autoUpdater } = require("electron-updater")
 const positioner = require("electron-traywindow-positioner")
-const child_process = require("child_process")
 const is = require("electron-is")
 const AutoLaunch = require("auto-launch")
+const remoteMain = require("@electron/remote/main")
+
+remoteMain.initialize()
 
 console.log("platform = " + process.platform)
 console.log("exePath = " + app.getPath("exe"))
@@ -320,7 +322,8 @@ const createWindow = async () => {
 			nodeIntegration: true,
 			nodeIntegrationInWorker: true,
 			backgroundThrottling: false,
-			enableRemoteModule: true
+			enableRemoteModule: true,
+			contextIsolation: false
 		},
 		title: "Filen",
 		maximizable: false,
@@ -332,6 +335,8 @@ const createWindow = async () => {
 		skipTaskbar: true,
 		transparent: true
 	})
+
+	remoteMain.enable(browserWindow.webContents)
 
 	browserWindow.setResizable(false)
 	//browserWindow.setVisibleOnAllWorkspaces(true)
@@ -847,6 +852,7 @@ const createWindow = async () => {
 
 app.commandLine.appendSwitch("disable-renderer-backgrounding")
 app.commandLine.appendSwitch("disable-pinch")
+app.commandLine.appendSwitch("js-flags", "--max-old-space-size=8192")
 
 if(!app.requestSingleInstanceLock()){
   	return app.quit()
