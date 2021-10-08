@@ -852,7 +852,7 @@ const createWindow = async () => {
 
 app.commandLine.appendSwitch("disable-renderer-backgrounding")
 app.commandLine.appendSwitch("disable-pinch")
-app.commandLine.appendSwitch("js-flags", "--max-old-space-size=8192")
+app.commandLine.appendSwitch("js-flags", "--max-old-space-size=4096")
 
 if(!app.requestSingleInstanceLock()){
   	return app.quit()
