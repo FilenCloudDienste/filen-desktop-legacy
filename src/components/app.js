@@ -4064,6 +4064,46 @@ const getNameFromPath = (path) => {
 	}
 }
 
+const isInsideSymlink = async (path) => {
+	const isSymlink = async (thisPath) => {
+		await new Promise((resolve) => setTimeout(resolve, 100))
+		
+		if(thisPath.slice(-1) == "/"){
+			thisPath = path.substring(0, (thisPath.length - 1))
+		}
+
+		if(thisPath == userSyncDir){
+			return {
+				status: true,
+				isSymlink: false
+			}
+		}
+
+		try{
+			var stat = await fs.lstat(thisPath)
+		}
+		catch(e){
+			console.log(e)
+
+			return {
+				status: false,
+				error: e
+			}
+		}
+
+		if(stat.isSymbolicLink()){
+			return {
+				status: true,
+				isSymlink: true
+			}
+		}
+
+		return isSymlink(getParentPath(thisPath))
+	}
+
+	return isSymlink(path)
+}
+
 const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 	if(syncMode == "localToCloud" && where == "local"){
 		return false
@@ -6303,52 +6343,54 @@ const doSync = async () => {
 
 					updateVisualStatus()
 
-					let waitForQueueToFinishInterval = setInterval(async () => {
-						if(currentSyncTasks.length <= 0){ //no extra
-							clearInterval(waitForQueueToFinishInterval)
-
-							updateVisualStatus()
-
-							lastRemoteSyncFolders = remoteFolders
-							lastRemoteSyncFiles = remoteFiles
-							lastLocalSyncFolders = localFolders
-							lastLocalSyncFiles = localFiles
-							iNodeMapINodes = iNodeMapINodesRes
-							iNodeMapOnlyINodes = iNodeMapOnlyINodesRes
-							lastRemoteUUIDs = remoteUUIDsRes
-							lastRemoteUUIDsOnlyUUIDs = remoteUUIDsOnlyUUIDsRes
-
-							localDataChanged = true
-
-							getLocalSyncDirContents(async (err, folders, files) => {
-								if(err){
-									console.log(err)							
-								}
-								else{
-									localFolderExisted = folders
-									localFileExisted = files
-								}
-
-								await saveSyncData(false)
-								await indexCleanup()
-
-								return setTimeout(() => {
-									console.log("Sync cycle done.")
-
-									releaseSyncSemaphore()
-									clearCurrentSyncTasksExtra()
-										
-									isIndexing = false
-									isSyncing = false
-									localDataChanged = true
-									reloadAll = false
-									canRemoveFromSyncTasks = true
-
-									writeSyncTasks()
-								}, syncTimeout)
-							})
-						}
-					}, 10)
+					setTimeout(() => {
+						let waitForQueueToFinishInterval = setInterval(async () => {
+							if(currentSyncTasks.length <= 0){
+								clearInterval(waitForQueueToFinishInterval)
+	
+								updateVisualStatus()
+	
+								lastRemoteSyncFolders = remoteFolders
+								lastRemoteSyncFiles = remoteFiles
+								lastLocalSyncFolders = localFolders
+								lastLocalSyncFiles = localFiles
+								iNodeMapINodes = iNodeMapINodesRes
+								iNodeMapOnlyINodes = iNodeMapOnlyINodesRes
+								lastRemoteUUIDs = remoteUUIDsRes
+								lastRemoteUUIDsOnlyUUIDs = remoteUUIDsOnlyUUIDsRes
+	
+								localDataChanged = true
+	
+								getLocalSyncDirContents(async (err, folders, files) => {
+									if(err){
+										console.log(err)							
+									}
+									else{
+										localFolderExisted = folders
+										localFileExisted = files
+									}
+	
+									await saveSyncData(false)
+									await indexCleanup()
+	
+									return setTimeout(() => {
+										console.log("Sync cycle done.")
+	
+										releaseSyncSemaphore()
+										clearCurrentSyncTasksExtra()
+											
+										isIndexing = false
+										isSyncing = false
+										localDataChanged = true
+										reloadAll = false
+										canRemoveFromSyncTasks = true
+	
+										writeSyncTasks()
+									}, syncTimeout)
+								})
+							}
+						}, 10)
+					}, syncTimeout)
 				})
 			})
 		}
