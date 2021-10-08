@@ -3376,6 +3376,15 @@ const uploadFileToRemote = async (path, uuid, parent, name, userMasterKeys, last
 	let nameH = hashFn(name.toLowerCase())
 	let mimeEnc = await encryptMetadata(mime, key)
 
+	try{
+		await fs.access(winOrUnixFilePath(path))
+	}
+	catch(e){
+		console.log(e)
+
+		return callback(e)
+	}
+
 	fs.stat(winOrUnixFilePath(path), async (err, stats) => {
 		if(err){
 			return callback(err)
