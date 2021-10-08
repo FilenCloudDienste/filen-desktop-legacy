@@ -13,12 +13,12 @@ process.on("uncaughtException", (err) => {
 
 	try{
 		if(err.toString().toLowerCase().indexOf("openerror") !== -1 || err.toString().toLowerCase().indexOf("corruption") !== -1 && err.toString().toLowerCase().indexOf("level") !== -1){
-			var { app } = require("@electron/remote")
+			let electron = require("electron")
 			let rimraf = require("rimraf")
-			let dbPath = app.getPath("userData") + "/db/level"
+			let dbPath = (electron.app || electron.remote.app).getPath("userData") + "/db/level"
 
 			if(process.platform == "linux" || process.platform == "darwin"){
-				dbPath = app.getPath("userData") + "/level"
+				dbPath = (electron.app || electron.remote.app).getPath("userData") + "/level"
 			}
 
 			return rimraf(dbPath, () => {
@@ -36,8 +36,8 @@ process.on("uncaughtException", (err) => {
 	}
 })
 
-const { ipcRenderer, shell } = require("electron")
-const { app } = require("@electron/remote")
+const { ipcRenderer, shell, remote } = require("electron")
+const electron = require("electron")
 const CryptoJS = require("crypto-js")
 const level = require("level")
 const fs = require("fs-extra")
@@ -63,10 +63,10 @@ let db = undefined
 let dbPath = undefined
 
 if(is.linux() || is.macOS()){
-	dbPath = app.getPath("userData") + "/level"
+	dbPath = (electron.app || electron.remote.app).getPath("userData") + "/level"
 }
 else{
-	dbPath = app.getPath("userData") + "/db/level"
+	dbPath = (electron.app || electron.remote.app).getPath("userData") + "/db/level"
 }
 
 try{
@@ -5231,8 +5231,8 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 							let stat = await fs.stat(winOrUnixFilePath(filePath))
 
 							if(stat){
-								localFileModifications[taskInfo.filePath] = stat.mtimeMs
-								remoteFileSizes[taskInfo.filePath] = stat.size
+								localFileModifications[taskInfo.path] = stat.mtimeMs
+								remoteFileSizes[taskInfo.path] = stat.size
 							}
 						}
 						catch(e){
@@ -5240,7 +5240,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 						}
 
 						localFileExisted[taskInfo.path] = true
-						remoteFileUUIDs[taskInfo.filePath] = taskInfo.file.uuid
+						remoteFileUUIDs[taskInfo.path] = taskInfo.file.uuid
 
 						skipCheckLocalExistedFoldersAndFiles = (unixTimestamp() + 60)
 

@@ -41,9 +41,6 @@ const { autoUpdater } = require("electron-updater")
 const positioner = require("electron-traywindow-positioner")
 const is = require("electron-is")
 const AutoLaunch = require("auto-launch")
-const remoteMain = require("@electron/remote/main")
-
-remoteMain.initialize()
 
 console.log("platform = " + process.platform)
 console.log("exePath = " + app.getPath("exe"))
@@ -99,9 +96,23 @@ let nativeImageTrayIconSyncing = path.join(__dirname, "src", "img", "tray_sync.p
 let nativeImageTrayIconPaused = path.join(__dirname, "src", "img", "tray_paused.png")
 
 if(is.macOS() || is.windows() || is.linux()){
-	nativeImageTrayIconNormal = path.join(__dirname, "src", "img", "logo_16.png")
-	nativeImageTrayIconSyncing = path.join(__dirname, "src", "img", "tray_sync_16.png")
-	nativeImageTrayIconPaused = path.join(__dirname, "src", "img", "tray_paused_16.png")
+	nativeImageTrayIconNormal = nativeImage.createFromPath(nativeImageTrayIconNormal).resize({
+		width: 16,
+		height: 16,
+		quality: "best"
+	})
+
+	nativeImageTrayIconSyncing = nativeImage.createFromPath(nativeImageTrayIconSyncing).resize({
+		width: 16,
+		height: 16,
+		quality: "best"
+	})
+	
+	nativeImageTrayIconPaused = nativeImage.createFromPath(nativeImageTrayIconPaused).resize({
+		width: 16,
+		height: 16,
+		quality: "best"
+	})
 }
 
 const sendUserDirs = () => {
@@ -335,8 +346,6 @@ const createWindow = async () => {
 		skipTaskbar: true,
 		transparent: true
 	})
-
-	remoteMain.enable(browserWindow.webContents)
 
 	browserWindow.setResizable(false)
 	//browserWindow.setVisibleOnAllWorkspaces(true)
