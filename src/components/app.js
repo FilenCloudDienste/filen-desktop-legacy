@@ -14,14 +14,14 @@ process.on("uncaughtException", (err) => {
 	try{
 		if(err.toString().toLowerCase().indexOf("openerror") !== -1 || err.toString().toLowerCase().indexOf("corruption") !== -1 && err.toString().toLowerCase().indexOf("level") !== -1){
 			let electron = require("electron")
-			let rimraf = require("rimraf")
+			let fs = require("fs-extra")
 			let dbPath = (electron.app || electron.remote.app).getPath("userData") + "/db/level"
 
 			if(process.platform == "linux" || process.platform == "darwin"){
 				dbPath = (electron.app || electron.remote.app).getPath("userData") + "/level"
 			}
 
-			return rimraf(dbPath, () => {
+			return fs.remove(dbPath, (err) => {
 				try{
 					ipcRenderer.send("exit-app")
 				}
@@ -47,7 +47,6 @@ const mimeTypes = require("mime-types")
 const readChunk = require("read-chunk")
 const chokidar = require("chokidar-fs-extra")
 const { Semaphore } = require("await-semaphore")
-const rimraf = require("rimraf")
 const checkDiskSpace = require("check-disk-space")
 const md2 = require("js-md2")
 const md4 = require("js-md4")
@@ -75,7 +74,7 @@ try{
 catch(e){
 	console.log(e)
 
-	rimraf(dbPath, () => {
+	fs.remove(dbPath, (err) => {
 		try{
 			ipcRenderer.send("exit-app")
 		}
@@ -857,7 +856,13 @@ const startDownloadFolder = () => {
 		throw new Error(e)
 	}
 
-	rimraf(winOrUnixFilePath(downloadPath + "/" + currentDownloadFolderName), () => {
+	fs.remove(winOrUnixFilePath(downloadPath + "/" + currentDownloadFolderName), (err) => {
+		if(err){
+			console.log(err)
+
+			return showBigErrorMessage("Could not clear destination directory.")
+		}
+
 		lastDownloadFolderPath = downloadPath
 		currentDownloadFolderLoaded[currentDownloadFolderUUID] = 0
 		currentDownloadFolderStopped[currentDownloadFolderUUID] = false
@@ -4094,7 +4099,8 @@ const isInsideSymlink = async (path) => {
 		if(stat.isSymbolicLink()){
 			return {
 				status: true,
-				isSymlink: true
+				isSymlink: true,
+				symlinkPath: thisPath
 			}
 		}
 
@@ -5040,7 +5046,17 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 							}, syncTimeout)
 						}
 
-						rimraf(winOrUnixFilePath(taskInfo.realPathNew), () => {
+						fs.remove(winOrUnixFilePath(taskInfo.realPathNew), (err) => {
+							if(err){
+								console.log(err)
+	
+								syncTaskLimiterSemaphoreRelease()
+	
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+
 							fs.rename(winOrUnixFilePath(taskInfo.realPath), winOrUnixFilePath(taskInfo.realPathNew), (err) => {
 								if(err){
 									console.log(err)
@@ -5081,7 +5097,17 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 							}, syncTimeout)
 						}
 
-						rimraf(winOrUnixFilePath(taskInfo.realPathNew), () => {
+						fs.remove(winOrUnixFilePath(taskInfo.realPathNew), (err) => {
+							if(err){
+								console.log(err)
+		
+								syncTaskLimiterSemaphoreRelease()
+	
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+
 							fs.rename(winOrUnixFilePath(taskInfo.realPath), winOrUnixFilePath(taskInfo.realPathNew), async (err) => {
 								if(err){
 									console.log(err)
@@ -6493,7 +6519,7 @@ const initChokidar = async () => {
 		setTimeout(async () => {
 			isHandlingWatchEvent = false
 
-			clearCurrentSyncTasksExtra()
+			//clearCurrentSyncTasksExtra()
 			setLocalDataChangedTrue()
 		}, 30000)
 
@@ -6527,6 +6553,8 @@ const initChokidar = async () => {
 		})
 		
 		watcher.on("error", (err) => {
+			showBigErrorMessage("Could not initialize the directory watcher, please try restarting the application.")
+
 			return console.log(err)
 		})
 	}
@@ -6878,7 +6906,7 @@ const checkLocalTrashBin = () => {
 							let ctime = Math.floor(stat.ctimeMs)
 
 							if(Math.floor((+new Date())) > (ctime + ((86400 * 30) * 1000))){
-								rimraf(winOrUnixFilePath(userSyncDir + "/" + localTrashBinName + "/" + files[i]), (err) => {
+								fs.remove(winOrUnixFilePath(userSyncDir + "/" + localTrashBinName + "/" + files[i]), (err) => {
 									if(err){
 										console.log(err)
 									}

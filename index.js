@@ -14,14 +14,14 @@ process.on("uncaughtException", (err) => {
 	try{
 		if(err.toString().toLowerCase().indexOf("openerror") !== -1 || err.toString().toLowerCase().indexOf("corruption") !== -1 && err.toString().toLowerCase().indexOf("level") !== -1){
 			let electron = require("electron")
-			let rmrf = require("rimraf")
+			let fs = require("fs-extra")
 			let dbPath = electron.app.getPath("userData") + "/db/index"
 
 			if(process.platform == "linux" || process.platform == "darwin"){
 				dbPath = electron.app.getPath("userData") + "/index"
 			}
 
-			return rmrf(dbPath, () => {
+			return fs.remove(dbPath, (err) => {
 				electron.app.exit(0)
 			})
 		}
@@ -36,7 +36,6 @@ const path = require("path")
 const level = require("level")
 const fs = require("fs-extra")
 const copy = require("recursive-copy")
-const rimraf = require("rimraf")
 const { autoUpdater } = require("electron-updater")
 const positioner = require("electron-traywindow-positioner")
 const is = require("electron-is")
@@ -82,7 +81,7 @@ try{
 	db = level(dbPath)
 }
 catch(e){
-	return rimraf(dbPath, () => {
+	return fs.remove(dbPath, (err) => {
 		app.exit(0)
 	})
 }
@@ -693,7 +692,7 @@ const createWindow = async () => {
 							console.log(err)
 						}
 						else{
-							rimraf(winOrUnixFilePath(lastUserSyncDir), () => {
+							fs.remove(winOrUnixFilePath(lastUserSyncDir), (err) => {
 								sendUserDirs()
 								
 								browserWindow.webContents.send("rewrite-saved-sync-data", {
