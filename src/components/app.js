@@ -4234,7 +4234,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 								apiKey: await getUserAPIKey(),
 								folderUUID: parent,
 								uuid: uuid
-							}, (err, res) => {
+							}, async (err, res) => {
 								if(err){
 									console.log(err)
 	
@@ -4379,7 +4379,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 								apiKey: await getUserAPIKey(),
 								folderUUID: parent,
 								fileUUID: uuid
-							}, (err, res) => {
+							}, async (err, res) => {
 								if(err){
 									console.log(err)
 	
@@ -6032,6 +6032,7 @@ const canCreateLocalDir = (prop) => {
 const canMoveLocalDir = (prop) => {
 	let isRenamingParentFolderLocal = false
 	let isMovingParentFolderLocal = false
+	let isMovingFile = false
 
 	if(currentRenamingLocalFolders.length > 0){
 		for(let i = 0; i < currentRenamingLocalFolders.length; i++){
@@ -6049,7 +6050,15 @@ const canMoveLocalDir = (prop) => {
 		}
 	}
 
-	if(!isRenamingParentFolderLocal && !isMovingParentFolderLocal){
+	if(currentMovingLocalFiles.length > 0){
+		for(let i = 0; i < currentMovingLocalFiles.length; i++){
+			if(prop.indexOf(currentMovingLocalFiles[i]) !== -1){
+				isMovingFile = true
+			}
+		}
+	}
+
+	if(!isRenamingParentFolderLocal && !isMovingParentFolderLocal && !isMovingFile){
 		return true
 	}
 
@@ -6130,6 +6139,8 @@ const canDownloadFile = (prop) => {
 
 const canDeleteRemoteFile = (prop) => {
 	let isDeletingParentFolder = false
+	let isMovingParentFolder = false
+	let isMovingRemoteFile = false
 
 	if(currentDeletingRemoteFolders.length > 0){
 		for(let i = 0; i < currentDeletingRemoteFolders.length; i++){
@@ -6139,7 +6150,23 @@ const canDeleteRemoteFile = (prop) => {
 		}
 	}
 
-	if(!isDeletingParentFolder){
+	if(currentMovingRemoteFolders.length > 0){
+		for(let i = 0; i < currentMovingRemoteFolders.length; i++){
+			if(prop.indexOf(currentMovingRemoteFolders[i]) !== -1){
+				isMovingParentFolder = true
+			}
+		}
+	}
+
+	if(currentMovingRemoteFiles.length > 0){
+		for(let i = 0; i < currentMovingRemoteFiles.length; i++){
+			if(prop.indexOf(currentMovingRemoteFiles[i]) !== -1){
+				isMovingRemoteFile = true
+			}
+		}
+	}
+
+	if(!isDeletingParentFolder && !isMovingParentFolder && !isMovingRemoteFile){
 		return true
 	}
 
@@ -6349,8 +6376,7 @@ const doSync = async () => {
 					currentMovingRemoteFolders = []
 					currentMovingLocalFiles = []
 					currentMovingRemoteFiles = []
-					currentRenamingOrMovingLocalFolders = []
-					currentRenamingOrMovingRemoteFolders = []
+					currentMovingRemoteFiles = []
 
 					if(typeof lastLocalSyncFiles !== "undefined" && typeof lastRemoteSyncFiles !== "undefined" && typeof lastRemoteSyncFolders !== "undefined"){
 						if(syncMode == "twoWay" || syncMode == "localToCloud"){
@@ -6441,6 +6467,9 @@ const doSync = async () => {
 														
 														if(typeof remoteFiles[oldPath] !== "undefined"){
 															if(canMoveRemoteDir(prop)){
+																currentMovingRemoteFiles.push(newPath)
+																currentMovingRemoteFiles.push(oldPath)
+
 																syncTask("remote", "moverenamefile", {
 																	path: newPath,
 																	newPath: newPath,
@@ -6474,6 +6503,9 @@ const doSync = async () => {
 														
 														if(typeof remoteFiles[oldPath] !== "undefined"){
 															if(canMoveRemoteDir(prop)){
+																currentMovingRemoteFiles.push(newPath)
+																currentMovingRemoteFiles.push(oldPath)
+
 																syncTask("remote", "movefile", {
 																	path: newPath,
 																	newPath: newPath,
@@ -6582,6 +6614,9 @@ const doSync = async () => {
 												else{
 													if(typeof localFiles[oldPath] !== "undefined"){
 														if(canMoveLocalDir(prop)){
+															currentMovingLocalFiles.push(newPath)
+															currentMovingLocalFiles.push(oldPath)
+
 															syncTask("local", "movefile", {
 																path: newPath,
 																uuid: lastRemoteUUIDsOnlyUUIDs[uuid].file.uuid,
