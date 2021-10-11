@@ -4184,6 +4184,305 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 	switch(where){
 		case "remote":
 			switch(task){
+				case "moverenamedir":
+					var releaseMoveSemaphore = await moveSemaphore.acquire()
+
+					var moveRenameDir = async (uuid, parent, dir, newName) => {
+						apiRequest("/v1/dir/exists", {
+							apiKey: await getUserAPIKey(),
+							parent: parent,
+							nameHashed: hashFn(newName.toLowerCase())
+						}, async (err, res) => {
+							if(err){
+								console.log(err)
+	
+								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
+	
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+	
+							if(!res.status){
+								console.log(res.message)
+	
+								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
+	
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+
+							if(res.data.exists){
+								console.log(taskInfo.path + " already exists remotely.")
+
+								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
+
+								localFolderExisted[taskInfo.path] = true
+
+								delete localFolderExisted[taskInfo.oldPath]
+
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+
+							apiRequest("/v1/dir/move", {
+								apiKey: await getUserAPIKey(),
+								folderUUID: parent,
+								uuid: uuid
+							}, (err, res) => {
+								if(err){
+									console.log(err)
+	
+									syncTaskLimiterSemaphoreRelease()
+									releaseMoveSemaphore()
+	
+									return setTimeout(() => {
+										removeFromSyncTasks(taskId)
+									}, syncTimeout)
+								}
+		
+								if(!res.status){
+									console.log(res.message)
+	
+									syncTaskLimiterSemaphoreRelease()
+									releaseMoveSemaphore()
+	
+									return setTimeout(() => {
+										removeFromSyncTasks(taskId)
+									}, syncTimeout)
+								}
+
+								apiRequest("/v1/dir/rename", {
+									apiKey: await getUserAPIKey(),
+									uuid: taskInfo.uuid,
+									name: await encryptMetadata(JSON.stringify({
+										name: newName
+									}), userMasterKeys[userMasterKeys.length - 1]),
+									nameHashed: hashFn(newName.toLowerCase())
+								}, (err, res) => {
+									if(err){
+										console.log(err)
+		
+										syncTaskLimiterSemaphoreRelease()
+		
+										return setTimeout(() => {
+											removeFromSyncTasks(taskId)
+										}, syncTimeout)
+									}
+		
+									if(!res.status){
+										console.log(res.message)
+		
+										syncTaskLimiterSemaphoreRelease()
+		
+										return setTimeout(() => {
+											removeFromSyncTasks(taskId)
+										}, syncTimeout)
+									}
+
+									checkIfItemParentIsBeingShared(parent, "folder", {
+										uuid: uuid,
+										name: newName
+									}, () => {
+										syncTaskLimiterSemaphoreRelease()
+										releaseMoveSemaphore()
+		
+										localFolderExisted[taskInfo.path] = true
+	
+										delete localFolderExisted[taskInfo.oldPath]
+		
+										return setTimeout(() => {
+											removeFromSyncTasks(taskId)
+										}, syncTimeout)
+									})
+								})
+							})
+						})
+					}
+
+					var neededParent = lastRemoteSyncFolders[getParentPath(taskInfo.path)]
+
+					if(typeof neededParent !== "undefined"){
+						moveRenameDir(taskInfo.uuid, neededParent.uuid, taskInfo.folder, taskInfo.name)
+					}
+					else{
+						createFoldersForPathRemote(taskInfo.path, (err) => {
+							if(err){
+								console.log(err)
+
+								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
+
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+
+							neededParent = lastRemoteSyncFolders[getParentPath(taskInfo.path)]
+
+							moveRenameDir(taskInfo.uuid, neededParent.uuid, taskInfo.folder, taskInfo.name)
+						})
+					}
+				break
+				case "moverenamefile":
+					var releaseMoveSemaphore = await moveSemaphore.acquire()
+
+					var moveRenameFile = async (uuid, parent, file, newName) => {
+						apiRequest("/v1/file/exists", {
+							apiKey: await getUserAPIKey(),
+							parent: parent,
+							nameHashed: hashFn(newName.toLowerCase())
+						}, async (err, res) => {
+							if(err){
+								console.log(err)
+	
+								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
+	
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+	
+							if(!res.status){
+								console.log(res.message)
+	
+								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
+	
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+
+							if(res.data.exists){
+								console.log(taskInfo.path + " already exists remotely.")
+
+								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
+
+								localFileExisted[taskInfo.path] = true
+
+								delete localFileExisted[taskInfo.oldPath]
+
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+
+							apiRequest("/v1/file/move", {
+								apiKey: await getUserAPIKey(),
+								folderUUID: parent,
+								fileUUID: uuid
+							}, (err, res) => {
+								if(err){
+									console.log(err)
+	
+									syncTaskLimiterSemaphoreRelease()
+									releaseMoveSemaphore()
+	
+									return setTimeout(() => {
+										removeFromSyncTasks(taskId)
+									}, syncTimeout)
+								}
+		
+								if(!res.status){
+									console.log(res.message)
+	
+									syncTaskLimiterSemaphoreRelease()
+									releaseMoveSemaphore()
+	
+									return setTimeout(() => {
+										removeFromSyncTasks(taskId)
+									}, syncTimeout)
+								}
+
+								apiRequest("/v1/file/rename", {
+									apiKey: await getUserAPIKey(),
+									uuid: taskInfo.uuid,
+									name: await encryptMetadata(newName, userMasterKeys[userMasterKeys.length - 1]),
+									nameHashed: hashFn(newName.toLowerCase()),
+									metaData: await encryptMetadata(JSON.stringify({
+										name: newName,
+										size: parseInt(taskInfo.file.size),
+										mime: taskInfo.file.mime,
+										key: taskInfo.file.key,
+										lastModified: taskInfo.file.lastModified || (+new Date())
+									}), userMasterKeys[userMasterKeys.length - 1])
+								}, (err, res) => {
+									if(err){
+										console.log(err)
+		
+										syncTaskLimiterSemaphoreRelease()
+		
+										return setTimeout(() => {
+											removeFromSyncTasks(taskId)
+										}, syncTimeout)
+									}
+		
+									if(!res.status){
+										console.log(res.message)
+		
+										syncTaskLimiterSemaphoreRelease()
+		
+										return setTimeout(() => {
+											removeFromSyncTasks(taskId)
+										}, syncTimeout)
+									}
+
+									checkIfItemParentIsBeingShared(parent, "file", {
+										uuid: uuid,
+										name: newName,
+										size: parseInt(file.size),
+										mime: file.mime,
+										key: file.key,
+										lastModified: file.lastModified || Math.floor((+new Date()) / 1000)
+									}, () => {
+										syncTaskLimiterSemaphoreRelease()
+										releaseMoveSemaphore()
+		
+										localFileExisted[taskInfo.path] = true
+		
+										delete localFileExisted[taskInfo.oldPath]
+		
+										return setTimeout(() => {
+											removeFromSyncTasks(taskId)
+										}, syncTimeout)
+									})
+								})
+							})
+						})
+					}
+
+					var neededParent = lastRemoteSyncFolders[removeFileNameFromDirPath(taskInfo.path)]
+
+					if(typeof neededParent !== "undefined"){
+						moveRenameFile(taskInfo.uuid, neededParent.uuid, taskInfo.file, taskInfo.name)
+					}
+					else{
+						createFoldersForPathRemote(taskInfo.path, (err) => {
+							if(err){
+								console.log(err)
+
+								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
+
+								return setTimeout(() => {
+									removeFromSyncTasks(taskId)
+								}, syncTimeout)
+							}
+
+							neededParent = lastRemoteSyncFolders[removeFileNameFromDirPath(taskInfo.path)]
+
+							moveRenameFile(taskInfo.uuid, neededParent.uuid, taskInfo.file, taskInfo.name)
+						})
+					}
+				break
 				case "movedir":
 					var releaseMoveSemaphore = await moveSemaphore.acquire()
 
@@ -6070,26 +6369,26 @@ const doSync = async () => {
 	
 												let oldParent = getParentPath(oldPath)
 												let newParent = getParentPath(newPath)
+
+												let newName = newPath
+		
+												if(newPath.slice(-1) == "/"){
+													newName = newPath.substring(0, (newPath.length - 1))
+												}
+		
+												newName = newName.split("/")
+												newName = newName[newName.length - 1]
+		
+												let oldName = oldPath
+		
+												if(oldPath.slice(-1) == "/"){
+													oldName = oldPath.substring(0, (oldPath.length - 1))
+												}
+		
+												oldName = oldName.split("/")
+												oldName = oldName[oldName.length - 1]
 	
 												if(newParent == oldParent){
-													let newName = newPath
-		
-													if(newPath.slice(-1) == "/"){
-														newName = newPath.substring(0, (newPath.length - 1))
-													}
-			
-													newName = newName.split("/")
-													newName = newName[newName.length - 1]
-			
-													let oldName = oldPath
-			
-													if(oldPath.slice(-1) == "/"){
-														oldName = oldPath.substring(0, (oldPath.length - 1))
-													}
-			
-													oldName = oldName.split("/")
-													oldName = oldName[oldName.length - 1]
-			
 													if(newName !== oldName){
 														if(typeof remoteFolders[oldPath] !== "undefined"){
 															currentRenamingRemoteFolders.push(oldPath)
@@ -6121,34 +6420,70 @@ const doSync = async () => {
 													}
 												}
 												else{
-													if(typeof remoteFolders[oldPath] !== "undefined"){
-														if(canMoveRemoteDir(prop)){
-															currentMovingRemoteFolders.push(newPath)
-															currentMovingRemoteFolders.push(oldPath)
-
-															syncTask("remote", "movedir", {
-																path: newPath,
-																newPath: newPath,
-																oldPath: oldPath,
-																uuid: remoteFolders[oldPath].uuid,
-																parent: remoteFolders[oldPath].parent,
-																folder: remoteFolders[oldPath],
-																realPath: userSyncDir + "/" + newPath.slice(11)
-															}, userMasterKeys)
+													if(oldName !== newName){
+														if(typeof remoteFolders[oldPath] !== "undefined"){
+															if(canMoveRemoteDir(prop)){
+																currentMovingRemoteFolders.push(newPath)
+																currentMovingRemoteFolders.push(oldPath)
+	
+																syncTask("remote", "moverenamedir", {
+																	path: newPath,
+																	newPath: newPath,
+																	oldPath: oldPath,
+																	uuid: remoteFolders[oldPath].uuid,
+																	parent: remoteFolders[oldPath].parent,
+																	name: newName,
+																	folder: remoteFolders[oldPath],
+																	realPath: userSyncDir + "/" + newPath.slice(11)
+																}, userMasterKeys)
+															}
+														}
+														
+														if(typeof remoteFiles[oldPath] !== "undefined"){
+															if(canMoveRemoteDir(prop)){
+																syncTask("remote", "moverenamefile", {
+																	path: newPath,
+																	newPath: newPath,
+																	oldPath: oldPath,
+																	uuid: remoteFiles[oldPath].uuid,
+																	parent: remoteFiles[oldPath].parent,
+																	name: newName,
+																	file: remoteFiles[oldPath],
+																	realPath: userSyncDir + "/" + newPath.slice(11)
+																}, userMasterKeys)
+															}
 														}
 													}
-													
-													if(typeof remoteFiles[oldPath] !== "undefined"){
-														if(canMoveRemoteDir(prop)){
-															syncTask("remote", "movefile", {
-																path: newPath,
-																newPath: newPath,
-																oldPath: oldPath,
-																uuid: remoteFiles[oldPath].uuid,
-																parent: remoteFiles[oldPath].parent,
-																file: remoteFiles[oldPath],
-																realPath: userSyncDir + "/" + newPath.slice(11)
-															}, userMasterKeys)
+													else{
+														if(typeof remoteFolders[oldPath] !== "undefined"){
+															if(canMoveRemoteDir(prop)){
+																currentMovingRemoteFolders.push(newPath)
+																currentMovingRemoteFolders.push(oldPath)
+	
+																syncTask("remote", "movedir", {
+																	path: newPath,
+																	newPath: newPath,
+																	oldPath: oldPath,
+																	uuid: remoteFolders[oldPath].uuid,
+																	parent: remoteFolders[oldPath].parent,
+																	folder: remoteFolders[oldPath],
+																	realPath: userSyncDir + "/" + newPath.slice(11)
+																}, userMasterKeys)
+															}
+														}
+														
+														if(typeof remoteFiles[oldPath] !== "undefined"){
+															if(canMoveRemoteDir(prop)){
+																syncTask("remote", "movefile", {
+																	path: newPath,
+																	newPath: newPath,
+																	oldPath: oldPath,
+																	uuid: remoteFiles[oldPath].uuid,
+																	parent: remoteFiles[oldPath].parent,
+																	file: remoteFiles[oldPath],
+																	realPath: userSyncDir + "/" + newPath.slice(11)
+																}, userMasterKeys)
+															}
 														}
 													}
 												}
@@ -6175,25 +6510,25 @@ const doSync = async () => {
 											let oldParent = getParentPath(oldPath)
 											let newParent = getParentPath(newPath)
 
-											if(newParent == oldParent){
-												let newName = newPath
+											let newName = newPath
 	
-												if(newPath.slice(-1) == "/"){
-													newName = newPath.substring(0, (newPath.length - 1))
-												}
-		
-												newName = newName.split("/")
-												newName = newName[newName.length - 1]
-		
-												let oldName = oldPath
-		
-												if(oldPath.slice(-1) == "/"){
-													oldName = oldPath.substring(0, (oldPath.length - 1))
-												}
-		
-												oldName = oldName.split("/")
-												oldName = oldName[oldName.length - 1]
+											if(newPath.slice(-1) == "/"){
+												newName = newPath.substring(0, (newPath.length - 1))
+											}
+	
+											newName = newName.split("/")
+											newName = newName[newName.length - 1]
+	
+											let oldName = oldPath
+	
+											if(oldPath.slice(-1) == "/"){
+												oldName = oldPath.substring(0, (oldPath.length - 1))
+											}
+	
+											oldName = oldName.split("/")
+											oldName = oldName[oldName.length - 1]
 
+											if(newParent == oldParent){
 												if(oldName !== newName){
 													if(typeof lastRemoteUUIDsOnlyUUIDs[uuid].folder !== "undefined"){
 														if(typeof localFolders[oldPath] !== "undefined"){
