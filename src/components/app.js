@@ -21,7 +21,7 @@ process.on("uncaughtException", (err) => {
 				dbPath = (electron.app || electron.remote.app).getPath("userData") + "/level"
 			}
 
-			return fs.remove(dbPath, (err) => {
+			return fs.remove(dbPath, () => {
 				try{
 					ipcRenderer.send("exit-app")
 				}
@@ -74,7 +74,7 @@ try{
 catch(e){
 	console.log(e)
 
-	fs.remove(dbPath, (err) => {
+	fs.remove(dbPath, () => {
 		try{
 			ipcRenderer.send("exit-app")
 		}
@@ -858,9 +858,7 @@ const startDownloadFolder = () => {
 
 	fs.remove(winOrUnixFilePath(downloadPath + "/" + currentDownloadFolderName), (err) => {
 		if(err){
-			console.log(err)
-
-			return showBigErrorMessage("Could not clear destination directory.")
+			return console.log(err)
 		}
 
 		lastDownloadFolderPath = downloadPath
@@ -2317,6 +2315,29 @@ const removeFromDeletingLocalFolders = (taskId) => {
 }
 
 const checkIfFileExistsLocallyOtherwiseDelete = async (path, callback) => {
+	try{
+		var stats = fs.lstat(winOrUnixFilePath(path))
+	}
+	catch(e){
+		if(e.code == "ENOENT"){
+			return callback(null)
+		}
+
+		return callback(e)
+	}
+
+	try{
+		if(stats.isSymbolicLink()){
+			await fs.unlink(winOrUnixFilePath(path))
+		}
+		else{
+			await fs.remove(winOrUnixFilePath(path))
+		}
+	}
+	catch(e){
+		return callback(e)
+	}
+
 	return callback(null)
 }
 
@@ -3168,10 +3189,10 @@ const downloadFileToLocal = async (path, file, isSync, callback) => {
 	let fileDirPathExists = false
 
 	try{
-		let dirStat = await fs.stat(winOrUnixFilePath(fileDirPath))
+		let dirStat = await fs.lstat(winOrUnixFilePath(fileDirPath))
 
 		if(dirStat){
-			if(dirStat.isDirectory()){
+			if(dirStat.isDirectory() || dirStat.isSymbolicLink()){
 				fileDirPathExists = true	
 			}
 		}
@@ -4099,8 +4120,7 @@ const isInsideSymlink = async (path) => {
 		if(stat.isSymbolicLink()){
 			return {
 				status: true,
-				isSymlink: true,
-				symlinkPath: thisPath
+				isSymlink: true
 			}
 		}
 
@@ -5049,7 +5069,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 						fs.remove(winOrUnixFilePath(taskInfo.realPathNew), (err) => {
 							if(err){
 								console.log(err)
-	
+			
 								syncTaskLimiterSemaphoreRelease()
 	
 								return setTimeout(() => {
@@ -5100,7 +5120,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 						fs.remove(winOrUnixFilePath(taskInfo.realPathNew), (err) => {
 							if(err){
 								console.log(err)
-		
+	
 								syncTaskLimiterSemaphoreRelease()
 	
 								return setTimeout(() => {
@@ -5158,6 +5178,16 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 						recursive: true,
 						overwrite: true
 					}, (err) => {
+						if(err){
+							console.log(err)
+	
+							syncTaskLimiterSemaphoreRelease()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						}
+
 						addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
 
 						localFolderExisted[taskInfo.path] = true
@@ -5175,8 +5205,13 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 					let rmdirPath = userSyncDir + "/" + taskInfo.path.slice(11)
 
 					var name = getNameFromPath(taskInfo.path)
+					var rmdirPathWithoutEndSlash = rmdirPath
 
-					createTrashBin((err) => {
+					if(rmdirPathWithoutEndSlash.slice(-1) == "/"){
+						rmdirPathWithoutEndSlash = rmdirPathWithoutEndSlash.substring(0, (rmdirPathWithoutEndSlash.length - 1))
+					}
+
+					createTrashBin(async (err) => {
 						if(err){
 							console.log(err)
 	
@@ -5187,32 +5222,51 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 							}, syncTimeout)
 						}
 
-						fs.move(winOrUnixFilePath(rmdirPath), winOrUnixFilePath(userSyncDir + "/" + localTrashBinName + "/" + name), {
-							overwrite: true
-						}, (err) => {
-							if(err){
-								console.log(err)
+						try{
+							var stats = fs.lstat(winOrUnixFilePath(rmdirPathWithoutEndSlash))
+						}
+						catch(e){
+							console.log(e)
 	
-								syncTaskLimiterSemaphoreRelease()
-	
-								return setTimeout(() => {
-									removeFromSyncTasks(taskId)
-								}, syncTimeout)
+							syncTaskLimiterSemaphoreRelease()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						}
+
+						try{
+							if(stats.isSymbolicLink()){
+								await fs.unlink(winOrUnixFilePath(rmdirPathWithoutEndSlash))
 							}
+							else{
+								await fs.move(winOrUnixFilePath(rmdirPath), winOrUnixFilePath(userSyncDir + "/" + localTrashBinName + "/" + name), {
+									overwrite: true
+								})
+							}
+						}
+						catch(e){
+							console.log(e)
 	
-							addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
+							syncTaskLimiterSemaphoreRelease()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						}
+
+						addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
 	
-							delete localFolderExisted[taskInfo.path]
-	
-							return removeFoldersAndFilesFromExistingDir(taskInfo.path, () => {
-								removeFromDeletingLocalFolders(taskId)
-								
-								syncTaskLimiterSemaphoreRelease()
-	
-								return setTimeout(() => {
-									removeFromSyncTasks(taskId)
-								}, syncTimeout)
-							})
+						delete localFolderExisted[taskInfo.path]
+
+						return removeFoldersAndFilesFromExistingDir(taskInfo.path, () => {
+							removeFromDeletingLocalFolders(taskId)
+							
+							syncTaskLimiterSemaphoreRelease()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
 						})
 					})
 				break
@@ -5232,32 +5286,51 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 							}, syncTimeout)
 						}
 
-						fs.move(winOrUnixFilePath(rmFilePath), winOrUnixFilePath(userSyncDir + "/" + localTrashBinName + "/" + name), {
-							overwrite: true
-						}, (err) => {
-							if(err){
-								console.log(err)
-	
-								syncTaskLimiterSemaphoreRelease()
-	
-								return setTimeout(() => {
-									removeFromSyncTasks(taskId)
-								}, syncTimeout)
-							}
-	
-							addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
-	
-							delete localFileModifications[taskInfo.path]
-							delete remoteFileSizes[taskInfo.path]
-							delete remoteFileUUIDs[taskInfo.path]
-							delete localFileExisted[taskInfo.path]
+						try{
+							var stats = fs.lstat(winOrUnixFilePath(rmFilePath))
+						}
+						catch(e){
+							console.log(e)
 	
 							syncTaskLimiterSemaphoreRelease()
-	
+
 							return setTimeout(() => {
 								removeFromSyncTasks(taskId)
 							}, syncTimeout)
-						})
+						}
+
+						try{
+							if(stats.isSymbolicLink()){
+								await fs.unlink(winOrUnixFilePath(rmFilePath))
+							}
+							else{
+								await fs.move(winOrUnixFilePath(rmFilePath), winOrUnixFilePath(userSyncDir + "/" + localTrashBinName + "/" + name), {
+									overwrite: true
+								})
+							}
+						}
+						catch(e){
+							console.log(e)
+	
+							syncTaskLimiterSemaphoreRelease()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						}
+
+						addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
+	
+						delete localFileModifications[taskInfo.path]
+						delete remoteFileSizes[taskInfo.path]
+						delete remoteFileUUIDs[taskInfo.path]
+						delete localFileExisted[taskInfo.path]
+
+						syncTaskLimiterSemaphoreRelease()
+
+						return setTimeout(() => {
+							removeFromSyncTasks(taskId)
+						}, syncTimeout)
 					})
 				break
 				case "download":
@@ -6519,7 +6592,7 @@ const initChokidar = async () => {
 		setTimeout(async () => {
 			isHandlingWatchEvent = false
 
-			//clearCurrentSyncTasksExtra()
+			clearCurrentSyncTasksExtra()
 			setLocalDataChangedTrue()
 		}, 30000)
 
@@ -6553,8 +6626,6 @@ const initChokidar = async () => {
 		})
 		
 		watcher.on("error", (err) => {
-			showBigErrorMessage("Could not initialize the directory watcher, please try restarting the application.")
-
 			return console.log(err)
 		})
 	}
