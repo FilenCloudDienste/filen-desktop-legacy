@@ -1602,6 +1602,13 @@ const renderSyncTask = (task, prepend = true) => {
 	else if(task.where == "remote" && task.task == "movefile"){
 		taskName = '<i class="fa fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrows-alt"></i>'
 	}
+	else if(task.where == "remote" && task.task == "moverenamedir"){
+		taskName = '<i class="fa fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrows-alt"></i>'
+		isFile = false
+	}
+	else if(task.where == "remote" && task.task == "moverenamefile"){
+		taskName = '<i class="fa fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrows-alt"></i>'
+	}
 	else if(task.where == "local" && task.task == "download"){
 		taskName = '<i class="fa fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-down"></i>'
 	}
