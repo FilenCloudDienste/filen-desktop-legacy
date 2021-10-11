@@ -2316,14 +2316,10 @@ const removeFromDeletingLocalFolders = (taskId) => {
 
 const checkIfFileExistsLocallyOtherwiseDelete = async (path, callback) => {
 	try{
-		var stats = fs.lstat(winOrUnixFilePath(path))
+		var stats = await fs.lstat(winOrUnixFilePath(path))
 	}
 	catch(e){
-		if(e.code == "ENOENT"){
-			return callback(null)
-		}
-
-		return callback(e)
+		return callback(null)
 	}
 
 	try{
@@ -4950,6 +4946,53 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 				case "movedir":
 					var releaseMoveSemaphore = await moveSemaphore.acquire()
 
+					var moveDirPathWithoutEndSlash = taskInfo.realPath
+
+					if(moveDirPathWithoutEndSlash.slice(-1) == "/"){
+						moveDirPathWithoutEndSlash = moveDirPathWithoutEndSlash.substring(0, (moveDirPathWithoutEndSlash.length - 1))
+					}
+
+					try{
+						var stats = await fs.lstat(winOrUnixFilePath(moveDirPathWithoutEndSlash))
+					}
+					catch(e){
+						console.log(e)
+		
+						syncTaskLimiterSemaphoreRelease()
+						releaseMoveSemaphore()
+
+						return setTimeout(() => {
+							removeFromSyncTasks(taskId)
+						}, syncTimeout)
+					}
+
+					if(stats.isSymbolicLink()){
+						try{
+							await fs.unlink(winOrUnixFilePath(moveDirPathWithoutEndSlash))
+						}
+						catch(e){
+							console.log(e)
+		
+							syncTaskLimiterSemaphoreRelease()
+							releaseMoveSemaphore()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						}
+
+						console.log(task + " " + taskInfo.path + " " + task + " done")
+
+						delete localFolderExisted[taskInfo.oldPath]
+
+						syncTaskLimiterSemaphoreRelease()
+						releaseMoveSemaphore()
+
+						return setTimeout(() => {
+							removeFromSyncTasks(taskId)
+						}, syncTimeout)
+					}
+
 					fs.access(winOrUnixFilePath(taskInfo.realPath), (err) => {
 						if(err){
 							console.log(err)
@@ -4995,6 +5038,48 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 				break
 				case "movefile":
 					var releaseMoveSemaphore = await moveSemaphore.acquire()
+
+					try{
+						var stats = await fs.lstat(winOrUnixFilePath(taskInfo.realPath))
+					}
+					catch(e){
+						console.log(e)
+		
+						syncTaskLimiterSemaphoreRelease()
+						releaseMoveSemaphore()
+
+						return setTimeout(() => {
+							removeFromSyncTasks(taskId)
+						}, syncTimeout)
+					}
+
+					if(stats.isSymbolicLink()){
+						try{
+							await fs.unlink(winOrUnixFilePath(taskInfo.realPath))
+						}
+						catch(e){
+							console.log(e)
+		
+							syncTaskLimiterSemaphoreRelease()
+							releaseMoveSemaphore()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						}
+
+						delete localFileModifications[taskInfo.oldPath]
+						delete remoteFileSizes[taskInfo.oldPath]
+						delete remoteFileUUIDs[taskInfo.oldPath]
+						delete localFileExisted[taskInfo.oldPath]
+
+						syncTaskLimiterSemaphoreRelease()
+						releaseMoveSemaphore()
+
+						return setTimeout(() => {
+							removeFromSyncTasks(taskId)
+						}, syncTimeout)
+					}
 
 					fs.access(winOrUnixFilePath(taskInfo.realPath), (err) => {
 						if(err){
@@ -5055,6 +5140,50 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 					})
 				break
 				case "renamedir":
+					var renameDirPathWithoutEndSlash = taskInfo.realPath
+
+					if(renameDirPathWithoutEndSlash.slice(-1) == "/"){
+						renameDirPathWithoutEndSlash = renameDirPathWithoutEndSlash.substring(0, (renameDirPathWithoutEndSlash.length - 1))
+					}
+
+					try{
+						var stats = await fs.lstat(winOrUnixFilePath(renameDirPathWithoutEndSlash))
+					}
+					catch(e){
+						console.log(e)
+		
+						syncTaskLimiterSemaphoreRelease()
+
+						return setTimeout(() => {
+							removeFromSyncTasks(taskId)
+						}, syncTimeout)
+					}
+
+					if(stats.isSymbolicLink()){
+						try{
+							await fs.unlink(winOrUnixFilePath(renameDirPathWithoutEndSlash))
+						}
+						catch(e){
+							console.log(e)
+		
+							syncTaskLimiterSemaphoreRelease()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						}
+
+						console.log(task + " " + taskInfo.path + " " + task + " done")
+
+						delete localFolderExisted[taskInfo.oldPath]
+
+						syncTaskLimiterSemaphoreRelease()
+
+						return setTimeout(() => {
+							removeFromSyncTasks(taskId)
+						}, syncTimeout)
+					}
+
 					fs.access(winOrUnixFilePath(taskInfo.realPath), (err) => {
 						if(err){
 							console.log(err)
@@ -5106,6 +5235,47 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 					})
 				break
 				case "renamefile":
+					try{
+						var stats = await fs.lstat(winOrUnixFilePath(taskInfo.realPath))
+					}
+					catch(e){
+						console.log(e)
+		
+						syncTaskLimiterSemaphoreRelease()
+
+						return setTimeout(() => {
+							removeFromSyncTasks(taskId)
+						}, syncTimeout)
+					}
+
+					if(stats.isSymbolicLink()){
+						try{
+							await fs.unlink(winOrUnixFilePath(taskInfo.realPath))
+						}
+						catch(e){
+							console.log(e)
+		
+							syncTaskLimiterSemaphoreRelease()
+
+							return setTimeout(() => {
+								removeFromSyncTasks(taskId)
+							}, syncTimeout)
+						}
+
+						console.log(task + " " + taskInfo.path + " " + task + " done")
+
+						delete localFileModifications[taskInfo.oldPath]
+						delete remoteFileSizes[taskInfo.oldPath]
+						delete remoteFileUUIDs[taskInfo.oldPath]
+						delete localFileExisted[taskInfo.oldPath]
+
+						syncTaskLimiterSemaphoreRelease()
+
+						return setTimeout(() => {
+							removeFromSyncTasks(taskId)
+						}, syncTimeout)
+					}
+
 					fs.access(winOrUnixFilePath(taskInfo.realPath), (err) => {
 						if(err){
 							console.log(err)
@@ -5223,7 +5393,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 						}
 
 						try{
-							var stats = fs.lstat(winOrUnixFilePath(rmdirPathWithoutEndSlash))
+							var stats = await fs.lstat(winOrUnixFilePath(rmdirPathWithoutEndSlash))
 						}
 						catch(e){
 							console.log(e)
@@ -5275,7 +5445,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 					var name = getNameFromPath(taskInfo.path)
 
-					createTrashBin((err) => {
+					createTrashBin(async (err) => {
 						if(err){
 							console.log(err)
 	
@@ -5287,7 +5457,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 						}
 
 						try{
-							var stats = fs.lstat(winOrUnixFilePath(rmFilePath))
+							var stats = await fs.lstat(winOrUnixFilePath(rmFilePath))
 						}
 						catch(e){
 							console.log(e)
@@ -6592,7 +6762,7 @@ const initChokidar = async () => {
 		setTimeout(async () => {
 			isHandlingWatchEvent = false
 
-			clearCurrentSyncTasksExtra()
+			//clearCurrentSyncTasksExtra()
 			setLocalDataChangedTrue()
 		}, 30000)
 
@@ -6607,10 +6777,9 @@ const initChokidar = async () => {
 			followSymlinks: true,
 			cwd: winOrUnixFilePath(userSyncDir),
 			depth: 214748364,
-			awaitWriteFinish: false,
-			useFsEvents: false,
 			alwaysStat: false,
-			disableGlobbing: true
+			disableGlobbing: true,
+			ignorePermissionErrors: true
 		})
 		
 		watcher.on("all", async (event, ePath) => {
