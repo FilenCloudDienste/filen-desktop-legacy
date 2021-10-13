@@ -207,6 +207,8 @@ let currentMovingRemoteFiles = []
 let selectPathRes = {}
 let pathDelimeter = "{[%@*#$_E-X_$#*@%]}"
 let isHandlingWatchEvent = false
+let excludedPaths = []
+let needsUpdate = false
 
 let currentFileVersion = 1
 let metadataVersion = 1
@@ -215,21 +217,63 @@ let defaultBlockedFiles = [
 	".ds_store",
 	"desktop.ini",
 	"thumbs.db",
-	localTrashBinName
+	localTrashBinName,
+	"AUX",
+	"PRN",
+	"NUL",
+	"CON",
+	"LPT1",
+	"LPT2",
+	"LPT3",
+	"LPT4",
+	"LPT5",
+	"LPT6",
+	"LPT7",
+	"LPT8",
+	"LPT9",
+	"COM1",
+	"COM2",
+	"COM3",
+	"COM4",
+	"COM5",
+	"COM6",
+	"COM7",
+	"COM8",
+	"COM9"
 ]
 
 let defaultBlockedFileExt = [
 	".tmp",
-	".temp"
+	".temp",
+	".backupdb",
+	".cache",
+	".lnk",
+	"._",
+	".scriv",
+	".BridgeCache",
+	".download",
+	".fcpcache"
 ]
 
 const isFileNameBlocked = (name) => {
 	if(typeof name !== "string"){
-		return false
+		return true
 	}
 
 	if(name.length <= 0){
-		return false
+		return true
+	}
+
+	if(name.length >= 256){
+		return true
+	}
+
+	if(name.substring(0, 1) == " "){
+		return true
+	}
+
+	if(name.slice(-1) == " "){
+		return true
 	}
 
 	name = name.toLowerCase().trim()
@@ -378,7 +422,7 @@ const routeTo = async (route) => {
 		route = "login"
 	}
 
-	if(route == "login" || route == "big-loading" || route == "download-folder"){
+	if(route == "login" || route == "big-loading" || route == "download-folder" || route == "error-screen" || route == "update-screen"){
 		$(".header").hide()
 		$(".footer").hide()
 	}
@@ -3659,6 +3703,11 @@ const getLocalSyncDirContents = async (callback) => {
 								iNodeMapINodesRes[folderPath + pathDelimeter + file.stats.ino] = folderPath
 								iNodeMapOnlyINodesRes[file.stats.ino] = folderPath
 							}
+							else{
+								if(!excludedPaths.includes(folderPath)){
+									excludedPaths.push(folderPath)
+								}
+							}
 						}
 						else if(typeof filePathEx[filePathEx.length - 1] !== "undefined"){
 							if(file.stats.size > 0){
@@ -3671,6 +3720,11 @@ const getLocalSyncDirContents = async (callback) => {
 
 									iNodeMapINodesRes[filePath + pathDelimeter + file.stats.ino] = filePath
 									iNodeMapOnlyINodesRes[file.stats.ino] = filePath
+								}
+								else{
+									if(!excludedPaths.includes(filePath)){
+										excludedPaths.push(filePath)
+									}
 								}
 							}
 						}
@@ -3898,6 +3952,11 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 									path: newPath,
 									file: files[newPath]
 								}
+							}
+						}
+						else{
+							if(!excludedPaths.includes(newPath)){
+								excludedPaths.push(newPath)
 							}
 						}
 					}
@@ -6199,6 +6258,10 @@ const canDeleteLocalFile = (prop) => {
 }
 
 const doSync = async () => {
+	if(needsUpdate){
+		return false
+	}
+	
 	if(isSyncing || isIndexing){
 		return false
 	}
@@ -7568,6 +7631,37 @@ const checkLocalTrashBin = () => {
 	})
 }
 
+const versionCheck = async () => {
+	apiRequest("/v1/currentVersions", {
+		platform: "desktop"
+	}, (err, res) => {
+		if(err){
+			return console.log(err)
+		}
+
+		if(!res.status){
+			return console.log(res.message)
+		}
+
+		if(compareVersions(currentAppVersion, res.data.desktop) == "update"){
+            console.log("update")
+
+            let wait = setInterval(() => {
+				if(!isSyncing && !isIndexing && currentSyncTasks.length == 0 && currentSyncTasksExtra.length == 0){
+					needsUpdate = true
+
+					clearInterval(wait)
+
+					routeTo("update-screen")
+				}
+			}, 100)
+        }
+        else{
+            console.log("app version ok")
+        }
+	})
+}
+
 const setupIntervals = () => {
 	setInterval(() => {
 		ipcRenderer.send("is-syncing-paused", {
@@ -7584,6 +7678,8 @@ const setupIntervals = () => {
 	updateVisualStatus()
 
 	setInterval(updateVisualStatus, 5000)
+
+	setInterval(versionCheck, 60000)
 }
 
 const darkModeEnabled = async () => {

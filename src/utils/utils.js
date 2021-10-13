@@ -175,12 +175,12 @@ const unixTimestamp = () => {
 const getAPIServer = () => {
   let servers = [
     "https://api.filen.io",
-    "https://api.filen.net",
-    "https://api.filen-1.net",
-    "https://api.filen-2.net",
-    "https://api.filen-3.net",
-    "https://api.filen-4.net",
-    "https://api.filen-5.net",
+    //"https://api.filen.net",
+    "https://api.filen-1.xyz",
+    "https://api.filen-2.xyz",
+    "https://api.filen-3.xyz",
+    "https://api.filen-4.xyz",
+    "https://api.filen-5.xyz",
     "https://api.filen-6.net"
   ]
 
@@ -190,12 +190,12 @@ const getAPIServer = () => {
 const getDownloadServer = () => {
   let servers = [
     "https://down.filen.io",
-    "https://down.filen.net",
-    "https://down.filen-1.net",
-    "https://down.filen-2.net",
-    "https://down.filen-3.net",
-    "https://down.filen-4.net",
-    "https://down.filen-5.net",
+    //"https://down.filen.net",
+    "https://down.filen-1.xyz",
+    "https://down.filen-2.xyz",
+    "https://down.filen-3.xyz",
+    "https://down.filen-4.xyz",
+    "https://down.filen-5.xyz",
     "https://down.filen-6.net"
   ]
 
@@ -205,12 +205,12 @@ const getDownloadServer = () => {
 const getUploadServer = () => {
   let servers = [
     "https://up.filen.io",
-    "https://up.filen.net",
-    "https://up.filen-1.net",
-    "https://up.filen-2.net",
-    "https://up.filen-3.net",
-    "https://up.filen-4.net",
-    "https://up.filen-5.net",
+    //"https://up.filen.net",
+    "https://up.filen-1.xyz",
+    "https://up.filen-2.xyz",
+    "https://up.filen-3.xyz",
+    "https://up.filen-4.xyz",
+    "https://up.filen-5.xyz",
     "https://up.filen-6.net"
   ]
 
@@ -443,4 +443,46 @@ async function decryptMetadata(data, key){
       return ""
     }
   }
+}
+
+function compareVersions(current, got){
+	function compare(a, b) {
+		if (a === b) {
+		   return 0;
+		}
+	
+		var a_components = a.split(".");
+		var b_components = b.split(".");
+	
+		var len = Math.min(a_components.length, b_components.length);
+
+		for (var i = 0; i < len; i++) {
+			if (parseInt(a_components[i]) > parseInt(b_components[i])) {
+				return 1;
+			}
+	
+			if (parseInt(a_components[i]) < parseInt(b_components[i])) {
+				return -1;
+			}
+		}
+	
+		if (a_components.length > b_components.length) {
+			return 1;
+		}
+	
+		if (a_components.length < b_components.length) {
+			return -1;
+		}
+	
+		return 0;
+	}
+
+	let res = compare(current, got)
+
+	if(res == -1){
+		return "update"
+	}
+	else{
+		return "ok"
+	}
 }
