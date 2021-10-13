@@ -6225,6 +6225,32 @@ const doSync = async () => {
 		return false
 	}
 
+	if(typeof userMasterKeys[userMasterKeys.length - 1] !== "string"){
+		console.log("last userMasterKeys !== string")
+
+		isSyncing = false
+		isIndexing = false
+		canRemoveFromSyncTasks = true
+
+		releaseSyncSemaphore()
+		clearCurrentSyncTasksExtra()
+
+		return false
+	}
+
+	if(userMasterKeys[userMasterKeys.length - 1].length <= 16){
+		console.log("last userMasterKeys length too low")
+
+		isSyncing = false
+		isIndexing = false
+		canRemoveFromSyncTasks = true
+
+		releaseSyncSemaphore()
+		clearCurrentSyncTasksExtra()
+
+		return false
+	}
+
 	if(syncingPaused || isDoingRealtimeWork){
 		isSyncing = false
 		isIndexing = false
@@ -6642,33 +6668,6 @@ const doSync = async () => {
 							}
 						}
 
-						if(syncMode == "twoWay" || syncMode == "cloudToLocal"){
-							//Did the remote file UUID (versioning) change?
-							for(let prop in remoteFiles){
-								if(typeof localFiles[prop] !== "undefined" && typeof lastLocalSyncFiles[prop] !== "undefined" && typeof lastRemoteSyncFiles[prop] !== "undefined"){
-									let filePath = userSyncDir + "/" + prop.slice(11)
-
-									if(typeof remoteFileUUIDs[prop] == "undefined"){
-										remoteFileUUIDs[prop] = remoteFiles[prop].uuid
-									}
-									else{
-										if(remoteFileUUIDs[prop] !== remoteFiles[prop].uuid){
-											if(remoteFiles[prop].size > 0){
-												if(canDownloadFile(prop)){
-													syncTask("local", "update", {
-														path: prop,
-														file: remoteFiles[prop],
-														filePath: filePath,
-														size: remoteFiles[prop].size
-													}, userMasterKeys)
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-
 						if(syncMode == "twoWay" || syncMode == "localToCloud"){
 							//Did the local mod time change from previous sync?
 							for(let prop in localFiles){
@@ -6706,6 +6705,33 @@ const doSync = async () => {
 														name: localFiles[prop].name,
 														parent: remoteSyncFolders[fileParentPath].uuid,
 														filePath: filePath
+													}, userMasterKeys)
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+
+						if(syncMode == "twoWay" || syncMode == "cloudToLocal"){
+							//Did the remote file UUID (versioning) change?
+							for(let prop in remoteFiles){
+								if(typeof localFiles[prop] !== "undefined" && typeof lastLocalSyncFiles[prop] !== "undefined" && typeof lastRemoteSyncFiles[prop] !== "undefined"){
+									let filePath = userSyncDir + "/" + prop.slice(11)
+
+									if(typeof remoteFileUUIDs[prop] == "undefined"){
+										remoteFileUUIDs[prop] = remoteFiles[prop].uuid
+									}
+									else{
+										if(remoteFileUUIDs[prop] !== remoteFiles[prop].uuid){
+											if(remoteFiles[prop].size > 0){
+												if(canDownloadFile(prop)){
+													syncTask("local", "update", {
+														path: prop,
+														file: remoteFiles[prop],
+														filePath: filePath,
+														size: remoteFiles[prop].size
 													}, userMasterKeys)
 												}
 											}
@@ -7141,7 +7167,7 @@ const initChokidar = async () => {
 
 			//clearCurrentSyncTasksExtra()
 			setLocalDataChangedTrue()
-		}, 30000)
+		}, 60000)
 
 		return true
 	}
