@@ -308,6 +308,8 @@ const showWindow = () => {
 		return false
 	}
 
+	browserWindow.webContents.send("skip-blur")
+
 	moveWindow()
 
 	browserWindow.show()
@@ -468,6 +470,10 @@ const createWindow = async () => {
 	tray.setContextMenu(normalTrayMenu)
 
 	lastTrayMenuName = "normal"
+
+	tray.on("right-click", () => {
+    	return showWindow()
+    })
 
     tray.on("double-click", () => {
     	return showWindow()

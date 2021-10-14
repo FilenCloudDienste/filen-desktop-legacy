@@ -1025,6 +1025,10 @@ const initIPC = () => {
 		return routeTo("syncs")
 	})
 
+	ipcRenderer.on("skip-blur", (e, data) => {
+		return dontHideOnBlur = true
+	})
+
 	ipcRenderer.on("update-available", (e, data) => {
 		return $("#settings-update-container").show()
 	})
@@ -6261,7 +6265,7 @@ const doSync = async () => {
 	if(needsUpdate){
 		return false
 	}
-	
+
 	if(isSyncing || isIndexing){
 		return false
 	}
@@ -7658,6 +7662,12 @@ const versionCheck = async () => {
         }
         else{
             console.log("app version ok")
+
+			if(needsUpdate){
+				needsUpdate = false
+
+				routeTo("syncs")
+			}
         }
 	})
 }
