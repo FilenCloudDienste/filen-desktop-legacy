@@ -92,6 +92,7 @@ const doSyncSempahore = new Semaphore(1)
 const syncTaskLimiterSemaphore = new Semaphore(16)
 const checkSyncTaskForDuplicateSemaphore = new Semaphore(1)
 const moveSemaphore = new Semaphore(1)
+const fsWatchSemaphore = new Semaphore(1)
 
 let currentAppVersion = "1"
 let thisDeviceId = undefined
@@ -173,23 +174,13 @@ let dontHideOnBlur = false
 let lastHeaderStatus = ""
 let lastTooltipText = ""
 let syncTasksToWrite = []
-let deletedLastCycle = {}
-let isDoingRealtimeWork = false
 let syncMode = "twoWay"
 let reloadAll = true
-let handleRealtimeWorkTimeout = undefined
 let currentSyncTasksExtra = []
 let currentWriteThreads = 0
 let maxWriteThreads = 2048
-let startReceiveingFSEvents = false
-let iNodeMap = {}
-let deletedTimer = {}
-let deletedDebouncer = undefined
-let deletedPaths = []
-let checkingDeletedPaths = false
 let iNodeMapINodes = {}
 let iNodeMapOnlyINodes = {}
-let doIndexCleanup = true
 let canRemoveFromSyncTasks = true
 let lastRemoteUUIDs = {}
 let lastRemoteUUIDsOnlyUUIDs = {}
@@ -198,17 +189,15 @@ let currentRenamingLocalFolders = []
 let currentRenamingRemoteFolders = []
 let currentMovingLocalFolders = []
 let currentMovingRemoteFolders = []
-let currentRenamingOrMovingLocalFolders = []
-let currentRenamingOrMovingRemoteFolders = []
 let currentRenamingLocalFiles = []
 let currentRenamingRemoteFiles = []
 let currentMovingLocalFiles = []
 let currentMovingRemoteFiles = []
 let selectPathRes = {}
 let pathDelimeter = "{[%@*#$_E-X_$#*@%]}"
-let isHandlingWatchEvent = false
 let excludedPaths = []
 let needsUpdate = false
+let gotFSWatchEvent = false
 
 let currentFileVersion = 1
 let metadataVersion = 1
@@ -6270,7 +6259,7 @@ const doSync = async () => {
 		return false
 	}
 
-	if(syncingPaused || isDoingRealtimeWork){
+	if(syncingPaused){
 		return false
 	}
 
@@ -6318,7 +6307,7 @@ const doSync = async () => {
 		return false
 	}
 
-	if(syncingPaused || isDoingRealtimeWork){
+	if(syncingPaused){
 		isSyncing = false
 		isIndexing = false
 		canRemoveFromSyncTasks = true
@@ -6388,7 +6377,7 @@ const doSync = async () => {
 						return console.log(err)
 					}
 
-					if(syncingPaused || isDoingRealtimeWork){
+					if(syncingPaused){
 						isSyncing = false
 						isIndexing = false
 						canRemoveFromSyncTasks = true
@@ -6450,7 +6439,7 @@ const doSync = async () => {
 						lastDatasetHash = currentDatasetHash
 					}
 
-					if(syncingPaused || isDoingRealtimeWork){
+					if(syncingPaused){
 						isSyncing = false
 						isIndexing = false
 						canRemoveFromSyncTasks = true
@@ -7210,33 +7199,25 @@ const initChokidar = async () => {
   		throw new Error(e)
 	}
 
-	const handleEvent = async (event, ePath) => {
+	const handleEvent = (event, ePath) => {
 		if(syncMode == "cloudToLocal"){
 			return false
 		}
 
-		/*if(isSyncing || isIndexing){
-			return setTimeout(() => {
-				handleEvent(event, ePath)
-			}, 100)
-		}*/
-
-		if(isHandlingWatchEvent){
+		if(gotFSWatchEvent){
 			return false
 		}
 
-		isHandlingWatchEvent = true
+		gotFSWatchEvent = true
 
 		currentSyncTasksExtra.push(uuidv4())
 		
-		setTimeout(async () => {
-			isHandlingWatchEvent = false
+		return setTimeout(() => {
+			gotFSWatchEvent = false
 
 			//clearCurrentSyncTasksExtra()
 			setLocalDataChangedTrue()
 		}, 60000)
-
-		return true
 	}
 
 	if(process.platform == "linux"){
@@ -7563,6 +7544,10 @@ const updateVisualStatus = async () => {
 	let tooltipText = ""
 	let totalSyncTasks = (currentSyncTasks.length + currentSyncTasksExtra.length) 
 
+	if(gotFSWatchEvent){
+		totalSyncTasks += 1
+	}
+
 	if(totalSyncTasks > 0){
 		headerStatus = `
 			<center>
@@ -7684,12 +7669,11 @@ const setupIntervals = () => {
 	}, 100)
 
 	setInterval(checkLocalTrashBin, 300000)
+	setInterval(versionCheck, 500000)
 
 	updateVisualStatus()
 
 	setInterval(updateVisualStatus, 5000)
-
-	setInterval(versionCheck, 60000)
 }
 
 const darkModeEnabled = async () => {

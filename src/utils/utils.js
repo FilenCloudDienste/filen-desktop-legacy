@@ -181,7 +181,7 @@ const getAPIServer = () => {
     "https://api.filen-3.xyz",
     "https://api.filen-4.xyz",
     "https://api.filen-5.xyz",
-    "https://api.filen-6.net"
+    //"https://api.filen-6.net"
   ]
 
   return servers[getRandomArbitrary(0, (servers.length - 1))]
@@ -196,7 +196,7 @@ const getDownloadServer = () => {
     "https://down.filen-3.xyz",
     "https://down.filen-4.xyz",
     "https://down.filen-5.xyz",
-    "https://down.filen-6.net"
+    //"https://down.filen-6.net"
   ]
 
   return servers[getRandomArbitrary(0, (servers.length - 1))]
@@ -211,7 +211,7 @@ const getUploadServer = () => {
     "https://up.filen-3.xyz",
     "https://up.filen-4.xyz",
     "https://up.filen-5.xyz",
-    "https://up.filen-6.net"
+    //"https://up.filen-6.net"
   ]
 
   return servers[getRandomArbitrary(0, (servers.length - 1))]
