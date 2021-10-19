@@ -3886,7 +3886,7 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 				if(typeof folders[self.uuid] !== "undefined"){
 					let newPath = getPathRecursively(self.uuid)
 				
-					if(typeof newPath !== "undefined"){
+					if(typeof newPath !== "undefined" && newPath.indexOf(localTrashBinName) == -1){
 						pathsForFiles[self.uuid] = newPath
 						folderPaths[newPath] = folders[self.uuid]
 
@@ -5197,19 +5197,13 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 									addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
 
-									try{
-										let stat = await fs.stat(winOrUnixFilePath(taskInfo.realPath))
+									if(typeof taskInfo.size !== "undefined" && typeof taskInfo.modTime !== "undefined"){
+										localFileModifications[taskInfo.path] = taskInfo.modTime
+										remoteFileSizes[taskInfo.path] = taskInfo.size
+									}
 
-										if(stat){
-											localFileModifications[taskInfo.path] = stat.mtimeMs
-											remoteFileSizes[taskInfo.path] = stat.size
-											remoteFileUUIDs[taskInfo.path] = newFileUUID
-											localFileExisted[taskInfo.path] = true
-										}
-									}
-									catch(e){
-										console.log(e)
-									}
+									remoteFileUUIDs[taskInfo.path] = newFileUUID
+									localFileExisted[taskInfo.path] = true
 
 									syncTaskLimiterSemaphoreRelease()
 
@@ -5233,19 +5227,13 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 								doUpload()
 							}
 							else{
-								try{
-									let stat = await fs.stat(winOrUnixFilePath(taskInfo.realPath))
+								if(typeof taskInfo.size !== "undefined" && typeof taskInfo.modTime !== "undefined"){
+									localFileModifications[taskInfo.path] = taskInfo.modTime
+									remoteFileSizes[taskInfo.path] = taskInfo.size
+								}
 
-									if(stat){
-										localFileModifications[taskInfo.path] = stat.mtimeMs
-										remoteFileSizes[taskInfo.path] = stat.size
-										remoteFileUUIDs[taskInfo.path] = res.data.uuid
-										localFileExisted[taskInfo.path] = true
-									}
-								}
-								catch(e){
-									console.log(e)
-								}
+								remoteFileUUIDs[taskInfo.path] = res.data.uuid
+								localFileExisted[taskInfo.path] = true
 
 								syncTaskLimiterSemaphoreRelease()
 
@@ -6734,6 +6722,7 @@ const doSync = async () => {
 									let fileStat = {}
 
 									fileStat.mtimeMs = localFiles[prop].modTime
+									fileStat.size = localFiles[prop].size
 
 									if(fileStat){
 										if(typeof localFileModifications[prop] == "undefined"){
@@ -6760,7 +6749,9 @@ const doSync = async () => {
 														realPath: userSyncDir + "/" + prop.slice(11),
 														name: localFiles[prop].name,
 														parent: remoteSyncFolders[fileParentPath].uuid,
-														filePath: filePath
+														filePath: filePath,
+														modTime: fileStat.mtimeMs,
+														size: fileStat.size
 													}, userMasterKeys)
 												}
 											}
@@ -7022,7 +7013,9 @@ const doSync = async () => {
 												realPath: userSyncDir + "/" + prop.slice(11),
 												name: fileName,
 												parent: remoteSyncFolders[fileParentPath].uuid,
-												filePath: filePath
+												filePath: filePath,
+												modTime: localFiles[prop].modTime,
+												size: localFiles[i].size
 											}, userMasterKeys)
 										}
 									}
@@ -7058,7 +7051,9 @@ const doSync = async () => {
 											realPath: userSyncDir + "/" + prop.slice(11),
 											name: fileName,
 											parent: remoteSyncFolders[fileParentPath].uuid,
-											filePath: filePath
+											filePath: filePath,
+											modTime: localFiles[prop].modTime,
+											size: localFiles[i].size
 										}, userMasterKeys)
 									}
 								}
