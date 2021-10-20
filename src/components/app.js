@@ -198,6 +198,7 @@ let pathDelimeter = "{[%@*#$_E-X_$#*@%]}"
 let excludedPaths = []
 let needsUpdate = false
 let gotFSWatchEvent = false
+let fsWatchEventTimeout = undefined
 
 let currentFileVersion = 1
 let metadataVersion = 1
@@ -4198,9 +4199,11 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 	}
 
 	if(where == "remote"){
-		if(typeof taskInfo.birthTime !== "undefined"){
-			if((taskInfo.birthTime + 50000) > (+new Date())){
-				return false
+		if(task == "upload" || task == "mkdir"){
+			if(typeof taskInfo.birthTime !== "undefined"){
+				if((taskInfo.birthTime + 50000) > (+new Date())){
+					return false
+				}
 			}
 		}
 	}
@@ -6245,6 +6248,42 @@ const canDeleteLocalFile = (prop) => {
 	return false
 }
 
+const didRenameParentRemote = (prop) => {
+	let isRenamingParentFolder = false
+
+	if(currentRenamingRemoteFolders.length > 0){
+		for(let i = 0; i < currentRenamingRemoteFolders.length; i++){
+			if(prop.indexOf(currentRenamingRemoteFolders[i]) !== -1){
+				isRenamingParentFolder = true
+			}
+		}
+	}
+
+	if(isRenamingParentFolder){
+		return true
+	}
+
+	return false
+}
+
+const didRenameParentLocal = (prop) => {
+	let isRenamingParentFolder = false
+
+	if(currentRenamingLocalFolders.length > 0){
+		for(let i = 0; i < currentRenamingLocalFolders.length; i++){
+			if(prop.indexOf(currentRenamingLocalFolders[i]) !== -1){
+				isRenamingParentFolder = true
+			}
+		}
+	}
+
+	if(isRenamingParentFolder){
+		return true
+	}
+
+	return false
+}
+
 const doSync = async () => {
 	if(needsUpdate){
 		return false
@@ -6530,30 +6569,24 @@ const doSync = async () => {
 												}
 												else{
 													if(oldName !== newName){
-														if(typeof remoteFolders[oldPath] !== "undefined"){
-															if(canMoveRemoteDir(prop)){
-																currentMovingRemoteFolders.push(newPath)
-																currentMovingRemoteFolders.push(oldPath)
+														if(didRenameParentRemote(prop)){
+															if(typeof remoteFolders[oldPath] !== "undefined"){
+																currentRenamingRemoteFolders.push(oldPath)
+																currentRenamingRemoteFolders.push(newPath)
 	
-																syncTask("remote", "moverenamedir", {
+																syncTask("remote", "renamedir", {
 																	path: newPath,
 																	newPath: newPath,
 																	oldPath: oldPath,
 																	uuid: remoteFolders[oldPath].uuid,
 																	parent: remoteFolders[oldPath].parent,
 																	name: newName,
-																	folder: remoteFolders[oldPath],
 																	realPath: userSyncDir + "/" + newPath.slice(11)
 																}, userMasterKeys)
 															}
-														}
-														
-														if(typeof remoteFiles[oldPath] !== "undefined"){
-															if(canMoveRemoteDir(prop)){
-																currentMovingRemoteFiles.push(newPath)
-																currentMovingRemoteFiles.push(oldPath)
-
-																syncTask("remote", "moverenamefile", {
+															
+															if(typeof remoteFiles[oldPath] !== "undefined"){
+																syncTask("remote", "renamefile", {
 																	path: newPath,
 																	newPath: newPath,
 																	oldPath: oldPath,
@@ -6563,6 +6596,43 @@ const doSync = async () => {
 																	file: remoteFiles[oldPath],
 																	realPath: userSyncDir + "/" + newPath.slice(11)
 																}, userMasterKeys)
+															}
+														}
+														else{
+															if(typeof remoteFolders[oldPath] !== "undefined"){
+																if(canMoveRemoteDir(prop)){
+																	currentMovingRemoteFolders.push(newPath)
+																	currentMovingRemoteFolders.push(oldPath)
+		
+																	syncTask("remote", "moverenamedir", {
+																		path: newPath,
+																		newPath: newPath,
+																		oldPath: oldPath,
+																		uuid: remoteFolders[oldPath].uuid,
+																		parent: remoteFolders[oldPath].parent,
+																		name: newName,
+																		folder: remoteFolders[oldPath],
+																		realPath: userSyncDir + "/" + newPath.slice(11)
+																	}, userMasterKeys)
+																}
+															}
+															
+															if(typeof remoteFiles[oldPath] !== "undefined"){
+																if(canMoveRemoteDir(prop)){
+																	currentMovingRemoteFiles.push(newPath)
+																	currentMovingRemoteFiles.push(oldPath)
+	
+																	syncTask("remote", "moverenamefile", {
+																		path: newPath,
+																		newPath: newPath,
+																		oldPath: oldPath,
+																		uuid: remoteFiles[oldPath].uuid,
+																		parent: remoteFiles[oldPath].parent,
+																		name: newName,
+																		file: remoteFiles[oldPath],
+																		realPath: userSyncDir + "/" + newPath.slice(11)
+																	}, userMasterKeys)
+																}
 															}
 														}
 													}
@@ -6678,7 +6748,7 @@ const doSync = async () => {
 											else{
 												if(typeof lastRemoteUUIDsOnlyUUIDs[uuid].folder == "undefined"){
 													if(typeof localFiles[oldPath] !== "undefined"){
-														if(canMoveLocalDir(prop)){
+														if(true){
 															currentMovingLocalFiles.push(newPath)
 															currentMovingLocalFiles.push(oldPath)
 
@@ -6695,7 +6765,7 @@ const doSync = async () => {
 												}
 												else{
 													if(typeof localFolders[oldPath] !== "undefined"){
-														if(canMoveLocalDir(prop)){
+														if(true){
 															currentMovingLocalFolders.push(newPath)
 															currentMovingLocalFolders.push(oldPath)
 
@@ -7208,20 +7278,20 @@ const initChokidar = async () => {
 			return false
 		}
 
-		if(gotFSWatchEvent){
-			return false
-		}
-
 		gotFSWatchEvent = true
 
 		currentSyncTasksExtra.push(uuidv4())
+
+		clearTimeout(fsWatchEventTimeout)
 		
-		return setTimeout(() => {
+		fsWatchEventTimeout = setTimeout(() => {
 			gotFSWatchEvent = false
 
 			//clearCurrentSyncTasksExtra()
 			setLocalDataChangedTrue()
 		}, 60000)
+
+		return true
 	}
 
 	if(process.platform == "linux"){
