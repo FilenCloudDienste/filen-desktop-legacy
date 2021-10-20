@@ -3676,7 +3676,7 @@ const getLocalSyncDirContents = async (callback) => {
 			file.path = file.fullPath
 
 			if(file.path && file.stats){
-				if(file.path !== userSyncDir && !file.stats.isSymbolicLink()){
+				if(file.path !== userSyncDir){
 					let filePath = file.path.substring(userHomePath.length + 1).split("\\").join("/")
 
 					if(filePath.substring(0, 11) !== "Filen Sync/"){
@@ -3690,7 +3690,9 @@ const getLocalSyncDirContents = async (callback) => {
 						if(file.stats.isDirectory() && typeof filePathEx[filePathEx.length - 1] !== "undefined"){
 							if(!isFileNameBlocked(filePathEx[filePathEx.length - 1])){
 								folders[folderPath] = {
-									name: filePathEx[filePathEx.length - 1]
+									name: filePathEx[filePathEx.length - 1],
+									modTime: file.stats.mtimeMs,
+									birthTime: file.stats.birthtimeMs
 								}
 
 								iNodeMapINodesRes[folderPath + pathDelimeter + file.stats.ino] = folderPath
@@ -3708,6 +3710,7 @@ const getLocalSyncDirContents = async (callback) => {
 									files[filePath] = {
 										name: filePathEx[filePathEx.length - 1],
 										modTime: file.stats.mtimeMs,
+										birthTime: file.stats.birthtimeMs,
 										size: file.stats.size
 									}
 
@@ -4192,6 +4195,14 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 	if(syncMode == "cloudToLocal" && where == "remote"){
 		return false
+	}
+
+	if(where == "remote"){
+		if(typeof taskInfo.birthTime !== "undefined"){
+			if((taskInfo.birthTime + 50000) > (+new Date())){
+				return false
+			}
+		}
 	}
 
 	if(syncingPaused){
@@ -5708,8 +5719,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 						localFolderExisted[taskInfo.path] = true
 
-						skipCheckLocalExistedFoldersAndFiles = (unixTimestamp() + 60)
-
 						syncTaskLimiterSemaphoreRelease()
 
 						return setTimeout(() => {
@@ -5896,8 +5905,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 						localFileExisted[taskInfo.path] = true
 						remoteFileUUIDs[taskInfo.path] = taskInfo.file.uuid
-
-						skipCheckLocalExistedFoldersAndFiles = (unixTimestamp() + 60)
 
 						console.log(taskInfo.path + " " + task + " done")
 
@@ -6462,7 +6469,6 @@ const doSync = async () => {
 								for(let prop in iNodeMapINodesRes){
 									let ex = prop.split(pathDelimeter)
 									let ino = parseInt(ex[1])
-									let propPath = ex[0]
 									
 									if(typeof ino == "number"){
 										if(typeof iNodeMapOnlyINodes[ino] !== "undefined" && typeof iNodeMapOnlyINodesRes[ino] !== "undefined"){
@@ -6609,7 +6615,6 @@ const doSync = async () => {
 								for(let prop in remoteUUIDsRes){
 									let ex = prop.split(pathDelimeter)
 									let uuid = ex[1]
-									let propPath = ex[0]
 
 									if(typeof lastRemoteUUIDsOnlyUUIDs[uuid] !== "undefined" && typeof remoteUUIDsOnlyUUIDsRes[uuid] !== "undefined"){
 										if(remoteUUIDsOnlyUUIDsRes[uuid].path !== lastRemoteUUIDsOnlyUUIDs[uuid].path){
@@ -6671,15 +6676,15 @@ const doSync = async () => {
 												}
 											}
 											else{
-												if(typeof lastRemoteUUIDsOnlyUUIDs[uuid].folder !== "undefined"){
-													if(typeof localFolders[oldPath] !== "undefined"){
+												if(typeof lastRemoteUUIDsOnlyUUIDs[uuid].folder == "undefined"){
+													if(typeof localFiles[oldPath] !== "undefined"){
 														if(canMoveLocalDir(prop)){
-															currentMovingLocalFolders.push(newPath)
-															currentMovingLocalFolders.push(oldPath)
+															currentMovingLocalFiles.push(newPath)
+															currentMovingLocalFiles.push(oldPath)
 
-															syncTask("local", "movedir", {
+															syncTask("local", "movefile", {
 																path: newPath,
-																uuid: lastRemoteUUIDsOnlyUUIDs[uuid].folder.uuid,
+																uuid: lastRemoteUUIDsOnlyUUIDs[uuid].file.uuid,
 																newPath: newPath,
 																oldPath: oldPath,
 																realPath: userSyncDir + "/" + oldPath.slice(11),
@@ -6689,14 +6694,14 @@ const doSync = async () => {
 													}
 												}
 												else{
-													if(typeof localFiles[oldPath] !== "undefined"){
+													if(typeof localFolders[oldPath] !== "undefined"){
 														if(canMoveLocalDir(prop)){
-															currentMovingLocalFiles.push(newPath)
-															currentMovingLocalFiles.push(oldPath)
+															currentMovingLocalFolders.push(newPath)
+															currentMovingLocalFolders.push(oldPath)
 
-															syncTask("local", "movefile", {
+															syncTask("local", "movedir", {
 																path: newPath,
-																uuid: lastRemoteUUIDsOnlyUUIDs[uuid].file.uuid,
+																uuid: lastRemoteUUIDsOnlyUUIDs[uuid].folder.uuid,
 																newPath: newPath,
 																oldPath: oldPath,
 																realPath: userSyncDir + "/" + oldPath.slice(11),
@@ -6877,7 +6882,8 @@ const doSync = async () => {
 											syncTask("remote", "mkdir", {
 												path: prop,
 												name: folderName,
-												parent: remoteSyncFolders[parentPath].uuid
+												parent: remoteSyncFolders[parentPath].uuid,
+												birthTime: localFolders[prop].birthTime
 											}, userMasterKeys)
 										}
 									}
@@ -6921,7 +6927,8 @@ const doSync = async () => {
 										syncTask("remote", "mkdir", {
 											path: prop,
 											name: folderName,
-											parent: remoteSyncFolders[parentPath].uuid
+											parent: remoteSyncFolders[parentPath].uuid,
+											birthTime: localFolders[prop].birthTime
 										}, userMasterKeys)
 									}
 								}
@@ -7015,7 +7022,8 @@ const doSync = async () => {
 												parent: remoteSyncFolders[fileParentPath].uuid,
 												filePath: filePath,
 												modTime: localFiles[prop].modTime,
-												size: localFiles[i].size
+												size: localFiles[prop].size,
+												birthTime: localFiles[prop].birthTime
 											}, userMasterKeys)
 										}
 									}
@@ -7053,7 +7061,8 @@ const doSync = async () => {
 											parent: remoteSyncFolders[fileParentPath].uuid,
 											filePath: filePath,
 											modTime: localFiles[prop].modTime,
-											size: localFiles[i].size
+											size: localFiles[i].size,
+											birthTime: localFiles[prop].birthTime
 										}, userMasterKeys)
 									}
 								}
@@ -7194,7 +7203,7 @@ const initChokidar = async () => {
   		throw new Error(e)
 	}
 
-	const handleEvent = (event, ePath) => {
+	const handleEvent = async (event, ePath) => {
 		if(syncMode == "cloudToLocal"){
 			return false
 		}

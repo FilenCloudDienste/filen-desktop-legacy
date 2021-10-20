@@ -257,27 +257,44 @@ const checkIfSyncDirectoryExists = async () => {
 }
 
 const showBeforeCloseDialog = async () => {
-	let res = await dialog.showMessageBox({
-		icon: nativeImage.createFromPath(path.join(__dirname, "icons", "png", "512x512.png")),
-		title: "Filen",
-		buttons: [
-			"Keep open"
-		],
-		defaultId: 0,
-		cancelId: 0,
-		type: "warning",
-		message: "Filen is still syncing with the cloud. Closing the application now could result into loss or corruption of data."
-	})
+	try{
+		await dialog.showMessageBox({
+			icon: nativeImage.createFromPath(path.join(__dirname, "icons", "png", "512x512.png")),
+			title: "Filen",
+			buttons: [
+				"Keep open"
+			],
+			defaultId: 0,
+			cancelId: 0,
+			type: "warning",
+			message: "Filen is still syncing with the cloud. Closing the application now could result into loss or corruption of data."
+		})
+	}
+	catch(e){
+		console.log(e)
+
+		return false
+	}
 
 	return true
 }
 
-const attemptGracefulClose = () => {
+const attemptGracefulClose = async () => {
+	let close = false
+
 	if(syncTasks > 0){
-		return showBeforeCloseDialog()
+		let res = await showBeforeCloseDialog()
+
+		if(res){
+			close = true
+		}
 	}
 
-	return app.exit(0)
+	if(close){
+		return app.exit(0)
+	}
+
+	return false
 }
 
 const toggleAutoLaunch = async (enable = true) => {
