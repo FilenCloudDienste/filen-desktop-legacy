@@ -4204,29 +4204,17 @@ const isInsideSymlink = async (path) => {
 
 const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 	if(syncMode == "localToCloud" && where == "local"){
-		if(typeof callback == "function"){
-			callback()
-		}
-
 		return false
 	}
 
 	if(syncMode == "cloudToLocal" && where == "remote"){
-		if(typeof callback == "function"){
-			callback()
-		}
-
 		return false
 	}
 
 	if(where == "remote"){
 		if(task == "upload" || task == "mkdir"){
 			if(typeof taskInfo.birthTime !== "undefined"){
-				if((taskInfo.birthTime + 50000) > (+new Date())){
-					if(typeof callback == "function"){
-						callback()
-					}
-
+				if((BigInt(taskInfo.birthTime) + BigInt(50000)) > BigInt((+new Date()))){
 					return false
 				}
 				else{
@@ -4268,10 +4256,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 	if(taskIdFound && !skipTaskIdCheck){
 		checkSyncTaskForDuplicateSemaphoreRelease()
 
-		if(typeof callback == "function"){
-			callback()
-		}
-
 		return false
 	}
 
@@ -4304,10 +4288,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 	
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
-
-								if(typeof callback == "function"){
-									callback()
-								}
 	
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4319,10 +4299,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 	
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
-
-								if(typeof callback == "function"){
-									callback()
-								}
 	
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4335,13 +4311,11 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
 
+								addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
+
 								localFolderExisted[taskInfo.path] = true
 
 								delete localFolderExisted[taskInfo.oldPath]
-
-								if(typeof callback == "function"){
-									callback()
-								}
 
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4358,10 +4332,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 	
 									syncTaskLimiterSemaphoreRelease()
 									releaseMoveSemaphore()
-
-									if(typeof callback == "function"){
-										callback()
-									}
 	
 									return setTimeout(() => {
 										removeFromSyncTasks(taskId)
@@ -4373,10 +4343,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 	
 									syncTaskLimiterSemaphoreRelease()
 									releaseMoveSemaphore()
-
-									if(typeof callback == "function"){
-										callback()
-									}
 	
 									return setTimeout(() => {
 										removeFromSyncTasks(taskId)
@@ -4394,9 +4360,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 
 									delete localFolderExisted[taskInfo.oldPath]
 
-									if(typeof callback == "function"){
-										callback()
-									}
+									addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
 	
 									return setTimeout(() => {
 										removeFromSyncTasks(taskId)
@@ -4418,10 +4382,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
-
-								if(typeof callback == "function"){
-									callback()
-								}
 
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4448,10 +4408,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 	
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
-
-								if(typeof callback == "function"){
-									callback()
-								}
 	
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4463,10 +4419,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 	
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
-
-								if(typeof callback == "function"){
-									callback()
-								}
 	
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4479,13 +4431,11 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
 
+								addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
+
 								localFileExisted[taskInfo.path] = true
 
 								delete localFileExisted[taskInfo.oldPath]
-
-								if(typeof callback == "function"){
-									callback()
-								}
 
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4502,10 +4452,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 	
 									syncTaskLimiterSemaphoreRelease()
 									releaseMoveSemaphore()
-
-									if(typeof callback == "function"){
-										callback()
-									}
 	
 									return setTimeout(() => {
 										removeFromSyncTasks(taskId)
@@ -4517,10 +4463,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 	
 									syncTaskLimiterSemaphoreRelease()
 									releaseMoveSemaphore()
-
-									if(typeof callback == "function"){
-										callback()
-									}
 	
 									return setTimeout(() => {
 										removeFromSyncTasks(taskId)
@@ -4539,12 +4481,8 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 									releaseMoveSemaphore()
 	
 									localFileExisted[taskInfo.path] = true
-	
-									delete localFileExisted[taskInfo.oldPath]
 
-									if(typeof callback == "function"){
-										callback()
-									}
+									addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
 	
 									return setTimeout(() => {
 										removeFromSyncTasks(taskId)
@@ -4566,10 +4504,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
-
-								if(typeof callback == "function"){
-									callback()
-								}
 
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4596,10 +4530,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 							syncTaskLimiterSemaphoreRelease()
 							releaseMoveSemaphore()
 
-							if(typeof callback == "function"){
-								callback()
-							}
-
 							return setTimeout(() => {
 								removeFromSyncTasks(taskId)
 							}, syncTimeout)
@@ -4611,10 +4541,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 							syncTaskLimiterSemaphoreRelease()
 							releaseMoveSemaphore()
 
-							if(typeof callback == "function"){
-								callback()
-							}
-
 							return setTimeout(() => {
 								removeFromSyncTasks(taskId)
 							}, syncTimeout)
@@ -4623,12 +4549,10 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 						if(res.data.exists){
 							console.log(taskInfo.path + " already exists remotely.")
 
+							addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
+
 							syncTaskLimiterSemaphoreRelease()
 							releaseMoveSemaphore()
-
-							if(typeof callback == "function"){
-								callback()
-							}
 
 							return setTimeout(() => {
 								removeFromSyncTasks(taskId)
@@ -4649,10 +4573,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
 
-								if(typeof callback == "function"){
-									callback()
-								}
-
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
 								}, syncTimeout)
@@ -4663,10 +4583,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
-
-								if(typeof callback == "function"){
-									callback()
-								}
 
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4683,10 +4599,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
-
-								if(typeof callback == "function"){
-									callback()
-								}
 
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4709,10 +4621,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 							syncTaskLimiterSemaphoreRelease()
 							releaseMoveSemaphore()
 
-							if(typeof callback == "function"){
-								callback()
-							}
-
 							return setTimeout(() => {
 								removeFromSyncTasks(taskId)
 							}, syncTimeout)
@@ -4724,10 +4632,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 							syncTaskLimiterSemaphoreRelease()
 							releaseMoveSemaphore()
 
-							if(typeof callback == "function"){
-								callback()
-							}
-
 							return setTimeout(() => {
 								removeFromSyncTasks(taskId)
 							}, syncTimeout)
@@ -4738,10 +4642,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 
 							syncTaskLimiterSemaphoreRelease()
 							releaseMoveSemaphore()
-
-							if(typeof callback == "function"){
-								callback()
-							}
 
 							return setTimeout(() => {
 								removeFromSyncTasks(taskId)
@@ -4767,10 +4667,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
 
-								if(typeof callback == "function"){
-									callback()
-								}
-
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
 								}, syncTimeout)
@@ -4781,10 +4677,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
-
-								if(typeof callback == "function"){
-									callback()
-								}
 
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4821,10 +4713,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
-
-								if(typeof callback == "function"){
-									callback()
-								}
 
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
