@@ -276,7 +276,7 @@ const showBeforeCloseDialog = async () => {
 		return false
 	}
 
-	return true
+	return false
 }
 
 const attemptGracefulClose = async () => {
