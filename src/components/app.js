@@ -350,29 +350,42 @@ const apiRequest = async (endpoint, data, callback) => {
 		data.syncDeviceId = thisDeviceId
 	}
 
-	$.ajax({
-		url: getAPIServer() + endpoint,
-		type: "POST",
-		contentType: "application/json",
-		data: JSON.stringify(data),
-		processData: false,
-		cache: false,
-		timeout: 300000,
-		success: (res) => {
-			release()
+	let maxTries = 128
+	let currentTries = 0
 
-			if(!res){
-				return callback("Request error.")
-			}
-
-			return callback(null, res)
-		},
-		error: (err) => {
-			release()
-
-			return callback(err)
+	const doRequest = () => {
+		if(currentTries > maxTries){
+			return callback("Request error.")
 		}
-	})
+
+		currentTries += 1
+
+		$.ajax({
+			url: getAPIServer() + endpoint,
+			type: "POST",
+			contentType: "application/json",
+			data: JSON.stringify(data),
+			processData: false,
+			cache: false,
+			timeout: 300000,
+			success: (res) => {
+				release()
+	
+				if(!res){
+					return doRequest()
+				}
+	
+				return callback(null, res)
+			},
+			error: (err) => {
+				release()
+	
+				return doRequest()
+			}
+		})
+	}
+
+	return doRequest()
 }
 
 const hashFn = (val) => { //old deprecated
@@ -4189,12 +4202,20 @@ const isInsideSymlink = async (path) => {
 	return isSymlink(path)
 }
 
-const syncTask = async (where, task, taskInfo, userMasterKeys) => {
+const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 	if(syncMode == "localToCloud" && where == "local"){
+		if(typeof callback == "function"){
+			callback()
+		}
+
 		return false
 	}
 
 	if(syncMode == "cloudToLocal" && where == "remote"){
+		if(typeof callback == "function"){
+			callback()
+		}
+
 		return false
 	}
 
@@ -4202,7 +4223,14 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 		if(task == "upload" || task == "mkdir"){
 			if(typeof taskInfo.birthTime !== "undefined"){
 				if((taskInfo.birthTime + 50000) > (+new Date())){
+					if(typeof callback == "function"){
+						callback()
+					}
+
 					return false
+				}
+				else{
+					setTimeout(setLocalDataChangedTrue, 60000)
 				}
 			}
 		}
@@ -4210,22 +4238,23 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 	if(syncingPaused){
 		return setTimeout(() => {
-			syncTask(where, task, taskInfo, userMasterKeys)
+			syncTask(where, task, taskInfo, userMasterKeys, callback)
 		}, syncTimeout)
 	}
 
-	if(isIndexing){
+	/*if(isIndexing){
 		return setTimeout(() => {
-			syncTask(where, task, taskInfo, userMasterKeys)
+			syncTask(where, task, taskInfo, userMasterKeys, callback)
 		}, syncTimeout)
-	}
+	}*/
 
 	let checkSyncTaskForDuplicateSemaphoreRelease = await checkSyncTaskForDuplicateSemaphore.acquire()
 
 	let taskId = taskInfo.path
+	let skipTaskIdCheck = false
 
 	if(["renamedir", "renamefile", "movedir", "movefile"].includes(task)){
-		taskId = taskInfo.path + "|" + taskInfo.oldPath
+		skipTaskIdCheck = true
 	}
 
 	let taskIdFound = false
@@ -4236,8 +4265,12 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 		}
 	}
 
-	if(taskIdFound){
+	if(taskIdFound && !skipTaskIdCheck){
 		checkSyncTaskForDuplicateSemaphoreRelease()
+
+		if(typeof callback == "function"){
+			callback()
+		}
 
 		return false
 	}
@@ -4257,305 +4290,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 	switch(where){
 		case "remote":
 			switch(task){
-				case "moverenamedir":
-					var releaseMoveSemaphore = await moveSemaphore.acquire()
-
-					var moveRenameDir = async (uuid, parent, dir, newName) => {
-						apiRequest("/v1/dir/exists", {
-							apiKey: await getUserAPIKey(),
-							parent: parent,
-							nameHashed: hashFn(newName.toLowerCase())
-						}, async (err, res) => {
-							if(err){
-								console.log(err)
-	
-								syncTaskLimiterSemaphoreRelease()
-								releaseMoveSemaphore()
-	
-								return setTimeout(() => {
-									removeFromSyncTasks(taskId)
-								}, syncTimeout)
-							}
-	
-							if(!res.status){
-								console.log(res.message)
-	
-								syncTaskLimiterSemaphoreRelease()
-								releaseMoveSemaphore()
-	
-								return setTimeout(() => {
-									removeFromSyncTasks(taskId)
-								}, syncTimeout)
-							}
-
-							if(res.data.exists){
-								console.log(taskInfo.path + " already exists remotely.")
-
-								syncTaskLimiterSemaphoreRelease()
-								releaseMoveSemaphore()
-
-								localFolderExisted[taskInfo.path] = true
-
-								delete localFolderExisted[taskInfo.oldPath]
-
-								return setTimeout(() => {
-									removeFromSyncTasks(taskId)
-								}, syncTimeout)
-							}
-
-							apiRequest("/v1/dir/move", {
-								apiKey: await getUserAPIKey(),
-								folderUUID: parent,
-								uuid: uuid
-							}, async (err, res) => {
-								if(err){
-									console.log(err)
-	
-									syncTaskLimiterSemaphoreRelease()
-									releaseMoveSemaphore()
-	
-									return setTimeout(() => {
-										removeFromSyncTasks(taskId)
-									}, syncTimeout)
-								}
-		
-								if(!res.status){
-									console.log(res.message)
-	
-									syncTaskLimiterSemaphoreRelease()
-									releaseMoveSemaphore()
-	
-									return setTimeout(() => {
-										removeFromSyncTasks(taskId)
-									}, syncTimeout)
-								}
-
-								apiRequest("/v1/dir/rename", {
-									apiKey: await getUserAPIKey(),
-									uuid: taskInfo.uuid,
-									name: await encryptMetadata(JSON.stringify({
-										name: newName
-									}), userMasterKeys[userMasterKeys.length - 1]),
-									nameHashed: hashFn(newName.toLowerCase())
-								}, (err, res) => {
-									if(err){
-										console.log(err)
-		
-										syncTaskLimiterSemaphoreRelease()
-		
-										return setTimeout(() => {
-											removeFromSyncTasks(taskId)
-										}, syncTimeout)
-									}
-		
-									if(!res.status){
-										console.log(res.message)
-		
-										syncTaskLimiterSemaphoreRelease()
-		
-										return setTimeout(() => {
-											removeFromSyncTasks(taskId)
-										}, syncTimeout)
-									}
-
-									checkIfItemParentIsBeingShared(parent, "folder", {
-										uuid: uuid,
-										name: newName
-									}, () => {
-										syncTaskLimiterSemaphoreRelease()
-										releaseMoveSemaphore()
-		
-										localFolderExisted[taskInfo.path] = true
-	
-										delete localFolderExisted[taskInfo.oldPath]
-		
-										return setTimeout(() => {
-											removeFromSyncTasks(taskId)
-										}, syncTimeout)
-									})
-								})
-							})
-						})
-					}
-
-					var neededParent = lastRemoteSyncFolders[getParentPath(taskInfo.path)]
-
-					if(typeof neededParent !== "undefined"){
-						moveRenameDir(taskInfo.uuid, neededParent.uuid, taskInfo.folder, taskInfo.name)
-					}
-					else{
-						createFoldersForPathRemote(taskInfo.path, (err) => {
-							if(err){
-								console.log(err)
-
-								syncTaskLimiterSemaphoreRelease()
-								releaseMoveSemaphore()
-
-								return setTimeout(() => {
-									removeFromSyncTasks(taskId)
-								}, syncTimeout)
-							}
-
-							neededParent = lastRemoteSyncFolders[getParentPath(taskInfo.path)]
-
-							moveRenameDir(taskInfo.uuid, neededParent.uuid, taskInfo.folder, taskInfo.name)
-						})
-					}
-				break
-				case "moverenamefile":
-					var releaseMoveSemaphore = await moveSemaphore.acquire()
-
-					var moveRenameFile = async (uuid, parent, file, newName) => {
-						apiRequest("/v1/file/exists", {
-							apiKey: await getUserAPIKey(),
-							parent: parent,
-							nameHashed: hashFn(newName.toLowerCase())
-						}, async (err, res) => {
-							if(err){
-								console.log(err)
-	
-								syncTaskLimiterSemaphoreRelease()
-								releaseMoveSemaphore()
-	
-								return setTimeout(() => {
-									removeFromSyncTasks(taskId)
-								}, syncTimeout)
-							}
-	
-							if(!res.status){
-								console.log(res.message)
-	
-								syncTaskLimiterSemaphoreRelease()
-								releaseMoveSemaphore()
-	
-								return setTimeout(() => {
-									removeFromSyncTasks(taskId)
-								}, syncTimeout)
-							}
-
-							if(res.data.exists){
-								console.log(taskInfo.path + " already exists remotely.")
-
-								syncTaskLimiterSemaphoreRelease()
-								releaseMoveSemaphore()
-
-								localFileExisted[taskInfo.path] = true
-
-								delete localFileExisted[taskInfo.oldPath]
-
-								return setTimeout(() => {
-									removeFromSyncTasks(taskId)
-								}, syncTimeout)
-							}
-
-							apiRequest("/v1/file/move", {
-								apiKey: await getUserAPIKey(),
-								folderUUID: parent,
-								fileUUID: uuid
-							}, async (err, res) => {
-								if(err){
-									console.log(err)
-	
-									syncTaskLimiterSemaphoreRelease()
-									releaseMoveSemaphore()
-	
-									return setTimeout(() => {
-										removeFromSyncTasks(taskId)
-									}, syncTimeout)
-								}
-		
-								if(!res.status){
-									console.log(res.message)
-	
-									syncTaskLimiterSemaphoreRelease()
-									releaseMoveSemaphore()
-	
-									return setTimeout(() => {
-										removeFromSyncTasks(taskId)
-									}, syncTimeout)
-								}
-
-								apiRequest("/v1/file/rename", {
-									apiKey: await getUserAPIKey(),
-									uuid: taskInfo.uuid,
-									name: await encryptMetadata(newName, userMasterKeys[userMasterKeys.length - 1]),
-									nameHashed: hashFn(newName.toLowerCase()),
-									metaData: await encryptMetadata(JSON.stringify({
-										name: newName,
-										size: parseInt(taskInfo.file.size),
-										mime: taskInfo.file.mime,
-										key: taskInfo.file.key,
-										lastModified: taskInfo.file.lastModified || (+new Date())
-									}), userMasterKeys[userMasterKeys.length - 1])
-								}, (err, res) => {
-									if(err){
-										console.log(err)
-		
-										syncTaskLimiterSemaphoreRelease()
-		
-										return setTimeout(() => {
-											removeFromSyncTasks(taskId)
-										}, syncTimeout)
-									}
-		
-									if(!res.status){
-										console.log(res.message)
-		
-										syncTaskLimiterSemaphoreRelease()
-		
-										return setTimeout(() => {
-											removeFromSyncTasks(taskId)
-										}, syncTimeout)
-									}
-
-									checkIfItemParentIsBeingShared(parent, "file", {
-										uuid: uuid,
-										name: newName,
-										size: parseInt(file.size),
-										mime: file.mime,
-										key: file.key,
-										lastModified: file.lastModified || Math.floor((+new Date()) / 1000)
-									}, () => {
-										syncTaskLimiterSemaphoreRelease()
-										releaseMoveSemaphore()
-		
-										localFileExisted[taskInfo.path] = true
-		
-										delete localFileExisted[taskInfo.oldPath]
-		
-										return setTimeout(() => {
-											removeFromSyncTasks(taskId)
-										}, syncTimeout)
-									})
-								})
-							})
-						})
-					}
-
-					var neededParent = lastRemoteSyncFolders[removeFileNameFromDirPath(taskInfo.path)]
-
-					if(typeof neededParent !== "undefined"){
-						moveRenameFile(taskInfo.uuid, neededParent.uuid, taskInfo.file, taskInfo.name)
-					}
-					else{
-						createFoldersForPathRemote(taskInfo.path, (err) => {
-							if(err){
-								console.log(err)
-
-								syncTaskLimiterSemaphoreRelease()
-								releaseMoveSemaphore()
-
-								return setTimeout(() => {
-									removeFromSyncTasks(taskId)
-								}, syncTimeout)
-							}
-
-							neededParent = lastRemoteSyncFolders[removeFileNameFromDirPath(taskInfo.path)]
-
-							moveRenameFile(taskInfo.uuid, neededParent.uuid, taskInfo.file, taskInfo.name)
-						})
-					}
-				break
 				case "movedir":
 					var releaseMoveSemaphore = await moveSemaphore.acquire()
 
@@ -4570,6 +4304,10 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 	
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
+
+								if(typeof callback == "function"){
+									callback()
+								}
 	
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4581,6 +4319,10 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 	
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
+
+								if(typeof callback == "function"){
+									callback()
+								}
 	
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4596,6 +4338,10 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 								localFolderExisted[taskInfo.path] = true
 
 								delete localFolderExisted[taskInfo.oldPath]
+
+								if(typeof callback == "function"){
+									callback()
+								}
 
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4612,6 +4358,10 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 	
 									syncTaskLimiterSemaphoreRelease()
 									releaseMoveSemaphore()
+
+									if(typeof callback == "function"){
+										callback()
+									}
 	
 									return setTimeout(() => {
 										removeFromSyncTasks(taskId)
@@ -4623,6 +4373,10 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 	
 									syncTaskLimiterSemaphoreRelease()
 									releaseMoveSemaphore()
+
+									if(typeof callback == "function"){
+										callback()
+									}
 	
 									return setTimeout(() => {
 										removeFromSyncTasks(taskId)
@@ -4639,6 +4393,10 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 									localFolderExisted[taskInfo.path] = true
 
 									delete localFolderExisted[taskInfo.oldPath]
+
+									if(typeof callback == "function"){
+										callback()
+									}
 	
 									return setTimeout(() => {
 										removeFromSyncTasks(taskId)
@@ -4660,6 +4418,10 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
+
+								if(typeof callback == "function"){
+									callback()
+								}
 
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4686,6 +4448,10 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 	
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
+
+								if(typeof callback == "function"){
+									callback()
+								}
 	
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4697,6 +4463,10 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 	
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
+
+								if(typeof callback == "function"){
+									callback()
+								}
 	
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4713,6 +4483,10 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 
 								delete localFileExisted[taskInfo.oldPath]
 
+								if(typeof callback == "function"){
+									callback()
+								}
+
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
 								}, syncTimeout)
@@ -4728,6 +4502,10 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 	
 									syncTaskLimiterSemaphoreRelease()
 									releaseMoveSemaphore()
+
+									if(typeof callback == "function"){
+										callback()
+									}
 	
 									return setTimeout(() => {
 										removeFromSyncTasks(taskId)
@@ -4739,6 +4517,10 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 	
 									syncTaskLimiterSemaphoreRelease()
 									releaseMoveSemaphore()
+
+									if(typeof callback == "function"){
+										callback()
+									}
 	
 									return setTimeout(() => {
 										removeFromSyncTasks(taskId)
@@ -4759,6 +4541,10 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 									localFileExisted[taskInfo.path] = true
 	
 									delete localFileExisted[taskInfo.oldPath]
+
+									if(typeof callback == "function"){
+										callback()
+									}
 	
 									return setTimeout(() => {
 										removeFromSyncTasks(taskId)
@@ -4781,6 +4567,10 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 								syncTaskLimiterSemaphoreRelease()
 								releaseMoveSemaphore()
 
+								if(typeof callback == "function"){
+									callback()
+								}
+
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
 								}, syncTimeout)
@@ -4793,6 +4583,8 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 					}
 				break
 				case "renamedir":
+					var releaseMoveSemaphore = await moveSemaphore.acquire()
+
 					apiRequest("/v1/dir/exists", {
 						apiKey: await getUserAPIKey(),
 						parent: taskInfo.parent,
@@ -4802,6 +4594,11 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 							console.log(err)
 
 							syncTaskLimiterSemaphoreRelease()
+							releaseMoveSemaphore()
+
+							if(typeof callback == "function"){
+								callback()
+							}
 
 							return setTimeout(() => {
 								removeFromSyncTasks(taskId)
@@ -4812,6 +4609,11 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 							console.log(res.message)
 
 							syncTaskLimiterSemaphoreRelease()
+							releaseMoveSemaphore()
+
+							if(typeof callback == "function"){
+								callback()
+							}
 
 							return setTimeout(() => {
 								removeFromSyncTasks(taskId)
@@ -4822,6 +4624,11 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 							console.log(taskInfo.path + " already exists remotely.")
 
 							syncTaskLimiterSemaphoreRelease()
+							releaseMoveSemaphore()
+
+							if(typeof callback == "function"){
+								callback()
+							}
 
 							return setTimeout(() => {
 								removeFromSyncTasks(taskId)
@@ -4840,6 +4647,11 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 								console.log(err)
 
 								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
+
+								if(typeof callback == "function"){
+									callback()
+								}
 
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4850,6 +4662,11 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 								console.log(res.message)
 
 								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
+
+								if(typeof callback == "function"){
+									callback()
+								}
 
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4865,6 +4682,11 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 								addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
 
 								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
+
+								if(typeof callback == "function"){
+									callback()
+								}
 
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4874,6 +4696,8 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 					})
 				break
 				case "renamefile":
+					var releaseMoveSemaphore = await moveSemaphore.acquire()
+
 					apiRequest("/v1/file/exists", {
 						apiKey: await getUserAPIKey(),
 						parent: taskInfo.parent,
@@ -4883,6 +4707,11 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 							console.log(err)
 
 							syncTaskLimiterSemaphoreRelease()
+							releaseMoveSemaphore()
+
+							if(typeof callback == "function"){
+								callback()
+							}
 
 							return setTimeout(() => {
 								removeFromSyncTasks(taskId)
@@ -4893,6 +4722,11 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 							console.log(res.message)
 
 							syncTaskLimiterSemaphoreRelease()
+							releaseMoveSemaphore()
+
+							if(typeof callback == "function"){
+								callback()
+							}
 
 							return setTimeout(() => {
 								removeFromSyncTasks(taskId)
@@ -4903,6 +4737,11 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 							console.log(taskInfo.path + " already exists remotely.")
 
 							syncTaskLimiterSemaphoreRelease()
+							releaseMoveSemaphore()
+
+							if(typeof callback == "function"){
+								callback()
+							}
 
 							return setTimeout(() => {
 								removeFromSyncTasks(taskId)
@@ -4926,6 +4765,11 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 								console.log(err)
 
 								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
+
+								if(typeof callback == "function"){
+									callback()
+								}
 
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4936,6 +4780,11 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 								console.log(res.message)
 
 								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
+
+								if(typeof callback == "function"){
+									callback()
+								}
 
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -4971,6 +4820,11 @@ const syncTask = async (where, task, taskInfo, userMasterKeys) => {
 								addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
 
 								syncTaskLimiterSemaphoreRelease()
+								releaseMoveSemaphore()
+
+								if(typeof callback == "function"){
+									callback()
+								}
 
 								return setTimeout(() => {
 									removeFromSyncTasks(taskId)
@@ -6154,6 +6008,7 @@ const canDownloadFile = (prop) => {
 	let isDeletingParentFolderLocal = false
 	let isRenamingParentFolderLocal = false
 	let isMovingParentFolderLocal = false
+	let isRenamingRemoteFile = false
 
 	if(currentDeletingRemoteFolders.length > 0){
 		for(let i = 0; i < currentDeletingRemoteFolders.length; i++){
@@ -6187,7 +6042,43 @@ const canDownloadFile = (prop) => {
 		}
 	}
 
-	if(!isDeletingParentFolder && !isDeletingParentFolderLocal && !isRenamingParentFolderLocal && !isMovingParentFolderLocal){
+
+	if(currentRenamingRemoteFiles.length > 0){
+		for(let i = 0; i < currentRenamingRemoteFiles.length; i++){
+			if(prop.indexOf(currentRenamingRemoteFiles[i]) !== -1){
+				isRenamingRemoteFile = true
+			}
+		}
+	}
+
+	if(!isDeletingParentFolder && !isDeletingParentFolderLocal && !isRenamingParentFolderLocal && !isMovingParentFolderLocal && !isRenamingRemoteFile){
+		return true
+	}
+
+	return false
+}
+
+const canUploadFile = (prop) => {
+	let isRenamingParentFolder = false
+	let isMovingParentFolder = false
+
+	if(currentRenamingRemoteFolders.length > 0){
+		for(let i = 0; i < currentRenamingRemoteFolders.length; i++){
+			if(prop.indexOf(currentRenamingRemoteFolders[i]) !== -1){
+				isRenamingParentFolder = true
+			}
+		}
+	}
+
+	if(currentMovingRemoteFolders.length > 0){
+		for(let i = 0; i < currentMovingRemoteFolders.length; i++){
+			if(prop.indexOf(currentMovingRemoteFolders[i]) !== -1){
+				isMovingParentFolder = true
+			}
+		}
+	}
+
+	if(!isRenamingParentFolder && !isMovingParentFolder){
 		return true
 	}
 
@@ -6198,6 +6089,8 @@ const canDeleteRemoteFile = (prop) => {
 	let isDeletingParentFolder = false
 	let isMovingParentFolder = false
 	let isMovingRemoteFile = false
+	let isRenamingParentFolder = false
+	let isRenamingRemoteFile = false
 
 	if(currentDeletingRemoteFolders.length > 0){
 		for(let i = 0; i < currentDeletingRemoteFolders.length; i++){
@@ -6223,7 +6116,23 @@ const canDeleteRemoteFile = (prop) => {
 		}
 	}
 
-	if(!isDeletingParentFolder && !isMovingParentFolder && !isMovingRemoteFile){
+	if(currentRenamingRemoteFolders.length > 0){
+		for(let i = 0; i < currentRenamingRemoteFolders.length; i++){
+			if(prop.indexOf(currentRenamingRemoteFolders[i]) !== -1){
+				isRenamingParentFolder = true
+			}
+		}
+	}
+
+	if(currentRenamingRemoteFiles.length > 0){
+		for(let i = 0; i < currentRenamingRemoteFiles.length; i++){
+			if(prop.indexOf(currentRenamingRemoteFiles[i]) !== -1){
+				isRenamingRemoteFile = true
+			}
+		}
+	}
+
+	if(!isDeletingParentFolder && !isMovingParentFolder && !isMovingRemoteFile && !isRenamingParentFolder && !isRenamingRemoteFile){
 		return true
 	}
 
@@ -6249,35 +6158,17 @@ const canDeleteLocalFile = (prop) => {
 }
 
 const didRenameParentRemote = (prop) => {
-	let isRenamingParentFolder = false
+	let didRenameParent = false
 
 	if(currentRenamingRemoteFolders.length > 0){
 		for(let i = 0; i < currentRenamingRemoteFolders.length; i++){
 			if(prop.indexOf(currentRenamingRemoteFolders[i]) !== -1){
-				isRenamingParentFolder = true
+				didRenameParent = true
 			}
 		}
 	}
 
-	if(isRenamingParentFolder){
-		return true
-	}
-
-	return false
-}
-
-const didRenameParentLocal = (prop) => {
-	let isRenamingParentFolder = false
-
-	if(currentRenamingLocalFolders.length > 0){
-		for(let i = 0; i < currentRenamingLocalFolders.length; i++){
-			if(prop.indexOf(currentRenamingLocalFolders[i]) !== -1){
-				isRenamingParentFolder = true
-			}
-		}
-	}
-
-	if(isRenamingParentFolder){
+	if(!didRenameParent){
 		return true
 	}
 
@@ -6501,6 +6392,8 @@ const doSync = async () => {
 					currentMovingRemoteFiles = []
 					currentMovingRemoteFiles = []
 
+					let renamedRemoteParents = []
+
 					if(typeof lastLocalSyncFiles !== "undefined" && typeof lastRemoteSyncFiles !== "undefined" && typeof lastRemoteSyncFolders !== "undefined"){
 						if(syncMode == "twoWay" || syncMode == "localToCloud"){
 							if(typeof iNodeMapINodesRes !== "undefined" && typeof iNodeMapINodes !== "undefined" && typeof iNodeMapOnlyINodes !== "undefined" && typeof iNodeMapOnlyINodesRes !== "undefined"){
@@ -6535,141 +6428,70 @@ const doSync = async () => {
 		
 												oldName = oldName.split("/")
 												oldName = oldName[oldName.length - 1]
-	
-												if(newParent == oldParent){
-													if(newName !== oldName){
-														if(typeof remoteFolders[oldPath] !== "undefined"){
-															currentRenamingRemoteFolders.push(oldPath)
-															currentRenamingRemoteFolders.push(newPath)
 
-															syncTask("remote", "renamedir", {
-																path: newPath,
-																newPath: newPath,
-																oldPath: oldPath,
-																uuid: remoteFolders[oldPath].uuid,
-																parent: remoteFolders[oldPath].parent,
-																name: newName,
-																realPath: userSyncDir + "/" + newPath.slice(11)
-															}, userMasterKeys)
-														}
-														
-														if(typeof remoteFiles[oldPath] !== "undefined"){
-															syncTask("remote", "renamefile", {
-																path: newPath,
-																newPath: newPath,
-																oldPath: oldPath,
-																uuid: remoteFiles[oldPath].uuid,
-																parent: remoteFiles[oldPath].parent,
-																name: newName,
-																file: remoteFiles[oldPath],
-																realPath: userSyncDir + "/" + newPath.slice(11)
-															}, userMasterKeys)
-														}
+												if(newName !== oldName){
+													if(typeof remoteFolders[oldPath] !== "undefined"){
+														currentRenamingRemoteFolders.push(newPath)
+														currentRenamingRemoteFolders.push(oldPath)
+														renamedRemoteParents.push(newPath)
+
+														syncTask("remote", "renamedir", {
+															path: newPath,
+															newPath: newPath,
+															oldPath: oldPath,
+															uuid: remoteFolders[oldPath].uuid,
+															parent: remoteFolders[oldPath].parent,
+															name: newName,
+															realPath: userSyncDir + "/" + newPath.slice(11)
+														}, userMasterKeys)
+													}
+													
+													if(typeof remoteFiles[oldPath] !== "undefined"){
+														currentRenamingRemoteFiles.push(newPath)
+														currentRenamingRemoteFiles.push(oldPath)
+
+														syncTask("remote", "renamefile", {
+															path: newPath,
+															newPath: newPath,
+															oldPath: oldPath,
+															uuid: remoteFiles[oldPath].uuid,
+															parent: remoteFiles[oldPath].parent,
+															name: newName,
+															file: remoteFiles[oldPath],
+															realPath: userSyncDir + "/" + newPath.slice(11)
+														}, userMasterKeys)
 													}
 												}
-												else{
-													if(oldName !== newName){
-														if(didRenameParentRemote(prop)){
-															if(typeof remoteFolders[oldPath] !== "undefined"){
-																currentRenamingRemoteFolders.push(oldPath)
-																currentRenamingRemoteFolders.push(newPath)
 	
-																syncTask("remote", "renamedir", {
-																	path: newPath,
-																	newPath: newPath,
-																	oldPath: oldPath,
-																	uuid: remoteFolders[oldPath].uuid,
-																	parent: remoteFolders[oldPath].parent,
-																	name: newName,
-																	realPath: userSyncDir + "/" + newPath.slice(11)
-																}, userMasterKeys)
-															}
-															
-															if(typeof remoteFiles[oldPath] !== "undefined"){
-																syncTask("remote", "renamefile", {
-																	path: newPath,
-																	newPath: newPath,
-																	oldPath: oldPath,
-																	uuid: remoteFiles[oldPath].uuid,
-																	parent: remoteFiles[oldPath].parent,
-																	name: newName,
-																	file: remoteFiles[oldPath],
-																	realPath: userSyncDir + "/" + newPath.slice(11)
-																}, userMasterKeys)
-															}
-														}
-														else{
-															if(typeof remoteFolders[oldPath] !== "undefined"){
-																if(canMoveRemoteDir(prop)){
-																	currentMovingRemoteFolders.push(newPath)
-																	currentMovingRemoteFolders.push(oldPath)
-		
-																	syncTask("remote", "moverenamedir", {
-																		path: newPath,
-																		newPath: newPath,
-																		oldPath: oldPath,
-																		uuid: remoteFolders[oldPath].uuid,
-																		parent: remoteFolders[oldPath].parent,
-																		name: newName,
-																		folder: remoteFolders[oldPath],
-																		realPath: userSyncDir + "/" + newPath.slice(11)
-																	}, userMasterKeys)
-																}
-															}
-															
-															if(typeof remoteFiles[oldPath] !== "undefined"){
-																if(canMoveRemoteDir(prop)){
-																	currentMovingRemoteFiles.push(newPath)
-																	currentMovingRemoteFiles.push(oldPath)
-	
-																	syncTask("remote", "moverenamefile", {
-																		path: newPath,
-																		newPath: newPath,
-																		oldPath: oldPath,
-																		uuid: remoteFiles[oldPath].uuid,
-																		parent: remoteFiles[oldPath].parent,
-																		name: newName,
-																		file: remoteFiles[oldPath],
-																		realPath: userSyncDir + "/" + newPath.slice(11)
-																	}, userMasterKeys)
-																}
-															}
-														}
-													}
-													else{
-														if(typeof remoteFolders[oldPath] !== "undefined"){
-															if(canMoveRemoteDir(prop)){
-																currentMovingRemoteFolders.push(newPath)
-																currentMovingRemoteFolders.push(oldPath)
-	
-																syncTask("remote", "movedir", {
-																	path: newPath,
-																	newPath: newPath,
-																	oldPath: oldPath,
-																	uuid: remoteFolders[oldPath].uuid,
-																	parent: remoteFolders[oldPath].parent,
-																	folder: remoteFolders[oldPath],
-																	realPath: userSyncDir + "/" + newPath.slice(11)
-																}, userMasterKeys)
-															}
-														}
-														
-														if(typeof remoteFiles[oldPath] !== "undefined"){
-															if(canMoveRemoteDir(prop)){
-																currentMovingRemoteFiles.push(newPath)
-																currentMovingRemoteFiles.push(oldPath)
+												if(oldParent !== newParent && !renamedRemoteParents.includes(newParent)){
+													if(typeof remoteFolders[oldPath] !== "undefined"){
+														currentMovingRemoteFolders.push(newPath)
+														currentMovingRemoteFolders.push(oldPath)
 
-																syncTask("remote", "movefile", {
-																	path: newPath,
-																	newPath: newPath,
-																	oldPath: oldPath,
-																	uuid: remoteFiles[oldPath].uuid,
-																	parent: remoteFiles[oldPath].parent,
-																	file: remoteFiles[oldPath],
-																	realPath: userSyncDir + "/" + newPath.slice(11)
-																}, userMasterKeys)
-															}
-														}
+														syncTask("remote", "movedir", {
+															path: newPath,
+															newPath: newPath,
+															oldPath: oldPath,
+															uuid: remoteFolders[oldPath].uuid,
+															parent: remoteFolders[oldPath].parent,
+															folder: remoteFolders[oldPath],
+															realPath: userSyncDir + "/" + newPath.slice(11)
+														}, userMasterKeys)
+													}
+													
+													if(typeof remoteFiles[oldPath] !== "undefined"){
+														currentMovingRemoteFiles.push(newPath)
+														currentMovingRemoteFiles.push(oldPath)
+
+														syncTask("remote", "movefile", {
+															path: newPath,
+															newPath: newPath,
+															oldPath: oldPath,
+															uuid: remoteFiles[oldPath].uuid,
+															parent: remoteFiles[oldPath].parent,
+															file: remoteFiles[oldPath],
+															realPath: userSyncDir + "/" + newPath.slice(11)
+														}, userMasterKeys)
 													}
 												}
 											}
@@ -6678,6 +6500,8 @@ const doSync = async () => {
 								}
 							}
 						}
+
+						delete renamedRemoteParents
 
 						if(syncMode == "twoWay" || syncMode == "cloudToLocal"){
 							//Did a remote folder or file name change?
@@ -6819,15 +6643,17 @@ const doSync = async () => {
 												}
 
 												if(typeof remoteSyncFolders[fileParentPath] !== "undefined"){
-													syncTask("remote", "update", {
-														path: prop,
-														realPath: userSyncDir + "/" + prop.slice(11),
-														name: localFiles[prop].name,
-														parent: remoteSyncFolders[fileParentPath].uuid,
-														filePath: filePath,
-														modTime: fileStat.mtimeMs,
-														size: fileStat.size
-													}, userMasterKeys)
+													if(canUploadFile(prop)){
+														syncTask("remote", "update", {
+															path: prop,
+															realPath: userSyncDir + "/" + prop.slice(11),
+															name: localFiles[prop].name,
+															parent: remoteSyncFolders[fileParentPath].uuid,
+															filePath: filePath,
+															modTime: fileStat.mtimeMs,
+															size: fileStat.size
+														}, userMasterKeys)
+													}
 												}
 											}
 										}
@@ -7085,16 +6911,18 @@ const doSync = async () => {
 											fileName = prop.split("/")
 											fileName = fileName[fileName.length - 1]
 
-											syncTask("remote", "upload", {
-												path: prop,
-												realPath: userSyncDir + "/" + prop.slice(11),
-												name: fileName,
-												parent: remoteSyncFolders[fileParentPath].uuid,
-												filePath: filePath,
-												modTime: localFiles[prop].modTime,
-												size: localFiles[prop].size,
-												birthTime: localFiles[prop].birthTime
-											}, userMasterKeys)
+											if(canUploadFile(prop)){
+												syncTask("remote", "upload", {
+													path: prop,
+													realPath: userSyncDir + "/" + prop.slice(11),
+													name: fileName,
+													parent: remoteSyncFolders[fileParentPath].uuid,
+													filePath: filePath,
+													modTime: localFiles[prop].modTime,
+													size: localFiles[prop].size,
+													birthTime: localFiles[prop].birthTime
+												}, userMasterKeys)
+											}
 										}
 									}
 								}
@@ -7124,16 +6952,18 @@ const doSync = async () => {
 										fileName = prop.split("/")
 										fileName = fileName[fileName.length - 1]
 
-										syncTask("remote", "upload", {
-											path: prop,
-											realPath: userSyncDir + "/" + prop.slice(11),
-											name: fileName,
-											parent: remoteSyncFolders[fileParentPath].uuid,
-											filePath: filePath,
-											modTime: localFiles[prop].modTime,
-											size: localFiles[i].size,
-											birthTime: localFiles[prop].birthTime
-										}, userMasterKeys)
+										if(canUploadFile(prop)){
+											syncTask("remote", "upload", {
+												path: prop,
+												realPath: userSyncDir + "/" + prop.slice(11),
+												name: fileName,
+												parent: remoteSyncFolders[fileParentPath].uuid,
+												filePath: filePath,
+												modTime: localFiles[prop].modTime,
+												size: localFiles[i].size,
+												birthTime: localFiles[prop].birthTime
+											}, userMasterKeys)
+										}
 									}
 								}
 							}
