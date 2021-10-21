@@ -400,6 +400,31 @@ const hashPassword = (password) => { //old deprecated
 	return sha512(sha384(sha256(sha1(password)))) + sha512(md5(md4(md2(password))))
 }
 
+const nonBlockingForIn = (obj, callback, done) => {
+	let keys = Object.keys(obj)
+	let index = 0
+
+	const loop = () => {
+		if(index < keys.length){
+			callback(keys[index])
+		}
+		else{
+			if(typeof done == "function"){
+				return done()
+			}
+			else{
+				return false
+			}
+		}
+
+		index += 1
+
+		return setImmediate(loop)
+	}
+
+	return setImmediate(loop)
+}
+
 const showPage = (page) => {
 	$(".content").each(function(){
 		if($(this).attr("data-type") == page){
