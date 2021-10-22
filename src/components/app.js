@@ -199,6 +199,7 @@ let excludedPaths = []
 let needsUpdate = false
 let gotFSWatchEvent = false
 let fsWatchEventTimeout = undefined
+let isWaitingForNewFileOrFolder = false
 
 let currentFileVersion = 1
 let metadataVersion = 1
@@ -4239,11 +4240,17 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 	if(where == "remote"){
 		if(task == "upload" || task == "mkdir"){
 			if(typeof taskInfo.birthTime !== "undefined"){
-				if((BigInt(taskInfo.birthTime) + BigInt(50000)) > BigInt((+new Date()))){
+				if((BigInt(taskInfo.birthTime) + BigInt(60000)) > BigInt((+new Date()))){
 					return false
 				}
 				else{
-					setTimeout(setLocalDataChangedTrue, 60000)
+					isWaitingForNewFileOrFolder = true
+
+					setTimeout(() => {
+						setLocalDataChangedTrue = false
+
+						setLocalDataChangedTrue()
+					}, 70000)
 				}
 			}
 		}
@@ -4267,6 +4274,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 	let skipTaskIdCheck = false
 
 	if(["renamedir", "renamefile", "movedir", "movefile"].includes(task)){
+		taskId = taskId + "|" + taskInfo.oldPath
 		skipTaskIdCheck = true
 	}
 
@@ -6088,6 +6096,16 @@ const didRenameParentRemote = (prop) => {
 	return false
 }
 
+const didRenameParent = (renamedParents, path) => {
+	for(let i = 0; i < renamedParents.length; i++){
+		if(path.indexOf(renamedParents[i]) !== -1){
+			return true
+		}
+	}
+
+	return false
+}
+
 const doSync = async () => {
 	if(needsUpdate){
 		return false
@@ -6310,7 +6328,7 @@ const doSync = async () => {
 					if(typeof lastLocalSyncFiles !== "undefined" && typeof lastRemoteSyncFiles !== "undefined" && typeof lastRemoteSyncFolders !== "undefined"){
 						if(syncMode == "twoWay" || syncMode == "localToCloud"){
 							if(typeof iNodeMapINodesRes !== "undefined" && typeof iNodeMapINodes !== "undefined" && typeof iNodeMapOnlyINodes !== "undefined" && typeof iNodeMapOnlyINodesRes !== "undefined"){
-								//Did a local folder or file name change?
+								//Did a local folder or file path change?
 								for(let prop in iNodeMapINodesRes){
 									let ex = prop.split(pathDelimeter)
 									let ino = parseInt(ex[1])
@@ -6376,10 +6394,11 @@ const doSync = async () => {
 													}
 												}
 	
-												if(oldParent !== newParent && !renamedRemoteParents.includes(newParent)){
+												if(oldParent !== newParent && !didRenameParent(renamedRemoteParents, newParent)){
 													if(typeof remoteFolders[oldPath] !== "undefined"){
 														currentMovingRemoteFolders.push(newPath)
 														currentMovingRemoteFolders.push(oldPath)
+														renamedRemoteParents.push(newPath)
 
 														syncTask("remote", "movedir", {
 															path: newPath,
@@ -6416,8 +6435,10 @@ const doSync = async () => {
 
 						delete renamedRemoteParents
 
+						let renamedLocalParents = []
+
 						if(syncMode == "twoWay" || syncMode == "cloudToLocal"){
-							//Did a remote folder or file name change?
+							//Did a remote folder or file path change?
 							if(typeof lastRemoteUUIDs !== "undefined" && typeof remoteUUIDsRes !== "undefined" && typeof lastRemoteUUIDsOnlyUUIDs !== "undefined" && typeof remoteUUIDsOnlyUUIDsRes !== "undefined"){
 								for(let prop in remoteUUIDsRes){
 									let ex = prop.split(pathDelimeter)
@@ -6449,72 +6470,72 @@ const doSync = async () => {
 											oldName = oldName.split("/")
 											oldName = oldName[oldName.length - 1]
 
-											if(newParent == oldParent){
-												if(oldName !== newName){
-													if(typeof lastRemoteUUIDsOnlyUUIDs[uuid].folder !== "undefined"){
-														if(typeof localFolders[oldPath] !== "undefined"){
-															currentRenamingLocalFolders.push(newPath)
-															currentRenamingLocalFolders.push(oldPath)
+											if(oldName !== newName){
+												if(typeof lastRemoteUUIDsOnlyUUIDs[uuid].folder !== "undefined"){
+													if(typeof localFolders[oldPath] !== "undefined"){
+														currentRenamingLocalFolders.push(newPath)
+														currentRenamingLocalFolders.push(oldPath)
+														renamedLocalParents.push(newPath)
 
-															syncTask("local", "renamedir", {
-																path: newPath,
-																uuid: lastRemoteUUIDsOnlyUUIDs[uuid].folder.uuid,
-																newPath: newPath,
-																oldPath: oldPath,
-																name: newName,
-																realPath: userSyncDir + "/" + oldPath.slice(11),
-																realPathNew: userSyncDir + "/" + newPath.slice(11)
-															}, userMasterKeys)
-														}
-													}
-													else{
-														if(typeof localFiles[oldPath] !== "undefined"){
-															syncTask("local", "renamefile", {
-																path: newPath,
-																uuid: lastRemoteUUIDsOnlyUUIDs[uuid].file.uuid,
-																newPath: newPath,
-																oldPath: oldPath,
-																name: newName,
-																realPath: userSyncDir + "/" + oldPath.slice(11),
-																realPathNew: userSyncDir + "/" + newPath.slice(11)
-															}, userMasterKeys)
-														}
-													}
-												}
-											}
-											else{
-												if(typeof lastRemoteUUIDsOnlyUUIDs[uuid].folder == "undefined"){
-													if(typeof localFiles[oldPath] !== "undefined"){
-														if(true){
-															currentMovingLocalFiles.push(newPath)
-															currentMovingLocalFiles.push(oldPath)
-
-															syncTask("local", "movefile", {
-																path: newPath,
-																uuid: lastRemoteUUIDsOnlyUUIDs[uuid].file.uuid,
-																newPath: newPath,
-																oldPath: oldPath,
-																realPath: userSyncDir + "/" + oldPath.slice(11),
-																realPathNew: userSyncDir + "/" + newPath.slice(11)
-															}, userMasterKeys)
-														}
+														syncTask("local", "renamedir", {
+															path: newPath,
+															uuid: lastRemoteUUIDsOnlyUUIDs[uuid].folder.uuid,
+															newPath: newPath,
+															oldPath: oldPath,
+															name: newName,
+															realPath: userSyncDir + "/" + oldPath.slice(11),
+															realPathNew: userSyncDir + "/" + newPath.slice(11)
+														}, userMasterKeys)
 													}
 												}
 												else{
-													if(typeof localFolders[oldPath] !== "undefined"){
-														if(true){
-															currentMovingLocalFolders.push(newPath)
-															currentMovingLocalFolders.push(oldPath)
+													if(typeof localFiles[oldPath] !== "undefined"){
+														currentRenamingLocalFiles.push(newPath)
+														currentRenamingLocalFiles.push(oldPath)
 
-															syncTask("local", "movedir", {
-																path: newPath,
-																uuid: lastRemoteUUIDsOnlyUUIDs[uuid].folder.uuid,
-																newPath: newPath,
-																oldPath: oldPath,
-																realPath: userSyncDir + "/" + oldPath.slice(11),
-																realPathNew: userSyncDir + "/" + newPath.slice(11)
-															}, userMasterKeys)
-														}
+														syncTask("local", "renamefile", {
+															path: newPath,
+															uuid: lastRemoteUUIDsOnlyUUIDs[uuid].file.uuid,
+															newPath: newPath,
+															oldPath: oldPath,
+															name: newName,
+															realPath: userSyncDir + "/" + oldPath.slice(11),
+															realPathNew: userSyncDir + "/" + newPath.slice(11)
+														}, userMasterKeys)
+													}
+												}
+											}
+
+											if(oldParent !== newParent && !didRenameParent(renamedLocalParents, newParent)){
+												if(typeof lastRemoteUUIDsOnlyUUIDs[uuid].folder !== "undefined"){
+													if(typeof localFolders[oldPath] !== "undefined"){
+														currentMovingLocalFolders.push(newPath)
+														currentMovingLocalFolders.push(oldPath)
+														renamedLocalParents.push(newPath)
+
+														syncTask("local", "movedir", {
+															path: newPath,
+															uuid: lastRemoteUUIDsOnlyUUIDs[uuid].folder.uuid,
+															newPath: newPath,
+															oldPath: oldPath,
+															realPath: userSyncDir + "/" + oldPath.slice(11),
+															realPathNew: userSyncDir + "/" + newPath.slice(11)
+														}, userMasterKeys)
+													}
+												}
+												else{
+													if(typeof localFiles[oldPath] !== "undefined"){
+														currentMovingLocalFiles.push(newPath)
+														currentMovingLocalFiles.push(oldPath)
+
+														syncTask("local", "movefile", {
+															path: newPath,
+															uuid: lastRemoteUUIDsOnlyUUIDs[uuid].file.uuid,
+															newPath: newPath,
+															oldPath: oldPath,
+															realPath: userSyncDir + "/" + oldPath.slice(11),
+															realPathNew: userSyncDir + "/" + newPath.slice(11)
+														}, userMasterKeys)
 													}
 												}
 											}
@@ -6523,6 +6544,8 @@ const doSync = async () => {
 								}
 							}
 						}
+
+						delete renamedLocalParents
 
 						if(syncMode == "twoWay" || syncMode == "localToCloud"){
 							//Did the local mod time change from previous sync?
@@ -7032,7 +7055,7 @@ const initChokidar = async () => {
 
 			//clearCurrentSyncTasksExtra()
 			setLocalDataChangedTrue()
-		}, 60000)
+		}, 3000)
 
 		return true
 	}
@@ -7361,7 +7384,7 @@ const updateVisualStatus = async () => {
 	let tooltipText = ""
 	let totalSyncTasks = (currentSyncTasks.length + currentSyncTasksExtra.length) 
 
-	if(gotFSWatchEvent){
+	if(gotFSWatchEvent || isWaitingForNewFileOrFolder){
 		totalSyncTasks += 1
 	}
 
