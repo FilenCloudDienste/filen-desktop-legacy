@@ -92,13 +92,10 @@ const doSyncSempahore = new Semaphore(1)
 const syncTaskLimiterSemaphore = new Semaphore(16)
 const checkSyncTaskForDuplicateSemaphore = new Semaphore(1)
 const moveSemaphore = new Semaphore(1)
-const fsWatchSemaphore = new Semaphore(1)
 
 let currentAppVersion = "1"
 let thisDeviceId = undefined
 let isIndexing = false
-let lastSyncTasksData = undefined
-let lastSyncedItem = undefined
 let diskSpaceFree = 5114639114240
 let idleTimeSeconds = 0
 let socket = undefined
@@ -150,10 +147,8 @@ let currentAPICallThreads = 0
 let savedUserUsage = {}
 let syncingPaused = false
 let syncTimeout = 3000
-let fillSyncDataInterval = undefined
 let remoteDecryptedCache = {}
 let isCurrentlyDownloadigRemote = false
-let currentDownloadFileUUID = undefined
 let currentDownloadFolderUUID = undefined
 let currentDownloadFolderIsShared = false
 let currentDownloadFolderLinkKey = undefined
@@ -165,7 +160,6 @@ let lastDownloadFolderPath = undefined
 let currentDownloadFolderLoaded = {}
 let currentDownloadFolderStopped = {}
 let downloadFolderDoneInterval = undefined
-let localDataChangedFiles = {}
 let lastSavedDataHash = undefined
 let lastReceivedSyncData = undefined
 let firstDataRequest = true
@@ -200,6 +194,7 @@ let needsUpdate = false
 let gotFSWatchEvent = false
 let fsWatchEventTimeout = undefined
 let isWaitingForNewFileOrFolder = false
+let isWaitingForNewFileOrFolderTimeout = undefined
 
 let currentFileVersion = 1
 let metadataVersion = 1
@@ -287,6 +282,20 @@ const isFileNameBlocked = (name) => {
 
 	if(name.substring(name.length - 5) == ".temp"){
 		return true
+	}
+
+	let ext = name.split(".")
+
+	ext = ext[ext.length - 1]
+
+	if(typeof ext == "string"){
+		ext = ext.trim()
+
+		if(ext.length > 0){
+			if(defaultBlockedFileExt.includes(ext)){
+				return true
+			}
+		}
 	}
 
 	return false
@@ -4240,17 +4249,19 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 	if(where == "remote"){
 		if(task == "upload" || task == "mkdir"){
 			if(typeof taskInfo.birthTime !== "undefined"){
-				if((BigInt(taskInfo.birthTime) + BigInt(60000)) > BigInt((+new Date()))){
-					return false
-				}
-				else{
+				if((BigInt(Math.floor(taskInfo.birthTime)) + BigInt(60000)) > BigInt(Math.floor((+new Date())))){
 					isWaitingForNewFileOrFolder = true
 
-					setTimeout(() => {
-						setLocalDataChangedTrue = false
+					clearTimeout(isWaitingForNewFileOrFolderTimeout)
+
+					isWaitingForNewFileOrFolderTimeout = setTimeout(() => {
+						isWaitingForNewFileOrFolder = false
+						reloadAll = true
 
 						setLocalDataChangedTrue()
 					}, 70000)
+
+					return false
 				}
 			}
 		}
@@ -7022,10 +7033,6 @@ const indexCleanup = async () => {
 }
 
 const setLocalDataChangedTrue = () => {
-	//if(isSyncing || isIndexing || currentSyncTasks.length > 0 || syncingPaused){
-	//	return setTimeout(setLocalDataChangedTrue, 1000)
-	//}
-
 	return localDataChanged = true
 }
 
@@ -7349,11 +7356,11 @@ const doLogout = async () => {
 const getDiskSpace = () => {
 	const get = () => {
 		if(typeof userSyncDir == "undefined"){
-			return
+			return false
 		}
 
 		if(userSyncDir.length == 0){
-			return
+			return false
 		}
 
 		checkDiskSpace(userSyncDir).then((diskSpace) => {
