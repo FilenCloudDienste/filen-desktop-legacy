@@ -1231,6 +1231,10 @@ const openLinkInBrowser = (url) => {
     return true
 }
 
+const showBigLoader = () => {
+	return routeTo("big-loading")
+}
+
 const initFns = () => {
 	$(".open-in-browser").click((e) => {
         e.preventDefault()
