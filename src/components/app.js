@@ -4251,7 +4251,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 	if(where == "remote"){
 		if(task == "upload" || task == "mkdir"){
 			if(typeof taskInfo.birthTime !== "undefined"){
-				if((BigInt(taskInfo.birthTime) + BigInt(90000)) > BigInt((+new Date()))){
+				if((BigInt((taskInfo.birthTime).toFixed(0)).toString() + BigInt(90000).toString()) > BigInt((+new Date())).toString()){
 					isWaitingForNewFileOrFolder = true
 
 					clearTimeout(isWaitingForNewFileOrFolderTimeout)
