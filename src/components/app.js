@@ -7100,10 +7100,12 @@ const initChokidar = async () => {
 		})
 		
 		watcher.on("all", async (event, ePath) => {
-			ePath = ePath.split("\\").join("/")
+			if(typeof ePath == "string"){
+				ePath = ePath.split("\\").join("/")
 	
-			if(ePath.indexOf(localTrashBinName) == -1){
-				return handleEvent(event, ePath)
+				if(ePath.indexOf(localTrashBinName) == -1){
+					return handleEvent(event, ePath)
+				}
 			}
 		})
 		
@@ -7121,8 +7123,10 @@ const initChokidar = async () => {
 				persistent: true,
 				recursive: true
 			}, (event, ePath) => {
-				if(ePath.indexOf(localTrashBinName) == -1){
-					return handleEvent(event, ePath)
+				if(typeof ePath == "string"){
+					if(ePath.indexOf(localTrashBinName) == -1){
+						return handleEvent(event, ePath)
+					}
 				}
 			})
 
