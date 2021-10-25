@@ -4251,7 +4251,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 	if(where == "remote"){
 		if(task == "upload" || task == "mkdir"){
 			if(typeof taskInfo.birthTime !== "undefined"){
-				if((BigInt(Math.floor(taskInfo.birthTime)) + BigInt(90000)) > BigInt(Math.floor((+new Date())))){
+				if((BigInt(taskInfo.birthTime) + BigInt(90000)) > BigInt((+new Date()))){
 					isWaitingForNewFileOrFolder = true
 
 					clearTimeout(isWaitingForNewFileOrFolderTimeout)
@@ -7077,7 +7077,7 @@ const initChokidar = async () => {
 
 			//clearCurrentSyncTasksExtra()
 			setLocalDataChangedTrue()
-		}, 3000)
+		}, 5000)
 
 		return true
 	}
