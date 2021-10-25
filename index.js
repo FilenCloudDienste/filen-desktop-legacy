@@ -289,6 +289,9 @@ const attemptGracefulClose = async () => {
 			close = true
 		}
 	}
+	else{
+		close = true
+	}
 
 	if(close){
 		return app.exit(0)

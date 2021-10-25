@@ -3658,6 +3658,8 @@ const writeSyncTasks = async () => {
 	for(let i = 0; i < syncTasksToWrite.length; i++){
 		currentStorageData.push(syncTasksToWrite[i])
 
+		syncTasksToWrite.splice(i, 1)
+
 		if(currentStorageData.length >= 250){
 			currentStorageData.shift()
 		}
@@ -4249,7 +4251,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 	if(where == "remote"){
 		if(task == "upload" || task == "mkdir"){
 			if(typeof taskInfo.birthTime !== "undefined"){
-				if((BigInt(Math.floor(taskInfo.birthTime)) + BigInt(60000)) > BigInt(Math.floor((+new Date())))){
+				if((BigInt(Math.floor(taskInfo.birthTime)) + BigInt(90000)) > BigInt(Math.floor((+new Date())))){
 					isWaitingForNewFileOrFolder = true
 
 					clearTimeout(isWaitingForNewFileOrFolderTimeout)
@@ -4259,7 +4261,7 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 						reloadAll = true
 
 						setLocalDataChangedTrue()
-					}, 70000)
+					}, 95000)
 
 					return false
 				}
@@ -4305,6 +4307,8 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 
 	currentSyncTasks.push(taskId)
 
+	updateVisualStatus()
+
 	checkSyncTaskForDuplicateSemaphoreRelease()
 
 	await new Promise((resolve) => setTimeout(resolve, 1000))
@@ -4312,8 +4316,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 	let syncTaskLimiterSemaphoreRelease = await syncTaskLimiterSemaphore.acquire()
 
 	console.log(where, task, JSON.stringify(taskInfo))
-
-	updateVisualStatus()
 
 	switch(where){
 		case "remote":
@@ -4798,6 +4800,8 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 
 							syncTaskLimiterSemaphoreRelease()
 
+							addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
+
 							return setTimeout(() => {
 								removeFromSyncTasks(taskId)
 							}, syncTimeout)
@@ -5134,6 +5138,8 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 						syncTaskLimiterSemaphoreRelease()
 						releaseMoveSemaphore()
 
+						addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
+
 						return setTimeout(() => {
 							removeFromSyncTasks(taskId)
 						}, syncTimeout)
@@ -5221,6 +5227,8 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 
 						syncTaskLimiterSemaphoreRelease()
 						releaseMoveSemaphore()
+
+						addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
 
 						return setTimeout(() => {
 							removeFromSyncTasks(taskId)
@@ -5325,6 +5333,8 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 
 						syncTaskLimiterSemaphoreRelease()
 
+						addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
+
 						return setTimeout(() => {
 							removeFromSyncTasks(taskId)
 						}, syncTimeout)
@@ -5416,6 +5426,8 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 						delete localFileExisted[taskInfo.oldPath]
 
 						syncTaskLimiterSemaphoreRelease()
+
+						addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
 
 						return setTimeout(() => {
 							removeFromSyncTasks(taskId)
@@ -6274,6 +6286,7 @@ const doSync = async () => {
 											isIndexing = false
 											canRemoveFromSyncTasks = true
 
+											updateVisualStatus()
 											releaseSyncSemaphore()
 											clearCurrentSyncTasksExtra()
 										}, 1000)
@@ -6297,6 +6310,7 @@ const doSync = async () => {
 									isIndexing = false
 									canRemoveFromSyncTasks = true
 
+									updateVisualStatus()
 									releaseSyncSemaphore()
 									clearCurrentSyncTasksExtra()
 								}, 1000)
@@ -6927,8 +6941,6 @@ const doSync = async () => {
 							if(currentSyncTasks.length <= 0){
 								clearInterval(waitForQueueToFinishInterval)
 	
-								updateVisualStatus()
-	
 								lastRemoteSyncFolders = remoteFolders
 								lastRemoteSyncFiles = remoteFiles
 								lastLocalSyncFolders = localFolders
@@ -6963,7 +6975,10 @@ const doSync = async () => {
 										localDataChanged = true
 										reloadAll = false
 										canRemoveFromSyncTasks = true
-	
+
+										currentSyncTasksExtra.push(uuidv4())
+
+										updateVisualStatus()
 										writeSyncTasks()
 									}, syncTimeout)
 								})
