@@ -3977,7 +3977,7 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 
 				if(metadata.name.length > 0){
 					if(typeof newPath !== "undefined" && metadata.size > 0){
-						if(!isFileNameBlocked(metadata.name)){
+						if(!isFileNameBlocked(metadata.name) && newPath.indexOf(localTrashBinName) == -1){
 							if(typeof fileNamesExisting[self.parent + "_" + metadata.name.toLowerCase()] == "undefined"){
 								fileNamesExisting[self.parent + "_" + metadata.name.toLowerCase()] = true
 
@@ -4319,7 +4319,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 
 	let syncTaskLimiterSemaphoreRelease = await syncTaskLimiterSemaphore.acquire()
 
-	console.log(where, task, JSON.stringify(taskInfo))
+	if(is.dev()){
+		console.log(where, task, JSON.stringify(taskInfo))
+	}
 
 	switch(where){
 		case "remote":
@@ -5001,8 +5003,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 										}, syncTimeout)
 									}
 
-									console.log(task + " " + taskInfo.path + " " + task + " done")
-
 									addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
 
 									if(typeof taskInfo.size !== "undefined" && typeof taskInfo.modTime !== "undefined"){
@@ -5135,8 +5135,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 							}, syncTimeout)
 						}
 
-						console.log(task + " " + taskInfo.path + " " + task + " done")
-
 						delete localFolderExisted[taskInfo.oldPath]
 
 						syncTaskLimiterSemaphoreRelease()
@@ -5174,8 +5172,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 									removeFromSyncTasks(taskId)
 								}, syncTimeout)
 							}
-
-							console.log(task + " " + taskInfo.path + " " + task + " done")
 
 							addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
 
@@ -5265,8 +5261,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 								}, syncTimeout)
 							}
 
-							console.log(task + " " + taskInfo.path + " " + task + " done")
-
 							addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
 
 							try{
@@ -5331,8 +5325,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 							}, syncTimeout)
 						}
 
-						console.log(task + " " + taskInfo.path + " " + task + " done")
-
 						delete localFolderExisted[taskInfo.oldPath]
 
 						syncTaskLimiterSemaphoreRelease()
@@ -5377,8 +5369,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 									}, syncTimeout)
 								}
 	
-								console.log(task + " " + taskInfo.path + " " + task + " done")
-	
 								addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
 	
 								localFolderExisted[taskInfo.path] = true
@@ -5421,8 +5411,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 								removeFromSyncTasks(taskId)
 							}, syncTimeout)
 						}
-
-						console.log(task + " " + taskInfo.path + " " + task + " done")
 
 						delete localFileModifications[taskInfo.oldPath]
 						delete remoteFileSizes[taskInfo.oldPath]
@@ -5470,8 +5458,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 										removeFromSyncTasks(taskId)
 									}, syncTimeout)
 								}
-	
-								console.log(task + " " + taskInfo.path + " " + task + " done")
 	
 								addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
 	
@@ -5710,8 +5696,6 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 
 						localFileExisted[taskInfo.path] = true
 						remoteFileUUIDs[taskInfo.path] = taskInfo.file.uuid
-
-						console.log(taskInfo.path + " " + task + " done")
 
 						addFinishedSyncTaskToStorage(where, task, JSON.stringify(taskInfo))
 
@@ -6925,7 +6909,7 @@ const doSync = async () => {
 												parent: remoteSyncFolders[fileParentPath].uuid,
 												filePath: filePath,
 												modTime: localFiles[prop].modTime,
-												size: localFiles[i].size,
+												size: localFiles[prop].size,
 												birthTime: localFiles[prop].birthTime
 											}, userMasterKeys)
 										}
