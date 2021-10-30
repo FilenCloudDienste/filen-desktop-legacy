@@ -1618,7 +1618,7 @@ const toggleAutostart = () => {
 	return ipcRenderer.send("toggle-autostart")
 }
 
-const changeHomePath = () => {
+const changeHomePath = async () => {
 	if((currentSyncTasks.length + currentSyncTasksExtra.length) > 0){
 		return false
 	}
