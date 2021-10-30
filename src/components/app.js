@@ -62,6 +62,7 @@ const sha384 = require("js-sha512").sha384
 const is = require("electron-is")
 const readdirp = require("readdirp")
 const copy = require("recursive-copy")
+const nodeWatch = require("node-watch-fs-extra")
 
 let db = undefined
 let dbPath = undefined
@@ -1179,19 +1180,13 @@ const initIPC = () => {
 	})
 
 	ipcRenderer.on("force-sync", (e, data) => {
-		let wait = setInterval(() => {
-			if(!isSyncing){
-				clearInterval(wait)
+		currentWriteThreads = 0
+		currentDownloadThreads = 0
+		currentDownloadTasks = 0
+		currentUploadTasks = 0
+		currentUploadThreads = 0
 
-				currentWriteThreads = 0
-				currentDownloadThreads = 0
-				currentDownloadTasks = 0
-				currentUploadTasks = 0
-				currentUploadThreads = 0
-
-				return reloadAll = true
-			}
-		}, 100)
+		return reloadAll = true
 	})
 
 	ipcRenderer.on("show-big-loading", (e, data) => {
@@ -1203,17 +1198,9 @@ const initIPC = () => {
 	})
 
 	ipcRenderer.on("rewrite-saved-sync-data", async (e, data) => {
-		let waitForSyncingDoneInterval = setInterval(async () => {
-			if(!isSyncing){
-				syncingPaused = true
+		await saveSyncData(true)
 
-				clearInterval(waitForSyncingDoneInterval)
-
-				await saveSyncData(true)
-
-				return ipcRenderer.send("rewrite-saved-sync-data-done")
-			}
-		}, 10)
+		return ipcRenderer.send("rewrite-saved-sync-data-done")
 	})
 }
 
@@ -1267,7 +1254,7 @@ const initFns = () => {
 
    		return setTimeout(() => {
 			ipcRenderer.send("relaunch-app")
-		}, 2500)
+		}, 1000)
    	})
 
    	$("#login-btn").click(() => {
@@ -1619,10 +1606,6 @@ const toggleAutostart = () => {
 }
 
 const changeHomePath = async () => {
-	if((currentSyncTasks.length + currentSyncTasksExtra.length) > 0){
-		return false
-	}
-
 	dontHideOnBlur = true
 	syncingPaused = true
 
@@ -7087,7 +7070,7 @@ const initChokidar = async () => {
 	}
 
 	if(process.platform == "linux"){
-		let watcher = chokidar.watch(winOrUnixFilePath(userSyncDir), {
+		/*let watcher = chokidar.watch(winOrUnixFilePath(userSyncDir), {
 			persistent: true,
 			recursive: true,
 			ignoreInitial: true,
@@ -7115,7 +7098,20 @@ const initChokidar = async () => {
 		
 		watcher.on("error", (err) => {
 			return console.log(err)
+		})*/
+
+		nodeWatch(winOrUnixFilePath(userSyncDir), {
+			persistent: true,
+			recursive: true
+		}, (event, ePath) => {
+			if(typeof ePath == "string"){
+				if(ePath.indexOf(localTrashBinName) == -1){
+					return handleEvent(event, ePath)
+				}
+			}
 		})
+
+		console.log("Node Watch ready")
 	}
 	else{
 		try{
@@ -7427,7 +7423,7 @@ const updateVisualStatus = async () => {
 
 		tooltipText = "Filen Sync v" + currentAppVersion + "\nSynchronizing.."
 
-		$("#sync-mode-select").prop("disabled", true)
+		//$("#sync-mode-select").prop("disabled", true)
 	}
 	else{
 		headerStatus = `
@@ -7438,7 +7434,7 @@ const updateVisualStatus = async () => {
 
 		tooltipText = "Filen Sync v" + currentAppVersion + "\nUp to date"
 
-		$("#sync-mode-select").prop("disabled", false)
+		//$("#sync-mode-select").prop("disabled", false)
 	}
 
 	if(lastHeaderStatus !== headerStatus){

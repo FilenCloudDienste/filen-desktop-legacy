@@ -668,77 +668,69 @@ const createWindow = async () => {
 
 		doCheckIfSyncDirectoryExists = false
 
-		let wait = setInterval(async () => {
-			if(syncTasks == 0){
-				clearInterval(wait)
+		let selectedPath = newPath
 
-				let selectedPath = newPath
+		if(selectedPath.slice(-1) == "/"){
+			selectedPath = selectedPath.substring(0, selectedPath.length - 1)
+		}
 
-				if(selectedPath.slice(-1) == "/"){
-					selectedPath = selectedPath.substring(0, selectedPath.length - 1)
+		userHomePath = selectedPath
+
+		let newSyncDirPath = userHomePath
+
+		try{
+			await db.put("altHomePath", selectedPath)
+			await db.put("removeFilenSyncEnding", "true")
+		}
+		catch(e){
+			return console.log(e)
+		}
+
+		sendUserDirs()
+
+		const copyOldFilesOver = () => {
+			sendUserDirs()
+
+			copy(winOrUnixFilePath(lastUserSyncDir), winOrUnixFilePath(newSyncDirPath), {
+				overwrite: true,
+				expand: false,
+				dot: true,
+				junk: true
+			}, (err) => {
+				if(err){
+					console.log(err)
 				}
-
-				userHomePath = selectedPath
-
-				let newSyncDirPath = userHomePath
-
-				try{
-					await db.put("altHomePath", selectedPath)
-					await db.put("removeFilenSyncEnding", "true")
-				}
-				catch(e){
-					return console.log(e)
-				}
-
-				sendUserDirs()
-
-				const copyOldFilesOver = () => {
+				else{
 					sendUserDirs()
+						
+					return browserWindow.webContents.send("rewrite-saved-sync-data", {
+						lastUserHomePath,
+						newUserHomePath: userHomePath
+					})
+				}
+			})
+		}
 
-					copy(winOrUnixFilePath(lastUserSyncDir), winOrUnixFilePath(newSyncDirPath), {
-						overwrite: true,
-						expand: false,
-						dot: true,
-						junk: true
-					}, (err, res) => {
+		fs.access(winOrUnixFilePath(newSyncDirPath), (err) => {
+			if(err){
+				if(err.code == "ENOENT"){
+					fs.mkdir(winOrUnixFilePath(newSyncDirPath), (err) => {
 						if(err){
 							console.log(err)
 						}
 						else{
-							fs.remove(winOrUnixFilePath(lastUserSyncDir), (err) => {
-								sendUserDirs()
-								
-								browserWindow.webContents.send("rewrite-saved-sync-data", {
-									lastUserHomePath,
-									newUserHomePath: userHomePath
-								})
-							})
+							copyOldFilesOver()
 						}
 					})
 				}
-
-				fs.access(winOrUnixFilePath(newSyncDirPath), (err) => {
-					if(err){
-						if(err.code == "ENOENT"){
-							fs.mkdir(winOrUnixFilePath(newSyncDirPath), (err) => {
-								if(err){
-									console.log(err)
-								}
-								else{
-									copyOldFilesOver()
-								}
-							})
-						}
-						else{
-							console.log(err)
-						}
-					}
-					else{
-						copyOldFilesOver()
-					}
-				})
+				else{
+					console.log(err)
+				}
 			}
-		}, 100)
+			else{
+				copyOldFilesOver()
+			}
+		})
 	})
 
 	ipcMain.on("rewrite-saved-sync-data-done", (event, data) => {
