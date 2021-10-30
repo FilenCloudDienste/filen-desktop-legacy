@@ -266,6 +266,14 @@ const isFileNameBlocked = (name) => {
 		return true
 	}
 
+	if(name.indexOf("\n") !== -1){
+		return true
+	}
+
+	if(name.indexOf("\r") !== -1){
+		return true
+	}
+
 	name = name.toLowerCase().trim()
 
 	if(defaultBlockedFiles.includes(name)){
@@ -3958,7 +3966,7 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 		for(let i = 0; i < res.data.files.length; i++){
 			let self = res.data.files[i]
 
-			if(pathsForFiles[self.parent] !== "undefined"){
+			if(typeof pathsForFiles[self.parent] !== "undefined"){
 				let metadata = await decryptFileMetadata(self.metadata, userMasterKeys, self.uuid)
 
 				metadata.name = cleanString(metadata.name)
@@ -6934,39 +6942,29 @@ const doSync = async () => {
 								localFolderExisted = localFolders
 								localFileExisted = localFiles
 	
-								//localDataChanged = true
+								localDataChanged = true
 	
-								getLocalSyncDirContents(async (err, folders, files) => {
-									if(err){
-										console.log(err)							
-									}
-									else{
-										//localFolderExisted = folders
-										//localFileExisted = files
-									}
-	
-									await saveSyncData(false)
-									await indexCleanup()
-	
-									return setTimeout(() => {
-										console.log("Sync cycle done.")
+								await saveSyncData(false)
+								await indexCleanup()
 
-										clearCurrentSyncTasksExtra()
-											
-										isIndexing = false
-										isSyncing = false
-										localDataChanged = true
-										reloadAll = false
-										canRemoveFromSyncTasks = true
+								return setTimeout(() => {
+									console.log("Sync cycle done.")
 
-										currentSyncTasksExtra.push(uuidv4())
+									clearCurrentSyncTasksExtra()
+										
+									isIndexing = false
+									isSyncing = false
+									localDataChanged = true
+									reloadAll = false
+									canRemoveFromSyncTasks = true
 
-										updateVisualStatus()
-										writeSyncTasks()
+									currentSyncTasksExtra.push(uuidv4())
 
-										releaseSyncSemaphore()
-									}, syncTimeout)
-								})
+									updateVisualStatus()
+									writeSyncTasks()
+
+									releaseSyncSemaphore()
+								}, syncTimeout)
 							}
 						}, 10)
 					}, syncTimeout)
@@ -7062,7 +7060,7 @@ const initChokidar = async () => {
 
 			//clearCurrentSyncTasksExtra()
 			setLocalDataChangedTrue()
-		}, 5000)
+		}, 3000)
 
 		return true
 	}
