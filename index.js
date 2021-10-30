@@ -31,6 +31,10 @@ process.on("uncaughtException", (err) => {
 	}
 })
 
+process.on("unhandledRejection", (err) => {
+	console.log(err)
+})
+
 const { app, BrowserWindow, Menu, ipcMain, Tray, dialog, powerMonitor, globalShortcut, nativeImage, shell } = require("electron")
 const path = require("path")
 const level = require("level")
@@ -654,38 +658,21 @@ const createWindow = async () => {
 		})
 	})
 
-	ipcMain.on("open-path-selection", async (event, data) => {
-		let result = await dialog.showOpenDialog(browserWindow, {
-		    properties: [
-		    	"openDirectory"
-		    ]
-		})
-
-		if(result.canceled){
-			return browserWindow.webContents.send("unpause-syncing")
-		}
-
-		if(typeof result.filePaths == "undefined"){
-			return browserWindow.webContents.send("unpause-syncing")
-		}
-
-		if(typeof result.filePaths[0] == "undefined"){
-			return browserWindow.webContents.send("unpause-syncing")
-		}
-
+	ipcMain.on("new-home-path", async (event, data) => {
+		let newPath = data.path
 		let lastUserHomePath = userHomePath
 		let lastUserSyncDir = userSyncDir
 
 		browserWindow.webContents.send("show-big-loading")
-
 		browserWindow.webContents.send("pause-syncing")
+
 		doCheckIfSyncDirectoryExists = false
 
 		let wait = setInterval(async () => {
 			if(syncTasks == 0){
 				clearInterval(wait)
 
-				let selectedPath = result.filePaths[0].split("\\").join("/")
+				let selectedPath = newPath
 
 				if(selectedPath.slice(-1) == "/"){
 					selectedPath = selectedPath.substring(0, selectedPath.length - 1)
@@ -755,15 +742,9 @@ const createWindow = async () => {
 	})
 
 	ipcMain.on("rewrite-saved-sync-data-done", (event, data) => {
-		let waitForSyncToFinishInterval = setInterval(() => {
-    		if(syncTasks == 0){
-    			clearInterval(waitForSyncToFinishInterval)
+		app.relaunch()
 
-    			app.relaunch()
-
-    			return app.exit(0)
-    		}
-    	}, 100)
+    	return app.exit(0)
 	})
 
 	ipcMain.on("exit-app", (event, data) => {

@@ -36,6 +36,10 @@ process.on("uncaughtException", (err) => {
 	}
 })
 
+process.on("unhandledRejection", (err) => {
+	console.log(err)
+})
+
 const { ipcRenderer, shell, remote } = require("electron")
 const electron = require("electron")
 const CryptoJS = require("crypto-js")
@@ -57,6 +61,7 @@ const sha512 = require("js-sha512")
 const sha384 = require("js-sha512").sha384
 const is = require("electron-is")
 const readdirp = require("readdirp")
+const copy = require("recursive-copy")
 
 let db = undefined
 let dbPath = undefined
@@ -187,7 +192,6 @@ let currentRenamingLocalFiles = []
 let currentRenamingRemoteFiles = []
 let currentMovingLocalFiles = []
 let currentMovingRemoteFiles = []
-let selectPathRes = {}
 let pathDelimeter = "{[%@*#$_E-X_$#*@%]}"
 let excludedPaths = []
 let needsUpdate = false
@@ -302,28 +306,31 @@ const isFileNameBlocked = (name) => {
 }
 
 const selectLocalPath = () => {
-	return new Promise((resolve, reject) => {
-		let id = uuidv4()
+	return new Promise(async (resolve, reject) => {
+		try{
+			var result = await electron.remote.dialog.showOpenDialog(electron.remote.getCurrentWindow(), {
+				properties: [
+					"openDirectory"
+				]
+			})
+		}
+		catch(e){
+			return reject(e)
+		}
 
-		ipcRenderer.send("select-path", {
-			id
-		})
+		if(result.canceled){
+			return reject("cancelled")
+		}
 
-		let wait = setInterval(() => {
-			let res = selectPathRes[id]
+		if(typeof result.filePaths == "undefined"){
+			return reject("undefined")
+		}
 
-			if(typeof res !== "undefined"){
-				clearInterval(wait)
+		if(typeof result.filePaths[0] == "undefined"){
+			return reject("undefined") 
+		}
 
-				delete selectPathRes[id]
-
-				if(!res.status){
-					return reject(new Error("Path selection error"))
-				}
-
-				return resolve(res.path)
-			}
-		}, 100)
+		return resolve(result.filePaths[0].split("\\").join("/"))
 	})
 }
 
@@ -1171,10 +1178,6 @@ const initIPC = () => {
 		return syncingPaused = false
 	})
 
-	ipcRenderer.on("select-path-res", (e, data) => {
-		return selectPathRes[data.id] = data
-	})
-
 	ipcRenderer.on("force-sync", (e, data) => {
 		let wait = setInterval(() => {
 			if(!isSyncing){
@@ -1623,7 +1626,16 @@ const changeHomePath = () => {
 	dontHideOnBlur = true
 	syncingPaused = true
 
-	return ipcRenderer.send("open-path-selection")
+	try{
+		var path = await selectLocalPath()
+	}
+	catch(e){
+		return console.log(e)
+	}
+
+	return ipcRenderer.send("new-home-path", {
+		path
+	})
 }
 
 const downloadUpdateLink = () => {
@@ -6937,16 +6949,19 @@ const doSync = async () => {
 								iNodeMapOnlyINodes = iNodeMapOnlyINodesRes
 								lastRemoteUUIDs = remoteUUIDsRes
 								lastRemoteUUIDsOnlyUUIDs = remoteUUIDsOnlyUUIDsRes
+
+								localFolderExisted = localFolders
+								localFileExisted = localFiles
 	
-								localDataChanged = true
+								//localDataChanged = true
 	
 								getLocalSyncDirContents(async (err, folders, files) => {
 									if(err){
 										console.log(err)							
 									}
 									else{
-										localFolderExisted = folders
-										localFileExisted = files
+										//localFolderExisted = folders
+										//localFileExisted = files
 									}
 	
 									await saveSyncData(false)
@@ -6954,8 +6969,7 @@ const doSync = async () => {
 	
 									return setTimeout(() => {
 										console.log("Sync cycle done.")
-	
-										releaseSyncSemaphore()
+
 										clearCurrentSyncTasksExtra()
 											
 										isIndexing = false
@@ -6968,6 +6982,8 @@ const doSync = async () => {
 
 										updateVisualStatus()
 										writeSyncTasks()
+
+										releaseSyncSemaphore()
 									}, syncTimeout)
 								})
 							}
