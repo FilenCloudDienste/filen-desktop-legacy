@@ -208,7 +208,6 @@ let defaultBlockedFiles = [
 	".ds_store",
 	"desktop.ini",
 	"thumbs.db",
-	localTrashBinName,
 	"AUX",
 	"PRN",
 	"NUL",
@@ -1245,6 +1244,7 @@ const initFns = () => {
 
    		try{
    			await db.put("syncMode", mode)
+			await saveSyncData(true)
    		}
    		catch(e){
    			return console.log(e)
@@ -3916,15 +3916,13 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 					let parent = folders[res.data.folders[i].parent]
 
 					if(typeof parent !== "undefined"){
-						if(!isFileNameBlocked(selfName)){
-							if(typeof folderNamesExisting[self.parent + "_" + selfName.toLowerCase()] == "undefined"){
-								folderNamesExisting[self.parent + "_" + selfName.toLowerCase()] = true
+						if(typeof folderNamesExisting[self.parent + "_" + selfName.toLowerCase()] == "undefined"){
+							folderNamesExisting[self.parent + "_" + selfName.toLowerCase()] = true
 
-								folders[self.uuid] = {
-									uuid: self.uuid,
-									name: selfName,
-									parent: self.parent
-								}
+							folders[self.uuid] = {
+								uuid: self.uuid,
+								name: selfName,
+								parent: self.parent
 							}
 						}
 					}
