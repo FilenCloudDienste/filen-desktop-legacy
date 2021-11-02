@@ -1083,7 +1083,7 @@ const initIPC = () => {
 	})
 
 	ipcRenderer.on("update-available", (e, data) => {
-		return $("#settings-update-container").show()
+		//return $("#settings-update-container").show()
 	})
 
 	ipcRenderer.on("app-version", (e, data) => {
@@ -3992,7 +3992,8 @@ const getRemoteSyncDirContents = async (folderUUID, callback) => {
 									mime: metadata.mime,
 									key: metadata.key,
 									parent: self.parent,
-									version: self.version
+									version: self.version,
+									lastModified: metadata.lastModified
 								}
 
 								remoteUUIDsRes[newPath + pathDelimeter + self.uuid] = {
@@ -4322,6 +4323,9 @@ const syncTask = async (where, task, taskInfo, userMasterKeys, callback) => {
 
 	if(is.dev()){
 		console.log(where, task, JSON.stringify(taskInfo))
+	}
+	else{
+		console.log(where, task, taskId)
 	}
 
 	switch(where){
@@ -6561,6 +6565,8 @@ const doSync = async () => {
 
 						delete renamedLocalParents
 
+						let remoteUpdatedFiles = []
+
 						if(syncMode == "twoWay" || syncMode == "localToCloud"){
 							//Did the local mod time change from previous sync?
 							for(let prop in localFiles){
@@ -6594,6 +6600,8 @@ const doSync = async () => {
 
 												if(typeof remoteSyncFolders[fileParentPath] !== "undefined"){
 													if(canUploadFile(prop)){
+														remoteUpdatedFiles.push(prop)
+
 														syncTask("remote", "update", {
 															path: prop,
 															realPath: userSyncDir + "/" + prop.slice(11),
@@ -6623,7 +6631,7 @@ const doSync = async () => {
 									}
 									else{
 										if(remoteFileUUIDs[prop] !== remoteFiles[prop].uuid){
-											if(remoteFiles[prop].size > 0){
+											if(remoteFiles[prop].size > 0 && !remoteUpdatedFiles.includes(prop)){
 												if(canDownloadFile(prop)){
 													syncTask("local", "update", {
 														path: prop,
@@ -6635,9 +6643,22 @@ const doSync = async () => {
 											}
 										}
 									}
+
+									if(localFiles[prop].size !== remoteFiles[prop].size && !remoteUpdatedFiles.includes(prop)){
+										if(canDownloadFile(prop)){
+											syncTask("local", "update", {
+												path: prop,
+												file: remoteFiles[prop],
+												filePath: filePath,
+												size: remoteFiles[prop].size
+											}, userMasterKeys)
+										}
+									}
 								}
 							}
 						}
+
+						delete remoteUpdatedFiles
 
 						//Create directory locally because we dont have it or delete remote dir because we deleted the local one
 						for(let prop in remoteFolders){
@@ -7096,18 +7117,25 @@ const initChokidar = async () => {
 			return console.log(err)
 		})*/
 
-		nodeWatch(winOrUnixFilePath(userSyncDir), {
-			persistent: true,
-			recursive: true
-		}, (event, ePath) => {
-			if(typeof ePath == "string"){
-				if(ePath.indexOf(localTrashBinName) == -1){
-					return handleEvent(event, ePath)
+		try{
+			nodeWatch(winOrUnixFilePath(userSyncDir), {
+				persistent: true,
+				recursive: true
+			}, (event, ePath) => {
+				if(typeof ePath == "string"){
+					if(ePath.indexOf(localTrashBinName) == -1){
+						return handleEvent(event, ePath)
+					}
 				}
-			}
-		})
+			})
+	
+			console.log("Node Watch ready")
+		}
+		catch(e){
+			console.log(e)
 
-		console.log("Node Watch ready")
+			showBigErrorMessage("Could not initialize the directory watcher, please try restarting the application.")
+		}
 	}
 	else{
 		try{
@@ -7462,7 +7490,7 @@ const checkLocalTrashBin = () => {
 						if(stat){
 							let ctime = Math.floor(stat.ctimeMs)
 
-							if(Math.floor((+new Date())) > (ctime + ((86400 * 30) * 1000))){
+							if(Math.floor((+new Date())) > (ctime + ((86400 * 14) * 1000))){
 								fs.remove(winOrUnixFilePath(userSyncDir + "/" + localTrashBinName + "/" + files[i]), (err) => {
 									if(err){
 										console.log(err)
