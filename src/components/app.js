@@ -40,7 +40,7 @@ process.on("unhandledRejection", (err) => {
 	console.log(err)
 })
 
-const { ipcRenderer, shell, remote } = require("electron")
+const { ipcRenderer, shell, remote, nativeImage } = require("electron")
 const electron = require("electron")
 const CryptoJS = require("crypto-js")
 const level = require("level")
@@ -63,6 +63,7 @@ const is = require("electron-is")
 const readdirp = require("readdirp")
 const copy = require("recursive-copy")
 const nodeWatch = require("node-watch-fs-extra")
+const pathModule = require("path")
 
 let db = undefined
 let dbPath = undefined
@@ -1248,6 +1249,30 @@ const initFns = () => {
    	})
 
    	$("#sync-mode-select").on("change", async () => {
+		if((currentSyncTasks.length + currentSyncTasksExtra.length) > 0 || isSyncing || isIndexing || gotFSWatchEvent || isWaitingForNewFileOrFolder){
+			try{
+				let dialog = await electron.remote.dialog.showMessageBox({
+					icon: nativeImage.createFromPath(pathModule.join(__dirname, "..", "..", "icons", "png", "512x512.png")),
+					title: "Filen",
+					buttons: [
+						"Wait for sync to finish",
+						"Change anyways"
+					],
+					defaultId: 0,
+					cancelId: 1,
+					type: "warning",
+					message: "Filen is still syncing with the cloud. Changing the sync mode now could result into loss or corruption of data."
+				})
+	
+				if(dialog.response == 0){
+					return false
+				}
+			}
+			catch(e){
+				console.log(e)
+			}
+		}
+
    		let mode = $("#sync-mode-select").val()
 
    		try{
@@ -1615,6 +1640,31 @@ const toggleAutostart = () => {
 
 const changeHomePath = async () => {
 	dontHideOnBlur = true
+
+	if((currentSyncTasks.length + currentSyncTasksExtra.length) > 0 || isSyncing || isIndexing || gotFSWatchEvent || isWaitingForNewFileOrFolder){
+		try{
+			let dialog = await electron.remote.dialog.showMessageBox({
+				icon: nativeImage.createFromPath(pathModule.join(__dirname, "..", "..", "icons", "png", "512x512.png")),
+				title: "Filen",
+				buttons: [
+					"Wait for sync to finish",
+					"Change anyways"
+				],
+				defaultId: 0,
+				cancelId: 1,
+				type: "warning",
+				message: "Filen is still syncing with the cloud. Changing the path now could result into loss or corruption of data."
+			})
+
+			if(dialog.response == 0){
+				return false
+			}
+		}
+		catch(e){
+			console.log(e)
+		}
+	}
+
 	syncingPaused = true
 
 	try{
@@ -1679,7 +1729,7 @@ const renderSyncTask = (task, prepend = true) => {
 		isFile = false
 	}
 	else if(task.where == "remote" && task.task == "update"){
-		taskName = '<i class="fa fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-up"></i>'
+		taskName = '<i class="fa fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-sync"></i>'
 	}
 	else if(task.where == "remote" && task.task == "renamefile"){
 		taskName = '<i class="fa fa-cloud"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-edit"></i>'
@@ -1717,7 +1767,7 @@ const renderSyncTask = (task, prepend = true) => {
 		isFile = false
 	}
 	else if(task.where == "local" && task.task == "update"){
-		taskName = '<i class="fa fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-arrow-down"></i>'
+		taskName = '<i class="fa fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-sync"></i>'
 	}
 	else if(task.where == "local" && task.task == "renamedir"){
 		taskName = '<i class="fa fa-desktop"></i>&nbsp;&nbsp;&nbsp;<i class="fas fa-edit"></i>'
@@ -6644,7 +6694,7 @@ const doSync = async () => {
 										}
 									}
 
-									if(localFiles[prop].size !== remoteFiles[prop].size && !remoteUpdatedFiles.includes(prop)){
+									/*if(localFiles[prop].size !== remoteFiles[prop].size && !remoteUpdatedFiles.includes(prop)){
 										if(canDownloadFile(prop)){
 											syncTask("local", "update", {
 												path: prop,
@@ -6653,7 +6703,7 @@ const doSync = async () => {
 												size: remoteFiles[prop].size
 											}, userMasterKeys)
 										}
-									}
+									}*/
 								}
 							}
 						}
