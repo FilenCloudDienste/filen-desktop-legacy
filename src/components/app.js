@@ -1249,7 +1249,9 @@ const initFns = () => {
    	})
 
    	$("#sync-mode-select").on("change", async () => {
-		if((currentSyncTasks.length + currentSyncTasksExtra.length) > 0 || isSyncing || isIndexing || gotFSWatchEvent || isWaitingForNewFileOrFolder){
+		if((currentSyncTasks.length + currentSyncTasksExtra.length) > 0 || gotFSWatchEvent || isWaitingForNewFileOrFolder){
+			dontHideOnBlur = true
+
 			try{
 				let dialog = await electron.remote.dialog.showMessageBox({
 					icon: nativeImage.createFromPath(pathModule.join(__dirname, "..", "..", "icons", "png", "512x512.png")),
@@ -1641,7 +1643,7 @@ const toggleAutostart = () => {
 const changeHomePath = async () => {
 	dontHideOnBlur = true
 
-	if((currentSyncTasks.length + currentSyncTasksExtra.length) > 0 || isSyncing || isIndexing || gotFSWatchEvent || isWaitingForNewFileOrFolder){
+	if((currentSyncTasks.length + currentSyncTasksExtra.length) > 0 || gotFSWatchEvent || isWaitingForNewFileOrFolder){
 		try{
 			let dialog = await electron.remote.dialog.showMessageBox({
 				icon: nativeImage.createFromPath(pathModule.join(__dirname, "..", "..", "icons", "png", "512x512.png")),
@@ -1665,12 +1667,15 @@ const changeHomePath = async () => {
 		}
 	}
 
+	dontHideOnBlur = true
 	syncingPaused = true
 
 	try{
 		var path = await selectLocalPath()
 	}
 	catch(e){
+		syncingPaused = false
+		
 		return console.log(e)
 	}
 
