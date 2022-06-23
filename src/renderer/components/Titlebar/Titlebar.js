@@ -28,7 +28,8 @@ const Titlebar = memo(({ darkMode, lang, platform, title }) => {
                 ["windows", "linux"].includes(platform) && (
                     <Flex 
                         position="fixed"
-                        top={0} right={0}
+                        top={0}
+                        right={0}
                         flexDirection="row"
                         style={{
                             WebkitAppRegion: "no-drag"
