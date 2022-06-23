@@ -4,6 +4,7 @@ import { getTimeRemaining } from "../../lib/helpers"
 import { AiOutlineCheckCircle, AiOutlinePauseCircle } from "react-icons/ai"
 import colors from "../../styles/colors"
 import isEqual from "react-fast-compare"
+import { i18n } from "../../lib/i18n"
 
 export default class MainFooter extends React.Component {
     shouldComponentUpdate(nextProps){
@@ -41,7 +42,7 @@ export default class MainFooter extends React.Component {
                                     marginLeft="5px" 
                                     noOfLines={1}
                                 >
-                                    Syncing {(runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length)} item{(runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length) == 1 ? "" : "s"}
+                                    {i18n(lang, (runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length) == 1 ? "syncingItemsFooterSingular" : "syncingItemsFooterPluar", true, ["__COUNT__"], [(runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length)])}
                                 </Text>
                             </Flex>
                         ) : (
@@ -56,7 +57,7 @@ export default class MainFooter extends React.Component {
                                     marginLeft="5px"
                                     noOfLines={1}
                                 >
-                                    Everything synced
+                                    {i18n(lang, "syncingFooterEverythingSynced")}
                                 </Text>
                             </Flex>
                         )
@@ -93,7 +94,7 @@ export default class MainFooter extends React.Component {
                                                 marginLeft="5px"
                                                 noOfLines={1}
                                             >
-                                                {"about " + (remainingReadable.days > 0 ? remainingReadable.days + "d " : "") + (remainingReadable.hours > 0 ? remainingReadable.hours + "h " : "") + (remainingReadable.minutes > 0 ? remainingReadable.minutes + "m " : "") + "remaining"}
+                                                {i18n(lang, "aboutRemaining", false, ["__TIME__"], [(remainingReadable.days > 0 ? remainingReadable.days + "d " : "") + (remainingReadable.hours > 0 ? remainingReadable.hours + "h " : "") + (remainingReadable.minutes > 0 ? remainingReadable.minutes + "m " : "")])}
                                             </Text>
                                         )
                                     })()

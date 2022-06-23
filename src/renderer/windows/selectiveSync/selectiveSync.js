@@ -188,7 +188,7 @@ const SelectiveSyncWindow = memo(({ startingRoute, userId, email, windowId }) =>
                                             color={darkMode ? "gray" : "gray"}
                                             fontSize={13}
                                         >
-                                            No files or folders uploaded yet.
+                                            {i18n(lang, "noFilesOrFoldersUploadedYet")}
                                         </Text>
                                     </Flex>
                                 </Flex>

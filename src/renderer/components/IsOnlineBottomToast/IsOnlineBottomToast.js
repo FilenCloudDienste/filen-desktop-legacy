@@ -2,6 +2,7 @@ import React, { memo } from "react"
 import { Flex, Text } from "@chakra-ui/react"
 import { BsWifiOff } from "react-icons/bs"
 import useIsOnline from "../../lib/hooks/useIsOnline"
+import { i18n } from "../../lib/i18n"
 
 const IsOnlineBottomToast = memo(({ userId, email, lang, darkMode, platform }) => {
     const isOnline = useIsOnline()
@@ -38,7 +39,7 @@ const IsOnlineBottomToast = memo(({ userId, email, lang, darkMode, platform }) =
                     marginLeft="7px"
                     fontSize={15}
                 >
-                    You are offline
+                    {i18n(lang, "youAreOffline")}
                 </Text>
             </Flex>
         </Flex>

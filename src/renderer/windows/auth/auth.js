@@ -304,7 +304,7 @@ const AuthWindow = memo(({ windowId }) => {
                                 }} 
                                 onClick={() => shell.openExternal("https://filen.io/#forgot-password")}
                             >
-                                Forgot password
+                                {i18n(lang, "forgotPasswordBtn")}
                             </Link>
                             <Link 
                                 color="#0A84FF" 
@@ -314,7 +314,7 @@ const AuthWindow = memo(({ windowId }) => {
                                 }}
                                 onClick={() => shell.openExternal("https://filen.io/#signup")}
                             >
-                                Create account
+                                {i18n(lang, "createAccountBtn")}
                             </Link>
                         </>
                     )

@@ -6,6 +6,7 @@ import colors from "../../styles/colors"
 import Item from "../Item"
 import { List } from "react-virtualized"
 import isEqual from "react-fast-compare"
+import { i18n } from "../../lib/i18n"
 
 export default class MainList extends React.Component {
     shouldComponentUpdate(nextProps){
@@ -61,7 +62,7 @@ export default class MainList extends React.Component {
                                                 color={darkMode ? "gray" : "gray"}
                                                 fontSize={12}
                                             >
-                                                No activity yet.
+                                                {i18n(lang, "noSyncActivityYet")}
                                             </Text>
                                         </Flex>
                                     </Flex>
@@ -84,7 +85,9 @@ export default class MainList extends React.Component {
                                 />
                             </Flex>
                             <Flex marginTop="15px">
-                                <Text color={darkMode ? "gray" : "gray"}>No sync locations setup yet.</Text>
+                                <Text color={darkMode ? "gray" : "gray"}>
+                                    {i18n(lang, "noSyncLocationsSetupYet")}
+                                </Text>
                             </Flex>
                             <Flex marginTop="15px">
                                 <Link
@@ -95,7 +98,7 @@ export default class MainList extends React.Component {
                                     }}
                                     onClick={() => ipc.openSettingsWindow("syncs")}
                                 >
-                                    Create one
+                                    {i18n(lang, "createOne")}
                                 </Link>
                             </Flex>
                         </Flex>

@@ -10,6 +10,7 @@ import { userInfo as getUserInfo } from "../../lib/api"
 import { GoIssueReopened } from "react-icons/go"
 import MainHeaderMenu from "./MainHeaderMenu"
 import { throttle } from "lodash"
+import { i18n } from "../../lib/i18n"
 
 const log = window.require("electron-log")
 
@@ -121,7 +122,7 @@ const MainHeader = memo(({ userId, email, platform, darkMode, lang, doneTasks, c
                                 maxWidth="200px"
                                 userSelect="none"
                             >
-                                {formatBytes(userInfo.storageUsed)} used of {formatBytes(userInfo.maxStorage)}
+                                {i18n(lang, "storageUsed", false, ["__USED__", "__MAX__"], [formatBytes(userInfo.storageUsed), formatBytes(userInfo.maxStorage)])}
                             </Text>
                         )
                     }

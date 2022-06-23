@@ -13,7 +13,6 @@ import ipc from "../../lib/ipc"
 import colors from "../../styles/colors"
 import Container from "../../components/Container"
 import IsOnlineBottomToast from "../../components/IsOnlineBottomToast"
-import useIsOnline from "../../lib/hooks/useIsOnline"
 import { BsFillFolderFill } from "react-icons/bs"
 import { List } from "react-virtualized"
 
@@ -289,7 +288,7 @@ const CloudWindow = memo(({ userId, email, windowId }) => {
                                                                 }
                                                             }}
                                                         >
-                                                            Select
+                                                            {i18n(lang, "select")}
                                                         </Link>
                                                     )
                                                 }
@@ -337,7 +336,7 @@ const CloudWindow = memo(({ userId, email, windowId }) => {
                                                 color={colors(platform, darkMode, "textPrimary")} 
                                                 marginTop="10px"
                                             >
-                                                This folder is empty
+                                                {i18n(lang, "thisFolderIsEmpty")}
                                             </Text>
                                             <Link 
                                                 color={colors(platform, darkMode, "link")} 
@@ -347,7 +346,7 @@ const CloudWindow = memo(({ userId, email, windowId }) => {
                                                     textDecoration: "none"
                                                 }} onClick={() => setCreateFolderModalOpen(true)}
                                             >
-                                                Create folder
+                                                {i18n(lang, "createFolder")}
                                             </Link>
                                         </Flex>
                                     )
@@ -452,7 +451,9 @@ const CloudWindow = memo(({ userId, email, windowId }) => {
             >
                 <ModalOverlay borderRadius="10px" />
                 <ModalContent backgroundColor="#171717">
-                    <ModalHeader color="white">Create folder</ModalHeader>
+                    <ModalHeader color="white">
+                        {i18n(lang, "createFolder")}
+                    </ModalHeader>
                     <ModalCloseButton color="white" />
                     <ModalBody>
                         <Input 
@@ -477,7 +478,7 @@ const CloudWindow = memo(({ userId, email, windowId }) => {
                             onClick={() => setCreateFolderModalOpen(false)}
                             backgroundColor="white"
                         >
-                            Close
+                            {i18n(lang, "close")}
                         </Button>
                         <Button
                             onClick={() => setCreateFolderModalOpen(false)}
@@ -485,7 +486,7 @@ const CloudWindow = memo(({ userId, email, windowId }) => {
                             backgroundColor={colors(platform, darkMode, "link")}
                             color="white"
                         >
-                            Create
+                            {i18n(lang, "create")}
                         </Button>
                     </ModalFooter>
                 </ModalContent>

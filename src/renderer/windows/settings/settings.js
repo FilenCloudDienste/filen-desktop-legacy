@@ -100,7 +100,7 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }) => {
                                     color={colors(platform, darkMode, "textPrimary")} 
                                     fontSize={15}
                                 >
-                                    Launch at system startup
+                                    {i18n(lang, "launchAtSystemStartup")}
                                 </Text>
                             </Flex>
                             <Flex>
@@ -140,7 +140,7 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }) => {
                             color={colors(platform, darkMode, "textPrimary")} 
                             fontSize={15}
                         >
-                            Dark mode
+                            {i18n(lang, "darkMode")}
                         </Text>
                     </Flex>
                     <Flex>
@@ -172,7 +172,7 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }) => {
                                     color={colors(platform, darkMode, "textPrimary")} 
                                     fontSize={14}
                                 >
-                                    Exclude files and folders starting with a dot, e.g. ".gitignore, .DS_Store"
+                                    {i18n(lang, "excludeDotTooltip")}
                                 </Text>
                             }
                             placement="top-end"
@@ -184,7 +184,7 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }) => {
                                 color={colors(platform, darkMode, "textPrimary")} 
                                 fontSize={15}
                             >
-                                Exclude dot files and folders (recommended)
+                                {i18n(lang, "excludeDot")}
                             </Text>
                         </Tooltip>
                     </Flex>
@@ -215,7 +215,7 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }) => {
                             color={colors(platform, darkMode, "textPrimary")} 
                             fontSize={15}
                         >
-                            Language
+                            {i18n(lang, "language")}
                         </Text>
                     </Flex>
                     <Flex>
@@ -283,7 +283,7 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }) => {
                                 }}
                                 onClick={() => ipc.saveLogs().then(log.info).catch(log.error)}
                             >
-                                Save logs
+                                {i18n(lang, "saveLogs")}
                             </Link>
                         </Flex>
                     </Flex>
@@ -325,8 +325,8 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
 
                 if(ex.length <= 1 || pathModule.dirname(localPath).length <= 0 || (ex.length >= 2 && ex[1].length <= 0)){
                     return toast({
-                        title: "Cannot create sync location",
-                        description: "You need to select at least one sub directory.",
+                        title: i18n(lang, "cannotCreateSyncLocation"),
+                        description: i18n(lang, "cannotCreateSyncLocationSubdir"),
                         status: "error",
                         duration: 10000,
                         isClosable: true,
@@ -344,8 +344,8 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                 if(Array.isArray(currentSyncLocations) && currentSyncLocations.length > 0){
                     if(currentSyncLocations.filter(location => location.local == localPath || location.local.indexOf(localPath) !== -1 || localPath.indexOf(location.local) !== -1).length > 0){
                         return toast({
-                            title: "Cannot create sync location",
-                            description: "The local path you have selected is already a configured sync location. This could lead to endless sync loops.",
+                            title: i18n(lang, "cannotCreateSyncLocation"),
+                            description: i18n(lang, "cannotCreateSyncLocationLoop"),
                             status: "error",
                             duration: 10000,
                             isClosable: true,
@@ -395,6 +395,22 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                     }
                 }).catch((err) => {
                     log.error(err)
+
+                    toast({
+                        title: i18n(lang, "cannotCreateSyncLocation"),
+                        description: i18n(lang, "cannotCreateSyncLocationAccess"),
+                        status: "error",
+                        duration: 10000,
+                        isClosable: true,
+                        position: "bottom",
+                        containerStyle: {
+                            backgroundColor: "rgba(255, 69, 58, 1)",
+                            maxWidth: "85%",
+                            height: "auto",
+                            fontSize: 14,
+                            borderRadius: "15px"
+                        }
+                    })
                 })
             }).catch((err) => {
                 log.error(err)
@@ -442,21 +458,46 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
         <>
             {
                 syncLocations.length == 0 ? (
-                    <Flex flexDirection="column" width="100%" height="400px" alignItems="center" justifyContent="center">
+                    <Flex 
+                        flexDirection="column" 
+                        width="100%" 
+                        height="400px" 
+                        alignItems="center" 
+                        justifyContent="center"
+                    >
                         <Flex>
-                            <AiOutlineSync size={50} color={darkMode ? "gray" : "gray"} />
+                            <AiOutlineSync 
+                                size={50} 
+                                color={darkMode ? "gray" : "gray"} 
+                            />
                         </Flex>
                         <Flex marginTop="15px">
-                            <Text color={darkMode ? "gray" : "gray"}>No sync locations setup yet.</Text>
+                            <Text color={darkMode ? "gray" : "gray"}>
+                                {i18n(lang, "noSyncLocationsSetupYet")}
+                            </Text>
                         </Flex>
                         <Flex marginTop="15px">
-                            <Link color={colors(platform, darkMode, "link")} textDecoration="none" _hover={{
-                                textDecoration: "none"
-                            }} onClick={() => createNewSyncLocation()}>Create one</Link>
+                            <Link 
+                                color={colors(platform, darkMode, "link")} t
+                                extDecoration="none" 
+                                _hover={{
+                                    textDecoration: "none"
+                                }} 
+                                onClick={() => createNewSyncLocation()}
+                            > 
+                                {i18n(lang, "createOne")}
+                            </Link>
                         </Flex>
                     </Flex>
                 ) : (
-                    <Flex flexDirection="column" width="100vw" height="auto" alignItems="center" justifyContent="center" paddingTop="30px">
+                    <Flex 
+                        flexDirection="column" 
+                        width="100vw" 
+                        height="auto" 
+                        alignItems="center" 
+                        justifyContent="center" 
+                        paddingTop="30px"
+                    >
                         <List
                             height={(syncLocations.length * 55 >= 420) ? 420 : syncLocations.length * 55}
                             width={window.innerWidth * 0.9}
@@ -469,62 +510,141 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                                 const location = syncLocations[index]
 
                                 return (
-                                    <Flex key={key} style={style} flexDirection="column" padding="5px" width="100%" height="100%">
-                                        <Flex width="100%" height="100%" flexDirection="row" backgroundColor={colors(platform, darkMode, "backgroundSecondary")} paddingLeft="12px" paddingRight="12px" borderRadius="15px" borderBottom={"0px solid " + colors(platform, darkMode, "borderPrimary")}>
-                                            <Flex width="45%" flexDirection="row" justifyContent="flex-start" alignItems="center">
+                                    <Flex 
+                                        key={key} 
+                                        style={style} 
+                                        flexDirection="column" 
+                                        padding="5px" 
+                                        width="100%" 
+                                        height="100%"
+                                    >
+                                        <Flex 
+                                            width="100%" 
+                                            height="100%" 
+                                            flexDirection="row" 
+                                            backgroundColor={colors(platform, darkMode, "backgroundSecondary")} 
+                                            paddingLeft="12px" 
+                                            paddingRight="12px" 
+                                            borderRadius="15px" 
+                                            borderBottom={"0px solid " + colors(platform, darkMode, "borderPrimary")}
+                                        >
+                                            <Flex 
+                                                width="45%" 
+                                                flexDirection="row" 
+                                                justifyContent="flex-start" 
+                                                alignItems="center"
+                                            >
                                                 <Tooltip 
                                                     label={
-                                                        <Text color={colors(platform, darkMode, "textPrimary")} fontSize={14}>{location.local}</Text>
+                                                        <Text 
+                                                            color={colors(platform, darkMode, "textPrimary")} 
+                                                            fontSize={14}
+                                                        >
+                                                            {location.local}
+                                                        </Text>
                                                     }
                                                     placement="top"
                                                     borderRadius="15px"
                                                     backgroundColor={colors(platform, darkMode, "backgroundSecondary")}
                                                     shadow="none"
                                                 >
-                                                    <Text noOfLines={1} color={colors(platform, darkMode, "textPrimary")} fontSize={15}>{location.local}</Text>
+                                                    <Text 
+                                                        noOfLines={1} 
+                                                        color={colors(platform, darkMode, "textPrimary")} 
+                                                        fontSize={15}
+                                                    >
+                                                        {location.local}
+                                                    </Text>
                                                 </Tooltip>
                                             </Flex>
-                                            <Flex width="10%" flexDirection="row" justifyContent="center" alignItems="center">
+                                            <Flex 
+                                                width="10%" 
+                                                flexDirection="row" 
+                                                justifyContent="center" 
+                                                alignItems="center"
+                                            >
                                                 {
                                                     location.paused ? (
-                                                        <AiOutlinePauseCircle color={colors(platform, darkMode, "textPrimary")} size={15} />
+                                                        <AiOutlinePauseCircle 
+                                                            color={colors(platform, darkMode, "textPrimary")} 
+                                                            size={15} 
+                                                        />
                                                     ) : (
                                                         <>
                                                             {
                                                                 location.type == "twoWay" && (
-                                                                    <Flex alignItems="center" paddingTop="3px">
-                                                                        <IoChevronBackOutline color={colors(platform, darkMode, "textPrimary")} size={15} />
-                                                                        <IoChevronForwardOutline color={colors(platform, darkMode, "textPrimary")} size={15} />
+                                                                    <Flex 
+                                                                        alignItems="center" 
+                                                                        paddingTop="3px"
+                                                                    >
+                                                                        <IoChevronBackOutline 
+                                                                            color={colors(platform, darkMode, "textPrimary")} 
+                                                                            size={15} 
+                                                                        />
+                                                                        <IoChevronForwardOutline 
+                                                                            color={colors(platform, darkMode, "textPrimary")} 
+                                                                            size={15} 
+                                                                        />
                                                                     </Flex>
                                                                 )
                                                             }
                                                             {
                                                                 location.type == "localToCloud" && (
-                                                                    <Flex alignItems="center" paddingTop="3px">
-                                                                        <IoChevronForwardOutline color={colors(platform, darkMode, "textPrimary")} size={15} />
+                                                                    <Flex 
+                                                                        alignItems="center" 
+                                                                        paddingTop="3px"
+                                                                    >
+                                                                        <IoChevronForwardOutline 
+                                                                            color={colors(platform, darkMode, "textPrimary")}
+                                                                            size={15} 
+                                                                        />
                                                                     </Flex>
                                                                 )
                                                             }
                                                             {
                                                                 location.type == "cloudToLocal" && (
-                                                                    <Flex alignItems="center" paddingTop="3px">
-                                                                        <IoChevronBackOutline color={colors(platform, darkMode, "textPrimary")} size={15} />
+                                                                    <Flex 
+                                                                        alignItems="center" 
+                                                                        paddingTop="3px"
+                                                                    >
+                                                                        <IoChevronBackOutline 
+                                                                            color={colors(platform, darkMode, "textPrimary")} 
+                                                                            size={15} 
+                                                                        />
                                                                     </Flex>
                                                                 )
                                                             }
                                                             {
                                                                 location.type == "localBackup" && (
-                                                                    <Flex alignItems="center" paddingTop="3px">
-                                                                        <HiOutlineSave color={colors(platform, darkMode, "textPrimary")} size={15} />
-                                                                        <IoChevronForwardOutline color={colors(platform, darkMode, "textPrimary")} size={15} />
+                                                                    <Flex 
+                                                                        alignItems="center" 
+                                                                        paddingTop="3px"
+                                                                    >
+                                                                        <HiOutlineSave 
+                                                                            color={colors(platform, darkMode, "textPrimary")} 
+                                                                            size={15} 
+                                                                        />
+                                                                        <IoChevronForwardOutline 
+                                                                            color={colors(platform, darkMode, "textPrimary")} 
+                                                                            size={15} 
+                                                                        />
                                                                     </Flex>
                                                                 )
                                                             }
                                                             {
                                                                 location.type == "cloudBackup" && (
-                                                                    <Flex alignItems="center" paddingTop="3px">
-                                                                        <IoChevronBackOutline color={colors(platform, darkMode, "textPrimary")} size={15} />
-                                                                        <HiOutlineSave color={colors(platform, darkMode, "textPrimary")} size={15} />
+                                                                    <Flex 
+                                                                        alignItems="center" 
+                                                                        paddingTop="3px"
+                                                                    >
+                                                                        <IoChevronBackOutline 
+                                                                            color={colors(platform, darkMode, "textPrimary")} 
+                                                                            size={15} 
+                                                                        />
+                                                                        <HiOutlineSave 
+                                                                            color={colors(platform, darkMode, "textPrimary")} 
+                                                                            size={15} 
+                                                                        />
                                                                     </Flex>
                                                                 )
                                                             }
@@ -532,111 +652,176 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                                                     )
                                                 }
                                             </Flex>
-                                            <Flex width="40%" flexDirection="row" justifyContent="flex-end" alignItems="center">
+                                            <Flex 
+                                                width="40%" 
+                                                flexDirection="row" 
+                                                justifyContent="flex-end" 
+                                                alignItems="center"
+                                            >
                                                 {
                                                     typeof location.remote == "string" && location.remote.length > 0 ? (
                                                         <Tooltip 
                                                             label={
-                                                                <Text color={colors(platform, darkMode, "textPrimary")} fontSize={14}>{location.remote}</Text>
+                                                                <Text 
+                                                                    color={colors(platform, darkMode, "textPrimary")} 
+                                                                    fontSize={14}
+                                                                >
+                                                                    {location.remote}
+                                                                </Text>
                                                             }
                                                             placement="top"
                                                             borderRadius="15px"
                                                             backgroundColor={colors(platform, darkMode, "backgroundSecondary")}
                                                             shadow="none"
                                                         >
-                                                            <Text noOfLines={1} color={colors(platform, darkMode, "textPrimary")} fontSize={15}>{location.remote}</Text>
+                                                            <Text 
+                                                                noOfLines={1} 
+                                                                color={colors(platform, darkMode, "textPrimary")} 
+                                                                fontSize={15}
+                                                            >
+                                                                {location.remote}
+                                                            </Text>
                                                         </Tooltip>
                                                     ) : (
-                                                        <Link color={colors(platform, darkMode, "link")} textDecoration="none" _hover={{
-                                                            textDecoration: "none"
-                                                        }} fontSize={14} onClick={() => {
-                                                            db.get("syncLocations:" + userId).then((currentSyncLocations) => {
-                                                                ipc.selectRemoteFolder().then(async (result) => {
-                                                                    if(result.canceled){
-                                                                        return false
-                                                                    }
-    
-                                                                    const { uuid, name, path } = result
+                                                        <Link 
+                                                            color={colors(platform, darkMode, "link")} 
+                                                            textDecoration="none" 
+                                                            _hover={{
+                                                                textDecoration: "none"
+                                                            }}
+                                                            fontSize={14} 
+                                                            onClick={() => {
+                                                                db.get("syncLocations:" + userId).then((currentSyncLocations) => {
+                                                                    ipc.selectRemoteFolder().then(async (result) => {
+                                                                        if(result.canceled){
+                                                                            return false
+                                                                        }
+        
+                                                                        const { uuid, name, path } = result
 
-                                                                    if(Array.isArray(currentSyncLocations) && currentSyncLocations.length > 0){
-                                                                        if(currentSyncLocations.filter(location => (typeof location.remote == "string" ? location.remote == path : false) || (typeof location.remote == "string" ? location.remote.indexOf(path) !== -1 : false) || (typeof location.remote == "string" ? path.indexOf(location.remote) !== -1 : false)).length > 0){
-                                                                            return toast({
-                                                                                title: "Cannot create sync location",
-                                                                                description: "The remote path you have selected is already a configured sync location. This could lead to endless sync loops.",
-                                                                                status: "error",
-                                                                                duration: 5000,
-                                                                                isClosable: true,
-                                                                                position: "bottom",
-                                                                                containerStyle: {
-                                                                                    backgroundColor: "rgba(255, 69, 58, 1)",
-                                                                                    maxWidth: "85%",
-                                                                                    height: "auto",
-                                                                                    fontSize: 14,
-                                                                                    borderRadius: "15px"
-                                                                                }
-                                                                            })
-                                                                        }
-                                                                    }
-    
-                                                                    try{
-                                                                        let currentSyncLocations = await db.get("syncLocations:" + userId)
-    
-                                                                        if(!Array.isArray(currentSyncLocations)){
-                                                                            currentSyncLocations = []
-                                                                        }
-    
-                                                                        for(let i = 0; i < currentSyncLocations.length; i++){
-                                                                            if(currentSyncLocations[i].uuid == location.uuid){
-                                                                                currentSyncLocations[i].remoteUUID = uuid
-                                                                                currentSyncLocations[i].remote = path
-                                                                                currentSyncLocations[i].remoteName = name
+                                                                        if(Array.isArray(currentSyncLocations) && currentSyncLocations.length > 0){
+                                                                            if(currentSyncLocations.filter(location => (typeof location.remote == "string" ? location.remote == path : false) || (typeof location.remote == "string" ? location.remote.indexOf(path) !== -1 : false) || (typeof location.remote == "string" ? path.indexOf(location.remote) !== -1 : false)).length > 0){
+                                                                                return toast({
+                                                                                    title: i18n(lang, "cannotCreateSyncLocation"),
+                                                                                    description: i18n(lang, "cannotCreateSyncLocationLoop"),
+                                                                                    status: "error",
+                                                                                    duration: 5000,
+                                                                                    isClosable: true,
+                                                                                    position: "bottom",
+                                                                                    containerStyle: {
+                                                                                        backgroundColor: "rgba(255, 69, 58, 1)",
+                                                                                        maxWidth: "85%",
+                                                                                        height: "auto",
+                                                                                        fontSize: 14,
+                                                                                        borderRadius: "15px"
+                                                                                    }
+                                                                                })
                                                                             }
                                                                         }
-    
-                                                                        await db.set("syncLocations:" + userId, currentSyncLocations)
-                                                                    }
-                                                                    catch(e){
-                                                                        log.error(e)
-                                                                    }
+        
+                                                                        try{
+                                                                            let currentSyncLocations = await db.get("syncLocations:" + userId)
+        
+                                                                            if(!Array.isArray(currentSyncLocations)){
+                                                                                currentSyncLocations = []
+                                                                            }
+        
+                                                                            for(let i = 0; i < currentSyncLocations.length; i++){
+                                                                                if(currentSyncLocations[i].uuid == location.uuid){
+                                                                                    currentSyncLocations[i].remoteUUID = uuid
+                                                                                    currentSyncLocations[i].remote = path
+                                                                                    currentSyncLocations[i].remoteName = name
+                                                                                }
+                                                                            }
+        
+                                                                            await db.set("syncLocations:" + userId, currentSyncLocations)
+                                                                        }
+                                                                        catch(e){
+                                                                            log.error(e)
+                                                                        }
+                                                                    }).catch((err) => {
+                                                                        console.log(err)
+                                                                    })
                                                                 }).catch((err) => {
                                                                     console.log(err)
                                                                 })
-                                                            }).catch((err) => {
-                                                                console.log(err)
-                                                            })
-                                                        }}>Select remote location</Link>
+                                                            }}
+                                                        >
+                                                            {i18n(lang, "selectRemoteLocation")}
+                                                        </Link>
                                                     )
                                                 }
                                             </Flex>
-                                            <Flex width="5%" flexDirection="row" justifyContent="flex-end" alignItems="center">
-                                                <HiOutlineCog color={colors(platform, darkMode, "textPrimary")} size={15} cursor="pointer" pointerEvents="all" onClick={() => {
-                                                    setCurrentSyncLocation(location)
-                                                    setSyncSettingsModalOpen(true)
-                                                }} />
+                                            <Flex 
+                                                width="5%" 
+                                                flexDirection="row" 
+                                                justifyContent="flex-end" 
+                                                alignItems="center"
+                                            >
+                                                <HiOutlineCog 
+                                                    color={colors(platform, darkMode, "textPrimary")} 
+                                                    size={15} 
+                                                    cursor="pointer" 
+                                                    pointerEvents="all" 
+                                                    onClick={() => {
+                                                        setCurrentSyncLocation(location)
+                                                        setSyncSettingsModalOpen(true)
+                                                    }}
+                                                />
                                             </Flex>
                                         </Flex>
                                     </Flex>
                                 )
                             }}
                         />
-                        <Link color={colors(platform, darkMode, "link")} marginTop="10px" textDecoration="none" _hover={{
-                            textDecoration: "none"
-                        }} onClick={() => createNewSyncLocation()}>Create one</Link>
+                        <Link 
+                            color={colors(platform, darkMode, "link")} 
+                            marginTop="10px" 
+                            textDecoration="none" 
+                            _hover={{
+                                textDecoration: "none"
+                            }}
+                            onClick={() => createNewSyncLocation()}
+                        >
+                            {i18n(lang, "createOne")}
+                        </Link>
                     </Flex>
                 )
             }
-            <Modal onClose={() => setSyncSettingsModalOpen(false)} isOpen={syncSettingsModalOpen} isCentered={true}>
+            <Modal 
+                onClose={() => setSyncSettingsModalOpen(false)} 
+                isOpen={syncSettingsModalOpen} 
+                isCentered={true}
+            >
                 <ModalOverlay borderRadius="10px" />
-                <ModalContent backgroundColor={colors(platform, darkMode, "backgroundPrimary")} borderRadius="15px">
-                    <ModalHeader color={colors(platform, darkMode, "textPrimary")}>Settings</ModalHeader>
-                    <ModalCloseButton color={colors(platform, darkMode, "textPrimary")} _focus={{ _focus: "none" }} _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }} />
+                <ModalContent 
+                    backgroundColor={colors(platform, darkMode, "backgroundPrimary")} 
+                    borderRadius="15px"
+                >
+                    <ModalHeader color={colors(platform, darkMode, "textPrimary")}>
+                        {i18n(lang, "settings")}
+                    </ModalHeader>
+                    <ModalCloseButton 
+                        color={colors(platform, darkMode, "textPrimary")} 
+                        _focus={{ _focus: "none" }} 
+                        _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }} 
+                    />
                     <ModalBody>
                         {
                             typeof currentSyncLocation !== "undefined" && (
                                 <>
-                                    <Flex width="100%" height="auto" justifyContent="space-between" alignItems="center">
+                                    <Flex 
+                                        width="100%" 
+                                        height="auto" 
+                                        justifyContent="space-between" 
+                                        alignItems="center"
+                                    >
                                         <Flex alignItems="center">
-                                            <Text color={colors(platform, darkMode, "textPrimary")} fontSize={14}>Sync mode</Text>
+                                            <Text 
+                                                color={colors(platform, darkMode, "textPrimary")} 
+                                                fontSize={14}>
+                                                    {i18n(lang, "syncMode")}
+                                                </Text>
                                             <Tooltip 
                                                 label={
                                                     <Flex flexDirection="column">
@@ -654,69 +839,117 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                                                 shadow="none"
                                             >
                                                 <Flex marginLeft="5px">
-                                                    <AiOutlineInfoCircle size={18} color={colors(platform, darkMode, "textPrimary")} />
+                                                    <AiOutlineInfoCircle 
+                                                        size={18} 
+                                                        color={colors(platform, darkMode, "textPrimary")} 
+                                                    />
                                                 </Flex>
                                             </Tooltip>
                                         </Flex>
                                         <Flex alignItems="center">
-                                            <Select value={currentSyncLocation.type} color={colors(platform, darkMode, "textPrimary")} fontSize={14} height="30px" borderColor={colors(platform, darkMode, "borderPrimary")}  _focus={{ outline: "none" }} outline="none" _active={{ outline: "none" }} disabled={typeof currentSyncLocation.remote !== "string"} onChange={async (e) => {
-                                                const type = e.nativeEvent.target.value
+                                            <Select 
+                                                value={currentSyncLocation.type} color={colors(platform, darkMode, "textPrimary")} 
+                                                fontSize={14} 
+                                                height="30px" 
+                                                borderColor={colors(platform, darkMode, "borderPrimary")}
+                                                _focus={{ outline: "none" }} 
+                                                outline="none" 
+                                                _active={{ outline: "none" }} 
+                                                disabled={typeof currentSyncLocation.remote !== "string"} 
+                                                onChange={async (e) => {
+                                                    const type = e.nativeEvent.target.value
 
-                                                try{
-                                                    let currentSyncLocations = await db.get("syncLocations:" + userId)
+                                                    try{
+                                                        let currentSyncLocations = await db.get("syncLocations:" + userId)
 
-                                                    if(!Array.isArray(currentSyncLocations)){
-                                                        currentSyncLocations = []
-                                                    }
-
-                                                    for(let i = 0; i < currentSyncLocations.length; i++){
-                                                        if(currentSyncLocations[i].uuid == currentSyncLocation.uuid){
-                                                            currentSyncLocations[i].type = type
+                                                        if(!Array.isArray(currentSyncLocations)){
+                                                            currentSyncLocations = []
                                                         }
-                                                    }
 
-                                                    await db.set("syncLocations:" + userId, currentSyncLocations)
-                                                }
-                                                catch(e){
-                                                    log.error(e)
-                                                }
-                                            }}>
-                                                <option value="twoWay" style={{
-                                                    backgroundColor: colors(platform, darkMode, "backgroundSecondary"),
-                                                    height: "30px",
-                                                    borderRadius: "10px"
-                                                }}>Two Way</option>
-                                                <option value="localToCloud" style={{
-                                                    backgroundColor: colors(platform, darkMode, "backgroundSecondary"),
-                                                    height: "30px",
-                                                    borderRadius: "10px"
-                                                }}>Local to Cloud</option>
-                                                <option value="cloudToLocal" style={{
-                                                    backgroundColor: colors(platform, darkMode, "backgroundSecondary"),
-                                                    height: "30px",
-                                                    borderRadius: "10px"
-                                                }}>Cloud to Local</option>
-                                                <option value="localBackup" style={{
-                                                    backgroundColor: colors(platform, darkMode, "backgroundSecondary"),
-                                                    height: "30px",
-                                                    borderRadius: "10px"
-                                                }} >Local backup</option>
-                                                <option value="cloudBackup" style={{
-                                                    backgroundColor: colors(platform, darkMode, "backgroundSecondary"),
-                                                    height: "30px",
-                                                    borderRadius: "10px"
-                                                }}>Cloud backup</option>
+                                                        for(let i = 0; i < currentSyncLocations.length; i++){
+                                                            if(currentSyncLocations[i].uuid == currentSyncLocation.uuid){
+                                                                currentSyncLocations[i].type = type
+                                                            }
+                                                        }
+
+                                                        await db.set("syncLocations:" + userId, currentSyncLocations)
+                                                    }
+                                                    catch(e){
+                                                        log.error(e)
+                                                    }
+                                                }}
+                                            >
+                                                <option 
+                                                    value="twoWay" style={{
+                                                        backgroundColor: colors(platform, darkMode, "backgroundSecondary"),
+                                                        height: "30px",
+                                                        borderRadius: "10px"
+                                                    }}
+                                                >
+                                                    {i18n(lang, "syncModeTwoWay")}
+                                                </option>
+                                                <option 
+                                                    value="localToCloud" 
+                                                    style={{
+                                                        backgroundColor: colors(platform, darkMode, "backgroundSecondary"),
+                                                        height: "30px",
+                                                        borderRadius: "10px"
+                                                    }}
+                                                >
+                                                    {i18n(lang, "syncModeLocalToCloud")}
+                                                </option>
+                                                <option 
+                                                    value="cloudToLocal" 
+                                                    style={{
+                                                        backgroundColor: colors(platform, darkMode, "backgroundSecondary"),
+                                                        height: "30px",
+                                                        borderRadius: "10px"
+                                                    }}
+                                                >
+                                                    {i18n(lang, "syncModeCloudToLocal")}
+                                                </option>
+                                                <option 
+                                                    value="localBackup" 
+                                                    style={{
+                                                        backgroundColor: colors(platform, darkMode, "backgroundSecondary"),
+                                                        height: "30px",
+                                                        borderRadius: "10px"
+                                                    }}
+                                                >
+                                                    {i18n(lang, "syncModeLocalBackup")}
+                                                </option>
+                                                <option 
+                                                    value="cloudBackup" 
+                                                    style={{
+                                                        backgroundColor: colors(platform, darkMode, "backgroundSecondary"),
+                                                        height: "30px",
+                                                        borderRadius: "10px"
+                                                    }}
+                                                >
+                                                    {i18n(lang, "syncModeCloudBackup")}
+                                                </option>
                                             </Select>
                                         </Flex>
                                     </Flex>
-                                    <Flex width="100%" height="auto" justifyContent="space-between" alignItems="center" marginTop="10px">
+                                    <Flex 
+                                        width="100%" 
+                                        height="auto" 
+                                        justifyContent="space-between" 
+                                        alignItems="center" 
+                                        marginTop="10px"
+                                    >
                                         <Flex alignItems="center">
-                                            <Text color={colors(platform, darkMode, "textPrimary")} fontSize={14}>Selective Sync</Text>
+                                            <Text 
+                                                color={colors(platform, darkMode, "textPrimary")} 
+                                                fontSize={14}
+                                            >
+                                                {i18n(lang, "selectiveSync")}
+                                            </Text>
                                             <Tooltip 
                                                 label={
                                                     <Flex flexDirection="column">
                                                         <Text color={colors(platform, darkMode, "textPrimary")}>
-                                                            Configure which folders and files you want to have synced locally
+                                                            {i18n(lang, "selectiveSyncTooltip")}
                                                         </Text>
                                                     </Flex>
                                                 }
@@ -726,32 +959,52 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                                                 shadow="none"
                                             >
                                                 <Flex marginLeft="5px">
-                                                    <AiOutlineInfoCircle size={18} color={colors(platform, darkMode, "textPrimary")} />
+                                                    <AiOutlineInfoCircle 
+                                                        size={18} 
+                                                        color={colors(platform, darkMode, "textPrimary")} 
+                                                    />
                                                 </Flex>
                                             </Tooltip>
                                         </Flex>
                                         <Flex>
-                                            <Link color={colors(platform, darkMode, "link")} textDecoration="none" _hover={{ textDecoration: "none" }} onClick={() => {
-                                                if(typeof currentSyncLocation.remote !== "string"){
-                                                    return false
-                                                }
-                                                
-                                                setSyncSettingsModalOpen(false)
-                                                
-                                                ipc.openSelectiveSyncWindow({
-                                                    currentSyncLocation
-                                                })
-                                            }}>Configure</Link>
+                                            <Link 
+                                                color={colors(platform, darkMode, "link")} 
+                                                textDecoration="none" _hover={{ textDecoration: "none" }} 
+                                                onClick={() => {
+                                                    if(typeof currentSyncLocation.remote !== "string"){
+                                                        return false
+                                                    }
+                                                    
+                                                    setSyncSettingsModalOpen(false)
+                                                    
+                                                    ipc.openSelectiveSyncWindow({
+                                                        currentSyncLocation
+                                                    })
+                                                }}
+                                            >
+                                                {i18n(lang, "configure")}
+                                            </Link>
                                         </Flex>
                                     </Flex>
-                                    <Flex width="100%" height="auto" justifyContent="space-between" alignItems="center" marginTop="10px">
+                                    <Flex 
+                                        width="100%" 
+                                        height="auto" 
+                                        justifyContent="space-between" 
+                                        alignItems="center" 
+                                        marginTop="10px"
+                                    >
                                         <Flex alignItems="center">
-                                            <Text color={colors(platform, darkMode, "textPrimary")} fontSize={14}>.filenignore</Text>
+                                            <Text 
+                                                color={colors(platform, darkMode, "textPrimary")} 
+                                                fontSize={14}
+                                            >
+                                                .filenignore
+                                            </Text>
                                             <Tooltip 
                                                 label={
                                                     <Flex flexDirection="column">
                                                         <Text color={colors(platform, darkMode, "textPrimary")}>
-                                                            Exclude paths and patterns from syncing. Works just like a .gitignore file
+                                                            {i18n(lang, "filenignoreTooltip")}
                                                         </Text>
                                                     </Flex>
                                                 }
@@ -761,59 +1014,102 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                                                 shadow="none"
                                             >
                                                 <Flex marginLeft="5px">
-                                                    <AiOutlineInfoCircle size={18} color={colors(platform, darkMode, "textPrimary")} />
+                                                    <AiOutlineInfoCircle 
+                                                        size={18} 
+                                                        color={colors(platform, darkMode, "textPrimary")} 
+                                                    />
                                                 </Flex>
                                             </Tooltip>
                                         </Flex>
                                         <Flex>
-                                            <Link color={colors(platform, darkMode, "link")} textDecoration="none" _hover={{ textDecoration: "none" }} onClick={() => {
-                                                if(typeof currentSyncLocation.remote !== "string"){
-                                                    return false
-                                                }
-
-                                                setSyncSettingsModalOpen(false)
-                                                setTimeout(() => setIgnoredFilesModalOpen(true), 100)
-                                            }}>Edit</Link>
-                                        </Flex>
-                                    </Flex>
-                                    <Flex width="100%" height="auto" justifyContent="space-between" alignItems="center" marginTop="10px">
-                                        <Text color={colors(platform, darkMode, "textPrimary")} fontSize={14}>Paused</Text>
-                                        <Flex>
-                                            <Switch isChecked={currentSyncLocation.paused} disabled={typeof currentSyncLocation.remote !== "string"} _focus={{ outline: "none" }} outline="none" _active={{ outline: "none" }} onChange={async (event) => {
-                                                const paused = event.nativeEvent.target.checked
-
-                                                try{
-                                                    let currentSyncLocations = await db.get("syncLocations:" + userId)
-
-                                                    if(!Array.isArray(currentSyncLocations)){
-                                                        currentSyncLocations = []
-                                                    }
-
-                                                    for(let i = 0; i < currentSyncLocations.length; i++){
-                                                        if(currentSyncLocations[i].uuid == currentSyncLocation.uuid){
-                                                            currentSyncLocations[i].paused = paused
-                                                        }
-                                                    }
-
-                                                    await db.set("syncLocations:" + userId, currentSyncLocations)
-                                                }
-                                                catch(e){
-                                                    log.error(e)
-                                                }
-                                            }} />
-                                        </Flex>
-                                    </Flex>
-                                    {
-                                        typeof currentSyncLocation !== "undefined" && (
-                                            <Flex width="100%" height="auto" justifyContent="space-between" alignItems="center" marginTop="25px">
-                                                <Link color={currentSyncLocation.busy ? "gray" : colors(platform, darkMode, "danger")} textDecoration="none" _hover={{ textDecoration: "none" }} fontSize={11} onClick={() => {
-                                                    if(currentSyncLocation.busy){
+                                            <Link 
+                                                color={colors(platform, darkMode, "link")} 
+                                                textDecoration="none" 
+                                                _hover={{ textDecoration: "none" }} 
+                                                onClick={() => {
+                                                    if(typeof currentSyncLocation.remote !== "string"){
                                                         return false
                                                     }
 
                                                     setSyncSettingsModalOpen(false)
-                                                    setTimeout(() => setConfirmDeleteModalOpen(true), 250)
-                                                }} marginRight="15px">Delete sync location</Link>
+                                                    setTimeout(() => setIgnoredFilesModalOpen(true), 100)
+                                                }}
+                                            >
+                                                {i18n(lang, "edit")}
+                                            </Link>
+                                        </Flex>
+                                    </Flex>
+                                    <Flex 
+                                        width="100%" 
+                                        height="auto" 
+                                        justifyContent="space-between" 
+                                        alignItems="center" 
+                                        marginTop="10px"
+                                    >
+                                        <Text 
+                                            color={colors(platform, darkMode, "textPrimary")} 
+                                            fontSize={14}
+                                        >
+                                            {i18n(lang, "paused")}
+                                        </Text>
+                                        <Flex>
+                                            <Switch 
+                                                isChecked={currentSyncLocation.paused} 
+                                                disabled={typeof currentSyncLocation.remote !== "string"} 
+                                                _focus={{ outline: "none" }} 
+                                                outline="none" 
+                                                _active={{ outline: "none" }} 
+                                                onChange={async (event) => {
+                                                    const paused = event.nativeEvent.target.checked
+
+                                                    try{
+                                                        let currentSyncLocations = await db.get("syncLocations:" + userId)
+
+                                                        if(!Array.isArray(currentSyncLocations)){
+                                                            currentSyncLocations = []
+                                                        }
+
+                                                        for(let i = 0; i < currentSyncLocations.length; i++){
+                                                            if(currentSyncLocations[i].uuid == currentSyncLocation.uuid){
+                                                                currentSyncLocations[i].paused = paused
+                                                            }
+                                                        }
+
+                                                        await db.set("syncLocations:" + userId, currentSyncLocations)
+                                                    }
+                                                    catch(e){
+                                                        log.error(e)
+                                                    }
+                                                }}
+                                            />
+                                        </Flex>
+                                    </Flex>
+                                    {
+                                        typeof currentSyncLocation !== "undefined" && (
+                                            <Flex 
+                                                width="100%" 
+                                                height="auto" 
+                                                justifyContent="space-between" 
+                                                alignItems="center" 
+                                                marginTop="25px"
+                                            >
+                                                <Link 
+                                                    color={currentSyncLocation.busy ? "gray" : colors(platform, darkMode, "danger")} 
+                                                    textDecoration="none" 
+                                                    _hover={{ textDecoration: "none" }} 
+                                                    fontSize={11} 
+                                                    onClick={() => {
+                                                        if(currentSyncLocation.busy){
+                                                            return false
+                                                        }
+
+                                                        setSyncSettingsModalOpen(false)
+                                                        setTimeout(() => setConfirmDeleteModalOpen(true), 250)
+                                                    }}
+                                                    marginRight="15px"
+                                                >
+                                                    {i18n(lang, "deleteSyncLocation")}
+                                                </Link>
                                             </Flex>
                                         )
                                     }
@@ -822,64 +1118,132 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                         }
                     </ModalBody>
                     <ModalFooter>
-                        <Link color={colors(platform, darkMode, "link")} textDecoration="none" _hover={{ textDecoration: "none" }} onClick={() => setSyncSettingsModalOpen(false)}>Close</Link>
+                        <Link 
+                            color={colors(platform, darkMode, "link")} 
+                            textDecoration="none" 
+                            _hover={{ textDecoration: "none" }} 
+                            onClick={() => setSyncSettingsModalOpen(false)}
+                        >
+                            {i18n(lang, "close")}
+                        </Link>
                     </ModalFooter>
                 </ModalContent>
             </Modal>
-            <Modal onClose={() => setConfirmDeleteModalOpen(false)} isOpen={confirmDeleteModalOpen} isCentered>
+            <Modal 
+                onClose={() => setConfirmDeleteModalOpen(false)} 
+                isOpen={confirmDeleteModalOpen} 
+                isCentered={true}
+            >
                 <ModalOverlay borderRadius="10px" />
-                <ModalContent backgroundColor={colors(platform, darkMode, "backgroundPrimary")} borderRadius="15px">
-                    <ModalHeader color={colors(platform, darkMode, "textPrimary")}>Settings</ModalHeader>
-                    <ModalCloseButton color={colors(platform, darkMode, "textPrimary")} _focus={{ _focus: false }} _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }} />
+                <ModalContent 
+                    backgroundColor={colors(platform, darkMode, "backgroundPrimary")} 
+                    borderRadius="15px"
+                >
+                    <ModalHeader color={colors(platform, darkMode, "textPrimary")}>
+                        {i18n(lang, "settings")}
+                    </ModalHeader>
+                    <ModalCloseButton 
+                        color={colors(platform, darkMode, "textPrimary")} 
+                        _focus={{ _focus: false }} 
+                        _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }} 
+                    />
                     <ModalBody>
-                        <Text color={colors(platform, darkMode, "textPrimary")} fontSize={14}>Are you sure you want to delete this sync?</Text>
+                        <Text 
+                            color={colors(platform, darkMode, "textPrimary")} 
+                            fontSize={14}
+                        >
+                            {i18n(lang, "confirmDeleteSyncLocation")}
+                        </Text>
                     </ModalBody>
                     <ModalFooter>
-                        <Link color={colors(platform, darkMode, "link")} textDecoration="none" _hover={{ textDecoration: "none" }} onClick={() => setConfirmDeleteModalOpen(false)} marginRight="15px">Close</Link>
-                        <Link color={colors(platform, darkMode, "danger")} textDecoration="none" _hover={{ textDecoration: "none" }} onClick={async () => {
-                            if(typeof currentSyncLocation == "undefined"){
-                                return setConfirmDeleteModalOpen(false)
-                            }
-
-                            if(currentSyncLocation.busy){
-                                return setConfirmDeleteModalOpen(false)
-                            }
-
-                            try{
-                                let currentSyncLocations = await db.get("syncLocations:" + userId)
-
-                                if(!Array.isArray(currentSyncLocations)){
-                                    currentSyncLocations = []
+                        <Link 
+                            color={colors(platform, darkMode, "link")} 
+                            textDecoration="none" 
+                            _hover={{ textDecoration: "none" }} 
+                            onClick={() => setConfirmDeleteModalOpen(false)} 
+                            marginRight="15px"
+                        >
+                            {i18n(lang, "close")}
+                        </Link>
+                        <Link 
+                            color={colors(platform, darkMode, "danger")} 
+                            textDecoration="none" 
+                            _hover={{ textDecoration: "none" }} 
+                            onClick={async () => {
+                                if(typeof currentSyncLocation == "undefined"){
+                                    return setConfirmDeleteModalOpen(false)
                                 }
 
-                                for(let i = 0; i < currentSyncLocations.length; i++){
-                                    if(currentSyncLocations[i].uuid == currentSyncLocation.uuid){
-                                        currentSyncLocations.splice(i, 1)
+                                if(currentSyncLocation.busy){
+                                    return setConfirmDeleteModalOpen(false)
+                                }
+
+                                try{
+                                    let currentSyncLocations = await db.get("syncLocations:" + userId)
+
+                                    if(!Array.isArray(currentSyncLocations)){
+                                        currentSyncLocations = []
                                     }
+
+                                    for(let i = 0; i < currentSyncLocations.length; i++){
+                                        if(currentSyncLocations[i].uuid == currentSyncLocation.uuid){
+                                            currentSyncLocations.splice(i, 1)
+                                        }
+                                    }
+
+                                    await db.set("syncLocations:" + userId, currentSyncLocations)
+                                }
+                                catch(e){
+                                    log.error(e)
                                 }
 
-                                await db.set("syncLocations:" + userId, currentSyncLocations)
-                            }
-                            catch(e){
-                                log.error(e)
-                            }
-
-                            setConfirmDeleteModalOpen(false)
-                        }}>Delete</Link>
+                                setConfirmDeleteModalOpen(false)
+                            }}
+                        >
+                            {i18n(lang, "delete")}
+                        </Link>
                     </ModalFooter>
                 </ModalContent>
             </Modal>
-            <Modal onClose={() => {
-                setIgnoredFilesModalOpen(false)
-                setTimeout(() => setSyncSettingsModalOpen(true), 100)
-            }} isOpen={ignoredFilesModalOpen} size="full">
+            <Modal 
+                onClose={() => {
+                    setIgnoredFilesModalOpen(false)
+                    setTimeout(() => setSyncSettingsModalOpen(true), 100)
+                }} 
+                isOpen={ignoredFilesModalOpen} 
+                size="full"
+            >
                 <ModalOverlay borderRadius="10px" />
-                <ModalContent backgroundColor={colors(platform, darkMode, "backgroundPrimary")} borderRadius="10px">
-                    <ModalCloseButton color={colors(platform, darkMode, "textPrimary")} _focus={{ _focus: false }} _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }} />
+                <ModalContent 
+                    backgroundColor={colors(platform, darkMode, "backgroundPrimary")} 
+                    borderRadius="10px"
+                >
+                    <ModalCloseButton 
+                        color={colors(platform, darkMode, "textPrimary")} 
+                        _focus={{ _focus: false }} 
+                        _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }} 
+                    />
                     <ModalBody padding="0px">
-                        <Flex width="100%" height={window.innerHeight} flexDirection="column">
-                            <Flex marginTop="30px" width="100%" height="auto" borderBottom={"1px solid " + colors(platform, darkMode, "borderPrimary")} justifyContent="center" alignItems="center">
-                                <Text color={colors(platform, darkMode, "textPrimary")} fontSize={14} paddingBottom="5px">Ignored pattern, seperated by a new line</Text>
+                        <Flex 
+                            width="100%" 
+                            height={window.innerHeight} 
+                            flexDirection="column"
+                        >
+                            <Flex 
+                                marginTop="30px" 
+                                width="100%" 
+                                height="auto" 
+                                borderBottom={"1px solid " + colors(platform, darkMode, "borderPrimary")} 
+                                justifyContent="center" 
+                                alignItems="center"
+                            >
+                                <Text 
+                                    color={colors(platform, darkMode, "textPrimary")} 
+                                    fontSize={14}
+                                    paddingBottom="5px"
+                                >
+                                    {i18n(lang, "filenignoreHeader")}
+                                </Text>
                             </Flex>
                             <CodeMirror
                                 value={currentSyncLocationIgnored}
@@ -899,11 +1263,22 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                             />
                         </Flex>
                     </ModalBody>
-                    <ModalFooter position="absolute" bottom="0" right="0">
-                        <Link color="gray" textDecoration="none" _hover={{ textDecoration: "none" }} onClick={() => {
-                            setIgnoredFilesModalOpen(false)
-                            setTimeout(() => setSyncSettingsModalOpen(true), 100)
-                        }}>{i18n(lang, "close")}</Link>
+                    <ModalFooter 
+                        position="absolute" 
+                        bottom="0" 
+                        right="0"
+                    >
+                        <Link 
+                            color="gray" 
+                            textDecoration="none" 
+                            _hover={{ textDecoration: "none" }} 
+                            onClick={() => {
+                                setIgnoredFilesModalOpen(false)
+                                setTimeout(() => setSyncSettingsModalOpen(true), 100)
+                            }}
+                        >
+                            {i18n(lang, "close")}
+                        </Link>
                     </ModalFooter>
                 </ModalContent>
             </Modal>
@@ -983,7 +1358,7 @@ const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }) => {
                                                 color={colors(platform, darkMode, "textPrimary")} 
                                                 fontSize={12} marginLeft="8px"
                                             >
-                                                {((userInfo.storageUsed / userInfo.maxStorage) * 100) >= 100 ? 100 : ((userInfo.storageUsed / userInfo.maxStorage) * 100).toFixed(2)}% of {formatBytes(userInfo.maxStorage)} used
+                                                {i18n(lang, "accountStorageUsed", false, ["__PERCENT__", "__MAX__"], [((userInfo.storageUsed / userInfo.maxStorage) * 100) >= 100 ? 100 : ((userInfo.storageUsed / userInfo.maxStorage) * 100).toFixed(2), formatBytes(userInfo.maxStorage)])}
                                             </Text>
                                         </Flex>
                                     </Flex>
@@ -997,7 +1372,7 @@ const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }) => {
                                             _hover={{ textDecoration: "none" }} 
                                             onClick={() => logout()}
                                         >
-                                            Logout
+                                            {i18n(lang, "logout")}
                                         </Link>
                                     </Flex>
                                 </Flex>
@@ -1027,7 +1402,7 @@ const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }) => {
                                                 color={colors(platform, darkMode, "textPrimary")} 
                                                 fontSize={12}
                                             >
-                                                Current Plan
+                                                {i18n(lang, "accountCurrentPlan")}
                                             </Text>
                                             <Text 
                                                 color={colors(platform, darkMode, "textPrimary")} 
@@ -1048,7 +1423,7 @@ const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }) => {
                                             _hover={{ textDecoration: "none" }} 
                                             onClick={() => shell.openExternal("https://filen.io/pro")}
                                         >
-                                            Upgrade
+                                            {i18n(lang, "accountUpgrade")}
                                         </Link>
                                     </Flex>
                                 </Flex>
@@ -1079,13 +1454,13 @@ const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }) => {
                                         fontSize={11} 
                                         fontWeight="bold"
                                     >
-                                        {formatBytes(userInfo.storageUsed)} of {formatBytes(userInfo.maxStorage)} used
+                                        {i18n(lang, "storageUsed", false, ["__USED__", "__MAX__"], [formatBytes(userInfo.storageUsed), formatBytes(userInfo.maxStorage)])}
                                     </Text>
                                     <Text 
                                         color={colors(platform, darkMode, "textPrimary")} 
                                         fontSize={11}
                                     >
-                                        {((userInfo.storageUsed / userInfo.maxStorage) * 100) >= 100 ? 100 : ((userInfo.storageUsed / userInfo.maxStorage) * 100).toFixed(2)}% in use
+                                        {i18n(lang, "accountStorageInUse", false, ["__PERCENT__"], [((userInfo.storageUsed / userInfo.maxStorage) * 100) >= 100 ? 100 : ((userInfo.storageUsed / userInfo.maxStorage) * 100).toFixed(2)])}
                                     </Text>
                                 </Flex>
                             </Flex>
@@ -1105,10 +1480,12 @@ const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }) => {
                                     _focus={{ _focus: false }} 
                                     _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }} 
                                 />
-                                <ModalHeader color={colors(platform, darkMode, "textPrimary")}>Logout</ModalHeader>
+                                <ModalHeader color={colors(platform, darkMode, "textPrimary")}>
+                                    {i18n(lang, "logout")}
+                                </ModalHeader>
                                 <ModalBody>
                                     <Text color={colors(platform, darkMode, "textPrimary")}>
-                                        Are you sure you want to logout?
+                                        {i18n(lang, "confirmLogout")}
                                     </Text>
                                 </ModalBody>
                                 <ModalFooter>
@@ -1118,7 +1495,7 @@ const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }) => {
                                         _hover={{ textDecoration: "none" }} 
                                         onClick={() => setLogoutAlertOpen(false)}
                                     >
-                                        Close
+                                        {i18n(lang, "close")}
                                     </Link>
                                     <Link 
                                         color={colors(platform, darkMode, "link")} 
@@ -1127,7 +1504,7 @@ const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }) => {
                                         marginLeft="10px" 
                                         onClick={() => logout()}
                                     >
-                                        Logout
+                                        {i18n(lang, "logout")}
                                     </Link>
                                 </ModalFooter>
                             </ModalContent>
@@ -1231,7 +1608,7 @@ const SettingsWindowIssues = memo(({ darkMode, lang, platform }) => {
                                 marginTop="15px" 
                                 onClick={() => setClearIssuesModalOpen(true)}
                             >
-                                Resume syncing
+                                {i18n(lang, "resumeSyncing")}
                             </Link>
                         </>
                     ) : (
@@ -1249,7 +1626,9 @@ const SettingsWindowIssues = memo(({ darkMode, lang, platform }) => {
                                 />
                             </Flex>
                             <Flex marginTop="15px">
-                                <Text color={darkMode ? "gray" : "gray"}>No sync issues.</Text>
+                                <Text color={darkMode ? "gray" : "gray"}>
+                                    {i18n(lang, "noSyncIssues")}
+                                </Text>
                             </Flex>
                         </Flex>
                     )
@@ -1270,13 +1649,15 @@ const SettingsWindowIssues = memo(({ darkMode, lang, platform }) => {
                         _focus={{ _focus: false }} 
                         _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }} 
                     />
-                    <ModalHeader color={colors(platform, darkMode, "textPrimary")}>Clear issues</ModalHeader>
+                    <ModalHeader color={colors(platform, darkMode, "textPrimary")}>
+                        {i18n(lang, "clearSyncIssues")}
+                    </ModalHeader>
                     <ModalBody>
                         <Text 
                             color={colors(platform, darkMode, "textPrimary")} 
                             fontSize={14}
                         >
-                            When clearing the shown issues the client will attempt to sync again. Please make sure to resolve all issues before clearing them.
+                            {i18n(lang, "clearSyncIssuesInfo")}
                         </Text>
                     </ModalBody>
                     <ModalFooter>
@@ -1299,7 +1680,7 @@ const SettingsWindowIssues = memo(({ darkMode, lang, platform }) => {
                                 setClearIssuesModalOpen(false)
                             }}
                         >
-                            Clear
+                            {i18n(lang, "clear")}
                         </Link>
                     </ModalFooter>
                 </ModalContent>
@@ -1347,7 +1728,7 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }) => {
                                         color={colors(platform, darkMode, "textPrimary")} 
                                         fontSize={15}
                                     >
-                                        Upload bandwidth throttling
+                                        {i18n(lang, "uploadBandwidthThrottling")}
                                     </Text>
                                 </Flex>
                                 <Flex>
@@ -1382,7 +1763,7 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }) => {
                                         fontSize={15}
                                     >
                                         {
-                                            networkingSettings.uploadKbps == 0 ? "Unlimited" : networkingSettings.uploadKbps + " Kbps"
+                                            networkingSettings.uploadKbps == 0 ? i18n(lang, "unlimited") : networkingSettings.uploadKbps + " Kbps"
                                         }
                                     </Text>
                                 </Flex>
@@ -1396,7 +1777,7 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }) => {
                                         onClick={() => setThrottlingModalOpen(true)} 
                                         fontSize={15}
                                     >
-                                        Configure
+                                        {i18n(lang, "configure")}
                                     </Link>
                                 </Flex>
                             </Flex>
@@ -1415,7 +1796,7 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }) => {
                                         color={colors(platform, darkMode, "textPrimary")} 
                                         fontSize={15}
                                     >
-                                        Download bandwidth throttling
+                                        {i18n(lang, "downloadBandwidthThrottling")}
                                     </Text>
                                 </Flex>
                                 <Flex>
@@ -1450,7 +1831,7 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }) => {
                                         fontSize={15}
                                     >
                                         {
-                                            networkingSettings.downloadKbps == 0 ? "Unlimited" : networkingSettings.downloadKbps + " Kbps"
+                                            networkingSettings.downloadKbps == 0 ? i18n(lang, "unlimited") : networkingSettings.downloadKbps + " Kbps"
                                         }
                                     </Text>
                                 </Flex>
@@ -1464,7 +1845,7 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }) => {
                                         onClick={() => setThrottlingModalOpen(true)} 
                                         fontSize={15}
                                     >
-                                        Configure
+                                        {i18n(lang, "configure")}
                                     </Link>
                                 </Flex>
                             </Flex>
@@ -1484,7 +1865,9 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }) => {
                                     _focus={{ _focus: false }} 
                                     _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }} 
                                 />
-                                <ModalHeader color={colors(platform, darkMode, "textPrimary")}>Networking throttling</ModalHeader>
+                                <ModalHeader color={colors(platform, darkMode, "textPrimary")}>
+                                    {i18n(lang, "networkThrottling")}
+                                </ModalHeader>
                                 <ModalBody>
                                     <Flex 
                                         flexDirection="row" 
@@ -1495,7 +1878,7 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }) => {
                                                 color={colors(platform, darkMode, "textPrimary")} 
                                                 fontSize={14}
                                             >
-                                                Maximum upload bandwidth (in Kbps)
+                                                {i18n(lang, "maximumUploadBandwidth")}
                                             </Text>
                                         </Flex>
                                         <Flex width="24%">
@@ -1530,7 +1913,7 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }) => {
                                                 color={colors(platform, darkMode, "textPrimary")} 
                                                 fontSize={14}
                                             >
-                                                Maximum download bandwidth (in Kbps)
+                                                {i18n(lang, "maximumDownloadBandwidth")}
                                             </Text>
                                         </Flex>
                                         <Flex width="24%">
@@ -1564,7 +1947,7 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }) => {
                                             color={colors(platform, darkMode, "textPrimary")} 
                                             fontSize={11}
                                         >
-                                            Setting a value of 0 will disable throttling
+                                            {i18n(lang, "disableThrottlingInfo")}
                                         </Text>
                                     </Flex>
                                 </ModalBody>
@@ -1764,7 +2147,7 @@ const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }) => {
                                             setChangeKeybindModalOpen(true)
                                         }}
                                     >
-                                        Change
+                                        {i18n(lang, "change")}
                                     </Link>
                                 </Flex>
                             </Flex>
@@ -1779,10 +2162,14 @@ const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }) => {
                     marginTop="25px"
                     onClick={() => db.set("keybinds", defaultKeybinds).catch(log.error)}
                 >
-                    Reset to defaults
+                    {i18n(lang, "resetToDefaults")}
                 </Link>
             </Flex>
-            <Modal onClose={() => setChangeKeybindModalOpen(false)} isOpen={changeKeybindModalOpen} isCentered={true}>
+            <Modal 
+                onClose={() => setChangeKeybindModalOpen(false)} 
+                isOpen={changeKeybindModalOpen} 
+                isCentered={true}
+            >
                 <ModalOverlay borderRadius="10px" />
                 <ModalContent 
                     backgroundColor={colors(platform, darkMode, "backgroundPrimary")} 
@@ -1794,7 +2181,7 @@ const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }) => {
                         _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }}
                     />
                     <ModalHeader color={colors(platform, darkMode, "textPrimary")}>
-                        Change keybind
+                        {i18n(lang, "changeKeybind")}
                     </ModalHeader>
                     <ModalBody>
                         <Flex
@@ -1809,7 +2196,7 @@ const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }) => {
                                         color={colors(platform, darkMode, "textPrimary")}
                                         fontSize={20}
                                     >
-                                        Press any key or keycombo
+                                        {i18n(lang, "pressKeyOrCombo")}
                                     </Text>
                                 ) : (
                                     <Kbd
@@ -1980,7 +2367,7 @@ const SettingsSelection = memo(({ darkMode, lang, platform, selection, setSelect
                     selection={selection} 
                     setSelection={setSelection} 
                     type="general" 
-                    title="General" 
+                    title={i18n(lang, "settingsGeneral")}
                 />
                 <SettingsSelectionButton 
                     darkMode={darkMode} 
@@ -1989,7 +2376,7 @@ const SettingsSelection = memo(({ darkMode, lang, platform, selection, setSelect
                     selection={selection} 
                     setSelection={setSelection} 
                     type="syncs" 
-                    title="Syncs" 
+                    title={i18n(lang, "settingsSyncs")} 
                 />
                 <SettingsSelectionButton 
                     darkMode={darkMode} 
@@ -1998,7 +2385,7 @@ const SettingsSelection = memo(({ darkMode, lang, platform, selection, setSelect
                     selection={selection} 
                     setSelection={setSelection} 
                     type="account" 
-                    title="Account" 
+                    title={i18n(lang, "settingsAccount")}
                 />
                 <SettingsSelectionButton 
                     darkMode={darkMode} 
@@ -2007,7 +2394,7 @@ const SettingsSelection = memo(({ darkMode, lang, platform, selection, setSelect
                     selection={selection} 
                     setSelection={setSelection} 
                     type="issues" 
-                    title="Issues" 
+                    title={i18n(lang, "settingsIssues")} 
                 />
                 <SettingsSelectionButton 
                     darkMode={darkMode} 
@@ -2016,7 +2403,7 @@ const SettingsSelection = memo(({ darkMode, lang, platform, selection, setSelect
                     selection={selection} 
                     setSelection={setSelection} 
                     type="networking" 
-                    title="Networking" 
+                    title={i18n(lang, "settingsNetworking")}
                 />
                 <SettingsSelectionButton 
                     darkMode={darkMode} 
@@ -2024,7 +2411,8 @@ const SettingsSelection = memo(({ darkMode, lang, platform, selection, setSelect
                     platform={platform} 
                     selection={selection} 
                     setSelection={setSelection} 
-                    type="keybinds" title="Keybinds" 
+                    type="keybinds"
+                    title={i18n(lang, "settingsKeybinds")} 
                 />
             </Flex>
         </Flex>

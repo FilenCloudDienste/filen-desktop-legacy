@@ -509,7 +509,7 @@ const UploadWindow = memo(({ userId, email, windowId }) => {
                                             marginTop="10px"
                                         >
                                             {
-                                                args.type == "files" ? "Preparing.." : "Creating folder structure.."
+                                                args.type == "files" ? i18n(lang, "preparingUpload") : i18n(lang, "preparingUploadFolders")
                                             }
                                         </Text>
                                     </>
@@ -522,7 +522,7 @@ const UploadWindow = memo(({ userId, email, windowId }) => {
                                             noOfLines={1}
                                             marginTop="10px"
                                         >
-                                            Upload done
+                                            {i18n(lang, "uploadDone")}
                                         </Text>
                                     </>
                                 ) : (
@@ -563,7 +563,7 @@ const UploadWindow = memo(({ userId, email, windowId }) => {
                                                         color={colors(platform, darkMode, "textPrimary")}
                                                         noOfLines={1}
                                                     >
-                                                        {bpsToReadable(speed) + ", about " + (remainingReadable.days > 0 ? remainingReadable.days + "d " : "") + (remainingReadable.hours > 0 ? remainingReadable.hours + "h " : "") + (remainingReadable.minutes > 0 ? remainingReadable.minutes + "m " : "") + "remaining"}
+                                                        {bpsToReadable(speed) + ", " + i18n(lang, "aboutRemaining", false, ["__TIME__"], [(remainingReadable.days > 0 ? remainingReadable.days + "d " : "") + (remainingReadable.hours > 0 ? remainingReadable.hours + "h " : "") + (remainingReadable.minutes > 0 ? remainingReadable.minutes + "m " : "")])}
                                                     </Text>
                                                 )
                                             })()}

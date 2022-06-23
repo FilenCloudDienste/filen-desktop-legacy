@@ -567,7 +567,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
                             noOfLines={1}
                             marginTop="10px"
                         >
-                            Download done
+                            {i18n(lang, "downloadDone")}
                         </Text>
                         <Link 
                             color={colors(platform, darkMode, "link")} 
@@ -576,7 +576,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
                             onClick={() => shell.openPath(downloadPath)}
                             marginTop="15px"
                         >
-                            Open folder
+                            {i18n(lang, "openFolder")}
                         </Link>
                     </>
                 ) : (
@@ -592,7 +592,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
                                 noOfLines={1}
                                 width="100%"
                             >
-                                Download {args.name}
+                                {i18n(lang, "download")} {args.name}
                             </Text>
                         </Flex>
                         <Flex
@@ -660,7 +660,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
                                         }}
                                         disabled={isGettingTree || isDownloading}
                                     >
-                                        Change
+                                        {i18n(lang, "change")}
                                     </Button>
                                     <Button
                                         height="1.75rem"
@@ -674,7 +674,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
                                         onClick={() => shell.openPath(pathModule.normalize(downloadPath)).catch(log.error)}
                                         disabled={isGettingTree || isDownloading}
                                     >
-                                        Open
+                                        {i18n(lang, "open")}
                                     </Button>
                                 </InputRightElement>
                             </InputGroup>
@@ -701,7 +701,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
                                             width="16px"
                                             height="16px"
                                         />
-                                    ) : "Download"
+                                    ) : i18n(lang, "download")
                                 }
                             </Button>
                         </Flex>
@@ -745,7 +745,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
                                                     color={colors(platform, darkMode, "textPrimary")}
                                                     noOfLines={1}
                                                 >
-                                                    {bpsToReadable(speed) + ", about " + (remainingReadable.days > 0 ? remainingReadable.days + "d " : "") + (remainingReadable.hours > 0 ? remainingReadable.hours + "h " : "") + (remainingReadable.minutes > 0 ? remainingReadable.minutes + "m " : "") + "remaining"}
+                                                    {bpsToReadable(speed) + ", " + i18n(lang, "aboutRemaining", false, ["__TIME__"], [(remainingReadable.days > 0 ? remainingReadable.days + "d " : "") + (remainingReadable.hours > 0 ? remainingReadable.hours + "h " : "") + (remainingReadable.minutes > 0 ? remainingReadable.minutes + "m " : "")])}
                                                 </Text>
                                             )
                                         })()}
@@ -814,7 +814,7 @@ const DownloadFile = memo(({ userId, email, platform, darkMode, lang, args }) =>
                     noOfLines={1}
                     width="100%"
                 >
-                    Download {args.name}
+                    {i18n(lang, "download")} {args.name}
                 </Text>
             </Flex>
             <Flex
@@ -882,7 +882,7 @@ const DownloadFile = memo(({ userId, email, platform, darkMode, lang, args }) =>
                             }}
                             disabled={isDownloading}
                         >
-                            Change
+                            {i18n(lang, "change")}
                         </Button>
                         <Button
                             height="1.75rem"
@@ -896,7 +896,7 @@ const DownloadFile = memo(({ userId, email, platform, darkMode, lang, args }) =>
                             onClick={() => shell.openPath(pathModule.normalize(pathModule.join(downloadPath, ".."))).catch(log.error)}
                             disabled={isDownloading}
                         >
-                            Open
+                            {i18n(lang, "open")}
                         </Button>
                     </InputRightElement>
                 </InputGroup>
@@ -923,7 +923,7 @@ const DownloadFile = memo(({ userId, email, platform, darkMode, lang, args }) =>
                                 width="16px"
                                 height="16px"
                             />
-                        ) : "Download"
+                        ) : i18n(lang, "download")
                     }
                 </Button>
             </Flex>

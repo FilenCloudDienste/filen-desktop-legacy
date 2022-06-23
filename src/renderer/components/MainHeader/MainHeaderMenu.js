@@ -5,6 +5,7 @@ import ipc from "../../lib/ipc"
 import colors from "../../styles/colors"
 import { IoGlobeOutline } from "react-icons/io5"
 import { IoMdClose } from "react-icons/io"
+import { i18n } from "../../lib/i18n"
 
 const { shell } = window.require("electron")
 
@@ -44,7 +45,7 @@ export default class MainHeaderMenu extends React.Component {
                             </Flex>
                         ))}
                     >
-                        Actions
+                        {i18n(lang, "actions")}
                     </MenuButton>
                     <MenuList
                         boxShadow="2xl"
@@ -73,7 +74,7 @@ export default class MainHeaderMenu extends React.Component {
                             }}
                             onClick={() => ipc.openSettingsWindow()}
                         >
-                            Settings
+                            {i18n(lang, "settings")}
                         </MenuItem>
                         <MenuItem
                             height="30px"
@@ -92,7 +93,7 @@ export default class MainHeaderMenu extends React.Component {
                             }}
                             onClick={() => shell.openExternal("https://filen.io/my-account/file-manager/")}
                         >
-                            Open website
+                            {i18n(lang, "openWebsite")}
                         </MenuItem>
                         <MenuDivider
                             backgroundColor={colors(platform, darkMode, "backgroundPrimary")}
@@ -115,7 +116,7 @@ export default class MainHeaderMenu extends React.Component {
                             }}
                             onClick={() => ipc.quitApp()}
                         >
-                            Quit Filen
+                            {i18n(lang, "quitFilen")}
                         </MenuItem>
                     </MenuList>
                 </Menu>
