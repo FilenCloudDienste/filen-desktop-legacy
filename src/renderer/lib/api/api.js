@@ -1377,7 +1377,7 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
                 }
 
                 const req = request({
-                    url: "https://" + getUploadServer() + "/v1/upload?" + queryParams,
+                    url: "https://" + getUploadServer() + "/v2/upload?" + queryParams,
                     method: "POST",
                     agent: new https.Agent({
                         keepAlive: true,
@@ -1427,8 +1427,6 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
                         
                         return setTimeout(doRequest, retryUploadTimeout)
                     }
-
-
 
                     try{
                         return resolve(JSON.parse(body))

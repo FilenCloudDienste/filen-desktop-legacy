@@ -67,5 +67,5 @@ export const maxRetryUpload = 512
 export const retryUploadTimeout = 1000
 export const maxRetryDownload = 512
 export const retryDownloadTimeout = 1000
-export const sizeOverheadMultiplier = 1.5
+export const sizeOverheadMultiplier = 1
 export const speedMultiplier = 1

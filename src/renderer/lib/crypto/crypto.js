@@ -284,7 +284,7 @@ export const encryptData = (data, key) => {
                 iv: textEncoder.encode(iv)
             }, await window.crypto.subtle.importKey("raw", textEncoder.encode(key), "AES-GCM", false, ["encrypt"]), data)
 
-            return resolve(iv + convertArrayBufferToBinaryString(new Uint8Array(encrypted)))
+            return resolve(Buffer.concat([Buffer.from(iv, "utf8"), new Uint8Array(encrypted)]))
         }
         catch(e){
             log.error(e)
