@@ -1,0 +1,47 @@
+@font-face {
+	font-family: "San Francisco";
+	font-weight: 400;
+	src: url(fonts/sf-pro-display_regular.woff2);
+}
+
+@font-face {
+	font-family: "San Francisco Bold";
+	font-weight: 400;
+	src: url(fonts/sf-pro-display_bold.woff2);
+}
+
+body {
+	/*font-family: "San Francisco" !important;*/
+	letter-spacing: -.5px;
+}
+
+* {
+	scrollbar-width: auto;
+	scrollbar-color: gray #ffffff;
+	outline: none;
+	user-select: none;
+}
+
+*:active, *:focus, *:hover, *:checked, *:enabled, *:disabled {
+	outline: none;
+	user-select: none;
+}
+
+*::-webkit-scrollbar {
+	width: 5px;
+}
+
+*::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+	background-color: gray;
+	border-radius: 15px;
+	border: none;
+}
+
+*::-webkit-scrollbar-button, *::-webkit-scrollbar-corner, *::-webkit-resizer {
+	background-color: transparent;
+	display: none;
+}
