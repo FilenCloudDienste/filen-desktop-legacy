@@ -103,7 +103,9 @@ const de = {
     settingsKeybinds: "Tasten",
     createFolderPlaceholder: "Ordner Name",
     invalidFolderName: "Ungültiger Ordner Name",
-    titlebarCloudWindow: "Cloud"
+    titlebarCloudWindow: "Cloud",
+    updateAvailable: "Eine neue Version ist verfügbar. Um von Fehlerbehebungen zu profitieren empfehlen wir, die neue Version herunterzuladen.",
+    downloadUpdateBtn: "Neue Version herunterladen"
 }
 
 export default de

@@ -103,7 +103,9 @@ const en = {
     settingsKeybinds: "Keybinds",
     createFolderPlaceholder: "Folder name",
     invalidFolderName: "Invalid folder name",
-    titlebarCloudWindow: "Cloud"
+    titlebarCloudWindow: "Cloud",
+    updateAvailable: "There is an update available, please consider downloading the latest version for bug fixes and performance improvements",
+    downloadUpdateBtn: "Download update"
 }
 
 export default en

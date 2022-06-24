@@ -13,6 +13,7 @@ import MainHeader from "../../components/MainHeader"
 import useDb from "../../lib/hooks/useDb"
 import { debounce, throttle } from "lodash"
 import { sizeOverheadMultiplier, speedMultiplier } from "../../lib/constants"
+import UpdateModal from "../../components/UpdateModal"
 
 const log = window.require("electron-log")
 const { ipcRenderer } = window.require("electron")
@@ -369,6 +370,13 @@ const MainWindow = memo(({ userId, email, windowId }) => {
                 totalRemaining={totalRemaining}
             />
             <IsOnlineBottomToast
+                userId={userId}
+                email={email}
+                platform={platform}
+                darkMode={darkMode}
+                lang={lang}
+            />
+            <UpdateModal
                 userId={userId}
                 email={email}
                 platform={platform}

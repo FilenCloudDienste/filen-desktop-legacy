@@ -30,6 +30,48 @@ export const fileAndFolderNameValidation = (name) => {
   return true
 }
 
+export function compareVersions(current, got){
+	function compare(a, b) {
+		if (a === b) {
+		   return 0;
+		}
+	
+		var a_components = a.split(".");
+		var b_components = b.split(".");
+	
+		var len = Math.min(a_components.length, b_components.length);
+
+		for (var i = 0; i < len; i++) {
+			if (parseInt(a_components[i]) > parseInt(b_components[i])) {
+				return 1;
+			}
+	
+			if (parseInt(a_components[i]) < parseInt(b_components[i])) {
+				return -1;
+			}
+		}
+	
+		if (a_components.length > b_components.length) {
+			return 1;
+		}
+	
+		if (a_components.length < b_components.length) {
+			return -1;
+		}
+	
+		return 0;
+	}
+
+	let res = compare(current, got)
+
+	if(res == -1){
+		return "update"
+	}
+	else{
+		return "ok"
+	}
+}
+
 export const formatBytes = (bytes, decimals = 2) => {
     if(bytes == 0){
         return "0 Bytes"
