@@ -8,13 +8,16 @@ import { i18n } from "../../lib/i18n"
 import { baseFolders, folderContent } from "../../lib/api"
 import db from "../../lib/db"
 import { IoChevronForwardOutline, IoFolderOpenOutline, IoChevronBackOutline } from "react-icons/io5"
-import { getParentFromParentFromURL } from "../../lib/helpers"
+import { getParentFromParentFromURL, fileAndFolderNameValidation } from "../../lib/helpers"
 import ipc from "../../lib/ipc"
 import colors from "../../styles/colors"
 import Container from "../../components/Container"
 import IsOnlineBottomToast from "../../components/IsOnlineBottomToast"
 import { BsFillFolderFill } from "react-icons/bs"
 import { List } from "react-virtualized"
+import { showToast } from "../../components/Toast"
+import { createFolder } from "../../lib/api"
+import { v4 as uuidv4 } from "uuid"
 
 const log = window.require("electron-log")
 const { ipcRenderer } = window.require("electron")
@@ -37,6 +40,7 @@ const CloudWindow = memo(({ userId, email, windowId }) => {
     const [sendingResult, setSendingResult] = useState(false)
     const [createFolderModalOpen, setCreateFolderModalOpen] = useState(false)
     const [createFolderName, setCreateFolderName] = useState("")
+    const [isCreatingFolder, setIsCreatingFolder] = useState(false)
 
     const fetchFolderContent = useCallback(async (uuid) => {
         setIsLoading(true)
@@ -123,6 +127,12 @@ const CloudWindow = memo(({ userId, email, windowId }) => {
             fetchFolderContent(uuid)
         }
     })
+
+    useEffect(() => {
+        if(createFolderModalOpen){
+            setCreateFolderName("")
+        }
+    }, [createFolderModalOpen])
 
     useEffect(() => {
         (async () => {
@@ -215,7 +225,7 @@ const CloudWindow = memo(({ userId, email, windowId }) => {
                                         flexDirection="row" 
                                         alignItems="center" 
                                         justifyContent="center" 
-                                        width="80%"
+                                        width="70%"
                                     >
                                         {
                                             url.current.indexOf("/") !== -1 && (
@@ -241,60 +251,77 @@ const CloudWindow = memo(({ userId, email, windowId }) => {
                                             {path.current.split("/").length > 1 ? "/" + path.current.split("/").slice(1).join("/") : "/"}
                                         </Text>
                                     </Flex>
-                                    {
-                                        mode == "selectFolder" ? (
-                                            <>
-                                                {
-                                                    sendingResult ? (
-                                                        <Spinner 
-                                                            width="18px" 
-                                                            height="18px" 
-                                                            color={colors(platform, darkMode, "textPrimary")} 
-                                                        />
-                                                    ) : (
-                                                        <Link 
-                                                            color={colors(platform, darkMode, "link")} 
-                                                            textDecoration="none" 
-                                                            _hover={{
-                                                                textDecoration: "none"
-                                                            }} 
-                                                            onClick={() => {
-                                                                if(!resultSent.current){
-                                                                    resultSent.current = true
+                                    <Flex
+                                        flexDirection="row" 
+                                        alignItems="center" 
+                                        justifyContent="center"
+                                    >
+                                        <Link 
+                                            color={colors(platform, darkMode, "link")} 
+                                            textDecoration="none" 
+                                            _hover={{
+                                                textDecoration: "none"
+                                            }} 
+                                            onClick={() => setCreateFolderModalOpen(true)}
+                                            marginRight="10px"
+                                        >
+                                            {i18n(lang, "createFolder")}
+                                        </Link>
+                                        {
+                                            mode == "selectFolder" ? (
+                                                <>
+                                                    {
+                                                        sendingResult ? (
+                                                            <Spinner 
+                                                                width="18px" 
+                                                                height="18px" 
+                                                                color={colors(platform, darkMode, "textPrimary")} 
+                                                            />
+                                                        ) : (
+                                                            <Link 
+                                                                color={colors(platform, darkMode, "link")} 
+                                                                textDecoration="none" 
+                                                                _hover={{
+                                                                    textDecoration: "none"
+                                                                }} 
+                                                                onClick={() => {
+                                                                    if(!resultSent.current){
+                                                                        resultSent.current = true
 
-                                                                    setSendingResult(true)
+                                                                        setSendingResult(true)
 
-                                                                    let remotePath = path.current.split("/").slice(1).join("/")
+                                                                        let remotePath = path.current.split("/").slice(1).join("/")
 
-                                                                    if(remotePath.length == 0){
-                                                                        remotePath = "/"
+                                                                        if(remotePath.length == 0){
+                                                                            remotePath = "/"
+                                                                        }
+
+                                                                        if(remotePath == defaultFolderName.current){
+                                                                            remotePath = "/"
+                                                                        }
+
+                                                                        if(!remotePath.startsWith("/")){
+                                                                            remotePath = "/" + remotePath
+                                                                        }
+                    
+                                                                        ipc.remoteFolderSelected({
+                                                                            uuid: selectedFolder.uuid,
+                                                                            path: remotePath,
+                                                                            name: folderNames[selectedFolder.uuid],
+                                                                            canceled: false,
+                                                                            windowId
+                                                                        })
                                                                     }
-
-                                                                    if(remotePath == defaultFolderName.current){
-                                                                        remotePath = "/"
-                                                                    }
-
-                                                                    if(!remotePath.startsWith("/")){
-                                                                        remotePath = "/" + remotePath
-                                                                    }
-                
-                                                                    ipc.remoteFolderSelected({
-                                                                        uuid: selectedFolder.uuid,
-                                                                        path: remotePath,
-                                                                        name: folderNames[selectedFolder.uuid],
-                                                                        canceled: false,
-                                                                        windowId
-                                                                    })
-                                                                }
-                                                            }}
-                                                        >
-                                                            {i18n(lang, "select")}
-                                                        </Link>
-                                                    )
-                                                }
-                                            </>
-                                        ) : <></>
-                                    }
+                                                                }}
+                                                            >
+                                                                {i18n(lang, "select")}
+                                                            </Link>
+                                                        )
+                                                    }
+                                                </>
+                                            ) : <></>
+                                        }
+                                    </Flex>
                                 </Flex>
                             </Flex>
                         )
@@ -447,47 +474,106 @@ const CloudWindow = memo(({ userId, email, windowId }) => {
             <Modal 
                 onClose={() => setCreateFolderModalOpen(false)} 
                 isOpen={createFolderModalOpen} 
-                isCentered={true}
+                isCentered
             >
                 <ModalOverlay borderRadius="10px" />
-                <ModalContent backgroundColor="#171717">
-                    <ModalHeader color="white">
+                <ModalContent 
+                    backgroundColor={colors(platform, darkMode, "backgroundPrimary")} 
+                    borderRadius="15px"
+                >
+                    <ModalCloseButton 
+                        color={colors(platform, darkMode, "textPrimary")} 
+                        _focus={{ _focus: false }} 
+                        _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }} 
+                    />
+                    <ModalHeader color={colors(platform, darkMode, "textPrimary")}>
                         {i18n(lang, "createFolder")}
                     </ModalHeader>
-                    <ModalCloseButton color="white" />
                     <ModalBody>
                         <Input 
                             type="text"
                             value={createFolderName}
                             onChange={(event) => setCreateFolderName(event.target.value)}
                             placeholder={i18n(lang, "createFolderPlaceholder")}
-                            userSelect="none"
+                            userSelect="none" 
                             style={{
-                                marginBottom: 10,
                                 border: "none",
-                                backgroundColor: "lightgray",
-                                color: "gray"
+                                backgroundColor: darkMode ? "#171717" : "lightgray",
+                                color: "gray",
+                                height: "37.5px",
+                                paddingLeft: "10px",
+                                paddingRight: "10px"
                             }} 
                             _placeholder={{
                                 color: "gray"
-                            }} 
+                            }}
+                            disabled={isCreatingFolder}
                         />
                     </ModalBody>
                     <ModalFooter>
-                        <Button 
-                            onClick={() => setCreateFolderModalOpen(false)}
-                            backgroundColor="white"
-                        >
-                            {i18n(lang, "close")}
-                        </Button>
-                        <Button
-                            onClick={() => setCreateFolderModalOpen(false)}
-                            marginLeft="10px"
-                            backgroundColor={colors(platform, darkMode, "link")}
-                            color="white"
-                        >
-                            {i18n(lang, "create")}
-                        </Button>
+                        {
+                            isCreatingFolder ? (
+                                <Spinner
+                                    width="32px"
+                                    height="32px"
+                                    color={colors(platform, darkMode, "textPrimary")}
+                                />
+                            ) : (
+                                <>
+                                    <Link 
+                                        color="gray" 
+                                        textDecoration="none" 
+                                        _hover={{ textDecoration: "none" }} 
+                                        onClick={() => setCreateFolderModalOpen(false)}
+                                    >
+                                        {i18n(lang, "close")}
+                                    </Link>
+                                    <Link 
+                                        color={colors(platform, darkMode, "link")} 
+                                        textDecoration="none" 
+                                        _hover={{ textDecoration: "none" }} 
+                                        marginLeft="10px" 
+                                        onClick={async () => {
+                                            const folderName = createFolderName.trim()
+
+                                            if(folderName.length == 0){
+                                                return showToast({ message: i18n(lang, "invalidFolderName"), status: "error" })
+                                            }
+
+                                            if(!fileAndFolderNameValidation(folderName)){
+                                                return showToast({ message: i18n(lang, "invalidFolderName"), status: "error" })
+                                            }
+
+                                            const ex = url.current.split("/")
+                                            const parent = ex[ex.length - 1].trim()
+
+                                            setIsCreatingFolder(true)
+
+                                            try{
+                                                await createFolder({
+                                                    uuid: uuidv4(),
+                                                    name: folderName,
+                                                    parent
+                                                })
+                                            }
+                                            catch(e){
+                                                log.error(e)
+
+                                                setIsCreatingFolder(false)
+
+                                                return showToast({ message: e.toString(), status: "error" })
+                                            }
+
+                                            setCreateFolderModalOpen(false)
+                                            fetchFolderContent(parent)
+                                            setIsCreatingFolder(false)
+                                        }}
+                                    >
+                                        {i18n(lang, "create")}
+                                    </Link>
+                                </>
+                            )
+                        }
                     </ModalFooter>
                 </ModalContent>
             </Modal>

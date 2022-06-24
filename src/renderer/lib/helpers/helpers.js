@@ -20,6 +20,16 @@ export const sleep = (ms = 1000) => {
     return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+export const fileAndFolderNameValidation = (name) => {
+  const regex = /[<>:"\/\\|?*\x00-\x1F]|^(?:aux|con|clock\$|nul|prn|com[1-9]|lpt[1-9])$/i
+
+  if(regex.test(name)){
+      return false
+  }
+
+  return true
+}
+
 export const formatBytes = (bytes, decimals = 2) => {
     if(bytes == 0){
         return "0 Bytes"

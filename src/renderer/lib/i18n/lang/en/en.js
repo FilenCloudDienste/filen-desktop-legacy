@@ -100,7 +100,10 @@ const en = {
     settingsAccount: "Account",
     settingsIssues: "Issues",
     settingsNetworking: "Networking",
-    settingsKeybinds: "Keybinds"
+    settingsKeybinds: "Keybinds",
+    createFolderPlaceholder: "Folder name",
+    invalidFolderName: "Invalid folder name",
+    titlebarCloudWindow: "Cloud"
 }
 
 export default en
