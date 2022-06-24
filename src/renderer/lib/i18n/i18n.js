@@ -1,7 +1,9 @@
 import en from "./lang/en"
+import de from "./lang/de"
 
 const translations = {
-    en
+    en,
+    de
 }
 
 export const i18n = (lang = "en", text, firstUpperCase = true, replaceFrom = [], replaceTo = []) => {

@@ -2,8 +2,6 @@ import React, { memo } from "react"
 import { Box } from "@chakra-ui/react"
 import colors from "../../styles/colors"
 
-const is = window.require("electron-is")
-
 const Container = memo(({ darkMode, lang, platform, children }) => {
     return (
         <Box

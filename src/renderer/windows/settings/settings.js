@@ -246,6 +246,16 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }) => {
                         >
                             English
                         </option>
+                        <option 
+                            value="de" 
+                            style={{
+                                backgroundColor: colors(platform, darkMode, "backgroundSecondary"),
+                                height: "30px",
+                                borderRadius: "10px"
+                            }}
+                        >
+                            Deutsch
+                        </option>
                     </Select>
                     </Flex>
                 </Flex>
@@ -421,11 +431,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
     })
 
     const debounceFilenIgnore = useCallback(debounce((value, uuid) => {
-        console.log(value)
-
-        db.set("filenIgnore:" + uuid, value).catch((err) => {
-            log.error(err)
-        })
+        db.set("filenIgnore:" + uuid, value).catch(log.error)
     }, 1000), [])
 
     useEffect(() => {
@@ -791,7 +797,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
             <Modal 
                 onClose={() => setSyncSettingsModalOpen(false)} 
                 isOpen={syncSettingsModalOpen} 
-                isCentered={true}
+                isCentered
             >
                 <ModalOverlay borderRadius="10px" />
                 <ModalContent 
@@ -848,7 +854,8 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                                         </Flex>
                                         <Flex alignItems="center">
                                             <Select 
-                                                value={currentSyncLocation.type} color={colors(platform, darkMode, "textPrimary")} 
+                                                value={currentSyncLocation.type}
+                                                color={colors(platform, darkMode, "textPrimary")} 
                                                 fontSize={14} 
                                                 height="30px" 
                                                 borderColor={colors(platform, darkMode, "borderPrimary")}
@@ -977,9 +984,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                                                     
                                                     setSyncSettingsModalOpen(false)
                                                     
-                                                    ipc.openSelectiveSyncWindow({
-                                                        currentSyncLocation
-                                                    })
+                                                    ipc.openSelectiveSyncWindow({ currentSyncLocation })
                                                 }}
                                             >
                                                 {i18n(lang, "configure")}
@@ -1132,7 +1137,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
             <Modal 
                 onClose={() => setConfirmDeleteModalOpen(false)} 
                 isOpen={confirmDeleteModalOpen} 
-                isCentered={true}
+                isCentered
             >
                 <ModalOverlay borderRadius="10px" />
                 <ModalContent 
@@ -1250,9 +1255,9 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                                 width="100%"
                                 height="490px"
                                 placeholder={"ignored/folder\nignoredFile.txt"}
-                                autoFocus={true}
+                                autoFocus
                                 theme={createCodeMirrorTheme({ platform, darkMode })}
-                                onChange={async (value, viewUpdate) => {
+                                onChange={async (value, _) => {
                                     if(typeof currentSyncLocation == "undefined"){
                                         return false
                                     }
@@ -1468,7 +1473,7 @@ const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }) => {
                         <Modal 
                             onClose={() => setLogoutAlertOpen(false)} 
                             isOpen={logoutAlertOpen} 
-                            isCentered={true}
+                            isCentered
                         >
                             <ModalOverlay borderRadius="10px" />
                             <ModalContent 
@@ -1637,7 +1642,7 @@ const SettingsWindowIssues = memo(({ darkMode, lang, platform }) => {
             <Modal 
                 onClose={() => setClearIssuesModalOpen(false)} 
                 isOpen={clearIssuesModalOpen} 
-                isCentered={true}
+                isCentered
             >
                 <ModalOverlay borderRadius="10px" />
                 <ModalContent 
@@ -1853,7 +1858,7 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }) => {
                         <Modal 
                             onClose={() => setThrottlingModalOpen(false)} 
                             isOpen={throttlingModalOpen}
-                            isCentered={true}
+                            isCentered
                         >
                             <ModalOverlay borderRadius="10px" />
                             <ModalContent 
@@ -2168,7 +2173,7 @@ const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }) => {
             <Modal 
                 onClose={() => setChangeKeybindModalOpen(false)} 
                 isOpen={changeKeybindModalOpen} 
-                isCentered={true}
+                isCentered
             >
                 <ModalOverlay borderRadius="10px" />
                 <ModalContent 
