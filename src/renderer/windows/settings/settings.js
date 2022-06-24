@@ -233,7 +233,10 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }) => {
                             outline: "none"
                         }} 
                         onChange={(e) => {
-                            db.set("lang", e.nativeEvent.target.value).catch(log.error)
+                            Promise.all([
+                                db.set("lang", e.nativeEvent.target.value),
+                                db.set("langSetManually", true)
+                            ]).catch(log.error)
                         }}
                     >
                         <option 

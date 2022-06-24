@@ -625,6 +625,16 @@ const createWindows = () => {
             await require("../ipc").listen()
             await require("../socket").listen()
 
+            const langSetManually = await db.get("langSetManually")
+
+            if(!langSetManually){
+                const locale = app.getLocale()
+            
+                if(["en", "de"].includes(locale)){
+                    await db.set("lang", locale)
+                }
+            }
+
             var [isLoggedIn, deviceId, _] = await Promise.all([
                 db.get("isLoggedIn"),
                 db.get("deviceId"),
