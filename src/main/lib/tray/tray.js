@@ -29,26 +29,10 @@ const toggleMainWindow = () => {
 }
 
 const onClick = () => {
-    try{
-        shared.get("TRAY").setContextMenu(null)
-    }
-    catch(e){
-        log.error(e)
-    }
-
     return toggleMainWindow()
 }
 
 const onRightClick = () => {
-    try{
-        const menu = trayMenu.createMenu()
-
-        shared.get("TRAY").setContextMenu(menu)
-    }
-    catch(e){
-        log.error(e)
-    }
-
     return true
 }
 
@@ -65,6 +49,8 @@ const createTray = () => {
     
         tray.on("click", onClick)
         tray.on("right-click", onRightClick)
+
+        tray.setContextMenu(trayMenu.createMenu())
     
         shared.set("TRAY", tray)
     
