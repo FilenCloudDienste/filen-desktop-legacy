@@ -10,7 +10,6 @@ import { Semaphore } from "../../helpers"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
-const is = window.require("electron-is")
 const gitignoreParser = window.require("@gerhobbelt/gitignore-parser")
 const fs = window.require("fs-extra")
 
@@ -25,7 +24,7 @@ export const maxConcurrentUploadsSemaphore = new Semaphore(maxConcurrentUploadsP
 export const maxConcurrentDownloadsSemaphore = new Semaphore(maxConcurrentDownloadsPreset)
 
 const acquireSyncLock = (id) => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         log.info("Acquiring sync lock")
 
         const acquire = async () => {
@@ -36,8 +35,10 @@ const acquireSyncLock = (id) => {
     
                 return resolve(true)
             }).catch((err) => {
-                log.error("Could not acquire sync lock from API")
-                log.error(err)
+                if(err.toString().toLowerCase().indexOf("sync locked") == -1){
+                    log.error("Could not acquire sync lock from API")
+                    log.error(err)
+                }
     
                 return setTimeout(acquire, 1000)
             })
