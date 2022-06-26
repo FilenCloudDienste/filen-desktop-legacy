@@ -2289,7 +2289,7 @@ const syncLocation = async (location) => {
         log.error("Smoke test for location " + location.uuid + " failed")
         log.error(e)
 
-        addToSyncIssues("smokeTest", "Smoke test failed: " + e.toString())
+        addToSyncIssues("smokeTest", "Smoke test for location " + location.uuid + " failed: " + e.toString())
 
         emitSyncStatusLocation("smokeTest", {
             status: "err",
