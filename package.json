@@ -135,7 +135,7 @@
 			}
 		},
 		"nsis": {
-			"oneClick": true,
+			"oneClick": false,
 			"perMachine": false,
 			"allowElevation": true,
 			"createDesktopShortcut": true,
