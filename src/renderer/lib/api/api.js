@@ -1311,7 +1311,7 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
             if(maxStorageReached){
                 return reject(new Error("Max storage reached"))
             }
-            
+
             await new Promise((resolve) => {
                 const getPausedStatus = () => {
                     db.get("paused").then((paused) => {
@@ -1444,6 +1444,7 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
 
                     if(!res.status){
                         if(res.message.toLowerCase().indexOf("storage") !== -1){
+                            db.set("paused", true)
                             db.set("maxStorageReached", true)
                         }
 
