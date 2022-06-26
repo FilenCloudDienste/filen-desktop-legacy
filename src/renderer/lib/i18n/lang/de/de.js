@@ -107,7 +107,14 @@ const de = {
     updateAvailable: "Eine neue Version ist verfügbar. Um von Fehlerbehebungen zu profitieren empfehlen wir, die neue Version herunterzuladen.",
     downloadUpdateBtn: "Neue Version herunterladen",
     pause: "Pausieren",
-    resume: "Fortsetzen"
+    resume: "Fortsetzen",
+    keybinds_uploadFolders: "Ordner hochladen",
+    keybinds_uploadFiles: "Dateien hochladen",
+    keybinds_openSettings: "Einstellungen öffnen",
+    keybinds_pauseSync: "Synchronisation pausieren",
+    keybinds_resumeSync: "Synchronisation fortsetzen",
+    keybinds_openWebsite: "Website öffnen",
+    keybindNotBound: "Nicht gebunden"
 }
 
 export default de

@@ -314,6 +314,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
     const [confirmDeleteModalOpen, setConfirmDeleteModalOpen] = useState(false)
     const [ignoredFilesModalOpen, setIgnoredFilesModalOpen] = useState(false)
     const [currentSyncLocationIgnored, setCurrentSyncLocationIgnored] = useState("")
+    const [isDeletingSyncLocation, setIsDeletingSyncLocation] = useState(false)
 
     const createNewSyncLocation = useCallback(() => {
         db.get("syncLocations:" + userId).then((currentSyncLocations) => {
@@ -395,7 +396,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                                 remoteUUID: undefined,
                                 remoteName: undefined,
                                 type: "twoWay",
-                                paused: false,
+                                paused: true,
                                 busy: false,
                                 localChanged: false
                             })
@@ -576,7 +577,29 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                                                     location.paused ? (
                                                         <AiOutlinePauseCircle 
                                                             color={colors(platform, darkMode, "textPrimary")} 
-                                                            size={15} 
+                                                            size={15}
+                                                            cursor="pointer"
+                                                            pointerEvents="all"
+                                                            onClick={async () => {
+                                                                try{
+                                                                    let currentSyncLocations = await db.get("syncLocations:" + userId)
+            
+                                                                    if(!Array.isArray(currentSyncLocations)){
+                                                                        currentSyncLocations = []
+                                                                    }
+            
+                                                                    for(let i = 0; i < currentSyncLocations.length; i++){
+                                                                        if(currentSyncLocations[i].uuid == location.uuid){
+                                                                            currentSyncLocations[i].paused = false
+                                                                        }
+                                                                    }
+            
+                                                                    await db.set("syncLocations:" + userId, currentSyncLocations)
+                                                                }
+                                                                catch(e){
+                                                                    log.error(e)
+                                                                }
+                                                            }}
                                                         />
                                                     ) : (
                                                         <>
@@ -1102,15 +1125,11 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                                                 marginTop="25px"
                                             >
                                                 <Link 
-                                                    color={currentSyncLocation.busy ? "gray" : colors(platform, darkMode, "danger")} 
+                                                    color={colors(platform, darkMode, "danger")} 
                                                     textDecoration="none" 
                                                     _hover={{ textDecoration: "none" }} 
                                                     fontSize={11} 
                                                     onClick={() => {
-                                                        if(currentSyncLocation.busy){
-                                                            return false
-                                                        }
-
                                                         setSyncSettingsModalOpen(false)
                                                         setTimeout(() => setConfirmDeleteModalOpen(true), 250)
                                                     }}
@@ -1140,7 +1159,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
             <Modal 
                 onClose={() => setConfirmDeleteModalOpen(false)} 
                 isOpen={confirmDeleteModalOpen} 
-                isCentered
+                isCentered={true}
             >
                 <ModalOverlay borderRadius="10px" />
                 <ModalContent 
@@ -1153,38 +1172,64 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                     <ModalCloseButton 
                         color={colors(platform, darkMode, "textPrimary")} 
                         _focus={{ _focus: false }} 
-                        _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }} 
+                        _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }}
+                        disabled={isDeletingSyncLocation}
                     />
                     <ModalBody>
-                        <Text 
-                            color={colors(platform, darkMode, "textPrimary")} 
-                            fontSize={14}
-                        >
-                            {i18n(lang, "confirmDeleteSyncLocation")}
-                        </Text>
+                        {
+                            isDeletingSyncLocation ? (
+                                <Flex
+                                    width="100%"
+                                    height="100%"
+                                    justifyContent="center"
+                                    alignItems="center"
+                                >
+                                    <Spinner 
+                                        width="32px"
+                                        height="32px"
+                                        color={colors(platform, darkMode, "textPrimary")}
+                                    />
+                                </Flex>
+                            ) : (
+                                <Text 
+                                    color={colors(platform, darkMode, "textPrimary")} 
+                                    fontSize={14}
+                                >
+                                    {i18n(lang, "confirmDeleteSyncLocation")}
+                                </Text>
+                            )
+                        }
                     </ModalBody>
                     <ModalFooter>
                         <Link 
-                            color={colors(platform, darkMode, "link")} 
+                            color={isDeletingSyncLocation ? "gray" : colors(platform, darkMode, "link")} 
                             textDecoration="none" 
                             _hover={{ textDecoration: "none" }} 
-                            onClick={() => setConfirmDeleteModalOpen(false)} 
+                            onClick={() => {
+                                if(isDeletingSyncLocation){
+                                    return false
+                                }
+
+                                setConfirmDeleteModalOpen(false)
+                            }} 
                             marginRight="15px"
                         >
                             {i18n(lang, "close")}
                         </Link>
                         <Link 
-                            color={colors(platform, darkMode, "danger")} 
+                            color={isDeletingSyncLocation ? "gray" : colors(platform, darkMode, "danger")} 
                             textDecoration="none" 
                             _hover={{ textDecoration: "none" }} 
                             onClick={async () => {
+                                if(isDeletingSyncLocation){
+                                    return false
+                                }
+
                                 if(typeof currentSyncLocation == "undefined"){
                                     return setConfirmDeleteModalOpen(false)
                                 }
 
-                                if(currentSyncLocation.busy){
-                                    return setConfirmDeleteModalOpen(false)
-                                }
+                                setIsDeletingSyncLocation(true)
 
                                 try{
                                     let currentSyncLocations = await db.get("syncLocations:" + userId)
@@ -1199,12 +1244,27 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                                         }
                                     }
 
+                                    await new Promise((resolve) => {
+                                        if(!currentSyncLocation.busy){
+                                            return resolve(true)
+                                        }
+    
+                                        const wait = setInterval(() => {
+                                            if(!currentSyncLocation.busy){
+                                                clearInterval(wait)
+                                                
+                                                return resolve(true)
+                                            }
+                                        }, 10)
+                                    })
+
                                     await db.set("syncLocations:" + userId, currentSyncLocations)
                                 }
                                 catch(e){
                                     log.error(e)
                                 }
 
+                                setIsDeletingSyncLocation(false)
                                 setConfirmDeleteModalOpen(false)
                             }}
                         >
@@ -2100,9 +2160,9 @@ const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }) => {
                                         fontSize={14}
                                         color={colors(platform, darkMode, "textPrimary")}
                                     >
-                                        {keybind.type}
+                                        {i18n(lang, "keybinds_" + keybind.type)}
                                     </Text>
-                                    <Tooltip 
+                                    {/*<Tooltip 
                                         label={
                                             <Flex flexDirection="column">
                                                 <Text color={colors(platform, darkMode, "textPrimary")}>
@@ -2121,7 +2181,7 @@ const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }) => {
                                                 color={colors(platform, darkMode, "textPrimary")} 
                                             />
                                         </Flex>
-                                    </Tooltip>
+                                    </Tooltip>*/}
                                 </Flex>
                                 <Flex
                                     alignItems="center"
@@ -2137,7 +2197,7 @@ const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }) => {
                                             borderColor={colors(platform, darkMode, "backgroundPrimary")}
                                         >
                                             {
-                                                keybind.keybind == null ? "Not bound" : keybind.keybind
+                                                keybind.keybind == null ? i18n(lang, "keybindNotBound") : keybind.keybind
                                             }
                                         </Kbd>
                                     </Text>

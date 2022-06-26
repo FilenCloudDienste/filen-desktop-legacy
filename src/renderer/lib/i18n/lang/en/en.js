@@ -107,7 +107,14 @@ const en = {
     updateAvailable: "There is an update available, please consider downloading the latest version for bug fixes and performance improvements",
     downloadUpdateBtn: "Download update",
     pause: "Pause",
-    resume: "Resume"
+    resume: "Resume",
+    keybinds_uploadFolders: "Upload folders",
+    keybinds_uploadFiles: "Upload files",
+    keybinds_openSettings: "Open settings",
+    keybinds_pauseSync: "Pause sync",
+    keybinds_resumeSync: "Resume sync",
+    keybinds_openWebsite: "Open website",
+    keybindNotBound: "Not bound"
 }
 
 export default en
