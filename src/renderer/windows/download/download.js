@@ -21,6 +21,7 @@ import { throttle } from "lodash"
 import { AiOutlineCheckCircle } from "react-icons/ai"
 import { showToast } from "../../components/Toast"
 import { decryptData } from "../../lib/crypto"
+import useDb from "../../lib/hooks/useDb"
 
 const log = window.require("electron-log")
 const pathModule = window.require("path")
@@ -189,6 +190,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
     const [speed, setSpeed] = useState(0)
     const [percent, setPercent] = useState(0)
     const [done, setDone] = useState(false)
+    const paused = useDb("paused", false)
 
     const totalBytes = useRef(0)
     const bytes = useRef(0)
@@ -728,27 +730,65 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
                                         justifyContent="space-between"
                                         marginTop="2px"
                                     >
-                                        {(() => {
-                                            const remainingReadable = getTimeRemaining((new Date().getTime() + (timeLeft * 1000)))
-
-                                            if(remainingReadable.total <= 1 || remainingReadable.minutes <= 1){
-                                                remainingReadable.total = 1
-                                                remainingReadable.days = 0
-                                                remainingReadable.hours = 0
-                                                remainingReadable.minutes = 1
-                                                remainingReadable.seconds = 1
-                                            }
-
-                                            return (
-                                                <Text 
-                                                    fontSize={14}
+                                        {
+                                            paused ? (
+                                                <Spinner
+                                                    width="14px"
+                                                    height="14px"
                                                     color={colors(platform, darkMode, "textPrimary")}
-                                                    noOfLines={1}
-                                                >
-                                                    {bpsToReadable(speed) + ", " + i18n(lang, "aboutRemaining", false, ["__TIME__"], [(remainingReadable.days > 0 ? remainingReadable.days + "d " : "") + (remainingReadable.hours > 0 ? remainingReadable.hours + "h " : "") + (remainingReadable.minutes > 0 ? remainingReadable.minutes + "m " : "")])}
-                                                </Text>
+                                                    marginTop="5px"
+                                                />
+                                            ) : (() => {
+                                                const remainingReadable = getTimeRemaining((new Date().getTime() + (timeLeft * 1000)))
+
+                                                if(remainingReadable.total <= 1 || remainingReadable.minutes <= 1){
+                                                    remainingReadable.total = 1
+                                                    remainingReadable.days = 0
+                                                    remainingReadable.hours = 0
+                                                    remainingReadable.minutes = 1
+                                                    remainingReadable.seconds = 1
+                                                }
+
+                                                return (
+                                                    <Text 
+                                                        fontSize={14}
+                                                        color={colors(platform, darkMode, "textPrimary")}
+                                                        noOfLines={1}
+                                                    >
+                                                        {bpsToReadable(speed) + ", " + i18n(lang, "aboutRemaining", false, ["__TIME__"], [(remainingReadable.days > 0 ? remainingReadable.days + "d " : "") + (remainingReadable.hours > 0 ? remainingReadable.hours + "h " : "") + (remainingReadable.minutes > 0 ? remainingReadable.minutes + "m " : "")])}
+                                                    </Text>
+                                                )
+                                            })()
+                                        }
+                                        {
+                                            percent < 100 && !done && (
+                                                <>
+                                                    {
+                                                        paused ? (
+                                                            <Link 
+                                                                color={colors(platform, darkMode, "link")} 
+                                                                textDecoration="none" 
+                                                                _hover={{ textDecoration: "none" }} 
+                                                                marginLeft="10px" 
+                                                                onClick={() => db.set("paused", false)}
+                                                            >
+                                                                {i18n(lang, "resume")}
+                                                            </Link>
+                                                        ) : (
+                                                            <Link 
+                                                                color={colors(platform, darkMode, "link")} 
+                                                                textDecoration="none" 
+                                                                _hover={{ textDecoration: "none" }} 
+                                                                marginLeft="10px" 
+                                                                onClick={() => db.set("paused", true)}
+                                                            >
+                                                                {i18n(lang, "pause")}
+                                                            </Link>
+                                                        )
+                                                    }
+                                                </>
                                             )
-                                        })()}
+                                        }
                                     </Flex>
                                 </Flex>
                             )
@@ -763,6 +803,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
 const DownloadFile = memo(({ userId, email, platform, darkMode, lang, args }) => {
     const [downloadPath, setDownloadPath] = useState("")
     const [isDownloading, setIsDownloading] = useState(false)
+    const paused = useDb("paused", false)
 
     const startDownloading = useCallback(() => {
         setIsDownloading(true)

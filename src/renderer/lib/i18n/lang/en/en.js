@@ -105,7 +105,9 @@ const en = {
     invalidFolderName: "Invalid folder name",
     titlebarCloudWindow: "Cloud",
     updateAvailable: "There is an update available, please consider downloading the latest version for bug fixes and performance improvements",
-    downloadUpdateBtn: "Download update"
+    downloadUpdateBtn: "Download update",
+    pause: "Pause",
+    resume: "Resume"
 }
 
 export default en

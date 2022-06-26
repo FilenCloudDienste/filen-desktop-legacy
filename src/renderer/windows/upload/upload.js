@@ -1,5 +1,5 @@
 import React, { memo, useState, useEffect, useCallback, useRef } from "react"
-import { Flex, Text, Spinner, Progress } from "@chakra-ui/react"
+import { Flex, Text, Spinner, Progress, Link } from "@chakra-ui/react"
 import useDarkMode from "../../lib/hooks/useDarkMode"
 import useLang from "../../lib/hooks/useLang"
 import usePlatform from "../../lib/hooks/usePlatform"
@@ -21,6 +21,7 @@ import { throttle } from "lodash"
 import { AiOutlineCheckCircle } from "react-icons/ai"
 import { showToast } from "../../components/Toast"
 import { encryptData, encryptMetadata, hashFn } from "../../lib/crypto"
+import useDb from "../../lib/hooks/useDb"
 
 const log = window.require("electron-log")
 const pathModule = window.require("path")
@@ -243,6 +244,7 @@ const UploadWindow = memo(({ userId, email, windowId }) => {
     const lang = useLang()
     const platform = usePlatform()
     const args = useRef(passedArgs).current
+    const paused = useDb("paused", false)
 
     const [timeLeft, setTimeLeft] = useState(1)
     const [speed, setSpeed] = useState(0)
@@ -540,33 +542,72 @@ const UploadWindow = memo(({ userId, email, windowId }) => {
                                             max={100}
                                             marginTop="5px"
                                             width="100%"
+                                            isIndeterminate={paused}
                                         />
                                         <Flex
                                             flexDirection="row"
                                             justifyContent="space-between"
                                             marginTop="2px"
                                         >
-                                            {(() => {
-                                                const remainingReadable = getTimeRemaining((new Date().getTime() + (timeLeft * 1000)))
-
-                                                if(remainingReadable.total <= 1 || remainingReadable.minutes <= 1){
-                                                    remainingReadable.total = 1
-                                                    remainingReadable.days = 0
-                                                    remainingReadable.hours = 0
-                                                    remainingReadable.minutes = 1
-                                                    remainingReadable.seconds = 1
-                                                }
-
-                                                return (
-                                                    <Text 
-                                                        fontSize={14}
+                                            {
+                                                paused ? (
+                                                    <Spinner
+                                                        width="14px"
+                                                        height="14px"
                                                         color={colors(platform, darkMode, "textPrimary")}
-                                                        noOfLines={1}
-                                                    >
-                                                        {bpsToReadable(speed) + ", " + i18n(lang, "aboutRemaining", false, ["__TIME__"], [(remainingReadable.days > 0 ? remainingReadable.days + "d " : "") + (remainingReadable.hours > 0 ? remainingReadable.hours + "h " : "") + (remainingReadable.minutes > 0 ? remainingReadable.minutes + "m " : "")])}
-                                                    </Text>
+                                                        marginTop="5px"
+                                                    />
+                                                ) : (() => {
+                                                    const remainingReadable = getTimeRemaining((new Date().getTime() + (timeLeft * 1000)))
+    
+                                                    if(remainingReadable.total <= 1 || remainingReadable.minutes <= 1){
+                                                        remainingReadable.total = 1
+                                                        remainingReadable.days = 0
+                                                        remainingReadable.hours = 0
+                                                        remainingReadable.minutes = 1
+                                                        remainingReadable.seconds = 1
+                                                    }
+    
+                                                    return (
+                                                        <Text 
+                                                            fontSize={14}
+                                                            color={colors(platform, darkMode, "textPrimary")}
+                                                            noOfLines={1}
+                                                        >
+                                                            {bpsToReadable(speed) + ", " + i18n(lang, "aboutRemaining", false, ["__TIME__"], [(remainingReadable.days > 0 ? remainingReadable.days + "d " : "") + (remainingReadable.hours > 0 ? remainingReadable.hours + "h " : "") + (remainingReadable.minutes > 0 ? remainingReadable.minutes + "m " : "")])}
+                                                        </Text>
+                                                    )
+                                                })()
+                                            }
+                                            {
+                                                percent < 100 && !done && (
+                                                    <>
+                                                        {
+                                                            paused ? (
+                                                                <Link 
+                                                                    color={colors(platform, darkMode, "link")} 
+                                                                    textDecoration="none" 
+                                                                    _hover={{ textDecoration: "none" }} 
+                                                                    marginLeft="10px" 
+                                                                    onClick={() => db.set("paused", false)}
+                                                                >
+                                                                    {i18n(lang, "resume")}
+                                                                </Link>
+                                                            ) : (
+                                                                <Link 
+                                                                    color={colors(platform, darkMode, "link")} 
+                                                                    textDecoration="none" 
+                                                                    _hover={{ textDecoration: "none" }} 
+                                                                    marginLeft="10px" 
+                                                                    onClick={() => db.set("paused", true)}
+                                                                >
+                                                                    {i18n(lang, "pause")}
+                                                                </Link>
+                                                            )
+                                                        }
+                                                    </>
                                                 )
-                                            })()}
+                                            }
                                         </Flex>
                                     </Flex>
                                 )

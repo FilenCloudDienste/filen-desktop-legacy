@@ -105,7 +105,9 @@ const de = {
     invalidFolderName: "Ungültiger Ordner Name",
     titlebarCloudWindow: "Cloud",
     updateAvailable: "Eine neue Version ist verfügbar. Um von Fehlerbehebungen zu profitieren empfehlen wir, die neue Version herunterzuladen.",
-    downloadUpdateBtn: "Neue Version herunterladen"
+    downloadUpdateBtn: "Neue Version herunterladen",
+    pause: "Pausieren",
+    resume: "Fortsetzen"
 }
 
 export default de
