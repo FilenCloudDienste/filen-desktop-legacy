@@ -2263,6 +2263,8 @@ const syncLocation = async (location) => {
     if(location.paused){
         log.info("Sync location " + location.uuid + " -> " + location.local + " <-> " + location.remote + " [" + location.type + "] is paused")
 
+        await updateLocationBusyStatus(location.uuid, false)
+
         return false
     }
 

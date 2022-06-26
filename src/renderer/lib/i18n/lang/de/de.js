@@ -114,7 +114,8 @@ const de = {
     keybinds_pauseSync: "Synchronisation pausieren",
     keybinds_resumeSync: "Synchronisation fortsetzen",
     keybinds_openWebsite: "Website öffnen",
-    keybindNotBound: "Nicht gebunden"
+    keybindNotBound: "Nicht gebunden",
+    syncing: "Sychronisiere.."
 }
 
 export default de

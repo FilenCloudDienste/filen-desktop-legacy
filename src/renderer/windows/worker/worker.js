@@ -201,6 +201,9 @@ const WorkerWindow = memo(() => {
             if(data.type == "init"){
                 setRunningSyncTasks(0)
             }
+            else if(data.type == "cleanup"){
+                setRunningSyncTasks(0)
+            }
         })
 
         db.set("isOnline", true).then(() => {

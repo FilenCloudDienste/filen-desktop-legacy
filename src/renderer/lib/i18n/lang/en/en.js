@@ -114,7 +114,8 @@ const en = {
     keybinds_pauseSync: "Pause sync",
     keybinds_resumeSync: "Resume sync",
     keybinds_openWebsite: "Open website",
-    keybindNotBound: "Not bound"
+    keybindNotBound: "Not bound",
+    syncing: "Syncing.."
 }
 
 export default en

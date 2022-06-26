@@ -12,7 +12,7 @@ export default class MainFooter extends React.Component {
     }
 
     render(){
-        const { userId, email, platform, darkMode, lang, currentUploads, currentDownloads, paused, runningTasks, totalRemaining } = this.props
+        const { userId, email, platform, darkMode, lang, currentUploads, currentDownloads, paused, runningTasks, totalRemaining, runningSyncTasks } = this.props
 
         return (
             <Flex
@@ -43,6 +43,22 @@ export default class MainFooter extends React.Component {
                                     noOfLines={1}
                                 >
                                     {i18n(lang, (runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length) == 1 ? "syncingItemsFooterSingular" : "syncingItemsFooterPlural", true, ["__COUNT__"], [(runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length)])}
+                                </Text>
+                            </Flex>
+                        ) : runningSyncTasks > 0 ? (
+                            <Flex alignItems="center">
+                                <Spinner
+                                    width="12px"
+                                    height="12px"
+                                    color={colors(platform, darkMode, "textPrimary")}
+                                />
+                                <Text 
+                                    fontSize={12} 
+                                    color={colors(platform, darkMode, "textPrimary")} 
+                                    marginLeft="5px" 
+                                    noOfLines={1}
+                                >
+                                    {i18n(lang, "syncing")}
                                 </Text>
                             </Flex>
                         ) : (

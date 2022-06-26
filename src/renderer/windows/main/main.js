@@ -11,7 +11,7 @@ import MainFooter from "../../components/MainFooter"
 import MainList from "../../components/MainList"
 import MainHeader from "../../components/MainHeader"
 import useDb from "../../lib/hooks/useDb"
-import { debounce, throttle } from "lodash"
+import { throttle } from "lodash"
 import { sizeOverheadMultiplier, speedMultiplier } from "../../lib/constants"
 import UpdateModal from "../../components/UpdateModal"
 
@@ -53,11 +53,11 @@ const MainWindow = memo(({ userId, email, windowId }) => {
         return remaining > 0 ? remaining : 0
     })
 
-    const setDoneTasksDebounced = useCallback(debounce(({ doneTasks }) => {
+    const setDoneTasksThrottled = useCallback(throttle(({ doneTasks }) => {
         if(doneTasks.length > 0){
             db.set("doneTasks:" + userId, doneTasks.slice(0, 1024)).catch(log.error)
         }
-    }, 3000), [])
+    }, 5000), [])
 
     const throttleActivityUpdate = useCallback(throttle(({ doneTasks, runningTasks, currentUploads, currentDownloads }) => {
         setActivity([
@@ -96,7 +96,7 @@ const MainWindow = memo(({ userId, email, windowId }) => {
     }, 1000), [])
 
     useEffect(() => {
-        setDoneTasksDebounced({ doneTasks })
+        setDoneTasksThrottled({ doneTasks })
     }, [doneTasks])
 
     useEffect(() => {
@@ -119,35 +119,34 @@ const MainWindow = memo(({ userId, email, windowId }) => {
 
             const now = new Date().getTime()
 
-            if(type == "renameInRemote" || type == "renameInLocal" || type == "moveInRemote" || type == "moveInLocal" || type == "deleteInRemote" || type == "deleteInLocal"){
-                if(task.err){
-                    setRunningTasks(prev => [...prev.filter(item => item.task.uuid !== task.task.uuid)])
+            if(task.err){
+                setRunningTasks(prev => [...prev.filter(item => item.task.uuid !== task.task.uuid)])
+            }
+            else{
+                if(task.status == "start"){
+                    setRunningTasks(prev => [...[{
+                        type,
+                        task: {
+                            ...task.task,
+                        },
+                        location: task.location,
+                        timestamp: now
+                    }], ...prev])
                 }
-                else{
-                    if(task.status == "start"){
-                        setRunningTasks(prev => [...[{
-                            type,
-                            task: {
-                                ...task.task,
-                            },
-                            location: task.location,
-                            timestamp: now
-                        }], ...prev])
-                    }
-                    else if(task.status == "done"){
-                        setRunningTasks(prev => [...prev.filter(item => item.task.uuid !== task.task.uuid)])
-                        setDoneTasks(prev => [...[{
-                            type,
-                            task: {
-                                ...task.task,
-                            },
-                            location: task.location,
-                            timestamp: now
-                        }], ...prev])
-                    }
+                else if(task.status == "done"){
+                    setRunningTasks(prev => [...prev.filter(item => item.task.uuid !== task.task.uuid)])
+                    setDoneTasks(prev => [...[{
+                        type,
+                        task: {
+                            ...task.task,
+                        },
+                        location: task.location,
+                        timestamp: now
+                    }], ...prev])
                 }
             }
-            else if(type == "uploadToRemote"){
+            
+            if(type == "uploadToRemote"){
                 if(task.err){
                     setCurrentUploads(prev => Object.keys(prev).filter(key => key !== task.task.item.uuid).reduce((current, key) => Object.assign(current, { [key]: prev[key] }), {}))
                 }
@@ -192,14 +191,6 @@ const MainWindow = memo(({ userId, email, windowId }) => {
                     }
                     else if(task.status == "done"){
                         setCurrentUploads(prev => Object.keys(prev).filter(key => key !== task.task.item.uuid).reduce((current, key) => Object.assign(current, { [key]: prev[key] }), {}))
-                        setDoneTasks(prev => [...[{
-                            type,
-                            task: {
-                                ...task.task,
-                            },
-                            location: task.location,
-                            timestamp: now
-                        }], ...prev])
                     }
                 }
             }
@@ -248,14 +239,6 @@ const MainWindow = memo(({ userId, email, windowId }) => {
                     }
                     else if(task.status == "done"){
                         setCurrentDownloads(prev => Object.keys(prev).filter(key => key !== task.task.item.uuid).reduce((current, key) => Object.assign(current, { [key]: prev[key] }), {}))
-                        setDoneTasks(prev => [...[{
-                            type,
-                            task: {
-                                ...task.task,
-                            },
-                            location: task.location,
-                            timestamp: now
-                        }], ...prev])
                     }
                 }
             }
@@ -368,6 +351,7 @@ const MainWindow = memo(({ userId, email, windowId }) => {
                 currentDownloads={currentDownloads}
                 runningTasks={runningTasks}
                 totalRemaining={totalRemaining}
+                runningSyncTasks={runningTasks.length}
             />
             <IsOnlineBottomToast
                 userId={userId}
