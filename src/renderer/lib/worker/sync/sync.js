@@ -22,6 +22,7 @@ const WATCHERS = {}
 
 export const maxConcurrentUploadsSemaphore = new Semaphore(maxConcurrentUploadsPreset)
 export const maxConcurrentDownloadsSemaphore = new Semaphore(maxConcurrentDownloadsPreset)
+export const maxSyncTasksSemaphore = new Semaphore(512)
 
 const acquireSyncLock = (id) => {
     return new Promise((resolve) => {
@@ -637,8 +638,6 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
                 i -= 1
             }
         }
-
-        log.info("ignored", ignored)
     
         let uploadToRemoteTasks = []
         let downloadFromRemoteTasks = []
@@ -807,83 +806,89 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
             deleteInRemoteTasks
         })*/
 
-        log.info("renameInRemote", renameInRemoteTasks)
+        /*log.info("renameInRemote", renameInRemoteTasks)
         log.info("renameInLocal", renameInLocalTasks)
         log.info("moveInRemote", moveInRemoteTasks)
         log.info("moveInLocal", moveInLocalTasks)
         log.info("deleteInRemote", deleteInRemoteTasks)
         log.info("deleteInLocal", deleteInLocalTasks)
         log.info("uploadToRemote", uploadToRemoteTasks)
-        log.info("downloadFromRemote", downloadFromRemoteTasks)
+        log.info("downloadFromRemote", downloadFromRemoteTasks)*/
 
         const doneTasks = []
 
         if(renameInRemoteTasks.length > 0){
             await Promise.allSettled([
                 ...renameInRemoteTasks.map(task => new Promise((resolve, reject) => {
-                    emitSyncTask("renameInRemote", {
-                        status: "start",
-                        task,
-                        location
-                    })
-
-                    let currentTries = 0
-
-                    const doTask = (lastErr) => {
-                        if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
-                            log.error("renameInRemote task failed: " + JSON.stringify(task))
-                            log.error(lastErr)
-
-                            addToSyncIssues("syncTask", "Could not rename " + pathModule.normalize(location.local + "/" + task.path) + " remotely: " + lastErr.toString())
-
-                            emitSyncTask("renameInRemote", {
-                                status: "err",
-                                task,
-                                location,
-                                err: lastErr
-                            })
-        
-                            addTaskToRedoList({
-                                type: "renameInRemote",
-                                task,
-                                location
-                            }).then(() => {
-                                return reject(lastErr)
-                            }).catch((e) => {
-                                log.error(e)
-
-                                return reject(lastErr)
-                            })
-
-                            return false
-                        }
-
-                        currentTries += 1
-
-                        fsRemote.rename(task.type, task).then((done) => {
-                            emitSyncTask("renameInRemote", {
-                                status: "done",
-                                task,
-                                location
-                            })
-    
-                            doneTasks.push({
-                                type: "renameInRemote",
-                                task,
-                                location
-                            })
-    
-                            return resolve(done)
-                        }).catch((err) => {
-                            log.error(err)
-
-                            return setTimeout(() => {
-                                doTask(err)
-                            }, retrySyncTaskTimeout)
+                    maxSyncTasksSemaphore.acquire().then(() => {
+                        emitSyncTask("renameInRemote", {
+                            status: "start",
+                            task,
+                            location
                         })
-                    }
+    
+                        let currentTries = 0
+    
+                        const doTask = (lastErr) => {
+                            if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                                log.error("renameInRemote task failed: " + JSON.stringify(task))
+                                log.error(lastErr)
+    
+                                addToSyncIssues("syncTask", "Could not rename " + pathModule.normalize(location.local + "/" + task.path) + " remotely: " + lastErr.toString())
+    
+                                emitSyncTask("renameInRemote", {
+                                    status: "err",
+                                    task,
+                                    location,
+                                    err: lastErr
+                                })
+            
+                                addTaskToRedoList({
+                                    type: "renameInRemote",
+                                    task,
+                                    location
+                                }).then(() => {
+                                    return reject(lastErr)
+                                }).catch((e) => {
+                                    log.error(e)
+    
+                                    return reject(lastErr)
+                                })
 
-                    return doTask()
+                                maxSyncTasksSemaphore.release()
+    
+                                return false
+                            }
+    
+                            currentTries += 1
+    
+                            fsRemote.rename(task.type, task).then((done) => {
+                                emitSyncTask("renameInRemote", {
+                                    status: "done",
+                                    task,
+                                    location
+                                })
+        
+                                doneTasks.push({
+                                    type: "renameInRemote",
+                                    task,
+                                    location
+                                })
+
+                                maxSyncTasksSemaphore.release()
+        
+                                return resolve(done)
+                            }).catch((err) => {
+                                log.error(err)
+    
+                                return setTimeout(() => {
+                                    doTask(err)
+                                }, retrySyncTaskTimeout)
+                            })
+                        }
+    
+                        return doTask()
+                    })
                 }))
             ])
         }
@@ -891,69 +896,75 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
         if(renameInLocalTasks.length > 0){
             await Promise.allSettled([
                 ...renameInLocalTasks.map(task => new Promise((resolve, reject) => {
-                    emitSyncTask("renameInLocal", {
-                        status: "start",
-                        task,
-                        location
-                    })
-
-                    let currentTries = 0
-
-                    const doTask = (lastErr) => {
-                        if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
-                            log.error("renameInLocal task failed: " + JSON.stringify(task))
-                            log.error(lastErr)
-
-                            addToSyncIssues("syncTask", "Could not rename " + pathModule.normalize(location.local + "/" + task.path) + " locally: " + lastErr.toString())
-
-                            emitSyncTask("renameInLocal", {
-                                status: "err",
-                                task,
-                                location,
-                                err: lastErr
-                            })
-        
-                            addTaskToRedoList({
-                                type: "renameInLocal",
-                                task,
-                                location
-                            }).then(() => {
-                                return reject(lastErr)
-                            }).catch((e) => {
-                                log.error(e)
-
-                                return reject(lastErr)
-                            })
-
-                            return false
-                        }
-
-                        currentTries += 1
-
-                        fsLocal.move(pathModule.normalize(location.local + "/" + task.from), pathModule.normalize(location.local + "/" + task.to)).then((done) => {
-                            emitSyncTask("renameInLocal", {
-                                status: "done",
-                                task,
-                                location
-                            })
-    
-                            doneTasks.push({
-                                type: "renameInLocal",
-                                task,
-                                location
-                            })
-    
-                            return resolve(done)
-                        }).catch((err) => {
-                            log.error(err)
-
-                            return setTimeout(() => {
-                                doTask(err)
-                            }, retrySyncTaskTimeout)
+                    maxSyncTasksSemaphore.acquire().then(() => {
+                        emitSyncTask("renameInLocal", {
+                            status: "start",
+                            task,
+                            location
                         })
-                    }
+    
+                        let currentTries = 0
+    
+                        const doTask = (lastErr) => {
+                            if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                                log.error("renameInLocal task failed: " + JSON.stringify(task))
+                                log.error(lastErr)
+    
+                                addToSyncIssues("syncTask", "Could not rename " + pathModule.normalize(location.local + "/" + task.path) + " locally: " + lastErr.toString())
+    
+                                emitSyncTask("renameInLocal", {
+                                    status: "err",
+                                    task,
+                                    location,
+                                    err: lastErr
+                                })
+            
+                                addTaskToRedoList({
+                                    type: "renameInLocal",
+                                    task,
+                                    location
+                                }).then(() => {
+                                    return reject(lastErr)
+                                }).catch((e) => {
+                                    log.error(e)
+    
+                                    return reject(lastErr)
+                                })
 
-                    return doTask()
+                                maxSyncTasksSemaphore.release()
+    
+                                return false
+                            }
+    
+                            currentTries += 1
+    
+                            fsLocal.move(pathModule.normalize(location.local + "/" + task.from), pathModule.normalize(location.local + "/" + task.to)).then((done) => {
+                                emitSyncTask("renameInLocal", {
+                                    status: "done",
+                                    task,
+                                    location
+                                })
+        
+                                doneTasks.push({
+                                    type: "renameInLocal",
+                                    task,
+                                    location
+                                })
+
+                                maxSyncTasksSemaphore.release()
+        
+                                return resolve(done)
+                            }).catch((err) => {
+                                log.error(err)
+    
+                                return setTimeout(() => {
+                                    doTask(err)
+                                }, retrySyncTaskTimeout)
+                            })
+                        }
+    
+                        return doTask()
+                    })
                 }))
             ])
         }
@@ -961,69 +972,75 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
         if(moveInRemoteTasks.length > 0){
             await Promise.allSettled([
                 ...moveInRemoteTasks.map(task => new Promise((resolve, reject) => {
-                    emitSyncTask("moveInRemote", {
-                        status: "start",
-                        task,
-                        location
-                    })
-
-                    let currentTries = 0
-
-                    const doTask = (lastErr) => {
-                        if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
-                            log.error("moveInRemote task failed: " + JSON.stringify(task))
-                            log.error(lastErr)
-
-                            addToSyncIssues("syncTask", "Could not move " + pathModule.normalize(location.remote + "/" + task.path) + " remotely: " + lastErr.toString())
-
-                            emitSyncTask("moveInRemote", {
-                                status: "err",
-                                task,
-                                location,
-                                err: lastErr
-                            })
-        
-                            addTaskToRedoList({
-                                type: "moveInRemote",
-                                task,
-                                location
-                            }).then(() => {
-                                return reject(lastErr)
-                            }).catch((e) => {
-                                log.error(e)
-
-                                return reject(lastErr)
-                            })
-
-                            return false
-                        }
-
-                        currentTries += 1
-
-                        fsRemote.move(task.type, task, location, remoteTreeNow).then((done) => {
-                            emitSyncTask("moveInRemote", {
-                                status: "done",
-                                task,
-                                location
-                            })
-    
-                            doneTasks.push({
-                                type: "moveInRemote",
-                                task,
-                                location
-                            })
-    
-                            return resolve(done)
-                        }).catch((err) => {
-                            log.error(err)
-
-                            return setTimeout(() => {
-                                doTask(err)
-                            }, retrySyncTaskTimeout)
+                    maxSyncTasksSemaphore.acquire().then(() => {
+                        emitSyncTask("moveInRemote", {
+                            status: "start",
+                            task,
+                            location
                         })
-                    }
+    
+                        let currentTries = 0
+    
+                        const doTask = (lastErr) => {
+                            if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                                log.error("moveInRemote task failed: " + JSON.stringify(task))
+                                log.error(lastErr)
+    
+                                addToSyncIssues("syncTask", "Could not move " + pathModule.normalize(location.remote + "/" + task.path) + " remotely: " + lastErr.toString())
+    
+                                emitSyncTask("moveInRemote", {
+                                    status: "err",
+                                    task,
+                                    location,
+                                    err: lastErr
+                                })
+            
+                                addTaskToRedoList({
+                                    type: "moveInRemote",
+                                    task,
+                                    location
+                                }).then(() => {
+                                    return reject(lastErr)
+                                }).catch((e) => {
+                                    log.error(e)
+    
+                                    return reject(lastErr)
+                                })
 
-                    return doTask()
+                                maxSyncTasksSemaphore.release()
+    
+                                return false
+                            }
+    
+                            currentTries += 1
+    
+                            fsRemote.move(task.type, task, location, remoteTreeNow).then((done) => {
+                                emitSyncTask("moveInRemote", {
+                                    status: "done",
+                                    task,
+                                    location
+                                })
+        
+                                doneTasks.push({
+                                    type: "moveInRemote",
+                                    task,
+                                    location
+                                })
+
+                                maxSyncTasksSemaphore.release()
+        
+                                return resolve(done)
+                            }).catch((err) => {
+                                log.error(err)
+    
+                                return setTimeout(() => {
+                                    doTask(err)
+                                }, retrySyncTaskTimeout)
+                            })
+                        }
+    
+                        return doTask()
+                    })
                 }))
             ])
         }
@@ -1031,69 +1048,75 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
         if(moveInLocalTasks.length > 0){
             await Promise.allSettled([
                 ...moveInLocalTasks.map(task => new Promise((resolve, reject) => {
-                    emitSyncTask("moveInLocal", {
-                        status: "start",
-                        task,
-                        location
-                    })
-
-                    let currentTries = 0
-
-                    const doTask = (lastErr) => {
-                        if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
-                            log.error("moveInLocal task failed: " + JSON.stringify(task))
-                            log.error(lastErr)
-
-                            addToSyncIssues("syncTask", "Could not move " + pathModule.normalize(location.local + "/" + task.path) + " locally: " + lastErr.toString())
-
-                            emitSyncTask("moveInLocal", {
-                                status: "err",
-                                task,
-                                location,
-                                err: lastErr
-                            })
-        
-                            addTaskToRedoList({
-                                type: "moveInLocal",
-                                task,
-                                location
-                            }).then(() => {
-                                return reject(lastErr)
-                            }).catch((e) => {
-                                log.error(e)
-
-                                return reject(lastErr)
-                            })
-
-                            return false
-                        }
-
-                        currentTries += 1
-
-                        fsLocal.move(pathModule.normalize(location.local + "/" + task.from), pathModule.normalize(location.local + "/" + task.to)).then((done) => {
-                            emitSyncTask("moveInLocal", {
-                                status: "done",
-                                task,
-                                location
-                            })
-    
-                            doneTasks.push({
-                                type: "moveInLocal",
-                                task,
-                                location
-                            })
-    
-                            return resolve(done)
-                        }).catch((err) => {
-                            log.error(err)
-
-                            return setTimeout(() => {
-                                doTask(err)
-                            }, retrySyncTaskTimeout)
+                    maxSyncTasksSemaphore.acquire().then(() => {
+                        emitSyncTask("moveInLocal", {
+                            status: "start",
+                            task,
+                            location
                         })
-                    }
+    
+                        let currentTries = 0
+    
+                        const doTask = (lastErr) => {
+                            if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                                log.error("moveInLocal task failed: " + JSON.stringify(task))
+                                log.error(lastErr)
+    
+                                addToSyncIssues("syncTask", "Could not move " + pathModule.normalize(location.local + "/" + task.path) + " locally: " + lastErr.toString())
+    
+                                emitSyncTask("moveInLocal", {
+                                    status: "err",
+                                    task,
+                                    location,
+                                    err: lastErr
+                                })
+            
+                                addTaskToRedoList({
+                                    type: "moveInLocal",
+                                    task,
+                                    location
+                                }).then(() => {
+                                    return reject(lastErr)
+                                }).catch((e) => {
+                                    log.error(e)
+    
+                                    return reject(lastErr)
+                                })
 
-                    return doTask()
+                                maxSyncTasksSemaphore.release()
+    
+                                return false
+                            }
+    
+                            currentTries += 1
+    
+                            fsLocal.move(pathModule.normalize(location.local + "/" + task.from), pathModule.normalize(location.local + "/" + task.to)).then((done) => {
+                                emitSyncTask("moveInLocal", {
+                                    status: "done",
+                                    task,
+                                    location
+                                })
+        
+                                doneTasks.push({
+                                    type: "moveInLocal",
+                                    task,
+                                    location
+                                })
+
+                                maxSyncTasksSemaphore.release()
+        
+                                return resolve(done)
+                            }).catch((err) => {
+                                log.error(err)
+    
+                                return setTimeout(() => {
+                                    doTask(err)
+                                }, retrySyncTaskTimeout)
+                            })
+                        }
+    
+                        return doTask()
+                    })
                 }))
             ])
         }
@@ -1101,69 +1124,75 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
         if(deleteInRemoteTasks.length > 0){
             await Promise.allSettled([
                 ...deleteInRemoteTasks.map(task => new Promise((resolve, reject) => {
-                    emitSyncTask("deleteInRemote", {
-                        status: "start",
-                        task,
-                        location
-                    })
-
-                    let currentTries = 0
-
-                    const doTask = (lastErr) => {
-                        if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
-                            log.error("deleteInRemote task failed: " + JSON.stringify(task))
-                            log.error(lastErr)
-
-                            addToSyncIssues("syncTask", "Could not delete " + pathModule.normalize(location.remote + "/" + task.path) + " remotely: " + lastErr.toString())
-
-                            emitSyncTask("deleteInRemote", {
-                                status: "err",
-                                task,
-                                location,
-                                err: lastErr
-                            })
-        
-                            addTaskToRedoList({
-                                type: "deleteInRemote",
-                                task,
-                                location
-                            }).then(() => {
-                                return reject(lastErr)
-                            }).catch((e) => {
-                                log.error(e)
-
-                                return reject(lastErr)
-                            })
-
-                            return false
-                        }
-
-                        currentTries += 1
-
-                        fsRemote.rm(task.type, task.item.uuid).then((done) => {
-                            emitSyncTask("deleteInRemote", {
-                                status: "done",
-                                task,
-                                location
-                            })
-    
-                            doneTasks.push({
-                                type: "deleteInRemote",
-                                task,
-                                location
-                            })
-    
-                            return resolve(done)
-                        }).catch((err) => {
-                            log.error(err)
-
-                            return setTimeout(() => {
-                                doTask(err)
-                            }, retrySyncTaskTimeout)
+                    maxSyncTasksSemaphore.acquire().then(() => {
+                        emitSyncTask("deleteInRemote", {
+                            status: "start",
+                            task,
+                            location
                         })
-                    }
+    
+                        let currentTries = 0
+    
+                        const doTask = (lastErr) => {
+                            if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                                log.error("deleteInRemote task failed: " + JSON.stringify(task))
+                                log.error(lastErr)
+    
+                                addToSyncIssues("syncTask", "Could not delete " + pathModule.normalize(location.remote + "/" + task.path) + " remotely: " + lastErr.toString())
+    
+                                emitSyncTask("deleteInRemote", {
+                                    status: "err",
+                                    task,
+                                    location,
+                                    err: lastErr
+                                })
+            
+                                addTaskToRedoList({
+                                    type: "deleteInRemote",
+                                    task,
+                                    location
+                                }).then(() => {
+                                    return reject(lastErr)
+                                }).catch((e) => {
+                                    log.error(e)
+    
+                                    return reject(lastErr)
+                                })
 
-                    return doTask()
+                                maxSyncTasksSemaphore.release()
+    
+                                return false
+                            }
+    
+                            currentTries += 1
+    
+                            fsRemote.rm(task.type, task.item.uuid).then((done) => {
+                                emitSyncTask("deleteInRemote", {
+                                    status: "done",
+                                    task,
+                                    location
+                                })
+        
+                                doneTasks.push({
+                                    type: "deleteInRemote",
+                                    task,
+                                    location
+                                })
+
+                                maxSyncTasksSemaphore.release()
+        
+                                return resolve(done)
+                            }).catch((err) => {
+                                log.error(err)
+    
+                                return setTimeout(() => {
+                                    doTask(err)
+                                }, retrySyncTaskTimeout)
+                            })
+                        }
+    
+                        return doTask()
+                    })
                 }))
             ])
         }
@@ -1171,69 +1200,75 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
         if(deleteInLocalTasks.length > 0){
             await Promise.allSettled([
                 ...deleteInLocalTasks.map(task => new Promise((resolve, reject) => {
-                    emitSyncTask("deleteInLocal", {
-                        status: "start",
-                        task,
-                        location
-                    })
-
-                    let currentTries = 0
-
-                    const doTask = (lastErr) => {
-                        if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
-                            log.error("deleteInLocal task failed: " + JSON.stringify(task))
-                            log.error(lastErr)
-
-                            addToSyncIssues("syncTask", "Could not delete " + pathModule.normalize(location.local + "/" + task.path) + " locally: " + lastErr.toString())
-        
-                            emitSyncTask("deleteInLocal", {
-                                status: "err",
-                                task,
-                                location,
-                                err: lastErr
-                            })
-
-                            addTaskToRedoList({
-                                type: "deleteInLocal",
-                                task,
-                                location
-                            }).then(() => {
-                                return reject(lastErr)
-                            }).catch((e) => {
-                                log.error(e)
-
-                                return reject(lastErr)
-                            })
-
-                            return false
-                        }
-
-                        currentTries += 1 
-
-                        fsLocal.rm(pathModule.normalize(location.local + "/" + task.path)).then((done) => {
-                            emitSyncTask("deleteInLocal", {
-                                status: "done",
-                                task,
-                                location
-                            })
-    
-                            doneTasks.push({
-                                type: "deleteInLocal",
-                                task,
-                                location
-                            })
-    
-                            return resolve(done)
-                        }).catch((err) => {
-                            log.error(err)
-
-                            return setTimeout(() => {
-                                doTask(err)
-                            }, retrySyncTaskTimeout)
+                    maxSyncTasksSemaphore.acquire().then(() => {
+                        emitSyncTask("deleteInLocal", {
+                            status: "start",
+                            task,
+                            location
                         })
-                    }
+    
+                        let currentTries = 0
+    
+                        const doTask = (lastErr) => {
+                            if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                                log.error("deleteInLocal task failed: " + JSON.stringify(task))
+                                log.error(lastErr)
+    
+                                addToSyncIssues("syncTask", "Could not delete " + pathModule.normalize(location.local + "/" + task.path) + " locally: " + lastErr.toString())
+            
+                                emitSyncTask("deleteInLocal", {
+                                    status: "err",
+                                    task,
+                                    location,
+                                    err: lastErr
+                                })
+    
+                                addTaskToRedoList({
+                                    type: "deleteInLocal",
+                                    task,
+                                    location
+                                }).then(() => {
+                                    return reject(lastErr)
+                                }).catch((e) => {
+                                    log.error(e)
+    
+                                    return reject(lastErr)
+                                })
 
-                    return doTask()
+                                maxSyncTasksSemaphore.release()
+    
+                                return false
+                            }
+    
+                            currentTries += 1 
+    
+                            fsLocal.rm(pathModule.normalize(location.local + "/" + task.path)).then((done) => {
+                                emitSyncTask("deleteInLocal", {
+                                    status: "done",
+                                    task,
+                                    location
+                                })
+        
+                                doneTasks.push({
+                                    type: "deleteInLocal",
+                                    task,
+                                    location
+                                })
+
+                                maxSyncTasksSemaphore.release()
+        
+                                return resolve(done)
+                            }).catch((err) => {
+                                log.error(err)
+    
+                                return setTimeout(() => {
+                                    doTask(err)
+                                }, retrySyncTaskTimeout)
+                            })
+                        }
+    
+                        return doTask()
+                    })
                 }))
             ])
         }
@@ -1241,94 +1276,94 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
         if(uploadToRemoteTasks.length > 0){
             await Promise.allSettled([
                 ...uploadToRemoteTasks.map(task => new Promise((resolve, reject) => {
-                    emitSyncTask("uploadToRemote", {
-                        status: "start",
-                        task,
-                        location
-                    })
-
-                    let currentTries = 0
-
-                    const doTask = (lastErr) => {
-                        if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
-                            log.error("uploadToRemote task failed: " + JSON.stringify(task))
-                            log.error(lastErr)
-
-                            addToSyncIssues("syncTask", "Could not upload " + pathModule.normalize(location.local + "/" + task.path) + ": " + lastErr.toString())
-
-                            emitSyncTask("uploadToRemote", {
-                                status: "err",
-                                task,
-                                location,
-                                err: lastErr
-                            })
-        
-                            addTaskToRedoList({
-                                type: "uploadToRemote",
-                                task,
-                                location
-                            }).then(() => {
-                                return reject(lastErr)
-                            }).catch((e) => {
-                                log.error(e)
-
-                                return reject(lastErr)
-                            })
-
-                            return false
-                        }
-
-                        currentTries += 1
-
-                        maxConcurrentUploadsSemaphore.acquire().then(() => {
-                            emitSyncTask("uploadToRemote", {
-                                status: "started",
-                                task,
-                                location
-                            })
-
-                            const promise = task.type == "folder" ? fsRemote.mkdir(task.path, remoteTreeNow, location, task, task.item.uuid) : fsRemote.upload(task.path, remoteTreeNow, location, task, task.item.uuid)
-
-                            promise.then((result) => {
-                                maxConcurrentUploadsSemaphore.release()
-
+                    maxSyncTasksSemaphore.acquire().then(() => {
+                        emitSyncTask("uploadToRemote", {
+                            status: "start",
+                            task,
+                            location
+                        })
+    
+                        let currentTries = 0
+    
+                        const doTask = (lastErr) => {
+                            if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                                log.error("uploadToRemote task failed: " + JSON.stringify(task))
+                                log.error(lastErr)
+    
+                                addToSyncIssues("syncTask", "Could not upload " + pathModule.normalize(location.local + "/" + task.path) + ": " + lastErr.toString())
+    
                                 emitSyncTask("uploadToRemote", {
-                                    status: "done",
+                                    status: "err",
+                                    task,
+                                    location,
+                                    err: lastErr
+                                })
+            
+                                addTaskToRedoList({
+                                    type: "uploadToRemote",
+                                    task,
+                                    location
+                                }).then(() => {
+                                    return reject(lastErr)
+                                }).catch((e) => {
+                                    log.error(e)
+    
+                                    return reject(lastErr)
+                                })
+
+                                maxSyncTasksSemaphore.release()
+    
+                                return false
+                            }
+    
+                            currentTries += 1
+    
+                            maxConcurrentUploadsSemaphore.acquire().then(() => {
+                                emitSyncTask("uploadToRemote", {
+                                    status: "started",
                                     task,
                                     location
                                 })
+    
+                                const promise = task.type == "folder" ? fsRemote.mkdir(task.path, remoteTreeNow, location, task, task.item.uuid) : fsRemote.upload(task.path, remoteTreeNow, location, task, task.item.uuid)
+    
+                                promise.then((result) => {
+                                    maxConcurrentUploadsSemaphore.release()
+    
+                                    emitSyncTask("uploadToRemote", {
+                                        status: "done",
+                                        task,
+                                        location
+                                    })
+    
+                                    doneTasks.push({
+                                        type: "uploadToRemote",
+                                        task: {
+                                            ...task,
+                                            info: {
+                                                ...result
+                                            }
+                                        },
+                                        location
+                                    })
 
-                                doneTasks.push({
-                                    type: "uploadToRemote",
-                                    task: {
-                                        ...task,
-                                        info: {
-                                            ...result
-                                        }
-                                    },
-                                    location
+                                    maxSyncTasksSemaphore.release()
+    
+                                    return resolve(result)
+                                }).catch((err) => {
+                                    maxConcurrentUploadsSemaphore.release()
+    
+                                    log.error(err)
+    
+                                    return setTimeout(() => {
+                                        doTask(err)
+                                    }, retrySyncTaskTimeout)
                                 })
-
-                                return resolve(result)
-                            }).catch((err) => {
-                                maxConcurrentUploadsSemaphore.release()
-
-                                log.error(err)
-
-                                return setTimeout(() => {
-                                    doTask(err)
-                                }, retrySyncTaskTimeout)
                             })
-                        }).catch((err) => {
-                            log.error(err)
-
-                            return setTimeout(() => {
-                                doTask(err)
-                            }, retrySyncTaskTimeout)
-                        })
-                    }
-
-                    return doTask()
+                        }
+    
+                        return doTask()
+                    })
                 }))
             ])
         }
@@ -1336,94 +1371,94 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
         if(downloadFromRemoteTasks.length > 0){
             await Promise.allSettled([
                 ...downloadFromRemoteTasks.map(task => new Promise((resolve, reject) => {
-                    emitSyncTask("downloadFromRemote", {
-                        status: "start",
-                        task,
-                        location
-                    })
-
-                    let currentTries = 0
-
-                    const doTask = (lastErr) => {
-                        if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
-                            log.error("downloadFromRemote task failed: " + JSON.stringify(task))
-                            log.error(lastErr)
-
-                            addToSyncIssues("syncTask", "Could not download " + pathModule.normalize(location.local + "/" + task.path) + ": " + lastErr.toString())
-
-                            emitSyncTask("downloadFromRemote", {
-                                status: "err",
-                                task,
-                                location,
-                                err: lastErr
-                            })
-        
-                            addTaskToRedoList({
-                                type: "downloadFromRemote",
-                                task,
-                                location
-                            }).then(() => {
-                                return reject(lastErr)
-                            }).catch((e) => {
-                                log.error(e)
-
-                                return reject(lastErr)
-                            })
-
-                            return false
-                        }
-
-                        currentTries += 1
-
-                        maxConcurrentDownloadsSemaphore.acquire().then(() => {
-                            emitSyncTask("downloadFromRemote", {
-                                status: "started",
-                                task,
-                                location
-                            })
-
-                            const promise = task.type == "folder" ? fsLocal.mkdir(task.path, location, task) : fsLocal.download(task.path, location, task)
-
-                            promise.then((result) => {
-                                maxConcurrentDownloadsSemaphore.release()
-
+                    maxSyncTasksSemaphore.acquire().then(() => {
+                        emitSyncTask("downloadFromRemote", {
+                            status: "start",
+                            task,
+                            location
+                        })
+    
+                        let currentTries = 0
+    
+                        const doTask = (lastErr) => {
+                            if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                                log.error("downloadFromRemote task failed: " + JSON.stringify(task))
+                                log.error(lastErr)
+    
+                                addToSyncIssues("syncTask", "Could not download " + pathModule.normalize(location.local + "/" + task.path) + ": " + lastErr.toString())
+    
                                 emitSyncTask("downloadFromRemote", {
-                                    status: "done",
+                                    status: "err",
+                                    task,
+                                    location,
+                                    err: lastErr
+                                })
+            
+                                addTaskToRedoList({
+                                    type: "downloadFromRemote",
+                                    task,
+                                    location
+                                }).then(() => {
+                                    return reject(lastErr)
+                                }).catch((e) => {
+                                    log.error(e)
+    
+                                    return reject(lastErr)
+                                })
+
+                                maxSyncTasksSemaphore.release()
+    
+                                return false
+                            }
+    
+                            currentTries += 1
+    
+                            maxConcurrentDownloadsSemaphore.acquire().then(() => {
+                                emitSyncTask("downloadFromRemote", {
+                                    status: "started",
                                     task,
                                     location
                                 })
+    
+                                const promise = task.type == "folder" ? fsLocal.mkdir(task.path, location, task) : fsLocal.download(task.path, location, task)
+    
+                                promise.then((result) => {
+                                    maxConcurrentDownloadsSemaphore.release()
+    
+                                    emitSyncTask("downloadFromRemote", {
+                                        status: "done",
+                                        task,
+                                        location
+                                    })
+    
+                                    doneTasks.push({
+                                        type: "downloadFromRemote",
+                                        task: {
+                                            ...task,
+                                            info: {
+                                                ...result
+                                            }
+                                        },
+                                        location
+                                    })
 
-                                doneTasks.push({
-                                    type: "downloadFromRemote",
-                                    task: {
-                                        ...task,
-                                        info: {
-                                            ...result
-                                        }
-                                    },
-                                    location
+                                    maxSyncTasksSemaphore.release()
+    
+                                    return resolve(result)
+                                }).catch((err) => {
+                                    maxConcurrentDownloadsSemaphore.release()
+    
+                                    log.error(err)
+    
+                                    return setTimeout(() => {
+                                        doTask(err)
+                                    }, retrySyncTaskTimeout)
                                 })
-
-                                return resolve(result)
-                            }).catch((err) => {
-                                maxConcurrentDownloadsSemaphore.release()
-
-                                log.error(err)
-
-                                return setTimeout(() => {
-                                    doTask(err)
-                                }, retrySyncTaskTimeout)
                             })
-                        }).catch((err) => {
-                            log.error(err)
-
-                            return setTimeout(() => {
-                                doTask(err)
-                            }, retrySyncTaskTimeout)
-                        })
-                    }
-
-                    return doTask()
+                        }
+    
+                        return doTask()
+                    })
                 }))
             ])
         }
@@ -2349,8 +2384,8 @@ const syncLocation = async (location) => {
         return false
     }
 
-    log.info("localTreeNow", localTreeNow)
-    log.info("remoteTreeNow", remoteTreeNow)
+    //log.info("localTreeNow", localTreeNow)
+    //log.info("remoteTreeNow", remoteTreeNow)
 
     try{
         var [lastLocalTree, lastRemoteTree] = await Promise.all([

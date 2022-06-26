@@ -102,7 +102,7 @@
 	"build": {
 		"appId": "io.filen.desktop",
 		"productName": "Filen",
-		"asar": true,
+		"asar": false,
 		"npmRebuild": true,
 		"nodeGypRebuild": false,
 		"extends": null,

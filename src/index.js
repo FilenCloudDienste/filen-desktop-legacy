@@ -3,6 +3,8 @@ import "./renderer/styles/index.css"
 import App from "./renderer/App"
 import { createRoot } from "react-dom/client"
 
+process.noAsar = true
+
 window.require("electron-disable-file-drop")
 
 window.onkeydown = (e) => {
