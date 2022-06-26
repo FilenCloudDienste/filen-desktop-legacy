@@ -1286,11 +1286,6 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                     backgroundColor={colors(platform, darkMode, "backgroundPrimary")} 
                     borderRadius="10px"
                 >
-                    <ModalCloseButton 
-                        color={colors(platform, darkMode, "textPrimary")} 
-                        _focus={{ _focus: false }} 
-                        _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }} 
-                    />
                     <ModalBody padding="0px">
                         <Flex 
                             width="100%" 
