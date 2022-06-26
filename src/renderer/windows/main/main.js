@@ -14,6 +14,7 @@ import useDb from "../../lib/hooks/useDb"
 import { throttle } from "lodash"
 import { sizeOverheadMultiplier, speedMultiplier } from "../../lib/constants"
 import UpdateModal from "../../components/UpdateModal"
+import MaxStorageModal from "../../components/MaxStorageModal"
 
 const log = window.require("electron-log")
 const { ipcRenderer } = window.require("electron")
@@ -361,6 +362,13 @@ const MainWindow = memo(({ userId, email, windowId }) => {
                 lang={lang}
             />
             <UpdateModal
+                userId={userId}
+                email={email}
+                platform={platform}
+                darkMode={darkMode}
+                lang={lang}
+            />
+            <MaxStorageModal
                 userId={userId}
                 email={email}
                 platform={platform}

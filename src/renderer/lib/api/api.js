@@ -1304,7 +1304,14 @@ export const checkIfItemIsSharedForRename = ({ type, uuid, metaData }) => {
 
 export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "sync" }) => {
     return new Promise((resolve, reject) => {
-        db.get("networkingSettings").then(async (networkingSettings) => {
+        Promise.all([
+            db.get("networkingSettings"),
+            db.get("maxStorageReached")
+        ]).then(async ([networkingSettings, maxStorageReached]) => {
+            if(maxStorageReached){
+                return reject(new Error("Max storage reached"))
+            }
+            
             await new Promise((resolve) => {
                 const getPausedStatus = () => {
                     db.get("paused").then((paused) => {
@@ -1429,11 +1436,21 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
                     }
 
                     try{
-                        return resolve(JSON.parse(body))
+                        var res = JSON.parse(body)
                     }
                     catch(e){
                         return reject(e)
                     }
+
+                    if(!res.status){
+                        if(res.message.toLowerCase().indexOf("storage") !== -1){
+                            db.set("maxStorageReached", true)
+                        }
+
+                        return reject(res.message)
+                    }
+
+                    return resolve(res)
                 }).on("drain", () => calcProgress(req.req.connection.bytesWritten))
 
                 Readable.from([data]).pipe(throttle.on("end", () => throttle.destroy())).pipe(req)

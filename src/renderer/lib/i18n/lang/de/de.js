@@ -115,7 +115,8 @@ const de = {
     keybinds_resumeSync: "Synchronisation fortsetzen",
     keybinds_openWebsite: "Website öffnen",
     keybindNotBound: "Nicht gebunden",
-    syncing: "Sychronisiere.."
+    syncing: "Sychronisiere..",
+    maxStorageReached: "Du hast das maximale Speichervolumen Deines Accounts erreicht. Um weiter synchronisieren zu können, empfehlen wir Dir zu upgraden."
 }
 
 export default de
