@@ -14,6 +14,7 @@ const log = window.require("electron-log")
 const is = window.require("electron-is")
 
 const downloadThreadsSemaphore = new Semaphore(maxDownloadThreads)
+const localFSSemaphore = new Semaphore(1)
 
 export const normalizePath = (path) => {
     return pathModule.normalize(path)
@@ -21,25 +22,39 @@ export const normalizePath = (path) => {
 
 export const checkLastModified = (path) => {
     return new Promise((resolve, reject) => {
-        path = normalizePath(path)
+        localFSSemaphore.acquire().then(() => {
+            path = normalizePath(path)
 
-        fs.lstat(path).then((stat) => {
-            if(stat.mtimeMs > 0){
-                return resolve({
-                    changed: false
-                })
-            }
+            fs.lstat(path).then((stat) => {
+                if(stat.mtimeMs > 0){
+                    localFSSemaphore.release()
 
-            const lastModified = new Date()
-            const mtimeMs = lastModified.getTime()
-            
-            fs.utimes(path, lastModified, lastModified).then(() => {
-                return resolve({
-                    changed: true,
-                    mtimeMs 
+                    return resolve({
+                        changed: false
+                    })
+                }
+
+                const lastModified = new Date()
+                const mtimeMs = lastModified.getTime()
+                
+                fs.utimes(path, lastModified, lastModified).then(() => {
+                    localFSSemaphore.release()
+
+                    return resolve({
+                        changed: true,
+                        mtimeMs 
+                    })
+                }).catch((err) => {
+                    localFSSemaphore.release()
+
+                    return reject(err)
                 })
-            }).catch(reject)
-        }).catch(reject)
+            }).catch((err) => {
+                localFSSemaphore.release()
+
+                return reject(err)
+            })
+        })
     })
 }
 
@@ -64,6 +79,8 @@ export const smokeTest = (path) => {
         path = normalizePath(path)
 
         try{
+            await localFSSemaphore.acquire()
+
             const tmpDir = await getTempDir()
 
             await Promise.all([
@@ -72,8 +89,12 @@ export const smokeTest = (path) => {
             ])
         }
         catch(e){
+            localFSSemaphore.release()
+
             return reject(e)
         }
+
+        localFSSemaphore.release()
 
         return resolve(true)
     })
@@ -217,10 +238,14 @@ export const rm = (path) => {
     return new Promise(async (resolve, reject) => {
         path = normalizePath(path)
 
+        await localFSSemaphore.acquire()
+
         try{
             var stats = await fs.lstat(path)
         }
         catch(e){
+            localFSSemaphore.release()
+
             return resolve(true)
         }
     
@@ -229,6 +254,8 @@ export const rm = (path) => {
                 await fs.unlink(path)
             }
             catch(e){
+                localFSSemaphore.release()
+
                 return reject(e)
             }
         }
@@ -237,9 +264,13 @@ export const rm = (path) => {
                 await fs.remove(path)
             }
             catch(e){
+                localFSSemaphore.release()
+
                 return reject(e)
             }
         }
+
+        localFSSemaphore.release()
 
         return resolve(true)
     })
@@ -247,13 +278,25 @@ export const rm = (path) => {
 
 export const mkdir = (path, location, task) => {
     return new Promise((resolve, reject) => {
-        const absolutePath = normalizePath(location.local + "/" + path)
+        localFSSemaphore.acquire().then(() => {
+            const absolutePath = normalizePath(location.local + "/" + path)
 
-        fs.ensureDir(absolutePath).then(() => {
-            fs.lstat(absolutePath).then((stat)  => {
-                return resolve(stat)
-            }).catch(reject)
-        }).catch(reject)
+            fs.ensureDir(absolutePath).then(() => {
+                fs.lstat(absolutePath).then((stat)  => {
+                    localFSSemaphore.release()
+
+                    return resolve(stat)
+                }).catch((err) => {
+                    localFSSemaphore.release()
+
+                    return reject(err)
+                })
+            }).catch((err) => {
+                localFSSemaphore.release()
+
+                return reject(err)
+            })
+        })
     })
 }
 
@@ -424,15 +467,54 @@ export const download = (path, location, task) => {
 
 export const move = (before, after, overwrite = true) => {
     return new Promise((resolve, reject) => {
-        if(before == after){
-            return resolve(true)
-        }
+        localFSSemaphore.acquire().then(() => {
+            try{
+                before = normalizePath(before)
+                after = normalizePath(after)
+            }
+            catch(e){
+                localFSSemaphore.release()
 
-        before = normalizePath(before)
-        after = normalizePath(after)
+                return reject(e)
+            }
+    
+            fs.move(before, after, {
+                overwrite
+            }).then((res) => {
+                localFSSemaphore.release()
 
-        fs.move(before, after, {
-            overwrite
-        }).then(resolve).catch(reject)
+                return resolve(res)
+            }).catch((err) => {
+                localFSSemaphore.release()
+
+                return reject(err)
+            })
+        })
+    })
+}
+
+export const rename = (before, after) => {
+    return new Promise((resolve, reject) => {
+        localFSSemaphore.acquire().then(() => {
+            try{
+                before = normalizePath(before)
+                after = normalizePath(after)
+            }
+            catch(e){
+                localFSSemaphore.release()
+
+                return reject(e)
+            }
+    
+            fs.rename(before, after).then((res) => {
+                localFSSemaphore.release()
+
+                return resolve(res)
+            }).catch((err) => {
+                localFSSemaphore.release()
+
+                return reject(err)
+            })
+        })
     })
 }

@@ -14,7 +14,7 @@ export default class MainList extends React.Component {
     }
 
     render(){
-        const { userId, email, platform, darkMode, lang, activity, paused, syncLocations } = this.props
+        const { userId, email, platform, darkMode, lang, activity, paused, syncLocations, isOnline } = this.props
 
         return (
             <>
@@ -40,7 +40,7 @@ export default class MainList extends React.Component {
                                         rowRenderer={({ index, key, style }) => {
                                             const task = activity[index]
 
-                                            return <Item key={key + ":" + JSON.stringify(task)} task={task} style={style} lang={lang} userId={userId} platform={platform} darkMode={darkMode} paused={paused} />
+                                            return <Item key={key + ":" + JSON.stringify(task)} task={task} style={style} lang={lang} userId={userId} platform={platform} darkMode={darkMode} paused={paused} isOnline={isOnline} />
                                         }}
                                     />
                                 ) : (

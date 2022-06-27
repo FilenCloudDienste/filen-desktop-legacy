@@ -13,7 +13,7 @@ const pathModule = window.require("path")
 const { shell } = window.require("electron")
 const log = window.require("electron-log")
 
-const Item = memo(({ itemKey, task, style, userId, platform, darkMode, paused, lang }) => {
+const Item = memo(({ itemKey, task, style, userId, platform, darkMode, paused, lang, isOnline }) => {
     const itemName = useRef(pathModule.basename(task.task.path)).current
     const timeSinceInterval = useRef(undefined)
     const itemAbsolutePath = useRef(pathModule.normalize(task.location.local + "/" + task.task.path)).current
@@ -144,7 +144,7 @@ const Item = memo(({ itemKey, task, style, userId, platform, darkMode, paused, l
                         typeof task.realtime !== "undefined" ? (
                             <>
                                 {
-                                    paused || task.task.percent <= 0 ? (
+                                    paused || task.task.percent <= 0 || !isOnline ? (
                                         <Progress
                                             isIndeterminate={true}
                                             height="5px"
@@ -180,9 +180,7 @@ const Item = memo(({ itemKey, task, style, userId, platform, darkMode, paused, l
                                             maxWidth="100%"
                                             width="100%"
                                         >
-                                            {
-                                                task.task.path
-                                            }
+                                            {pathModule.join(pathModule.basename(task.location.local), task.task.path)}
                                         </Text>
                                     ) : (
                                         <Text
@@ -204,7 +202,7 @@ const Item = memo(({ itemKey, task, style, userId, platform, darkMode, paused, l
                                                 task.type == "renameInRemote" && i18n(lang, "syncTaskRenameInRemote")
                                             }
                                             {
-                                                task.type == "renameInLocal" && i18n(lang, "syncTaskRenamedInLocal")
+                                                task.type == "renameInLocal" && i18n(lang, "syncTaskRenameInLocal")
                                             }
                                             {
                                                 task.type == "moveInRemote" && i18n(lang, "syncTaskMoveInRemote")
@@ -252,7 +250,7 @@ const Item = memo(({ itemKey, task, style, userId, platform, darkMode, paused, l
                                     fontSize={12}
                                 >
                                     {
-                                        paused ? (
+                                        paused || !isOnline ? (
                                             <AiOutlinePauseCircle
                                                 color={colors(platform, darkMode, "textPrimary")}
                                                 fontSize={18} 

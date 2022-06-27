@@ -15,6 +15,7 @@ import { throttle } from "lodash"
 import { sizeOverheadMultiplier, speedMultiplier } from "../../lib/constants"
 import UpdateModal from "../../components/UpdateModal"
 import MaxStorageModal from "../../components/MaxStorageModal"
+import useIsOnline from "../../lib/hooks/useIsOnline"
 
 const log = window.require("electron-log")
 const { ipcRenderer } = window.require("electron")
@@ -23,6 +24,7 @@ const MainWindow = memo(({ userId, email, windowId }) => {
     const darkMode = useDarkMode()
     const lang = useLang()
     const platform = usePlatform()
+    const isOnline = useIsOnline()
 
     const [currentUploads, setCurrentUploads] = useState({})
     const [currentDownloads, setCurrentDownloads] = useState({})
@@ -76,7 +78,6 @@ const MainWindow = memo(({ userId, email, windowId }) => {
                 location: currentDownloads[key].location,
                 timestamp: currentDownloads[key].timestamp
             })),
-
             ...runningTasks.map(task => ({
                 ...task,
                 running: true,
@@ -113,43 +114,15 @@ const MainWindow = memo(({ userId, email, windowId }) => {
         }).catch(log.error)
 
         const syncTaskListener = eventListener.on("syncTask", (data) => {
-            console.log("syncTask", data)
-
             const type = data.type
             const task = data.data
 
             const now = new Date().getTime()
-
-            if(task.err){
-                setRunningTasks(prev => [...prev.filter(item => item.task.uuid !== task.task.uuid)])
-            }
-            else{
-                if(task.status == "start"){
-                    setRunningTasks(prev => [...[{
-                        type,
-                        task: {
-                            ...task.task,
-                        },
-                        location: task.location,
-                        timestamp: now
-                    }], ...prev])
-                }
-                else if(task.status == "done"){
-                    setRunningTasks(prev => [...prev.filter(item => item.task.uuid !== task.task.uuid)])
-                    setDoneTasks(prev => [...[{
-                        type,
-                        task: {
-                            ...task.task,
-                        },
-                        location: task.location,
-                        timestamp: now
-                    }], ...prev])
-                }
-            }
             
             if(type == "uploadToRemote"){
                 if(task.err){
                     setCurrentUploads(prev => Object.keys(prev).filter(key => key !== task.task.item.uuid).reduce((current, key) => Object.assign(current, { [key]: prev[key] }), {}))
+                    setRunningTasks(prev => [...prev.filter(item => item.task.uuid !== task.task.uuid)])
                 }
                 else{
                     if(task.status == "start" && task.task.type == "file"){
@@ -179,25 +152,47 @@ const MainWindow = memo(({ userId, email, windowId }) => {
                             }
                         }))
                     }
-                    else if(task.status == "started" && task.task.type == "file"){
-                        setCurrentUploads(prev => Object.keys(prev).filter(key => key == task.task.item.uuid).length > 0 ? ({
-                            ...prev,
-                            [task.task.item.uuid]: {
-                                ...prev[task.task.item.uuid],
-                                started: now,
-                                lastTime: now,
+                    else if(task.status == "started"){
+                        if(task.task.type == "file"){
+                            setCurrentUploads(prev => Object.keys(prev).filter(key => key == task.task.item.uuid).length > 0 ? ({
+                                ...prev,
+                                [task.task.item.uuid]: {
+                                    ...prev[task.task.item.uuid],
+                                    started: now,
+                                    lastTime: now,
+                                    timestamp: now
+                                }
+                            }) : prev)
+                        }
+                        else{
+                            setRunningTasks(prev => [...[{
+                                type,
+                                task: {
+                                    ...task.task,
+                                },
+                                location: task.location,
                                 timestamp: now
-                            }
-                        }) : prev)
+                            }], ...prev])
+                        }
                     }
                     else if(task.status == "done"){
                         setCurrentUploads(prev => Object.keys(prev).filter(key => key !== task.task.item.uuid).reduce((current, key) => Object.assign(current, { [key]: prev[key] }), {}))
+                        setRunningTasks(prev => [...prev.filter(item => item.task.uuid !== task.task.uuid)])
+                        setDoneTasks(prev => [...[{
+                            type,
+                            task: {
+                                ...task.task,
+                            },
+                            location: task.location,
+                            timestamp: now
+                        }], ...prev])
                     }
                 }
             }
             else if(type == "downloadFromRemote"){
                 if(task.err){
                     setCurrentDownloads(prev => Object.keys(prev).filter(key => key !== task.task.item.uuid).reduce((current, key) => Object.assign(current, { [key]: prev[key] }), {}))
+                    setRunningTasks(prev => [...prev.filter(item => item.task.uuid !== task.task.uuid)])
                 }
                 else{
                     if(task.status == "start"  && task.task.type == "file"){
@@ -227,19 +222,68 @@ const MainWindow = memo(({ userId, email, windowId }) => {
                             }
                         }))
                     }
-                    else if(task.status == "started"  && task.task.type == "file"){
-                        setCurrentDownloads(prev => Object.keys(prev).filter(key => key == task.task.item.uuid).length > 0 ? ({
-                            ...prev,
-                            [task.task.item.uuid]: {
-                                ...prev[task.task.item.uuid],
-                                started: now,
-                                lastTime: now,
+                    else if(task.status == "started"){
+                        if(task.task.type == "file"){
+                            setCurrentDownloads(prev => Object.keys(prev).filter(key => key == task.task.item.uuid).length > 0 ? ({
+                                ...prev,
+                                [task.task.item.uuid]: {
+                                    ...prev[task.task.item.uuid],
+                                    started: now,
+                                    lastTime: now,
+                                    timestamp: now
+                                }
+                            }) : prev)
+                        }
+                        else{
+                            setRunningTasks(prev => [...[{
+                                type,
+                                task: {
+                                    ...task.task,
+                                },
+                                location: task.location,
                                 timestamp: now
-                            }
-                        }) : prev)
+                            }], ...prev])
+                        }
                     }
                     else if(task.status == "done"){
                         setCurrentDownloads(prev => Object.keys(prev).filter(key => key !== task.task.item.uuid).reduce((current, key) => Object.assign(current, { [key]: prev[key] }), {}))
+                        setRunningTasks(prev => [...prev.filter(item => item.task.uuid !== task.task.uuid)])
+                        setDoneTasks(prev => [...[{
+                            type,
+                            task: {
+                                ...task.task,
+                            },
+                            location: task.location,
+                            timestamp: now
+                        }], ...prev])
+                    }
+                }
+            }
+            else{
+                if(task.err){
+                    setRunningTasks(prev => [...prev.filter(item => item.task.uuid !== task.task.uuid)])
+                }
+                else{
+                    if(task.status == "start"){
+                        setRunningTasks(prev => [...[{
+                            type,
+                            task: {
+                                ...task.task,
+                            },
+                            location: task.location,
+                            timestamp: now
+                        }], ...prev])
+                    }
+                    else if(task.status == "done"){
+                        setRunningTasks(prev => [...prev.filter(item => item.task.uuid !== task.task.uuid)])
+                        setDoneTasks(prev => [...[{
+                            type,
+                            task: {
+                                ...task.task,
+                            },
+                            location: task.location,
+                            timestamp: now
+                        }], ...prev])
                     }
                 }
             }
@@ -341,6 +385,7 @@ const MainWindow = memo(({ userId, email, windowId }) => {
                 activity={activity}
                 syncLocations={syncLocations}
                 paused={paused}
+                isOnline={isOnline}
             />
             <MainFooter
                 userId={userId}
@@ -352,7 +397,8 @@ const MainWindow = memo(({ userId, email, windowId }) => {
                 currentDownloads={currentDownloads}
                 runningTasks={runningTasks}
                 totalRemaining={totalRemaining}
-                runningSyncTasks={runningTasks.length}
+                runningSyncTasks={(runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length)}
+                isOnline={isOnline}
             />
             <IsOnlineBottomToast
                 userId={userId}

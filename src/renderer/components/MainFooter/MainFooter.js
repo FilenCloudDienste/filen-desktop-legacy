@@ -12,7 +12,7 @@ export default class MainFooter extends React.Component {
     }
 
     render(){
-        const { userId, email, platform, darkMode, lang, currentUploads, currentDownloads, paused, runningTasks, totalRemaining, runningSyncTasks } = this.props
+        const { userId, email, platform, darkMode, lang, currentUploads, currentDownloads, paused, runningTasks, totalRemaining, runningSyncTasks, isOnline } = this.props
 
         return (
             <Flex
@@ -84,7 +84,7 @@ export default class MainFooter extends React.Component {
                     overflow="hidden"
                 >
                     {
-                        paused ? (
+                        paused || !isOnline ? (
                             <AiOutlinePauseCircle
                                 color={colors(platform, darkMode, "textPrimary")}
                                 size={14}

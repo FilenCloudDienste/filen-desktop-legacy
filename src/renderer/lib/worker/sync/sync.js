@@ -19,80 +19,112 @@ let SYNC_LOCK_INTERVAL = undefined
 let TRYING_TO_HOLD_SYNC_LOCK = false
 let IS_FIRST_REQUEST = {}
 const WATCHERS = {}
-
-export const maxConcurrentUploadsSemaphore = new Semaphore(maxConcurrentUploadsPreset)
-export const maxConcurrentDownloadsSemaphore = new Semaphore(maxConcurrentDownloadsPreset)
-export const maxSyncTasksSemaphore = new Semaphore(512)
+let SYNC_LOCK_ACQUIRED = false
+const maxConcurrentUploadsSemaphore = new Semaphore(maxConcurrentUploadsPreset)
+const maxConcurrentDownloadsSemaphore = new Semaphore(maxConcurrentDownloadsPreset)
+const maxSyncTasksSemaphore = new Semaphore(1024)
+const syncLockSemaphore = new Semaphore(1)
 
 const acquireSyncLock = (id) => {
     return new Promise((resolve) => {
-        log.info("Acquiring sync lock")
+        syncLockSemaphore.acquire().then(() => {
+            log.info("Acquiring sync lock")
 
-        const acquire = async () => {
-            acquireLock({ apiKey: await db.get("apiKey"), id }).then(() => {
-                log.info("Sync lock acquired")
-    
-                holdSyncLock(id)
-    
-                return resolve(true)
-            }).catch((err) => {
-                if(err.toString().toLowerCase().indexOf("sync locked") == -1){
-                    log.error("Could not acquire sync lock from API")
-                    log.error(err)
-                }
-    
-                return setTimeout(acquire, 1000)
-            })
-        }
+            const acquire = async () => {
+                acquireLock({ apiKey: await db.get("apiKey"), id }).then(() => {
+                    log.info("Sync lock acquired")
+        
+                    holdSyncLock(id)
 
-        return acquire()
-    })
-}
+                    syncLockSemaphore.release()
 
-const releaseSyncLock = (id) => {
-    return new Promise(async (resolve, reject) => {
-        log.info("Releasing sync lock")
+                    SYNC_LOCK_ACQUIRED = true
+        
+                    return resolve(true)
+                }).catch((err) => {
+                    if(err.toString().toLowerCase().indexOf("sync locked") == -1){
+                        log.error("Could not acquire sync lock from API")
+                        log.error(err)
+                    }
 
-        releaseLock({ apiKey: await db.get("apiKey"), id }).then(() => {
-            log.info("Sync lock released")
+                    syncLockSemaphore.release()
 
-            clearInterval(SYNC_LOCK_INTERVAL)
+                    SYNC_LOCK_ACQUIRED = false
+        
+                    return setTimeout(acquire, 1000)
+                })
+            }
 
-            return resolve(true)
-        }).catch((err) => {
-            log.error("Could not release sync lock from API")
-            log.error(err)
-
-            return reject(err)
+            return acquire()
         })
     })
 }
 
-const holdSyncLock = async (id) => {
+const releaseSyncLock = (id) => {
+    return new Promise((resolve, reject) => {
+        if(!SYNC_LOCK_ACQUIRED){
+            return resolve(true)
+        }
+
+        syncLockSemaphore.acquire().then(async () => {
+            log.info("Releasing sync lock")
+
+            releaseLock({ apiKey: await db.get("apiKey"), id }).then(() => {
+                log.info("Sync lock released")
+
+                clearInterval(SYNC_LOCK_INTERVAL)
+
+                SYNC_LOCK_ACQUIRED = false
+
+                syncLockSemaphore.release()
+
+                return resolve(true)
+            }).catch((err) => {
+                log.error("Could not release sync lock from API")
+                log.error(err)
+
+                syncLockSemaphore.release()
+
+                return reject(err)
+            })
+        })
+    })
+}
+
+const holdSyncLock = (id) => {
     clearInterval(SYNC_LOCK_INTERVAL)
 
-    SYNC_LOCK_INTERVAL = setInterval(async () => {
-        if(!TRYING_TO_HOLD_SYNC_LOCK){
-            TRYING_TO_HOLD_SYNC_LOCK = true
+    SYNC_LOCK_INTERVAL = setInterval(() => {
+        syncLockSemaphore.acquire().then(async () => {
+            if(!TRYING_TO_HOLD_SYNC_LOCK && SYNC_LOCK_ACQUIRED){
+                TRYING_TO_HOLD_SYNC_LOCK = true
+    
+                log.info("Holding sync lock")
+    
+                try{
+                    await holdLock({ apiKey: await db.get("apiKey"), id })
+                }
+                catch(e){
+                    log.error("Could not hold sync lock from API")
+                    log.error(e)
+    
+                    TRYING_TO_HOLD_SYNC_LOCK = false
 
-            log.info("Holding sync lock")
-
-            try{
-                await holdLock({ apiKey: await db.get("apiKey"), id })
-            }
-            catch(e){
-                log.error("Could not hold sync lock from API")
-                log.error(e)
-
+                    syncLockSemaphore.release()
+    
+                    return false
+                }
+    
                 TRYING_TO_HOLD_SYNC_LOCK = false
+    
+                log.info("Sync lock held")
 
-                return false
+                syncLockSemaphore.release()
             }
-
-            TRYING_TO_HOLD_SYNC_LOCK = false
-
-            log.info("Sync lock held")
-        }
+            else{
+                syncLockSemaphore.release()
+            }
+        })
     }, SYNC_TIMEOUT / 2)
 }
 
@@ -466,6 +498,8 @@ Since we only need one of them we sort them and return only one task for each ta
 const sortMoveRenameTasks = (tasks) => {
     const added = {}
     const newTasks = []
+
+    tasks = tasks.filter(task => typeof task.from == "string" && typeof task.to == "string" && task.from !== task.to)
 
     for(let i = 0; i < tasks.length; i++){
         const task = tasks[i]
@@ -938,7 +972,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                             currentTries += 1
     
-                            fsLocal.move(pathModule.normalize(location.local + "/" + task.from), pathModule.normalize(location.local + "/" + task.to)).then((done) => {
+                            fsLocal.rename(pathModule.normalize(location.local + "/" + task.from), pathModule.normalize(location.local + "/" + task.to), true).then((done) => {
                                 emitSyncTask("renameInLocal", {
                                     status: "done",
                                     task,
