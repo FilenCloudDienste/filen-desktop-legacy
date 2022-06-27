@@ -250,12 +250,17 @@ const UploadWindow = memo(({ userId, email, windowId }) => {
     const [speed, setSpeed] = useState(0)
     const [percent, setPercent] = useState(0)
     const [done, setDone] = useState(false)
+    const [foldersCreated, setFoldersCreated] = useState(0)
+    const [foldersNeeded, setFoldersNeeded] = useState(0)
 
     const totalBytes = useRef(0)
     const bytes = useRef(0)
     const started = useRef(-1)
 
     const startUploading = useCallback(async () => {
+        setFoldersCreated(0)
+        setFoldersNeeded(0)
+
         if(args.type == "files"){
             const files = args.local.filePaths
             const filesToUpload = []
@@ -353,16 +358,19 @@ const UploadWindow = memo(({ userId, email, windowId }) => {
                                 }).on("end", async () => {
                                     let baseParentUUID = uuidv4()
                                     const baseParentName = pathModule.basename(basePath)
+                                    const foldersSorted = [...Object.keys(folders).sort((a, b) => a.length - b.length)]
+                                    const createdFolderUUIDs = {}
+
+                                    setFoldersNeeded(foldersSorted.length + 1)
                 
                                     try{
                                         baseParentUUID = await fsRemote.createDirectory(baseParentUUID, baseParentName, args.remote.uuid)
+
+                                        setFoldersCreated(prev => prev + 1)
                                     }
                                     catch(e){
                                         return reject(e)
                                     }
-                
-                                    const foldersSorted = [...Object.keys(folders).sort((a, b) => a.length - b.length)]
-                                    const createdFolderUUIDs = {}
                 
                                     if(foldersSorted.length > 0){
                                         for(let i = 0; i < foldersSorted.length; i++){
@@ -375,6 +383,8 @@ const UploadWindow = memo(({ userId, email, windowId }) => {
                                                 folderUUID = await fsRemote.createDirectory(folderUUID, folderName, parentUUID)
                     
                                                 createdFolderUUIDs[foldersSorted[i]] = folderUUID
+
+                                                setFoldersCreated(prev => prev + 1)
                                             }
                                             catch(e){
                                                 return reject(e)
@@ -511,13 +521,16 @@ const UploadWindow = memo(({ userId, email, windowId }) => {
                                             marginTop="10px"
                                         >
                                             {
-                                                args.type == "files" ? i18n(lang, "preparingUpload") : i18n(lang, "preparingUploadFolders")
+                                                args.type == "files" ? i18n(lang, "preparingUpload") : i18n(lang, "preparingUploadFolders") + " (" + foldersCreated + "/" + foldersNeeded + ")"
                                             }
                                         </Text>
                                     </>
                                 ) : done ? (
                                     <>
-                                        <AiOutlineCheckCircle color="green" size={64} />
+                                        <AiOutlineCheckCircle 
+                                            color="green" 
+                                            size={64} 
+                                        />
                                         <Text 
                                             fontSize={14}
                                             color={colors(platform, darkMode, "textPrimary")}
