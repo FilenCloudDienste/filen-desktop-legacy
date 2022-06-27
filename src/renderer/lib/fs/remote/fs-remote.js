@@ -656,8 +656,12 @@ export const move = (type, task, location, remoteTreeNow) => {
 }
 
 export const rename = (type, task) => {
+    const newName = pathModule.basename(task.to)
+
     return new Promise((resolve, reject) => {
-        const newName = pathModule.basename(task.to)
+        if(newName.length == 0){
+            return reject(new Error("Invalid name"))
+        }
         
         (type == "file" ? renameFile({
             file: {

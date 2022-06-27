@@ -7,12 +7,13 @@ import { IoSearchOutline } from "react-icons/io5"
 import { AiOutlinePauseCircle } from "react-icons/ai"
 import ipc from "../../lib/ipc"
 import memoryCache from "../../lib/memoryCache"
+import { i18n } from "../../lib/i18n"
 
 const pathModule = window.require("path")
 const { shell } = window.require("electron")
 const log = window.require("electron-log")
 
-const Item = memo(({ itemKey, task, style, userId, platform, darkMode, paused }) => {
+const Item = memo(({ itemKey, task, style, userId, platform, darkMode, paused, lang }) => {
     const itemName = useRef(pathModule.basename(task.task.path)).current
     const timeSinceInterval = useRef(undefined)
     const itemAbsolutePath = useRef(pathModule.normalize(task.location.local + "/" + task.task.path)).current
@@ -126,7 +127,7 @@ const Item = memo(({ itemKey, task, style, userId, platform, darkMode, paused })
                 </Flex>
                 <Flex
                     flexDirection="column"
-                    width="86%"
+                    width={typeof task.realtime == "undefined" ? "95%" : "85%"}
                 >
                     <Text
                         noOfLines={1}
@@ -135,6 +136,7 @@ const Item = memo(({ itemKey, task, style, userId, platform, darkMode, paused })
                         fontSize={12}
                         fontWeight="bold"
                         maxWidth="100%"
+                        width="100%"
                     >
                         {itemName}
                     </Text>
@@ -166,49 +168,70 @@ const Item = memo(({ itemKey, task, style, userId, platform, darkMode, paused })
                                 }
                             </>
                         ) : (
-                            <Text
-                                noOfLines={1}
-                                wordBreak="break-word"
-                                color={colors(platform, darkMode, "textPrimary")}
-                                marginTop="1px"
-                                fontSize={11}
-                                width="100%"
-                            >
+                            <>
                                 {
-                                    task.type == "downloadFromRemote" && "Downloaded from the cloud "
+                                    hovering && typeof task.task.path == "string" && typeof task.realtime == "undefined" ? (
+                                        <Text
+                                            noOfLines={1}
+                                            wordBreak="break-word"
+                                            color={colors(platform, darkMode, "textPrimary")}
+                                            marginTop="1px"
+                                            fontSize={11}
+                                            maxWidth="100%"
+                                            width="100%"
+                                        >
+                                            {
+                                                task.task.path
+                                            }
+                                        </Text>
+                                    ) : (
+                                        <Text
+                                            noOfLines={1}
+                                            wordBreak="break-word"
+                                            color={colors(platform, darkMode, "textPrimary")}
+                                            marginTop="1px"
+                                            fontSize={11}
+                                            maxWidth="100%"
+                                            width="100%"
+                                        >
+                                            {
+                                                task.type == "downloadFromRemote" && i18n(lang, "syncTaskDownloadFromRemote")
+                                            }
+                                            {
+                                                task.type == "uploadToRemote" && i18n(lang, "syncTaskUploadToRemote")
+                                            }
+                                            {
+                                                task.type == "renameInRemote" && i18n(lang, "syncTaskRenameInRemote")
+                                            }
+                                            {
+                                                task.type == "renameInLocal" && i18n(lang, "syncTaskRenamedInLocal")
+                                            }
+                                            {
+                                                task.type == "moveInRemote" && i18n(lang, "syncTaskMoveInRemote")
+                                            }
+                                            {
+                                                task.type == "moveInLocal" && i18n(lang, "syncTaskMoveInLocal")
+                                            }
+                                            {
+                                                task.type == "deleteInRemote" && i18n(lang, "syncTaskDeleteInRemote")
+                                            }
+                                            {
+                                                task.type == "deleteInLocal" && i18n(lang, "syncTaskDeleteInLocal")
+                                            }
+                                            &nbsp;
+                                            &#8226;
+                                            &nbsp;
+                                            {itemTimeSince}
+                                        </Text>
+                                    )
                                 }
-                                {
-                                    task.type == "uploadToRemote" && "Uploaded to the cloud"
-                                }
-                                {
-                                    task.type == "renameInRemote" && "Renamed locally"
-                                }
-                                {
-                                    task.type == "renameInLocal" && "Renamed in the cloud"
-                                }
-                                {
-                                    task.type == "moveInRemote" && "Moved in the cloud"
-                                }
-                                {
-                                    task.type == "moveInLocal" && "Moved locally"
-                                }
-                                {
-                                    task.type == "deleteInRemote" && "Deleted in the cloud"
-                                }
-                                {
-                                    task.type == "deleteInLocal" && "Deleted locally"
-                                }
-                                &nbsp;
-                                &#8226;
-                                &nbsp;
-                                {itemTimeSince}
-                            </Text>
+                            </>
                         )
                     }
                 </Flex>
             </Flex>
             <Flex
-                width="25%"
+                width={typeof task.realtime == "undefined" ? "5%" : "25%"}
                 justifyContent="flex-end" 
                 flexDirection="row"
             >

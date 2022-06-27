@@ -116,7 +116,15 @@ const de = {
     keybinds_openWebsite: "Website öffnen",
     keybindNotBound: "Nicht gebunden",
     syncing: "Sychronisiere..",
-    maxStorageReached: "Du hast das maximale Speichervolumen Deines Accounts erreicht. Um weiter synchronisieren zu können, empfehlen wir Dir zu upgraden."
+    maxStorageReached: "Du hast das maximale Speichervolumen Deines Accounts erreicht. Um weiter synchronisieren zu können, empfehlen wir Dir zu upgraden.",
+    syncTaskDownloadFromRemote: "Aus der Cloud heruntergeladen",
+    syncTaskUploadToRemote: "In die Cloud hochgeladen",
+    syncTaskRenameInRemote: "In der Cloud umbenannt",
+    syncTaskRenameInLocal: "Lokal umbenannt",
+    syncTaskMoveInRemote: "In der Cloud verschoben",
+    syncTaskMoveInLocal: "Lokal verschoben",
+    syncTaskDeleteInRemote: "In der Cloud gelöscht",
+    syncTaskDeleteInLocal: "Lokal gelöscht"
 }
 
 export default de
