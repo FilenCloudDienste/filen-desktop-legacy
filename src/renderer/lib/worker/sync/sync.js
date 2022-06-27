@@ -972,7 +972,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                             currentTries += 1
     
-                            fsLocal.rename(pathModule.normalize(location.local + "/" + task.from), pathModule.normalize(location.local + "/" + task.to), true).then((done) => {
+                            fsLocal.rename(pathModule.normalize(location.local + "/" + task.from), pathModule.normalize(location.local + "/" + task.to)).then((done) => {
                                 emitSyncTask("renameInLocal", {
                                     status: "done",
                                     task,
