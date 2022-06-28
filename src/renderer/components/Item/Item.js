@@ -13,6 +13,12 @@ const pathModule = window.require("path")
 const { shell } = window.require("electron")
 const log = window.require("electron-log")
 
+/*
+task.realtime !== "undefined" -> active upload/download
+task.running !== "undefined" -> active move/rename/delete
+task.done !== "undefined" -> done task
+*/
+
 const Item = memo(({ itemKey, task, style, userId, platform, darkMode, paused, lang, isOnline }) => {
     const itemName = useRef(pathModule.basename(task.task.path)).current
     const timeSinceInterval = useRef(undefined)
@@ -238,36 +244,46 @@ const Item = memo(({ itemKey, task, style, userId, platform, darkMode, paused, l
                     justifyContent="center"
                 >
                     {
-                        typeof task.realtime !== "undefined" ? (
+                        typeof task.realtime !== "undefined" || typeof task.running !== "undefined" ? (
                             <Flex 
                                 alignItems="center"
                                 justifyContent="flex-end" 
                                 flexDirection="row"
                             >
-                                <Text 
-                                    noOfLines={1}
-                                    color={colors(platform, darkMode, "textPrimary")}
-                                    fontSize={12}
-                                >
-                                    {
-                                        paused || !isOnline ? (
-                                            <AiOutlinePauseCircle
-                                                color={colors(platform, darkMode, "textPrimary")}
-                                                fontSize={18} 
-                                            />
-                                        ) : (
-                                            <>
-                                                {
-                                                    task.task.percent <= 0 ? (
-                                                        <>Queued</>
-                                                    ) : (
-                                                        <>{bpsToReadable(task.task.lastBps)}</>
-                                                    )
-                                                }
-                                            </>
-                                        )
-                                    }
-                                </Text>
+                                {
+                                    typeof task.realtime !== "undefined" ? (
+                                        <Text 
+                                            noOfLines={1}
+                                            color={colors(platform, darkMode, "textPrimary")}
+                                            fontSize={12}
+                                        >
+                                            {
+                                                paused || !isOnline ? (
+                                                    <AiOutlinePauseCircle
+                                                        color={colors(platform, darkMode, "textPrimary")}
+                                                        fontSize={18} 
+                                                    />
+                                                ) : (
+                                                    <>
+                                                        {
+                                                            task.task.percent <= 0 ? (
+                                                                <>Queued</>
+                                                            ) : (
+                                                                <>{bpsToReadable(task.task.lastBps)}</>
+                                                            )
+                                                        }
+                                                    </>
+                                                )
+                                            }
+                                        </Text>
+                                    ) : (
+                                        <Spinner 
+                                            width="16px"
+                                            height="16px"
+                                            color={colors(platform, darkMode, "textPrimary")}
+                                        />
+                                    )
+                                }
                             </Flex>
                         ) : (
                             <>
