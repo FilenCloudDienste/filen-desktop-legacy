@@ -124,7 +124,8 @@ const de = {
     syncTaskMoveInRemote: "In der Cloud verschoben",
     syncTaskMoveInLocal: "Lokal verschoben",
     syncTaskDeleteInRemote: "In der Cloud gelöscht",
-    syncTaskDeleteInLocal: "Lokal gelöscht"
+    syncTaskDeleteInLocal: "Lokal gelöscht",
+    queued: "Warte"
 }
 
 export default de

@@ -263,17 +263,7 @@ const Item = memo(({ itemKey, task, style, userId, platform, darkMode, paused, l
                                                         color={colors(platform, darkMode, "textPrimary")}
                                                         fontSize={18} 
                                                     />
-                                                ) : (
-                                                    <>
-                                                        {
-                                                            task.task.percent <= 0 ? (
-                                                                <>Queued</>
-                                                            ) : (
-                                                                <>{bpsToReadable(task.task.lastBps)}</>
-                                                            )
-                                                        }
-                                                    </>
-                                                )
+                                                ) : task.task.percent <= 0 ? i18n(lang, "queued") : bpsToReadable(task.task.lastBps)
                                             }
                                         </Text>
                                     ) : (
