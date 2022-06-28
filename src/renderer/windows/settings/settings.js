@@ -823,7 +823,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
             <Modal 
                 onClose={() => setSyncSettingsModalOpen(false)} 
                 isOpen={syncSettingsModalOpen} 
-                isCentered
+                isCentered={true}
             >
                 <ModalOverlay borderRadius="10px" />
                 <ModalContent 
@@ -1244,20 +1244,6 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                                         }
                                     }
 
-                                    await new Promise((resolve) => {
-                                        if(!currentSyncLocation.busy){
-                                            return resolve(true)
-                                        }
-    
-                                        const wait = setInterval(() => {
-                                            if(!currentSyncLocation.busy){
-                                                clearInterval(wait)
-                                                
-                                                return resolve(true)
-                                            }
-                                        }, 10)
-                                    })
-
                                     await db.set("syncLocations:" + userId, currentSyncLocations)
                                 }
                                 catch(e){
@@ -1531,7 +1517,7 @@ const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }) => {
                         <Modal 
                             onClose={() => setLogoutAlertOpen(false)} 
                             isOpen={logoutAlertOpen} 
-                            isCentered
+                            isCentered={true}
                         >
                             <ModalOverlay borderRadius="10px" />
                             <ModalContent 
@@ -1700,7 +1686,7 @@ const SettingsWindowIssues = memo(({ darkMode, lang, platform }) => {
             <Modal 
                 onClose={() => setClearIssuesModalOpen(false)} 
                 isOpen={clearIssuesModalOpen} 
-                isCentered
+                isCentered={true}
             >
                 <ModalOverlay borderRadius="10px" />
                 <ModalContent 
@@ -1916,7 +1902,7 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }) => {
                         <Modal 
                             onClose={() => setThrottlingModalOpen(false)} 
                             isOpen={throttlingModalOpen}
-                            isCentered
+                            isCentered={true}
                         >
                             <ModalOverlay borderRadius="10px" />
                             <ModalContent 
@@ -2231,7 +2217,7 @@ const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }) => {
             <Modal 
                 onClose={() => setChangeKeybindModalOpen(false)} 
                 isOpen={changeKeybindModalOpen} 
-                isCentered
+                isCentered={true}
             >
                 <ModalOverlay borderRadius="10px" />
                 <ModalContent 

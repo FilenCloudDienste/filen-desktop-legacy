@@ -98,7 +98,7 @@ const WorkerWindow = memo(() => {
                         return resolve(true)
                     }
                 }
-            }, 100)
+            }, 1000)
         })
 
         if(!initDone.current){

@@ -2299,7 +2299,7 @@ const syncLocation = async (location) => {
 
         await updateLocationBusyStatus(location.uuid, false)
 
-        return false
+        return true
     }
 
     await updateLocationBusyStatus(location.uuid, true)
@@ -2320,16 +2320,37 @@ const syncLocation = async (location) => {
         ])
     }
     catch(e){
-        log.error("Smoke test for location " + location.uuid + " failed")
-        log.error(e)
+        if(e.toString().toLowerCase().indexOf("remote folder") !== -1 && e.toString().toLowerCase().indexOf("is not present") !== -1){
+            const userId = await db.get("userId")
+            let currentSyncLocations = await db.get("syncLocations:" + userId)
 
-        addToSyncIssues("smokeTest", "Smoke test for location " + location.uuid + " failed: " + e.toString())
+            if(!Array.isArray(currentSyncLocations)){
+                currentSyncLocations = []
+            }
 
-        emitSyncStatusLocation("smokeTest", {
-            status: "err",
-            location,
-            err: e
-        })
+            for(let i = 0; i < currentSyncLocations.length; i++){
+                if(currentSyncLocations[i].uuid == location.uuid){
+                    currentSyncLocations[i].remoteUUID = undefined
+                    currentSyncLocations[i].remote = undefined
+                    currentSyncLocations[i].remoteName = undefined
+                    currentSyncLocations[i].paused = true
+                }
+            }
+
+            await db.set("syncLocations:" + userId, currentSyncLocations)
+        }
+        else{
+            log.error("Smoke test for location " + location.uuid + " failed")
+            log.error(e)
+
+            addToSyncIssues("smokeTest", "Smoke test for location " + location.uuid + " failed: " + e.toString())
+
+            emitSyncStatusLocation("smokeTest", {
+                status: "err",
+                location,
+                err: e
+            })
+        }
 
         updateLocationBusyStatus(location.uuid, false)
 
@@ -2394,16 +2415,37 @@ const syncLocation = async (location) => {
         ])
     }
     catch(e){
-        log.error("Could not get directory trees for location " + location.uuid)
-        log.error(e)
+        if(e.toString().toLowerCase().indexOf("folder not found") !== -1){
+            const userId = await db.get("userId")
+            let currentSyncLocations = await db.get("syncLocations:" + userId)
 
-        addToSyncIssues("getTrees", "Could not get directory trees: " + e.toString())
+            if(!Array.isArray(currentSyncLocations)){
+                currentSyncLocations = []
+            }
 
-        emitSyncStatusLocation("getTrees", {
-            status: "err",
-            location,
-            err: e
-        })
+            for(let i = 0; i < currentSyncLocations.length; i++){
+                if(currentSyncLocations[i].uuid == location.uuid){
+                    currentSyncLocations[i].remoteUUID = undefined
+                    currentSyncLocations[i].remote = undefined
+                    currentSyncLocations[i].remoteName = undefined
+                    currentSyncLocations[i].paused = true
+                }
+            }
+
+            await db.set("syncLocations:" + userId, currentSyncLocations)
+        }
+        else{
+            log.error("Could not get directory trees for location " + location.uuid)
+            log.error(e)
+
+            addToSyncIssues("getTrees", "Could not get directory trees: " + e.toString())
+
+            emitSyncStatusLocation("getTrees", {
+                status: "err",
+                location,
+                err: e
+            })
+        }
 
         updateLocationBusyStatus(location.uuid, false)
 
@@ -2707,10 +2749,11 @@ const sync = async () => {
     })
 
     try{
-        var [userId, masterKeys, syncIssues] = await Promise.all([
+        var [userId, masterKeys, syncIssues, paused] = await Promise.all([
             db.get("userId"),
             db.get("masterKeys"),
-            db.get("syncIssues")
+            db.get("syncIssues"),
+            db.get("paused")
         ])
 
         var syncLocations = await db.get("syncLocations:" + userId)
@@ -2783,6 +2826,8 @@ const sync = async () => {
             syncLocations: []
         })
 
+        log.info("Sync locations empty")
+
         return setTimeout(sync, SYNC_TIMEOUT)
     }
 
@@ -2790,6 +2835,10 @@ const sync = async () => {
         status: "done",
         syncLocations
     })
+
+    if(paused){
+        return setTimeout(sync, SYNC_TIMEOUT)
+    }
 
     if(SYNC_RUNNING){
         return log.info("Sync requested but already running, returning")
@@ -2817,7 +2866,7 @@ const sync = async () => {
         status: "done"
     })
 
-    log.info("Checking if we need to redo any previous failed sync tasks")
+    /*log.info("Checking if we need to redo any previous failed sync tasks")
 
     emitSyncStatus("syncTasksRedo", {
         status: "start"
@@ -2852,7 +2901,7 @@ const sync = async () => {
     emitSyncStatus("syncTasksRedo", {
         status: "done",
         syncTasksRedo: []
-    })
+    })*/
 
     log.info("Starting sync task")
     log.info(syncLocations.length + " syncLocations to sync")
