@@ -2293,6 +2293,35 @@ const emitSyncStatusLocation = (type, data) => {
     return true
 }
 
+const removeRemoteLocation = (location) => {
+    return new Promise(async (resolve) => {
+        try{
+            const userId = await db.get("userId")
+            let currentSyncLocations = await db.get("syncLocations:" + userId)
+
+            if(!Array.isArray(currentSyncLocations)){
+                currentSyncLocations = []
+            }
+
+            for(let i = 0; i < currentSyncLocations.length; i++){
+                if(currentSyncLocations[i].uuid == location.uuid){
+                    currentSyncLocations[i].remoteUUID = undefined
+                    currentSyncLocations[i].remote = undefined
+                    currentSyncLocations[i].remoteName = undefined
+                    currentSyncLocations[i].paused = true
+                }
+            }
+
+            await db.set("syncLocations:" + userId, currentSyncLocations)
+        }
+        catch(e){
+            log.error(e)
+        }
+
+        return resolve(true)
+    })
+}
+
 const syncLocation = async (location) => {
     if(location.paused){
         log.info("Sync location " + location.uuid + " -> " + location.local + " <-> " + location.remote + " [" + location.type + "] is paused")
@@ -2321,23 +2350,7 @@ const syncLocation = async (location) => {
     }
     catch(e){
         if(e.toString().toLowerCase().indexOf("remote folder") !== -1 && e.toString().toLowerCase().indexOf("is not present") !== -1){
-            const userId = await db.get("userId")
-            let currentSyncLocations = await db.get("syncLocations:" + userId)
-
-            if(!Array.isArray(currentSyncLocations)){
-                currentSyncLocations = []
-            }
-
-            for(let i = 0; i < currentSyncLocations.length; i++){
-                if(currentSyncLocations[i].uuid == location.uuid){
-                    currentSyncLocations[i].remoteUUID = undefined
-                    currentSyncLocations[i].remote = undefined
-                    currentSyncLocations[i].remoteName = undefined
-                    currentSyncLocations[i].paused = true
-                }
-            }
-
-            await db.set("syncLocations:" + userId, currentSyncLocations)
+            await removeRemoteLocation(location)
         }
         else{
             log.error("Smoke test for location " + location.uuid + " failed")
@@ -2416,23 +2429,7 @@ const syncLocation = async (location) => {
     }
     catch(e){
         if(e.toString().toLowerCase().indexOf("folder not found") !== -1){
-            const userId = await db.get("userId")
-            let currentSyncLocations = await db.get("syncLocations:" + userId)
-
-            if(!Array.isArray(currentSyncLocations)){
-                currentSyncLocations = []
-            }
-
-            for(let i = 0; i < currentSyncLocations.length; i++){
-                if(currentSyncLocations[i].uuid == location.uuid){
-                    currentSyncLocations[i].remoteUUID = undefined
-                    currentSyncLocations[i].remote = undefined
-                    currentSyncLocations[i].remoteName = undefined
-                    currentSyncLocations[i].paused = true
-                }
-            }
-
-            await db.set("syncLocations:" + userId, currentSyncLocations)
+            await removeRemoteLocation(location)
         }
         else{
             log.error("Could not get directory trees for location " + location.uuid)
