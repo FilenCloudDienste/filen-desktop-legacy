@@ -34,7 +34,9 @@ const MainWindow = memo(({ userId, email, windowId }) => {
     const syncLocations = useDb("syncLocations:" + userId, [])
     const paused = useDb("paused", false)
     const [totalRemaining, setTotalRemaining] = useState(0)
+    const [acquiringLock, setAcquiringLock] = useState(false)
     
+    const acquiringLockTimeout = useRef(undefined)
     const bytesSent = useRef(0)
     const allBytes = useRef(0)
     const progressStarted = useRef(-1)
@@ -338,6 +340,15 @@ const MainWindow = memo(({ userId, email, windowId }) => {
                 setRunningTasks([])
                 setTotalRemaining(0)
             }
+            else if(type == "acquireSyncLock"){
+                if(data.data.status == "start"){
+                    acquiringLockTimeout.current = setTimeout(() => setAcquiringLock(true), 5000)
+                }
+                else{
+                    setAcquiringLock(false)
+                    clearTimeout(acquiringLockTimeout.current)
+                }
+            }
         })
 
         ipcRenderer.send("window-ready", windowId)
@@ -399,6 +410,7 @@ const MainWindow = memo(({ userId, email, windowId }) => {
                 totalRemaining={totalRemaining}
                 runningSyncTasks={(runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length)}
                 isOnline={isOnline}
+                acquiringLock={acquiringLock}
             />
             <IsOnlineBottomToast
                 userId={userId}

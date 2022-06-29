@@ -6,7 +6,6 @@ const { ipcRenderer } = window.require("electron")
 const MESSAGE_SENDER = uuidv4()
 const resolves = {}
 const rejects = {}
-const isDownloadWindow = window.location.hash.indexOf("download") !== -1
 
 ipcRenderer.on("message", (_, data) => {
     const { messageId, messageSender, response, err } = data
@@ -958,6 +957,23 @@ const ipc = {
                 messageId,
                 messageSender: MESSAGE_SENDER,
                 type: "restartApp"
+            })
+        })
+    },
+    openUploadWindow: (type = "files") => {
+        return new Promise((resolve, reject) => {
+            const messageId = uuidv4()
+
+            resolves[messageId] = resolve
+            rejects[messageId] = reject
+
+            return ipcRenderer.send("message", {
+                messageId,
+                messageSender: MESSAGE_SENDER,
+                type: "openUploadWindow",
+                data: {
+                    type
+                }
             })
         })
     },

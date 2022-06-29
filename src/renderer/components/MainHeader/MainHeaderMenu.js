@@ -6,6 +6,8 @@ import colors from "../../styles/colors"
 import { IoGlobeOutline } from "react-icons/io5"
 import { IoMdClose } from "react-icons/io"
 import { i18n } from "../../lib/i18n"
+import { MdUploadFile } from "react-icons/md"
+import { RiFolderUploadLine } from "react-icons/ri"
 
 const { shell } = window.require("electron")
 
@@ -75,6 +77,46 @@ export default class MainHeaderMenu extends React.Component {
                             onClick={() => ipc.openSettingsWindow()}
                         >
                             {i18n(lang, "settings")}
+                        </MenuItem>
+                        <MenuItem 
+                            height="30px"
+                            fontSize={13}
+                            paddingTop="5px"
+                            paddingBottom="5px"
+                            icon={<RiFolderUploadLine size={17} color={colors(platform, darkMode, "textPrimary")} />}
+                            backgroundColor={colors(platform, darkMode, "backgroundPrimary")}
+                            _hover={{
+                                backgroundColor: colors(platform, darkMode, "backgroundSecondary")
+                            }}
+                            _active={{
+                                backgroundColor: colors(platform, darkMode, "backgroundSecondary")
+                            }}
+                            _focus={{
+                                backgroundColor: colors(platform, darkMode, "backgroundSecondary")
+                            }}
+                            onClick={() => ipc.openUploadWindow("folders")}
+                        >
+                            {i18n(lang, "keybinds_uploadFolders")}
+                        </MenuItem>
+                        <MenuItem 
+                            height="30px"
+                            fontSize={13}
+                            paddingTop="5px"
+                            paddingBottom="5px"
+                            icon={<MdUploadFile size={17} color={colors(platform, darkMode, "textPrimary")} />}
+                            backgroundColor={colors(platform, darkMode, "backgroundPrimary")}
+                            _hover={{
+                                backgroundColor: colors(platform, darkMode, "backgroundSecondary")
+                            }}
+                            _active={{
+                                backgroundColor: colors(platform, darkMode, "backgroundSecondary")
+                            }}
+                            _focus={{
+                                backgroundColor: colors(platform, darkMode, "backgroundSecondary")
+                            }}
+                            onClick={() => ipc.openUploadWindow("files")}
+                        >
+                            {i18n(lang, "keybinds_uploadFiles")}
                         </MenuItem>
                         <MenuItem
                             height="30px"

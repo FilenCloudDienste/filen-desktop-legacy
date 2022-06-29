@@ -2312,7 +2312,11 @@ const removeRemoteLocation = (location) => {
                 }
             }
 
-            await db.set("syncLocations:" + userId, currentSyncLocations)
+            await Promise.all([
+                db.set("syncLocations:" + userId, currentSyncLocations),
+                db.remove("lastLocalTree:" + location.uuid),
+                db.remove("lastRemoteTree:" + location.uuid)
+            ])
         }
         catch(e){
             log.error(e)

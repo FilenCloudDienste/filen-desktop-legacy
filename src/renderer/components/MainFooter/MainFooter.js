@@ -12,7 +12,7 @@ export default class MainFooter extends React.Component {
     }
 
     render(){
-        const { userId, email, platform, darkMode, lang, currentUploads, currentDownloads, paused, runningTasks, totalRemaining, runningSyncTasks, isOnline } = this.props
+        const { userId, email, platform, darkMode, lang, currentUploads, currentDownloads, paused, runningTasks, totalRemaining, runningSyncTasks, isOnline, acquiringLock } = this.props
 
         return (
             <Flex
@@ -29,7 +29,7 @@ export default class MainFooter extends React.Component {
                     overflow="hidden"
                 >
                     {
-                        (runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length) > 0 ? (
+                        acquiringLock ? (
                             <Flex alignItems="center">
                                 <Spinner
                                     width="12px"
@@ -42,83 +42,109 @@ export default class MainFooter extends React.Component {
                                     marginLeft="5px" 
                                     noOfLines={1}
                                 >
-                                    {i18n(lang, (runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length) == 1 ? "syncingItemsFooterSingular" : "syncingItemsFooterPlural", true, ["__COUNT__"], [(runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length)])}
+                                    {i18n(lang, "acquiringSyncLock")}
                                 </Text>
                             </Flex>
-                        ) : runningSyncTasks > 0 ? (
-                            <Flex alignItems="center">
-                                <Spinner
-                                    width="12px"
-                                    height="12px"
-                                    color={colors(platform, darkMode, "textPrimary")}
-                                />
-                                <Text 
-                                    fontSize={12} 
-                                    color={colors(platform, darkMode, "textPrimary")} 
-                                    marginLeft="5px" 
-                                    noOfLines={1}
-                                >
-                                    {i18n(lang, "syncing")}
-                                </Text>
-                            </Flex>
-                        ) : (
-                            <Flex alignItems="center">
-                                <AiOutlineCheckCircle
-                                    size={13}
-                                    color="green" 
-                                />
-                                <Text
-                                    fontSize={12}
-                                    color={colors(platform, darkMode, "textPrimary")}
-                                    marginLeft="5px"
-                                    noOfLines={1}
-                                >
-                                    {i18n(lang, "syncingFooterEverythingSynced")}
-                                </Text>
-                            </Flex>
-                        )
-                    }
-                </Flex>
-                <Flex 
-                    alignItems="center" 
-                    overflow="hidden"
-                >
-                    {
-                        paused || !isOnline ? (
-                            <AiOutlinePauseCircle
-                                color={colors(platform, darkMode, "textPrimary")}
-                                size={14}
-                            />
                         ) : (
                             <>
                                 {
-                                    (Object.keys(currentUploads).length + Object.keys(currentDownloads).length) > 0 && (() => {
-                                        const remainingReadable = getTimeRemaining((new Date().getTime() + (totalRemaining * 1000)))
-
-                                        if(remainingReadable.total <= 1 || remainingReadable.minutes <= 1){
-                                            remainingReadable.total = 1
-                                            remainingReadable.days = 0
-                                            remainingReadable.hours = 0
-                                            remainingReadable.minutes = 1
-                                            remainingReadable.seconds = 1
-                                        }
-
-                                        return (
+                                    (runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length) > 0 ? (
+                                        <Flex alignItems="center">
+                                            <Spinner
+                                                width="12px"
+                                                height="12px"
+                                                color={colors(platform, darkMode, "textPrimary")}
+                                            />
                                             <Text 
+                                                fontSize={12} 
+                                                color={colors(platform, darkMode, "textPrimary")} 
+                                                marginLeft="5px" 
+                                                noOfLines={1}
+                                            >
+                                                {i18n(lang, (runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length) == 1 ? "syncingItemsFooterSingular" : "syncingItemsFooterPlural", true, ["__COUNT__"], [(runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length)])}
+                                            </Text>
+                                        </Flex>
+                                    ) : runningSyncTasks > 0 ? (
+                                        <Flex alignItems="center">
+                                            <Spinner
+                                                width="12px"
+                                                height="12px"
+                                                color={colors(platform, darkMode, "textPrimary")}
+                                            />
+                                            <Text 
+                                                fontSize={12} 
+                                                color={colors(platform, darkMode, "textPrimary")} 
+                                                marginLeft="5px" 
+                                                noOfLines={1}
+                                            >
+                                                {i18n(lang, "syncing")}
+                                            </Text>
+                                        </Flex>
+                                    ) : (
+                                        <Flex alignItems="center">
+                                            <AiOutlineCheckCircle
+                                                size={13}
+                                                color="green" 
+                                            />
+                                            <Text
                                                 fontSize={12}
                                                 color={colors(platform, darkMode, "textPrimary")}
                                                 marginLeft="5px"
                                                 noOfLines={1}
                                             >
-                                                {i18n(lang, "aboutRemaining", false, ["__TIME__"], [(remainingReadable.days > 0 ? remainingReadable.days + "d " : "") + (remainingReadable.hours > 0 ? remainingReadable.hours + "h " : "") + (remainingReadable.minutes > 0 ? remainingReadable.minutes + "m " : "")])}
+                                                {i18n(lang, "syncingFooterEverythingSynced")}
                                             </Text>
-                                        )
-                                    })()
+                                        </Flex>
+                                    )
                                 }
                             </>
                         )
                     }
                 </Flex>
+                {
+                    !acquiringLock && (
+                        <Flex 
+                            alignItems="center" 
+                            overflow="hidden"
+                        >
+                            {
+                                paused || !isOnline ? (
+                                    <AiOutlinePauseCircle
+                                        color={colors(platform, darkMode, "textPrimary")}
+                                        size={14}
+                                    />
+                                ) : (
+                                    <>
+                                        {
+                                            (Object.keys(currentUploads).length + Object.keys(currentDownloads).length) > 0 && (() => {
+                                                const remainingReadable = getTimeRemaining((new Date().getTime() + (totalRemaining * 1000)))
+
+                                                if(remainingReadable.total <= 1 || remainingReadable.minutes <= 1){
+                                                    remainingReadable.total = 1
+                                                    remainingReadable.days = 0
+                                                    remainingReadable.hours = 0
+                                                    remainingReadable.minutes = 1
+                                                    remainingReadable.seconds = 1
+                                                }
+
+                                                return (
+                                                    <Text 
+                                                        fontSize={12}
+                                                        color={colors(platform, darkMode, "textPrimary")}
+                                                        marginLeft="5px"
+                                                        noOfLines={1}
+                                                    >
+                                                        {i18n(lang, "aboutRemaining", false, ["__TIME__"], [(remainingReadable.days > 0 ? remainingReadable.days + "d " : "") + (remainingReadable.hours > 0 ? remainingReadable.hours + "h " : "") + (remainingReadable.minutes > 0 ? remainingReadable.minutes + "m " : "")])}
+                                                    </Text>
+                                                )
+                                            })()
+                                        }
+                                    </>
+                                )
+                            }
+                        </Flex>
+                    )
+                }
             </Flex>
         )
     }

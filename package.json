@@ -56,6 +56,7 @@
 	},
 	"scripts": {
 		"start": "concurrently -k \"cross-env BROWSER=none npm run react-start\" \"wait-on http://localhost:3000 && electronmon .\"",
+		"dev": "concurrently -k \"cross-env BROWSER=none npm run react-start\" \"wait-on http://localhost:3000 && electronmon .\"",
 		"build": "react-scripts build",
 		"test": "react-scripts test",
 		"eject": "react-scripts eject",

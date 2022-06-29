@@ -557,6 +557,11 @@ const handleMessage = (type, data) => {
                 return reject(e)
             }
         }
+        else if(type == "openUploadWindow"){
+            trayMenu.upload(data.type)
+
+            return resolve(true)
+        }
         else{
             return reject("Invalid message type: " + type.toString())
         }
