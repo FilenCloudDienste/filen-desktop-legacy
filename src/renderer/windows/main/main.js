@@ -342,12 +342,16 @@ const MainWindow = memo(({ userId, email, windowId }) => {
             }
             else if(type == "acquireSyncLock"){
                 if(data.data.status == "start"){
-                    acquiringLockTimeout.current = setTimeout(() => setAcquiringLock(true), 5000)
+                    acquiringLockTimeout.current = setTimeout(() => setAcquiringLock(true), 3000)
                 }
                 else{
                     setAcquiringLock(false)
                     clearTimeout(acquiringLockTimeout.current)
                 }
+            }
+            else if(type == "sync"){
+                setAcquiringLock(false)
+                clearTimeout(acquiringLockTimeout.current)
             }
         })
 

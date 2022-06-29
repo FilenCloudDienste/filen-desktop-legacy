@@ -24,7 +24,7 @@ import { formatBytes } from "../../lib/helpers"
 import { MdOutlineNetworkCheck } from "react-icons/md"
 import { FaCannabis, FaHackerrank } from "react-icons/fa"
 import IsOnlineBottomToast from "../../components/IsOnlineBottomToast"
-import { BsKeyboard } from "react-icons/bs"
+import { BsKeyboard, BsFillFolderFill } from "react-icons/bs"
 import { List } from "react-virtualized"
 import { debounce } from "lodash"
 
@@ -685,7 +685,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                                                 }
                                             </Flex>
                                             <Flex 
-                                                width="40%" 
+                                                width="37%" 
                                                 flexDirection="row" 
                                                 justifyContent="flex-end" 
                                                 alignItems="center"
@@ -785,10 +785,11 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                                                 }
                                             </Flex>
                                             <Flex 
-                                                width="5%" 
+                                                width="8%" 
                                                 flexDirection="row" 
-                                                justifyContent="flex-end" 
+                                                justifyContent="space-between" 
                                                 alignItems="center"
+                                                paddingLeft="12px"
                                             >
                                                 <HiOutlineCog 
                                                     color={colors(platform, darkMode, "textPrimary")} 
@@ -799,6 +800,13 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                                                         setCurrentSyncLocation(location)
                                                         setSyncSettingsModalOpen(true)
                                                     }}
+                                                />
+                                                <BsFillFolderFill 
+                                                    color={colors(platform, darkMode, "textPrimary")} 
+                                                    size={15} 
+                                                    cursor="pointer" 
+                                                    pointerEvents="all"
+                                                    onClick={() => shell.openPath(pathModule.normalize(location.local)).catch(log.error)}
                                                 />
                                             </Flex>
                                         </Flex>
