@@ -36,7 +36,7 @@ if(startingRoute[0] == "worker"){
 					<></>
 				}
 			>
-				<WorkerWindow windowId={getParams.get("id")} />
+				<WorkerWindow />
 			</Suspense>
 		)
 	})
@@ -50,7 +50,7 @@ else if(startingRoute[0] == "auth"){
 						<></>
 					}
 				>
-					<AuthWindow windowId={getParams.get("id")} />
+					<AuthWindow />
 				</Suspense>
 			</ChakraProvider>
 		)
@@ -58,8 +58,8 @@ else if(startingRoute[0] == "auth"){
 }
 else if(startingRoute[0] == "main"){
 	App = memo(() => {
-		const userId = useDb("userId", 0)
-		const email = useDb("email", "")
+		const userId: number = useDb("userId", 0)
+		const email: string = useDb("email", "")
 
 		if(userId == 0 || email == ""){
 			return null
@@ -80,8 +80,8 @@ else if(startingRoute[0] == "main"){
 }
 else if(startingRoute[0] == "settings"){
 	App = memo(() => {
-		const userId = useDb("userId", 0)
-		const email = useDb("email", "")
+		const userId: number = useDb("userId", 0)
+		const email: string = useDb("email", "")
 
 		if(userId == 0 || email == ""){
 			return null
@@ -96,8 +96,8 @@ else if(startingRoute[0] == "settings"){
 }
 else if(startingRoute[0] == "download"){
 	App = memo(() => {
-		const userId = useDb("userId", 0)
-		const email = useDb("email", "")
+		const userId: number = useDb("userId", 0)
+		const email: string = useDb("email", "")
 
 		if(userId == 0 || email == ""){
 			return null
@@ -118,8 +118,8 @@ else if(startingRoute[0] == "download"){
 }
 else if(startingRoute[0] == "upload"){
 	App = memo(() => {
-		const userId = useDb("userId", 0)
-		const email = useDb("email", "")
+		const userId: number = useDb("userId", 0)
+		const email: string = useDb("email", "")
 
 		if(userId == 0 || email == ""){
 			return null
@@ -140,8 +140,8 @@ else if(startingRoute[0] == "upload"){
 }
 else if(startingRoute[0] == "selectiveSync"){
 	App = memo(() => {
-		const userId = useDb("userId", 0)
-		const email = useDb("email", "")
+		const userId: number = useDb("userId", 0)
+		const email: string = useDb("email", "")
 
 		if(userId == 0 || email == ""){
 			return null
@@ -162,8 +162,8 @@ else if(startingRoute[0] == "selectiveSync"){
 }
 else if(startingRoute[0] == "cloud"){
 	App = memo(() => {
-		const userId = useDb("userId", 0)
-		const email = useDb("email", "")
+		const userId: number = useDb("userId", 0)
+		const email: string = useDb("email", "")
 
 		if(userId == 0 || email == ""){
 			return null

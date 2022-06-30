@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import React, { memo, useState, useEffect, useCallback, useRef } from "react"
 import useDarkMode from "../../lib/hooks/useDarkMode"
 import useLang from "../../lib/hooks/useLang"
@@ -20,43 +22,43 @@ import useIsOnline from "../../lib/hooks/useIsOnline"
 const log = window.require("electron-log")
 const { ipcRenderer } = window.require("electron")
 
-const MainWindow = memo(({ userId, email, windowId }) => {
-    const darkMode = useDarkMode()
-    const lang = useLang()
-    const platform = usePlatform()
-    const isOnline = useIsOnline()
+const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: string, windowId: string }) => {
+    const darkMode: boolean = useDarkMode()
+    const lang: string = useLang()
+    const platform: "windows" | "linux" | "mac" = usePlatform()
+    const isOnline: boolean = useIsOnline()
 
-    const [currentUploads, setCurrentUploads] = useState({})
-    const [currentDownloads, setCurrentDownloads] = useState({})
-    const [doneTasks, setDoneTasks] = useState([])
-    const [runningTasks, setRunningTasks] = useState([])
-    const [activity, setActivity] = useState([])
-    const syncLocations = useDb("syncLocations:" + userId, [])
+    const [currentUploads, setCurrentUploads] = useState<any>({})
+    const [currentDownloads, setCurrentDownloads] = useState<any>({})
+    const [doneTasks, setDoneTasks] = useState<any>([])
+    const [runningTasks, setRunningTasks] = useState<any>([])
+    const [activity, setActivity] = useState<any>([])
+    const syncLocations: [] = useDb("syncLocations:" + userId, [])
     const paused = useDb("paused", false)
-    const [totalRemaining, setTotalRemaining] = useState(0)
-    const [acquiringLock, setAcquiringLock] = useState(false)
+    const [totalRemaining, setTotalRemaining] = useState<number>(0)
+    const [acquiringLock, setAcquiringLock] = useState<boolean>(false)
     
-    const acquiringLockTimeout = useRef(undefined)
-    const bytesSent = useRef(0)
-    const allBytes = useRef(0)
-    const progressStarted = useRef(-1)
+    const acquiringLockTimeout = useRef<any>(undefined)
+    const bytesSent = useRef<number>(0)
+    const allBytes = useRef<number>(0)
+    const progressStarted = useRef<number>(-1)
 
-    const calcSpeed = useCallback((now, started, bytes) => {
+    const calcSpeed = useCallback((now: number, started: number, bytes: number): number => {
         now = new Date().getTime() - 1000
 
-        const secondsDiff = ((now - started) / 1000)
-        const bps = Math.floor((bytes / secondsDiff) * speedMultiplier)
+        const secondsDiff: number = ((now - started) / 1000)
+        const bps: number = Math.floor((bytes / secondsDiff) * speedMultiplier)
 
         return bps > 0 ? bps : 0
-    })
+    }, [])
 
-    const calcTimeLeft = useCallback((loadedBytes, totalBytes, started) => {
-        const elapsed = (new Date().getTime() - started)
-        const speed = (loadedBytes / (elapsed / 1000))
-        const remaining = ((totalBytes - loadedBytes) / speed)
+    const calcTimeLeft = useCallback((loadedBytes: number, totalBytes: number, started: number) => {
+        const elapsed: number = (new Date().getTime() - started)
+        const speed: number = (loadedBytes / (elapsed / 1000))
+        const remaining: number = ((totalBytes - loadedBytes) / speed)
 
         return remaining > 0 ? remaining : 0
-    })
+    }, [])
 
     const setDoneTasksThrottled = useCallback(throttle(({ doneTasks }) => {
         if(doneTasks.length > 0){
@@ -66,26 +68,26 @@ const MainWindow = memo(({ userId, email, windowId }) => {
 
     const throttleActivityUpdate = useCallback(throttle(({ doneTasks, runningTasks, currentUploads, currentDownloads }) => {
         setActivity([
-            ...Object.keys(currentUploads).map(key => ({
+            ...Object.keys(currentUploads).map((key: string) => ({
                 type: "uploadToRemote",
                 realtime: true,
                 task: currentUploads[key],
                 location: currentUploads[key].location,
                 timestamp: currentUploads[key].timestamp
             })),
-            ...Object.keys(currentDownloads).map(key => ({
+            ...Object.keys(currentDownloads).map((key: string) => ({
                 type: "downloadFromRemote",
                 realtime: true,
                 task: currentDownloads[key],
                 location: currentDownloads[key].location,
                 timestamp: currentDownloads[key].timestamp
             })),
-            ...runningTasks.map(task => ({
+            ...runningTasks.map((task: any) => ({
                 ...task,
                 running: true,
                 timestamp: task.timestamp
             })), 
-            ...doneTasks.map(task => ({
+            ...doneTasks.map((task: any) => ({
                 ...task,
                 done: true,
                 timestamp: task.timestamp
