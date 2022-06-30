@@ -98,6 +98,7 @@
 		"concurrently": "^5.3.0",
 		"electron": "^19.0.3",
 		"electron-builder": "^22.14.13",
+		"electron-icon-builder": "^2.0.1",
 		"electron-notarize": "^1.2.1",
 		"electron-rebuild": "^3.2.7",
 		"electronmon": "^1.1.2",

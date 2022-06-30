@@ -1,3 +1,5 @@
+process.noAsar = true
+
 const { app, BrowserWindow, powerMonitor, powerSaveBlocker, Menu } = require("electron")
 const { createWindows } = require("./lib/windows")
 const log = require("electron-log")

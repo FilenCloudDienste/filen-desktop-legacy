@@ -6,10 +6,10 @@ const shared = require("../shared")
 const trayMenu = require("../trayMenu")
 const is = require("electron-is")
 
-const TRAY_ICON_NORMAL = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/normal" + (is.macOS() ? "Template" : "") + "@2x.png"))
-const TRAY_ICON_SYNC = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/sync" + (is.macOS() ? "Template" : "") + "@2x.png"))
-const TRAY_ICON_PAUSED = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/paused" + (is.macOS() ? "Template" : "") + "@2x.png"))
-const TRAY_ICON_ISSUE = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/issue" + (is.macOS() ? "Template" : "") + "@2x.png"))
+const TRAY_ICON_NORMAL = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/normal@2x.png"))
+const TRAY_ICON_SYNC = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/sync@2x.png"))
+const TRAY_ICON_PAUSED = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/pause@2x.png"))
+const TRAY_ICON_ISSUE = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/issue@2x.png"))
 
 const toggleMainWindow = () => {
     try{

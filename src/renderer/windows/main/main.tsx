@@ -52,7 +52,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
         return bps > 0 ? bps : 0
     }, [])
 
-    const calcTimeLeft = useCallback((loadedBytes: number, totalBytes: number, started: number) => {
+    const calcTimeLeft = useCallback((loadedBytes: number, totalBytes: number, started: number): number => {
         const elapsed: number = (new Date().getTime() - started)
         const speed: number = (loadedBytes / (elapsed / 1000))
         const remaining: number = ((totalBytes - loadedBytes) / speed)
