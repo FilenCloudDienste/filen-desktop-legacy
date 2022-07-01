@@ -4,12 +4,25 @@ import { AiOutlineSync } from "react-icons/ai"
 import ipc from "../../lib/ipc"
 import colors from "../../styles/colors"
 import Item from "../Item"
+// @ts-ignore
 import { List } from "react-virtualized"
 import isEqual from "react-fast-compare"
 import { i18n } from "../../lib/i18n"
 
-export default class MainList extends React.Component {
-    shouldComponentUpdate(nextProps){
+interface Props {
+    userId: number,
+    email: string,
+    platform: string,
+    darkMode: boolean,
+    lang: string,
+    activity: any,
+    paused: boolean,
+    syncLocations: any,
+    isOnline: boolean
+}
+
+export default class MainList extends React.Component<Props> {
+    shouldComponentUpdate(nextProps: Props){
         return !isEqual(nextProps, this.props)
     }
 
@@ -37,7 +50,7 @@ export default class MainList extends React.Component {
                                         rowCount={activity.length}
                                         rowHeight={47}
                                         estimatedRowSize={activity.length * 47}
-                                        rowRenderer={({ index, key, style }) => {
+                                        rowRenderer={({ index, key, style }: { index: number, key: string, style: any }) => {
                                             const task = activity[index]
 
                                             return <Item key={key + ":" + JSON.stringify(task)} task={task} style={style} lang={lang} userId={userId} platform={platform} darkMode={darkMode} paused={paused} isOnline={isOnline} />

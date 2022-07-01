@@ -4,8 +4,16 @@ import { BsWifiOff } from "react-icons/bs"
 import useIsOnline from "../../lib/hooks/useIsOnline"
 import { i18n } from "../../lib/i18n"
 
-const IsOnlineBottomToast = memo(({ userId, email, lang, darkMode, platform }) => {
-    const isOnline = useIsOnline()
+interface Props {
+    userId: number,
+    email: string,
+    lang: string,
+    darkMode: boolean,
+    platform: string
+}
+
+const IsOnlineBottomToast = memo(({ userId, email, lang, darkMode, platform }: Props) => {
+    const isOnline: boolean = useIsOnline()
 
     if(isOnline){
         return null

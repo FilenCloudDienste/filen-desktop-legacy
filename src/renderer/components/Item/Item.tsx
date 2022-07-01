@@ -13,20 +13,31 @@ const pathModule = window.require("path")
 const { shell } = window.require("electron")
 const log = window.require("electron-log")
 
+interface Props {
+    task: any,
+    style: any,
+    userId: number,
+    platform: string,
+    darkMode: boolean,
+    paused: boolean,
+    lang: string,
+    isOnline: boolean
+}
+
 /*
 task.realtime !== "undefined" -> active upload/download
 task.running !== "undefined" -> active move/rename/delete
 task.done !== "undefined" -> done task
 */
 
-const Item = memo(({ itemKey, task, style, userId, platform, darkMode, paused, lang, isOnline }) => {
-    const itemName = useRef(pathModule.basename(task.task.path)).current
-    const timeSinceInterval = useRef(undefined)
-    const itemAbsolutePath = useRef(pathModule.normalize(task.location.local + "/" + task.task.path)).current
-    const itemIconCacheKey = useRef("fileIcon:" + itemAbsolutePath).current
-    const [hovering, setHovering] = useState(false)
-    const [itemTimeSince, setItemTimeSince] = useState(timeSince(typeof task.timestamp == "number" ? task.timestamp : new Date().getTime()))
-    const [itemIcon, setItemIcon] = useState(task.task.type == "folder" ? "folder" : (memoryCache.has(itemIconCacheKey) ? memoryCache.get(itemIconCacheKey) : undefined))
+const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOnline }: Props) => {
+    const itemName: string = useRef(pathModule.basename(task.task.path)).current
+    const timeSinceInterval = useRef<any>(undefined)
+    const itemAbsolutePath: string = useRef(pathModule.normalize(task.location.local + "/" + task.task.path)).current
+    const itemIconCacheKey: string = useRef("fileIcon:" + itemAbsolutePath).current
+    const [hovering, setHovering] = useState<boolean>(false)
+    const [itemTimeSince, setItemTimeSince] = useState<string>(timeSince(typeof task.timestamp == "number" ? task.timestamp : new Date().getTime()))
+    const [itemIcon, setItemIcon] = useState<any>(task.task.type == "folder" ? "folder" : (memoryCache.has(itemIconCacheKey) ? memoryCache.get(itemIconCacheKey) : undefined))
 
     const getFileIcon = useCallback(() => {
         if(task.task.type == "file" && typeof task.location !== "undefined" && typeof task.location.local !== "undefined"){
@@ -56,7 +67,7 @@ const Item = memo(({ itemKey, task, style, userId, platform, darkMode, paused, l
         timeSinceInterval.current = setInterval(() => {
             setItemTimeSince(timeSince(typeof task.timestamp == "number" ? task.timestamp : new Date().getTime()))
         }, 1000)
-    })
+    }, [])
 
     useEffect(() => {
         startTimeSinceInterval()
@@ -124,7 +135,8 @@ const Item = memo(({ itemKey, task, style, userId, platform, darkMode, paused, l
                         ) : (
                             <Flex>
                                 <Spinner
-                                    size={24}
+                                    width="24px"
+                                    height="24px"
                                     color={colors(platform, darkMode, "textPrimary")}
                                 />
                             </Flex>

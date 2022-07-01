@@ -14,10 +14,21 @@ import { i18n } from "../../lib/i18n"
 
 const log = window.require("electron-log")
 
-const MainHeader = memo(({ userId, email, platform, darkMode, lang, doneTasks, currentUploads, currentDownloads }) => {
-    const paused = useDb("paused")
-    const syncIssues = useDb("syncIssues")
-    const [userInfo, setUserInfo] = useState(undefined)
+interface Props {
+    userId: number,
+    email: string,
+    platform: string,
+    darkMode: boolean,
+    lang: string,
+    currentUploads: any,
+    currentDownloads: any,
+    doneTasks: any
+}
+
+const MainHeader = memo(({ userId, email, platform, darkMode, lang, doneTasks, currentUploads, currentDownloads }: Props) => {
+    const paused: boolean = useDb("paused", false)
+    const syncIssues: any = useDb("syncIssues", [])
+    const [userInfo, setUserInfo] = useState<any>(undefined)
 
     const updateUserUsage = useCallback(throttle(() => {
         db.get("apiKey").then((apiKey) => {
@@ -51,6 +62,7 @@ const MainHeader = memo(({ userId, email, platform, darkMode, lang, doneTasks, c
             paddingBottom="10px" 
             borderBottom={"1px solid " + colors(platform, darkMode, "borderPrimary")} 
             style={{
+                // @ts-ignore
                 WebkitAppRegion: platform == "linux" ? "drag" : "no-drag"
             }}
         >

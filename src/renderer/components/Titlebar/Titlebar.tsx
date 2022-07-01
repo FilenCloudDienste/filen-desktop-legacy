@@ -5,13 +5,21 @@ import { BsDash } from "react-icons/bs"
 import { IoMdClose } from "react-icons/io"
 import ipc from "../../lib/ipc"
 
-const Titlebar = memo(({ darkMode, lang, platform, title }) => {
-    const [hoveringExit, setHoveringExit] = useState(false)
-    const currentWindow = useRef(window.location.hash.split("#")[1]).current
+interface Props {
+    darkMode: boolean,
+    lang: string,
+    platform: string,
+    title: string
+}
+
+const Titlebar = memo(({ darkMode, lang, platform, title }: Props) => {
+    const [hoveringExit, setHoveringExit] = useState<boolean>(false)
+    const currentWindow: string = useRef(window.location.hash.split("#")[1]).current
 
     return (
         <Flex
             style={{
+                // @ts-ignore
                 WebkitAppRegion: "drag",
                 width: "99.75%",
                 backgroundColor: ((platform == "linux" && currentWindow == "main") || (currentWindow == "cloud" && platform == "mac")) ? "transparent" : colors(platform, darkMode, "titlebarBackgroundPrimary"),
@@ -32,6 +40,7 @@ const Titlebar = memo(({ darkMode, lang, platform, title }) => {
                         right={0}
                         flexDirection="row"
                         style={{
+                            // @ts-ignore
                             WebkitAppRegion: "no-drag"
                         }}
                         zIndex={1000}

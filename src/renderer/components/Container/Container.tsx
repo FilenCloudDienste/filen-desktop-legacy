@@ -2,7 +2,14 @@ import React, { memo } from "react"
 import { Box } from "@chakra-ui/react"
 import colors from "../../styles/colors"
 
-const Container = memo(({ darkMode, lang, platform, children }) => {
+interface Props {
+    darkMode: boolean,
+    lang: string,
+    platform: string,
+    children: React.ReactNode
+}
+
+const Container = memo(({ darkMode, lang, platform, children }: Props) => {
     return (
         <Box
             backgroundColor={colors(platform, darkMode, "backgroundPrimary")}

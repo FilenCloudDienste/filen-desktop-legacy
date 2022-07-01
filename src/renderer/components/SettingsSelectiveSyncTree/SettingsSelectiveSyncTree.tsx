@@ -8,7 +8,24 @@ import { BsFileEarmarkFill } from "react-icons/bs"
 
 const log = window.require("electron-log")
 
-const TreeItem = memo(({ darkMode, lang, platform, item, location, excluded }) => {
+interface TreeItemProps {
+    darkMode: boolean,
+    lang: string,
+    platform: string,
+    item: any,
+    location: any,
+    excluded: any
+}
+
+interface TreeProps {
+    darkMode: boolean,
+    lang: string,
+    platform: string,
+    data: any
+    location: any
+}
+
+const TreeItem = memo(({ darkMode, lang, platform, item, location, excluded }: TreeItemProps) => {
     const [isOpen, setIsOpen] = useState(false)
 
     const isItemExcluded = useCallback(() => {
@@ -63,7 +80,7 @@ const TreeItem = memo(({ darkMode, lang, platform, item, location, excluded }) =
         catch(e){
             log.error(e)
         }
-    })
+    }, [])
 
     const onToggleOpen = useCallback(() => {
         if(item.children.length == 0){
@@ -71,7 +88,7 @@ const TreeItem = memo(({ darkMode, lang, platform, item, location, excluded }) =
         }
 
         setIsOpen(!isOpen)
-    })
+    }, [])
 
     return (
         <Box width="100%" height="auto" key={item.path} cursor="default">
@@ -119,10 +136,10 @@ const TreeItem = memo(({ darkMode, lang, platform, item, location, excluded }) =
     )
 })
 
-const Tree = memo(({ darkMode, lang, platform, data, location }) => {
-    const excluded = useDb("selectiveSync:remote:" + location.uuid, {})
+const Tree = memo(({ darkMode, lang, platform, data, location }: TreeProps) => {
+    const excluded: any = useDb("selectiveSync:remote:" + location.uuid, {})
 
-    return data.map(item => <TreeItem darkMode={darkMode} lang={lang} platform={platform} key={item.path} item={item} location={location} excluded={excluded} />)
+    return data.map((item: any) => <TreeItem darkMode={darkMode} lang={lang} platform={platform} key={item.path} item={item} location={location} excluded={excluded} />)
 })
 
 export default Tree

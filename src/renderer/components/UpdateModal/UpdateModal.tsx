@@ -5,52 +5,56 @@ import useIsOnline from "../../lib/hooks/useIsOnline"
 import { apiRequest } from "../../lib/api"
 import { compareVersions } from "../../lib/helpers"
 import colors from "../../styles/colors"
+// @ts-ignore
 import DarkLogo from "../../../../src/assets/images/dark_logo.png"
+// @ts-ignore
 import LightLogo from "../../../../src/assets/images/light_logo.png"
 import ipc from "../../lib/ipc"
 
 const log = window.require("electron-log")
 const { shell } = window.require("electron")
 
-const UpdateModal = memo(({ lang, darkMode, platform }) => {
+const UpdateModal = memo(({ lang, darkMode, platform }: { lang: string, darkMode: boolean, platform: string }) => {
     const isOnline = useIsOnline()
     const [showModal, setShowModal] = useState(false)
     const currentVersion = useRef("100")
     const closed = useRef(false)
 
-    const isUpdateAvailable = useCallback(async () => {
-        if(closed.current){
-            return false
-        }
-
-        if(!isOnline){
-            return setTimeout(isUpdateAvailable, 5000)
-        }
-
-        try{
-            const response = await apiRequest({
-                method: "POST",
-                endpoint: "/v1/currentVersions",
-                data: {
-                    platform: "desktop"
-                },
-                timeout: 60000
-            })
-
-            if(!response.status){
-                return log.error(response.message)
+    const isUpdateAvailable = useCallback(() => {
+        (async () => {
+            if(closed.current){
+                return false
             }
-
-            if(compareVersions(currentVersion.current, response.data.desktop) == "update" && !closed.current){
-                return setShowModal(true)
+    
+            if(!isOnline){
+                return setTimeout(isUpdateAvailable, 5000)
             }
-        }
-        catch(e){
-            log.error(e)
-        }
-
-        return setTimeout(isUpdateAvailable, 60000)
-    }) 
+    
+            try{
+                const response = await apiRequest({
+                    method: "POST",
+                    endpoint: "/v1/currentVersions",
+                    data: {
+                        platform: "desktop"
+                    },
+                    timeout: 60000
+                })
+    
+                if(!response.status){
+                    return log.error(response.message)
+                }
+    
+                if(compareVersions(currentVersion.current, response.data.desktop) == "update" && !closed.current){
+                    return setShowModal(true)
+                }
+            }
+            catch(e){
+                log.error(e)
+            }
+    
+            return setTimeout(isUpdateAvailable, 60000)
+        })()
+    }, []) 
     
     useEffect(() => {
         isUpdateAvailable()
@@ -70,8 +74,7 @@ const UpdateModal = memo(({ lang, darkMode, platform }) => {
                 borderRadius="10px"
             >
                 <ModalCloseButton 
-                    color={colors(platform, darkMode, "textPrimary")} 
-                    _focus={{ _focus: false }} 
+                    color={colors(platform, darkMode, "textPrimary")}
                     _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }}
                     onClick={() => closed.current = true}
                 />

@@ -11,8 +11,16 @@ import { RiFolderUploadLine } from "react-icons/ri"
 
 const { shell } = window.require("electron")
 
-export default class MainHeaderMenu extends React.Component {
-    shouldComponentUpdate(nextProps){
+interface Props {
+    userId: number,
+    email: string,
+    platform: string,
+    darkMode: boolean,
+    lang: string
+}
+
+export default class MainHeaderMenu extends React.Component<Props> {
+    shouldComponentUpdate(nextProps: any){
         if(nextProps.darkMode !== this.props.darkMode || nextProps.lang !== this.props.lang){
             return true
         }
@@ -36,7 +44,7 @@ export default class MainHeaderMenu extends React.Component {
                     backgroundColor: colors(platform, darkMode, "backgroundSecondary")
                 }}
             >
-                <Menu backgroundColor={colors(platform, darkMode, "backgroundPrimary")}>
+                <Menu>
                     <MenuButton
                         as={forwardRef((props, ref) => (
                             <Flex ref={ref} {...props}>

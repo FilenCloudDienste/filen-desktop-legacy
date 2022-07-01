@@ -6,13 +6,43 @@ import colors from "../../styles/colors"
 import isEqual from "react-fast-compare"
 import { i18n } from "../../lib/i18n"
 
-export default class MainFooter extends React.Component {
-    shouldComponentUpdate(nextProps){
+interface Props {
+    userId?: number,
+    email?: string,
+    platform?: string,
+    darkMode?: boolean,
+    lang?: string,
+    currentUploads?: any,
+    currentDownloads?: any,
+    paused?: boolean,
+    runningTasks?: any,
+    totalRemaining?: any,
+    runningSyncTasks?: any,
+    isOnline?: boolean,
+    acquiringLock?: boolean
+}
+
+export default class MainFooter extends React.Component<Props> {
+    shouldComponentUpdate(nextProps: any){
         return !isEqual(nextProps, this.props)
     }
 
     render(){
-        const { userId, email, platform, darkMode, lang, currentUploads, currentDownloads, paused, runningTasks, totalRemaining, runningSyncTasks, isOnline, acquiringLock } = this.props
+        const {
+            userId,
+            email,
+            platform,
+            darkMode,
+            lang,
+            currentUploads,
+            currentDownloads,
+            paused,
+            runningTasks,
+            totalRemaining,
+            runningSyncTasks,
+            isOnline,
+            acquiringLock
+        }: Props = this.props
 
         return (
             <Flex
