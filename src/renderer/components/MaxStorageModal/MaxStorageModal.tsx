@@ -9,7 +9,7 @@ const log = window.require("electron-log")
 const { shell } = window.require("electron")
 
 const MaxStorageModal = memo(({ lang, darkMode, platform }: { lang: string, darkMode: boolean, platform: string }) => {
-    const [showModal, setShowModal] = useState<boolean>(true)
+    const [showModal, setShowModal] = useState<boolean>(false)
     const maxStorageReached: boolean = useDb("maxStorageReached", false)
 
     useEffect(() => {
