@@ -1,4 +1,6 @@
-const de = {
+const de: {
+    [key: string]: string
+} = {
     loginEmailPlaceholder: "Email Adresse",
     loginPasswordPlaceholder: "Passwort",
     loginTwoFactorCodePlaceholder: "Two Factor Code",

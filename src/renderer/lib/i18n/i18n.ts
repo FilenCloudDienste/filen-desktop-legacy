@@ -1,12 +1,14 @@
 import en from "./lang/en"
 import de from "./lang/de"
 
-const translations = {
+const translations: {
+    [key: string]: any
+} = {
     en,
     de
 }
 
-export const i18n = (lang = "en", text, firstUpperCase = true, replaceFrom = [], replaceTo = []) => {
+export const i18n = (lang: string = "en", text: string, firstUpperCase: boolean = true, replaceFrom: string[] = [], replaceTo: string[] = []) => {
     if(typeof lang !== "string"){
         lang = "en"
     }

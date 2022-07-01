@@ -1,4 +1,6 @@
-const en = {
+const en: {
+    [key: string]: string
+} = {
     loginEmailPlaceholder: "Email address",
     loginPasswordPlaceholder: "Password",
     loginTwoFactorCodePlaceholder: "Two Factor Code",
