@@ -8,9 +8,9 @@ import useDb from "../../lib/hooks/useDb"
 const log = window.require("electron-log")
 const { shell } = window.require("electron")
 
-const MaxStorageModal = memo(({ lang, darkMode, platform }) => {
-    const [showModal, setShowModal] = useState(true)
-    const maxStorageReached = useDb("maxStorageReached", false)
+const MaxStorageModal = memo(({ lang, darkMode, platform }: { lang: string, darkMode: boolean, platform: string }) => {
+    const [showModal, setShowModal] = useState<boolean>(true)
+    const maxStorageReached: boolean = useDb("maxStorageReached", false)
 
     useEffect(() => {
         if(maxStorageReached){
@@ -33,8 +33,7 @@ const MaxStorageModal = memo(({ lang, darkMode, platform }) => {
                 borderRadius="10px"
             >
                 <ModalCloseButton 
-                    color={colors(platform, darkMode, "textPrimary")} 
-                    _focus={{ _focus: false }} 
+                    color={colors(platform, darkMode, "textPrimary")}
                     _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }}
                 />
                 <ModalBody overflow="hidden">
