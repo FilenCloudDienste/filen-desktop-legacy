@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import useDb from "../useDb"
 
-const useSyncLocations = () => {
+// @todo: add typings for sync locations
+
+const useSyncLocations = (): any => {
     let asyncUserId = 0
-    const [data, setData] = useState([])
-    const syncLocations = useDb("syncLocations:" + asyncUserId, [])
-    const userId = useDb("userId", 0)
+    const [data, setData] = useState<any>([])
+    const syncLocations: any = useDb("syncLocations:" + asyncUserId, [])
+    const userId = useDb<number>("userId", 0)
 
 	useEffect(() => {
 		if(typeof userId == "number" && userId !== 0){

@@ -1,14 +1,14 @@
-import React, { useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import eventListener from "../../eventListener"
 import db from "../../db"
 
 const log = window.require("electron-log")
 
-const useDb = (dbKey, defaultValue) => {
-    const [data, setData] = useState(defaultValue)
+const useDb = (dbKey: string, defaultValue: any): any => {
+    const [data, setData] = useState<any>(defaultValue)
 
 	useEffect(() => {
-		const setListener = eventListener.on("dbSet", ({ key, value }) => {
+		const setListener = eventListener.on("dbSet", ({ key, value }: { key: string, value: any }) => {
 			if(key !== dbKey){
 				return false
 			}
@@ -20,7 +20,7 @@ const useDb = (dbKey, defaultValue) => {
 			return setData(defaultValue)
 		})
 
-		const removeListener = eventListener.on("dbRemove", ({ key }) => {
+		const removeListener = eventListener.on("dbRemove", ({ key }: { key: string }) => {
 			if(key !== dbKey){
 				return false
 			}
@@ -28,7 +28,7 @@ const useDb = (dbKey, defaultValue) => {
 			return setData(defaultValue)
 		})
 
-		db.get(dbKey).then((value) => {
+		db.get(dbKey).then((value: any) => {
 			if(!value){
 				return setData(defaultValue)
 			}
