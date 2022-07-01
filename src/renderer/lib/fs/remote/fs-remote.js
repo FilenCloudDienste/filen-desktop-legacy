@@ -632,7 +632,7 @@ export const rm = (type, uuid) => {
 export const move = (type, task, location, remoteTreeNow) => {
     return new Promise((resolve, reject) => {
         findOrCreateParentDirectory(task.to, location.remoteUUID, remoteTreeNow).then((parent) => {
-            (type == "file" ? moveFile({
+            const promise = type == "file" ? moveFile({
                 file: {
                     uuid: task.item.uuid,
                     name: task.item.metadata.name,
@@ -648,7 +648,9 @@ export const move = (type, task, location, remoteTreeNow) => {
                     name: task.item.name
                 },
                 parent
-            })).then(() => {
+            })
+
+            promise.then(() => {
                 return resolve(true)
             }).catch(reject)
         }).catch(reject)
@@ -662,8 +664,8 @@ export const rename = (type, task) => {
         if(newName.length == 0){
             return reject(new Error("Invalid name"))
         }
-        
-        (type == "file" ? renameFile({
+
+        const promise = type == "file" ? renameFile({
             file: {
                 uuid: task.item.uuid,
                 name: newName,
@@ -679,7 +681,9 @@ export const rename = (type, task) => {
                 name: newName
             },
             name: newName
-        })).then(() => {
+        })
+        
+        promise.then(() => {
             return resolve(true)
         }).catch(reject)
     })

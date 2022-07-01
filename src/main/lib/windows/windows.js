@@ -65,10 +65,6 @@ const createMain = () => {
 
             const windowTray = tray.createTray()
 
-            if(is.macOS() || is.windows()){
-                tray.positionWindowAtTray(window, windowTray)
-            }
-
             window.loadURL(STATIC_PATH + "#main")
 
             if(isDev){
@@ -79,24 +75,32 @@ const createMain = () => {
 				shared.remove("MAIN_WINDOW")
 			})
 
-			window.on("blur", () => {
-                if(is.linux()){
-                    return false
-                }
+			window.once("show", () => {
+                tray.positionWindowAtTray(window, windowTray)
+                
+                setTimeout(() => {
+                    window.on("blur", () => {
+                        if(is.linux()){
+                            return false
+                        }
+        
+                        try{
+                            window.hide()
+                        }
+                        catch(e){
+                            log.error(e)
+                        }
+                    })
+                }, 3000)
 
-				try{
-					window.hide()
-				}
-				catch(e){
-					log.error(e)
-				}
-			})
-
-			window.once("show", () => setTimeout(() => window.focus(), 250))
+                setTimeout(() => window.focus(), 250)
+            })
 
             ipcMain.once("window-ready", (_, id) => {
                 if(id == windowId){
                     window.show()
+
+                    tray.positionWindowAtTray(window, windowTray)
                 }
             })
 

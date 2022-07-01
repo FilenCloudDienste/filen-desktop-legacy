@@ -168,7 +168,7 @@ export const directoryTree = (path, skipCache = false, location) => {
                     }
                 }
             }).on("warn", (warn) => {
-                return reject(warn)
+                log.error(warn)
             }).on("error", (err) => {
                 return reject(err)
             }).on("end", async () => {

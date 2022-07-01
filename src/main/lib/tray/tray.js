@@ -6,19 +6,32 @@ const shared = require("../shared")
 const trayMenu = require("../trayMenu")
 const is = require("electron-is")
 
-const TRAY_ICON_NORMAL = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/normal@2x.png"))
-const TRAY_ICON_SYNC = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/sync@2x.png"))
-const TRAY_ICON_PAUSED = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/pause@2x.png"))
-const TRAY_ICON_ISSUE = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/issue@2x.png"))
+const TRAY_ICON_NORMAL = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/normal@2x.png")).resize({ width: 16, height: 16 })
+const TRAY_ICON_SYNC = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/sync@2x.png")).resize({ width: 16, height: 16 })
+const TRAY_ICON_PAUSED = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/pause@2x.png")).resize({ width: 16, height: 16 })
+const TRAY_ICON_ISSUE = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/issue@2x.png")).resize({ width: 16, height: 16 })
+
+const positionWindow = () => {
+    if(is.linux()){
+        return true
+    }
+
+    try{
+        positionWindowAtTray(shared.get("MAIN_WINDOW"), shared.get("TRAY"))
+    }
+    catch(e){
+        log.error(e)
+    }
+
+    return true
+}
 
 const toggleMainWindow = () => {
     try{
         if(typeof shared.get("MAIN_WINDOW") !== "undefined"){
-            positionWindowAtTray(shared.get("MAIN_WINDOW"), shared.get("TRAY"))
+            positionWindow()
 
             shared.get("MAIN_WINDOW").show()
-
-            shared.get("MAIN_WINDOW").once("show", () => setTimeout(() => shared.get("MAIN_WINDOW").focus(), 250))
         }
     }
     catch(e){
@@ -152,5 +165,6 @@ module.exports = {
     TRAY_ICON_ISSUE,
     updateTrayIcon,
     updateTrayMenu,
-    updateTrayTooltip
+    updateTrayTooltip,
+    positionWindow
 }
