@@ -14,14 +14,8 @@ const log = window.require("electron-log")
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
 
-const isWorkerThread = true //window.location.href.indexOf("#worker") !== -1
-
-export const deriveKeyFromPassword = ({ password, salt, iterations, hash, bitLength, returnHex }) => {
+export const deriveKeyFromPassword = ({ password, salt, iterations, hash, bitLength, returnHex }: { password: string, salt: string, iterations: number, hash: string, bitLength: number, returnHex: boolean }): Promise<any> => {
     return new Promise(async (resolve, reject) => {
-        if(!isWorkerThread){
-            return reject(new Error("Crypto functions only available in worker environment"))
-        }
-
         const cacheKey = "deriveKeyFromPassword:" + password + ":" + salt + ":" + iterations + ":" + hash + ":" + bitLength + ":" + returnHex.toString()
 
         if(memoryCache.has(cacheKey)){
@@ -54,14 +48,10 @@ export const deriveKeyFromPassword = ({ password, salt, iterations, hash, bitLen
     })
 }
 
-export const generatePasswordAndMasterKeysBasedOnAuthVersion = ({ rawPassword, authVersion, salt }) => {
+export const generatePasswordAndMasterKeysBasedOnAuthVersion = ({ rawPassword, authVersion, salt }: { rawPassword: string, authVersion: number, salt: string }): Promise<{ derivedMasterKeys: string, derivedPassword: string }> => {
     return new Promise(async (resolve, reject) => {
-        if(!isWorkerThread){
-            return reject(new Error("Crypto functions only available in worker environment"))
-        }
-
         let derivedPassword = ""
-        let derivedMasterKeys = undefined
+        let derivedMasterKeys: any = undefined
 
         if(authVersion == 1){
             try{
@@ -102,28 +92,16 @@ export const generatePasswordAndMasterKeysBasedOnAuthVersion = ({ rawPassword, a
     })
 }
 
-export const hashPassword = (password) => { //old and deprecated, no longer in use
-    if(!isWorkerThread){
-        throw new Error("Crypto functions only available in worker environment")
-    }
-
+export const hashPassword = (password: string): string => { //old and deprecated, no longer in use
     return sha512(sha384(sha256(sha1(password)))) + sha512(md5(md4(md2(password))))
 }
 
-export const hashFn = (str) => {
-    if(!isWorkerThread){
-        throw new Error("Crypto functions only available in worker environment")
-    }
-
+export const hashFn = (str: string): string => {
     return sha1(sha512(str))
 }
 
-export const decryptMetadata = (data, key) => {
+export const decryptMetadata = (data: string, key: any): Promise<string> => {
     return new Promise(async (resolve, reject) => {
-        if(!isWorkerThread){
-            return reject(new Error("Crypto functions only available in worker environment"))
-        }
-
         const cacheKey = "decryptMetadata:" + data.toString() + ":" + key
 
         if(memoryCache.has(cacheKey)){
@@ -176,22 +154,22 @@ export const decryptMetadata = (data, key) => {
     })
 }
 
-export const decryptFolderName = (metadata, masterKeys) => {
+export const decryptFolderName = (metadata: string, masterKeys: string[]): Promise<string> => {
     return new Promise(async (resolve, reject) => {
-        if(!isWorkerThread){
-            return reject(new Error("Crypto functions only available in worker environment"))
-        }
-
         if(metadata.toLowerCase() == "default"){
             return resolve("Default")
         }
 
         if(!Array.isArray(masterKeys)){
-            return resolve(new Error("Master keys not array"))
+            log.error(new Error("Master keys not array"))
+
+            return resolve("")
         }
 
         if(masterKeys.length == 0){
-            return resolve(new Error("Master keys empty"))
+            log.error(new Error("Master keys empty"))
+
+            return resolve("")
         }
 
         const cacheKey = "decryptFolderName:" + metadata.toString()
@@ -231,12 +209,8 @@ export const decryptFolderName = (metadata, masterKeys) => {
     })
 }
 
-export const encryptMetadata = (data, key) => {
+export const encryptMetadata = (data: string, key: any): Promise<string> => {
     return new Promise(async (resolve, reject) => {
-        if(!isWorkerThread){
-            return reject(new Error("Crypto functions only available in worker environment"))
-        }
-
         try{
 			key = await deriveKeyFromPassword({ password: key, salt: key, iterations: 1, hash: "SHA-512", bitLength: 256, returnHex: false }) //transform variable length input key to 256 bit (32 bytes) as fast as possible since it's already derived and safe
 
@@ -258,12 +232,8 @@ export const encryptMetadata = (data, key) => {
     })
 }
 
-export const encryptData = (data, key) => {
+export const encryptData = (data: any, key: string): Promise<string | Buffer> => {
     return new Promise(async (resolve, reject) => {
-        if(!isWorkerThread){
-            return reject(new Error("Crypto functions only available in worker environment"))
-        }
-
         if(typeof data == "undefined"){
             return resolve("")
         }
@@ -294,12 +264,8 @@ export const encryptData = (data, key) => {
     })
 }
 
-export const decryptData = (data, key, version) => {
+export const decryptData = (data: any, key: string, version: number): Promise<Uint8Array> => {
     return new Promise(async (resolve, reject) => {
-        if(!isWorkerThread){
-            return reject(new Error("Crypto functions only available in worker environment"))
-        }
-
         if(version == 1){
             try{
                 const sliced = convertArrayBufferToBinaryString(new Uint8Array(data.slice(0, 16)))
@@ -348,12 +314,8 @@ export const decryptData = (data, key, version) => {
     })
 }
 
-export const decryptFileMetadata = (metadata, masterKeys) => {
+export const decryptFileMetadata = (metadata: string, masterKeys: string[]): Promise<any> => {
     return new Promise(async (resolve, reject) => {
-        if(!isWorkerThread){
-            return reject(new Error("Crypto functions only available in worker environment"))
-        }
-
         const cacheKey = "decryptFileMetadata:" + metadata
 
         if(memoryCache.has(cacheKey)){
@@ -407,12 +369,8 @@ export const decryptFileMetadata = (metadata, masterKeys) => {
     })
 }
 
-export const decryptFolderLinkKey = (metadata, masterKeys) => {
+export const decryptFolderLinkKey = (metadata: string, masterKeys: string[]): Promise<string> => {
     return new Promise(async (resolve, reject) => {
-        if(!isWorkerThread){
-            return reject(new Error("Crypto functions only available in worker environment"))
-        }
-
         const cacheKey = "decryptFolderLinkKey:" + metadata
 
         if(memoryCache.has(cacheKey)){
@@ -448,12 +406,8 @@ export const decryptFolderLinkKey = (metadata, masterKeys) => {
     })
 }
 
-export const decryptFolderNameLink = (metadata, linkKey) => {
+export const decryptFolderNameLink = (metadata: string, linkKey: string): Promise<string> => {
     return new Promise(async (resolve, reject) => {
-        if(!isWorkerThread){
-            return reject(new Error("Crypto functions only available in worker environment"))
-        }
-
         if(metadata.toLowerCase() == "default"){
             return resolve("Default")
         }
@@ -491,12 +445,8 @@ export const decryptFolderNameLink = (metadata, linkKey) => {
     })
 }
 
-export const decryptFileMetadataLink = (metadata, linkKey) => {
+export const decryptFileMetadataLink = (metadata: string, linkKey: string): Promise<any> => {
     return new Promise(async (resolve, reject) => {
-        if(!isWorkerThread){
-            return reject(new Error("Crypto functions only available in worker environment"))
-        }
-
         const cacheKey = "decryptFileMetadataLink:" + metadata
 
         if(memoryCache.has(cacheKey)){
@@ -546,12 +496,8 @@ export const decryptFileMetadataLink = (metadata, linkKey) => {
     })
 }
 
-export const decryptFolderNamePrivateKey = (metadata, privateKey) => {
+export const decryptFolderNamePrivateKey = (metadata: string, privateKey: any): Promise<string> => {
     return new Promise(async (resolve, reject) => {
-        if(!isWorkerThread){
-            return reject(new Error("Crypto functions only available in worker environment"))
-        }
-
         if(metadata.toLowerCase() == "default"){
             return resolve("Default")
         }
@@ -585,12 +531,8 @@ export const decryptFolderNamePrivateKey = (metadata, privateKey) => {
     })
 }
 
-export const decryptFileMetadataPrivateKey = (metadata, privateKey) => {
+export const decryptFileMetadataPrivateKey = (metadata: string, privateKey: any): Promise<any> => {
     return new Promise(async (resolve, reject) => {
-        if(!isWorkerThread){
-            return reject(new Error("Crypto functions only available in worker environment"))
-        }
-
         const cacheKey = "decryptFileMetadataPrivateKey:" + metadata
 
         if(memoryCache.has(cacheKey)){
@@ -640,12 +582,8 @@ export const decryptFileMetadataPrivateKey = (metadata, privateKey) => {
     })
 }
 
-export const encryptMetadataPublicKey = ({ data, publicKey }) => {
+export const encryptMetadataPublicKey = ({ data, publicKey }: { data: string, publicKey: string }): Promise<string> => {
     return new Promise((resolve, reject) => {
-        if(!isWorkerThread){
-            return reject(new Error("Crypto functions only available in worker environment"))
-        }
-
         window.crypto.subtle.importKey("spki", base64ToArrayBuffer(publicKey), {
             name: "RSA-OAEP",
             hash: "SHA-512",
@@ -659,7 +597,7 @@ export const encryptMetadataPublicKey = ({ data, publicKey }) => {
     })
 }
 
-export const generateKeypair = () => {
+export const generateKeypair = (): Promise<any> => {
     return new Promise((resolve, reject) => {
         window.crypto.subtle.generateKey({
             name: "RSA-OAEP",

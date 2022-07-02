@@ -4,7 +4,7 @@ import db from "../db"
 
 const log = window.require("electron-log")
 
-export const updateKeypair = ({ publicKey, privateKey }) => {
+export const updateKeypair = ({ publicKey, privateKey }: { publicKey: string, privateKey: string }) => {
     return new Promise((resolve, reject) => {
         Promise.all([
             db.get("apiKey"),
@@ -43,7 +43,7 @@ export const updateKeypair = ({ publicKey, privateKey }) => {
     })
 }
 
-export const setKeypair = ({ publicKey, privateKey }) => {
+export const setKeypair = ({ publicKey, privateKey }: { publicKey: string, privateKey: string }) => {
     return new Promise((resolve, reject) => {
         Promise.all([
             db.get("apiKey"),
@@ -221,7 +221,7 @@ export const updateKeys = () => {
                         return reject(new Error(response.message))
                     }
     
-                    let newMasterKeys = ""
+                    let newMasterKeys: any = ""
     
                     for(let i = 0; i < masterKeys.length; i++){
                         try{

@@ -14,6 +14,7 @@ import * as fsLocal from "../../lib/fs/local"
 import db from "../../lib/db"
 import { apiRequest, downloadChunk } from "../../lib/api"
 import { convertTimestampToMs, bpsToReadable, getTimeRemaining, Semaphore } from "../../lib/helpers"
+// @ts-ignore
 import { v4 as uuidv4 } from "uuid"
 import { maxDownloadThreads, maxConcurrentDownloads } from "../../lib/constants"
 import eventListener from "../../lib/eventListener"
@@ -28,13 +29,13 @@ const pathModule = window.require("path")
 const fs = window.require("fs-extra")
 const { shell, ipcRenderer } = window.require("electron")
 
-const FROM_ID = uuidv4()
-const params = new URLSearchParams(window.location.search)
-const passedArgs = typeof params.get("args") == "string" ? JSON.parse(Base64.decode(decodeURIComponent(params.get("args")))) : undefined
+const FROM_ID: string = uuidv4()
+const params: URLSearchParams = new URLSearchParams(window.location.search)
+const passedArgs = typeof params.get("args") == "string" ? JSON.parse(Base64.decode(decodeURIComponent(params.get("args") as string))) : undefined
 const downloadSemaphore = new Semaphore(maxConcurrentDownloads)
 const downloadThreadsSemaphore = new Semaphore(maxDownloadThreads)
 
-const downloadFile = (absolutePath, file) => {
+const downloadFile = (absolutePath: string, file: any) => {
     return new Promise((resolve, reject) => {
         try{
             var parentPath = pathModule.dirname(absolutePath)
@@ -68,7 +69,7 @@ const downloadFile = (absolutePath, file) => {
                 const fileChunks = file.chunks
                 let currentWriteIndex = 0
 
-                const downloadTask = (index) => {
+                const downloadTask = (index: number): Promise<any> => {
                     return new Promise((resolve, reject) => {
                         downloadChunk({
                             region: file.region,
@@ -87,14 +88,14 @@ const downloadFile = (absolutePath, file) => {
                     })
                 }
 
-                const writeChunk = (index, data) => {
+                const writeChunk = (index: number, data: any) => {
                     if(index !== currentWriteIndex){
                         return setTimeout(() => {
                             writeChunk(index, data)
                         }, 10)
                     }
 
-                    stream.write(data, (err) => {
+                    stream.write(data, (err: any) => {
                         if(err){
                             return reject(err)
                         }
@@ -113,7 +114,7 @@ const downloadFile = (absolutePath, file) => {
 
                         for(let i = 0; i < fileChunks; i++){
                             downloadThreadsSemaphore.acquire().then(() => {
-                                downloadTask(i).then(({ index, data }) => {
+                                downloadTask(i).then(({ index, data }: { index: number, data: any }) => {
                                     writeChunk(index, data)
 
                                     done += 1
@@ -147,7 +148,7 @@ const downloadFile = (absolutePath, file) => {
                     })
 
                     await new Promise((resolve, reject) => {
-                        stream.close((err) => {
+                        stream.close((err: any) => {
                             if(err){
                                 return reject(err)
                             }
@@ -165,7 +166,7 @@ const downloadFile = (absolutePath, file) => {
                 fsLocal.move(fileTmpPath, absolutePath).then(() => {
                     fs.utimes(absolutePath, new Date(convertTimestampToMs(file.metadata.lastModified)), new Date(convertTimestampToMs(file.metadata.lastModified))).then(() => {
                         fsLocal.checkLastModified(absolutePath).then(() => {
-                            fs.lstat(absolutePath).then((stat) => {
+                            fs.lstat(absolutePath).then((stat: any) => {
                                 if(stat.size <= 0){
                                     fsLocal.rm(absolutePath)
             
@@ -182,21 +183,21 @@ const downloadFile = (absolutePath, file) => {
     })
 }
 
-const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) => {
-    const [downloadPath, setDownloadPath] = useState("")
-    const [isDownloading, setIsDownloading] = useState(false)
-    const [isGettingTree, setIsGettingTree] = useState(false)
-    const [timeLeft, setTimeLeft] = useState(1)
-    const [speed, setSpeed] = useState(0)
-    const [percent, setPercent] = useState(0)
-    const [done, setDone] = useState(false)
-    const paused = useDb("paused", false)
+const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }: { userId: number, email: string, platform: string, darkMode: boolean, lang: string, args: any }) => {
+    const [downloadPath, setDownloadPath] = useState<string>("")
+    const [isDownloading, setIsDownloading] = useState<boolean>(false)
+    const [isGettingTree, setIsGettingTree] = useState<boolean>(false)
+    const [timeLeft, setTimeLeft] = useState<number>(1)
+    const [speed, setSpeed] = useState<number>(0)
+    const [percent, setPercent] = useState<number>(0)
+    const [done, setDone] = useState<boolean>(false)
+    const paused: boolean = useDb("paused", false)
 
-    const totalBytes = useRef(0)
-    const bytes = useRef(0)
-    const started = useRef(-1)
+    const totalBytes = useRef<number>(0)
+    const bytes = useRef<number>(0)
+    const started = useRef<number>(-1)
 
-    const startDownloading = useCallback(() => {
+    const startDownloading = () => {
         setIsGettingTree(true)
 
         Promise.all([
@@ -213,7 +214,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
                 }) : (args.linked ? ({
                     uuid: args.linkUUID,
                     parent: args.uuid,
-                    password: typeof password == "string" ? (args.password.length < 32 ? (await ipc.hashFn(args.password)) : args.password) : ""
+                    password: typeof args.password == "string" ? (args.password.length < 32 ? (await ipc.hashFn(args.password)) : args.password) : ""
                 }) : ({
                     apiKey,
                     uuid: args.uuid
@@ -257,8 +258,8 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
                     type: "folder"
                 })
 
-                const addedFolders = {}
-                const addedFiles = {}
+                const addedFolders: any = {}
+                const addedFiles: any = {}
 
                 for(let i = 0; i < response.data.folders.length; i++){
                     const { uuid, name: metadata, parent } = response.data.folders[i]
@@ -318,20 +319,20 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
                     }
                 }
 
-                const nest = (items, uuid = "base", currentPath = "", link = "parent") => {
-                    return items.filter((item) => item[link] == uuid).map((item) => ({ 
+                const nest = (items: any, uuid: string = "base", currentPath: string = "", link: string = "parent") => {
+                    return items.filter((item: any) => item[link] == uuid).map((item: any) => ({ 
                         ...item,
                         path: item.type == "folder" ? (currentPath + "/" + item.name) : (currentPath + "/" + item.metadata.name),
                         children: nest(items, item.uuid, item.type == "folder" ? (currentPath + "/" + item.name) : (currentPath + "/" + item.metadata.name), link)
                     }))
                 }
 
-                const tree = nest(treeItems)
-                let reading = 0
-                const folders = {}
-                const files = {}
+                const tree: any = nest(treeItems)
+                let reading: number = 0
+                const folders: any = {}
+                const files: any = {}
 
-                const iterateTree = (parent, callback) => {
+                const iterateTree = (parent: any, callback: any) => {
                     if(parent.type == "folder"){
                         folders[parent.path] = parent
                     }
@@ -357,11 +358,11 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
                 reading += 1
 
                 iterateTree(tree[0], () => {
-                    const newFiles = {}
-                    const newFolders = {}
+                    const newFiles: any = {}
+                    const newFolders: any = {}
 
                     for(const prop in files){
-                        const newProp = prop.split("/").slice(2).join("/")
+                        const newProp: string = prop.split("/").slice(2).join("/")
 
                         delete files[prop].children
 
@@ -374,7 +375,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
                     }
 
                     for(const prop in folders){
-                        const newProp = prop.split("/").slice(2).join("/")
+                        const newProp: string = prop.split("/").slice(2).join("/")
 
                         delete folders[prop].children
 
@@ -386,12 +387,12 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
                         }
                     }
 
-                    const obj = {
+                    const obj: any = {
                         files: newFiles,
                         folders: newFolders
                     }
 
-                    const baseDownloadPath = pathModule.normalize(downloadPath)
+                    const baseDownloadPath: string = pathModule.normalize(downloadPath)
 
                     Promise.all([
                         fs.access(pathModule.normalize(pathModule.join(baseDownloadPath, "..")), fs.constants.R_OK | fs.constants.W_OK),
@@ -418,7 +419,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
 
                                         foldersCreated += 1
                                     }
-                                    catch(e){
+                                    catch(e: any){
                                         log.error(e)
 
                                         showToast({ message: e.toString(), status: "error" })
@@ -428,7 +429,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
                                 }
 
                                 if(foldersCreated == Object.keys(obj.folders).length){
-                                    let filesDownloaded = 0
+                                    let filesDownloaded: number = 0
 
                                     try{
                                         await Promise.all([...Object.keys(obj.files).map(path => new Promise((resolve, reject) => {
@@ -445,7 +446,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
                                             }).catch(reject)
                                         }))])
                                     }
-                                    catch(e){
+                                    catch(e: any){
                                         log.error(e)
 
                                         showToast({ message: e.toString(), status: "error" })
@@ -461,7 +462,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
 
                                     log.error(new Error("Could not create needed folders: " + Object.keys(obj.folders).length + " -> " + foldersCreated))
                                 }
-                            }).catch((err) => {
+                            }).catch((err: any) => {
                                 setIsDownloading(false)
                                 setIsGettingTree(false)
 
@@ -469,7 +470,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
 
                                 log.error(err)
                             })
-                        }).catch((err) => {
+                        }).catch((err: any) => {
                             setIsDownloading(false)
                             setIsGettingTree(false)
 
@@ -477,7 +478,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
 
                             log.error(err)
                         })
-                    }).catch((err) => {
+                    }).catch((err: any) => {
                         setIsDownloading(false)
                         setIsGettingTree(false)
 
@@ -486,7 +487,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
                         log.error(err)
                     })
                 })
-            }).catch((err) => {
+            }).catch((err: any) => {
                 setIsDownloading(false)
                 setIsGettingTree(false)
 
@@ -494,7 +495,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
 
                 log.error(err)
             })
-        }).catch((err) => {
+        }).catch((err: any) => {
             setIsDownloading(false)
             setIsGettingTree(false)
 
@@ -502,9 +503,9 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
 
             log.error(err)
         })
-    })
+    }
 
-    const calcSpeed = (now, started, bytes) => {
+    const calcSpeed = (now: number, started: number, bytes: number) => {
         now = new Date().getTime() - 1000
 
         const secondsDiff = ((now - started) / 1000)
@@ -513,7 +514,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
         return bps > 0 ? bps : 0
     }
 
-    const calcTimeLeft = (loadedBytes, totalBytes, started) => {
+    const calcTimeLeft = (loadedBytes: number, totalBytes: number, started: number) => {
         const elapsed = (new Date().getTime() - started)
         const speed = (loadedBytes / (elapsed / 1000))
         const remaining = ((totalBytes - loadedBytes) / speed)
@@ -533,7 +534,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
     useEffect(() => {
         ipc.getAppPath("downloads").then((path) => setDownloadPath(pathModule.normalize(pathModule.join(path, args.name)))).catch(log.error)
 
-        const progressListener = eventListener.on("downloadProgressSeperate", (data) => {
+        const progressListener = eventListener.on("downloadProgressSeperate", (data: any) => {
             if(data.from == FROM_ID){
                 if(started.current == -1){
                     started.current = new Date().getTime()
@@ -716,7 +717,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
                                     flexDirection="column"
                                 >
                                     <Progress
-                                        value={percent > 100 ? 100 : percent.toFixed(2)}
+                                        value={!isNaN(percent) ? 0 : percent > 100 ? 100 : parseFloat(percent.toFixed(2))}
                                         height="5px"
                                         borderRadius="10px"
                                         colorScheme="blue"
@@ -800,12 +801,12 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
     )
 })
 
-const DownloadFile = memo(({ userId, email, platform, darkMode, lang, args }) => {
-    const [downloadPath, setDownloadPath] = useState("")
-    const [isDownloading, setIsDownloading] = useState(false)
-    const paused = useDb("paused", false)
+const DownloadFile = memo(({ userId, email, platform, darkMode, lang, args }: { userId: number, email: string, platform: string, darkMode: boolean, lang: string, args: any }) => {
+    const [downloadPath, setDownloadPath] = useState<string>("")
+    const [isDownloading, setIsDownloading] = useState<boolean>(false)
+    const paused: boolean = useDb("paused", false)
 
-    const startDownloading = useCallback(() => {
+    const startDownloading = () => {
         setIsDownloading(true)
 
         Promise.all([
@@ -815,22 +816,22 @@ const DownloadFile = memo(({ userId, email, platform, darkMode, lang, args }) =>
             fs.remove(downloadPath).then(() => {
                 downloadFile(downloadPath, args.file).then(() => {
                     setIsDownloading(false)
-                }).catch((err) => {
+                }).catch((err: any) => {
                     setIsDownloading(false)
 
                     log.error(err)
                 })
-            }).catch((err) => {
+            }).catch((err: any) => {
                 setIsDownloading(false)
 
                 log.error(err)
             })
-        }).catch((err) => {
+        }).catch((err: any) => {
             setIsDownloading(false)
 
             log.error(err)
         })
-    })
+    }
 
     useEffect(() => {
         ipc.getAppPath("downloads").then((path) => setDownloadPath(pathModule.normalize(pathModule.join(path, args.name)))).catch(log.error)
@@ -972,7 +973,7 @@ const DownloadFile = memo(({ userId, email, platform, darkMode, lang, args }) =>
     )
 })
 
-const DownloadWindow = memo(({ userId, email, windowId }) => {
+const DownloadWindow = memo(({ userId, email, windowId }: { userId: number, email: string, windowId: string }) => {
     const darkMode = useDarkMode()
     const lang = useLang()
     const platform = usePlatform()
