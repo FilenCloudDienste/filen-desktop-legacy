@@ -25,7 +25,7 @@ const { ipcRenderer } = window.require("electron")
 const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: string, windowId: string }) => {
     const darkMode: boolean = useDarkMode()
     const lang: string = useLang()
-    const platform: "windows" | "linux" | "mac" = usePlatform()
+    const platform: string = usePlatform()
     const isOnline: boolean = useIsOnline()
 
     const [currentUploads, setCurrentUploads] = useState<any>({})
@@ -37,6 +37,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
     const paused = useDb("paused", false)
     const [totalRemaining, setTotalRemaining] = useState<number>(0)
     const [acquiringLock, setAcquiringLock] = useState<boolean>(false)
+    const [checkingChanges, setCheckingChanges] = useState<boolean>(false)
     
     const acquiringLockTimeout = useRef<any>(undefined)
     const bytesSent = useRef<number>(0)
@@ -118,10 +119,10 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
         }).catch(log.error)
 
         const syncTaskListener = eventListener.on("syncTask", (data) => {
-            const type = data.type
-            const task = data.data
+            const type: string = data.type
+            const task: any = data.data
 
-            const now = new Date().getTime()
+            const now: number = new Date().getTime()
             
             if(type == "uploadToRemote"){
                 if(task.err){
@@ -294,7 +295,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
         })
 
         const uploadProgressListener = eventListener.on("uploadProgress", (data) => {
-            const now = new Date().getTime()
+            const now: number = new Date().getTime()
 
             setCurrentUploads(prev => Object.keys(prev).filter(key => key == data.uuid).length > 0 ? ({
                 ...prev,
@@ -312,7 +313,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
         })
 
         const downloadProgressListener = eventListener.on("downloadProgress", (data) => {
-            const now = new Date().getTime()
+            const now: number = new Date().getTime()
 
             setCurrentDownloads(prev => Object.keys(prev).filter(key => key == data.uuid).length > 0 ? ({
                 ...prev,
@@ -330,7 +331,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
         })
 
         const syncStatusListener = eventListener.on("syncStatus", (data) => {
-            const type = data.type
+            const type: string = data.type
 
             if(type == "init"){
                 bytesSent.current = 0
@@ -354,6 +355,10 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
             else if(type == "sync"){
                 setAcquiringLock(false)
                 clearTimeout(acquiringLockTimeout.current)
+                setCheckingChanges(false)
+            }
+            else if(type == "dataChanged"){
+                setCheckingChanges(true)
             }
         })
 
@@ -417,6 +422,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
                 runningSyncTasks={(runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length)}
                 isOnline={isOnline}
                 acquiringLock={acquiringLock}
+                checkingChanges={checkingChanges}
             />
             <IsOnlineBottomToast
                 userId={userId}

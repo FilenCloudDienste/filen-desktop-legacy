@@ -235,6 +235,16 @@ export const listen = () => {
                 return check()
             }).then(() => {
                 db.set("localDataChanged:" + locationUUID, true).catch(log.error)
+
+                sendToAllPorts({
+                    type: "syncStatus",
+                    data: {
+                        type: "dataChanged",
+                        data: {
+                            locationUUID
+                        }
+                    }
+                })
             })
         }, 100)
     })

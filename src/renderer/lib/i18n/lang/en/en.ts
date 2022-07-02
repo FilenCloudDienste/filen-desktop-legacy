@@ -129,7 +129,8 @@ const en: {
     syncTaskDeleteInLocal: "Deleted locally",
     queued: "Queued",
     acquiringSyncLock: "Acquiring sync lock..",
-    syncLocationCreated: "Sync location created. To start the sync you have to unpause it."
+    syncLocationCreated: "Sync location created. To start the sync you have to unpause it.",
+    checkingChanges: "Checking changes.."
 }
 
 export default en

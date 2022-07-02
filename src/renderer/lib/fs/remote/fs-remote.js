@@ -6,6 +6,7 @@ import { convertTimestampToMs, isFileOrFolderNameIgnoredByDefault, fileNameToLow
 import { normalizePath, smokeTest as smokeTestLocal, readChunk, checkLastModified } from "../local"
 import { chunkSize, maxUploadThreads } from "../../constants"
 import { v4 as uuidv4 } from "uuid"
+import { sendToAllPorts } from "../../worker/ipc"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
@@ -53,7 +54,7 @@ export const directoryTree = (uuid = "", skipCache = false, location) => {
             dirTree({ apiKey, uuid, deviceId, skipCache }).then(async (response) => {
                 const cacheKey = "directoryTree:" + uuid + ":" + deviceId
 
-                if(response.folders.length == 0 && response.files.length == 0){
+                if(response.folders.length == 0 && response.files.length == 0){ // Data did not change
                     if(memoryCache.has(cacheKey)){
                         return resolve({
                             changed: false,
@@ -76,6 +77,18 @@ export const directoryTree = (uuid = "", skipCache = false, location) => {
                     }
 
                     return directoryTree(uuid, true).then(resolve).catch(reject)
+                }
+
+                if(typeof location !== "undefined"){
+                    sendToAllPorts({
+                        type: "syncStatus",
+                        data: {
+                            type: "dataChanged",
+                            data: {
+                                locationUUID: location.uuid
+                            }
+                        }
+                    })
                 }
 
                 const treeItems = []

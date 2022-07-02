@@ -7,19 +7,20 @@ import isEqual from "react-fast-compare"
 import { i18n } from "../../lib/i18n"
 
 interface Props {
-    userId?: number,
-    email?: string,
-    platform?: string,
-    darkMode?: boolean,
-    lang?: string,
-    currentUploads?: any,
-    currentDownloads?: any,
-    paused?: boolean,
-    runningTasks?: any,
-    totalRemaining?: any,
-    runningSyncTasks?: any,
-    isOnline?: boolean,
-    acquiringLock?: boolean
+    userId: number,
+    email: string,
+    platform: string,
+    darkMode: boolean,
+    lang: string,
+    currentUploads: any,
+    currentDownloads: any,
+    paused: boolean,
+    runningTasks: any,
+    totalRemaining: any,
+    runningSyncTasks: any,
+    isOnline: boolean,
+    acquiringLock: boolean,
+    checkingChanges: boolean
 }
 
 export default class MainFooter extends React.Component<Props> {
@@ -41,7 +42,8 @@ export default class MainFooter extends React.Component<Props> {
             totalRemaining,
             runningSyncTasks,
             isOnline,
-            acquiringLock
+            acquiringLock,
+            checkingChanges
         }: Props = this.props
 
         return (
@@ -73,6 +75,22 @@ export default class MainFooter extends React.Component<Props> {
                                     noOfLines={1}
                                 >
                                     {i18n(lang, "acquiringSyncLock")}
+                                </Text>
+                            </Flex>
+                        ) : checkingChanges ? (
+                            <Flex alignItems="center">
+                                <Spinner
+                                    width="12px"
+                                    height="12px"
+                                    color={colors(platform, darkMode, "textPrimary")}
+                                />
+                                <Text 
+                                    fontSize={12} 
+                                    color={colors(platform, darkMode, "textPrimary")} 
+                                    marginLeft="5px" 
+                                    noOfLines={1}
+                                >
+                                    {i18n(lang, "checkingChanges")}
                                 </Text>
                             </Flex>
                         ) : (
