@@ -26,12 +26,11 @@ import eventListener from "../../eventListener"
 const { ipcRenderer } = window.require("electron")
 const pathModule = window.require("path")
 const log = window.require("electron-log")
-const is = window.require("electron-is")
 
-let IS_SYNCING = false
-let DEBOUNCE_WATCHER_EVENT = null
+let IS_SYNCING: boolean = false
+let DEBOUNCE_WATCHER_EVENT: any = null
 
-const handleMessage = (type, request) => {
+const handleMessage = (type: string, request: any) => {
     return new Promise((resolve, reject) => {
         if(type == "ping"){
             return resolve("pong")
@@ -183,7 +182,7 @@ const handleMessage = (type, request) => {
 }
 
 export const listen = () => {
-    ipcRenderer.on("for-worker", (event, request) => {
+    ipcRenderer.on("for-worker", (_: any, request: any) => {
         const { messageId, messageSender, type, data } = request
 
         if(!messageId || !messageSender || !type){
@@ -205,7 +204,7 @@ export const listen = () => {
         })
     })
 
-    ipcRenderer.on("watcher-event", (_, data) => {
+    ipcRenderer.on("watcher-event", (_: any, data: any) => {
         if(data.err){
             return log.error(data.err)
         }
@@ -225,7 +224,7 @@ export const listen = () => {
             }
 
             new Promise((resolve) => {
-                const check = () => {
+                const check = (): any => {
                     if(!IS_SYNCING){
                         return resolve(true)
                     }
@@ -240,7 +239,7 @@ export const listen = () => {
         }, 100)
     })
 
-    eventListener.on("syncStatus", (data) => {
+    eventListener.on("syncStatus", (data: any) => {
         const { type } = data
 
         if(type == "acquireSyncLock"){
@@ -251,7 +250,7 @@ export const listen = () => {
         }
     })
 
-    ipcRenderer.on("socket-event", (_, res) => {
+    ipcRenderer.on("socket-event", (_: any, res: any) => {
         const { type, data } = res
         const { args } = data
 
@@ -288,6 +287,6 @@ export const listen = () => {
     })
 }
 
-export const sendToAllPorts = (data) => {
+export const sendToAllPorts = (data: any) => {
     return ipcRenderer.send("proxy-global-message", data)
 }

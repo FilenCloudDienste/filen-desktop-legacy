@@ -60,7 +60,7 @@ const Titlebar = memo(({ darkMode, lang, platform, title }: Props) => {
                             _hover={{
                                 backgroundColor: colors(platform, darkMode, "backgroundPrimary")
                             }} 
-                            onClick={() => ipc.minimizeWindow(currentWindow, new URLSearchParams(window.location.search).get("id"))}
+                            onClick={() => ipc.minimizeWindow(currentWindow, new URLSearchParams(window.location.search).get("id") as string)}
                         >
                             <BsDash 
                                 size={18} 
@@ -82,7 +82,7 @@ const Titlebar = memo(({ darkMode, lang, platform, title }: Props) => {
                                     pointerEvents="all"
                                     alignItems="center"
                                     backgroundColor={hoveringExit ? "red" : "transparent"}
-                                    onClick={() => ipc.closeWindow(currentWindow, new URLSearchParams(window.location.search).get("id"))}
+                                    onClick={() => ipc.closeWindow(currentWindow, new URLSearchParams(window.location.search).get("id") as string)}
                                     onMouseEnter={() => setHoveringExit(true)}
                                     onMouseLeave={() => setHoveringExit(false)}
                                 >

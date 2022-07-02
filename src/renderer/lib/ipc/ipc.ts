@@ -1,13 +1,14 @@
 import eventListener from "../eventListener"
+// @ts-ignore
 import { v4 as uuidv4 } from "uuid"
 
 const { ipcRenderer } = window.require("electron")
 
-const MESSAGE_SENDER = uuidv4()
-const resolves = {}
-const rejects = {}
+const MESSAGE_SENDER: string = uuidv4()
+const resolves: any = {}
+const rejects: any = {}
 
-ipcRenderer.on("message", (_, data) => {
+ipcRenderer.on("message", (_: any, data: any) => {
     const { messageId, messageSender, response, err } = data
 
     if(typeof messageId == "undefined" || typeof response == "undefined" || typeof messageSender == "undefined"){
@@ -38,11 +39,11 @@ ipcRenderer.on("message", (_, data) => {
     return true
 })
 
-ipcRenderer.on("global-message", (_, data) => {
+ipcRenderer.on("global-message", (_: any, data: any) => {
     return handleGlobalMessage(data)
 })
 
-ipcRenderer.on("from-worker", (_, data) => {
+ipcRenderer.on("from-worker", (_: any, data: any) => {
     const { messageId, messageSender, response, err } = data
 
     if(typeof messageId == "undefined" || typeof response == "undefined" || typeof messageSender == "undefined"){
@@ -73,7 +74,7 @@ ipcRenderer.on("from-worker", (_, data) => {
     return true
 })
 
-const handleGlobalMessage = (data) => {
+const handleGlobalMessage = (data: any) => {
     const { type } = data
 
     if(type == "dbSet"){
@@ -124,7 +125,7 @@ const ipc = {
             })
         })
     },
-    getAppPath: (path) => {
+    getAppPath: (path: string) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -141,7 +142,7 @@ const ipc = {
             })
         })
     },
-    db: (action, key, value) => {
+    db: (action: string, key: string, value: any) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -160,7 +161,7 @@ const ipc = {
             })
         })
     },
-    apiRequest: ({ method, endpoint, data = {}, timeout = 864000000 }) => {
+    apiRequest: ({ method, endpoint, data = {}, timeout = 864000000 }: { method: string, endpoint: string, data: any, timeout: number }) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -287,10 +288,10 @@ const ipc = {
             })
         })
     },
-    remoteFolderSelected: (data) => {
+    remoteFolderSelected: (data: any) => {
         return ipcRenderer.send("remoteFolderSelected", data)
     },
-    decryptFolderName: (name) => {
+    decryptFolderName: (name: string) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -307,7 +308,7 @@ const ipc = {
             })
         })
     },
-    decryptFolderNamePrivateKey: (metadata, privateKey) => {
+    decryptFolderNamePrivateKey: (metadata: string, privateKey: string) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -325,7 +326,7 @@ const ipc = {
             })
         })
     },
-    decryptFolderNameLink: (metadata, linkKey) => {
+    decryptFolderNameLink: (metadata: string, linkKey: string) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -343,7 +344,7 @@ const ipc = {
             })
         })
     },
-    decryptFileMetadataLink: (metadata, linkKey) => {
+    decryptFileMetadataLink: (metadata: string, linkKey: string) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -361,7 +362,7 @@ const ipc = {
             })
         })
     },
-    decryptFileMetadataPrivateKey: (metadata, privateKey) => {
+    decryptFileMetadataPrivateKey: (metadata: string, privateKey: string) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -379,7 +380,7 @@ const ipc = {
             })
         })
     },
-    decryptFileMetadata: (metadata, masterKeys) => {
+    decryptFileMetadata: (metadata: string, masterKeys: string[]) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -397,7 +398,7 @@ const ipc = {
             })
         })
     },
-    decryptMetadata: (data, key) => {
+    decryptMetadata: (data: string, key: string) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -415,7 +416,7 @@ const ipc = {
             })
         })
     },
-    hashPassword: (password) => {
+    hashPassword: (password: string) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -432,7 +433,7 @@ const ipc = {
             })
         })
     },
-    hashFn: (data) => {
+    hashFn: (data: string) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -449,7 +450,7 @@ const ipc = {
             })
         })
     },
-    deriveKeyFromPassword: ({ password, salt, iterations, hash, bitLength, returnHex }) => {
+    deriveKeyFromPassword: ({ password, salt, iterations, hash, bitLength, returnHex }: { password: string, salt: string, iterations: number, hash: string, bitLength: number, returnHex: boolean }) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -471,7 +472,7 @@ const ipc = {
             })
         })
     },
-    generatePasswordAndMasterKeysBasedOnAuthVersion: ({ rawPassword, authVersion, salt }) => {
+    generatePasswordAndMasterKeysBasedOnAuthVersion: ({ rawPassword, authVersion, salt }: { rawPassword: string, authVersion: number, salt: string }): Promise<any> => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -490,7 +491,7 @@ const ipc = {
             })
         })
     },
-    watchDirectory: (path, locationUUID) => {
+    watchDirectory: (path: string, locationUUID: string) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -508,7 +509,7 @@ const ipc = {
             })
         })
     },
-    selectiveSyncDirectoryTrees: (location) => {
+    selectiveSyncDirectoryTrees: (location: any) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -525,7 +526,7 @@ const ipc = {
             })
         })
     },
-    remoteTree: (location) => {
+    remoteTree: (location: any) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -542,7 +543,7 @@ const ipc = {
             })
         })
     },
-    localTree: (location) => {
+    localTree: (location: any) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -559,7 +560,7 @@ const ipc = {
             })
         })
     },
-    minimizeWindow: (window = "settings", windowId = uuidv4()) => {
+    minimizeWindow: (window: string = "settings", windowId: string = uuidv4()) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -577,7 +578,7 @@ const ipc = {
             })
         })
     },
-    closeWindow: (window = "settings", windowId = uuidv4()) => {
+    closeWindow: (window: string = "settings", windowId: string = uuidv4()) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -595,7 +596,7 @@ const ipc = {
             })
         })
     },
-    updateThrottles: (uploadKbps, downloadKbps) => {
+    updateThrottles: (uploadKbps: number, downloadKbps: number) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -613,7 +614,7 @@ const ipc = {
             })
         })
     },
-    setOpenOnStartup: (open = true) => {
+    setOpenOnStartup: (open: boolean = true) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -644,7 +645,7 @@ const ipc = {
             })
         })
     },
-    getVersion: () => {
+    getVersion: (): Promise<string> => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -723,7 +724,7 @@ const ipc = {
             })
         })
     },
-    getFileIcon: (path) => {
+    getFileIcon: (path: string) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -740,7 +741,7 @@ const ipc = {
             })
         })
     },
-    getFileIconExt: (ext = "") => {
+    getFileIconExt: (ext: string = "") => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -757,7 +758,7 @@ const ipc = {
             })
         })
     },
-    getFileIconName: (name = "name") => {
+    getFileIconName: (name: string = "name") => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -788,7 +789,7 @@ const ipc = {
             })
         })
     },
-    openDownloadWindow: (args) => {
+    openDownloadWindow: (args: any) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -805,7 +806,7 @@ const ipc = {
             })
         })
     },
-    openSelectiveSyncWindow: (args) => {
+    openSelectiveSyncWindow: (args: any) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -822,7 +823,7 @@ const ipc = {
             })
         })
     },
-    uploadChunk: ({ queryParams, data, timeout = 86400000, from = "sync" }) => {
+    uploadChunk: ({ queryParams, data, timeout = 86400000, from = "sync" }: { queryParams: any, data: any, timeout: number, from: string }) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -842,7 +843,7 @@ const ipc = {
             })
         })
     },
-    downloadChunk: ({ region, bucket, uuid, index, from = "sync" }) => {
+    downloadChunk: ({ region, bucket, uuid, index, from = "sync" }: { region: string, bucket: string, uuid: string, index: number, from: string }) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -863,7 +864,7 @@ const ipc = {
             })
         })
     },
-    decryptData: ({ data, key, version }) => {
+    decryptData: ({ data, key, version }: { data: any, key: string, version: number }) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -882,7 +883,7 @@ const ipc = {
             })
         })
     },
-    encryptData: (data, key) => {
+    encryptData: (data: any, key: string) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
@@ -900,7 +901,7 @@ const ipc = {
             })
         })
     },
-    encryptMetadata: (data, key) => {
+    encryptMetadata: (data: string, key: string) => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 

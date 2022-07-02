@@ -60,8 +60,8 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number, email: 
             const files: any[] = []
 
             for(let i = 0; i < response.folders.length; i++){
-                const folder = response.folders[i]
-                const folderName = await ipc.decryptFolderName(folder.name)
+                const folder: any = response.folders[i]
+                const folderName: any = await ipc.decryptFolderName(folder.name)
 
                 if(folderName.length > 0){
                     folderNames[folder.uuid] = folderName
@@ -75,8 +75,8 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number, email: 
             }
 
             for(let i = 0; i < response.uploads.length; i++){
-                const file = response.uploads[i]
-                const metadata = await ipc.decryptFileMetadata(file.metadata, masterKeys)
+                const file: any = response.uploads[i]
+                const metadata: any = await ipc.decryptFileMetadata(file.metadata, masterKeys)
                 
                 if(metadata.name.length > 0){
                     files.push({
