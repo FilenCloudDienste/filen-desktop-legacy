@@ -14,6 +14,7 @@ import * as fsRemote from "../../lib/fs/remote"
 import db from "../../lib/db"
 import { markUploadAsDone, checkIfItemParentIsShared, uploadChunk } from "../../lib/api"
 import { convertTimestampToMs, getTimeRemaining, bpsToReadable, Semaphore, fileNameToLowerCaseExt, generateRandomString } from "../../lib/helpers"
+// @ts-ignore
 import { v4 as uuidv4 } from "uuid"
 import { maxUploadThreads, chunkSize, maxConcurrentUploads, sizeOverheadMultiplier, speedMultiplier } from "../../lib/constants"
 import eventListener from "../../lib/eventListener"
@@ -33,11 +34,11 @@ const { ipcRenderer } = window.require("electron")
 const UPLOAD_VERSION = 2
 const FROM_ID = uuidv4()
 const params = new URLSearchParams(window.location.search)
-const passedArgs = typeof params.get("args") == "string" ? JSON.parse(Base64.decode(decodeURIComponent(params.get("args")))) : undefined
+const passedArgs = typeof params.get("args") == "string" ? JSON.parse(Base64.decode(decodeURIComponent(params.get("args") as string))) : undefined
 const uploadSemaphore = new Semaphore(maxConcurrentUploads)
 const uploadThreadsSemaphore = new Semaphore(maxUploadThreads)
 
-const uploadFile = (path, parent) => {
+const uploadFile = (path: string, parent: string) => {
     return new Promise(async (resolve, reject) => {
         await new Promise((resolve) => {
             const getPausedStatus = () => {
@@ -85,7 +86,7 @@ const uploadFile = (path, parent) => {
             db.get("masterKeys")
         ]).then(([apiKey, masterKeys]) => {
             fsLocal.smokeTest(absolutePath).then(() => {
-                fs.lstat(absolutePath).then(async (stat) => {
+                fs.lstat(absolutePath).then(async (stat: any) => {
                     const size = parseInt(stat.size.toString())
                     const lastModified =  Math.floor(stat.mtimeMs)
                     const mime = mimeTypes.lookup(name) || ""
@@ -114,7 +115,7 @@ const uploadFile = (path, parent) => {
                             lastModified
                         }, (_, value) => typeof value == "bigint" ? parseInt(value.toString()) : value), masterKeys[masterKeys.length - 1])
                     }
-                    catch(e){
+                    catch(e: any){
                         log.error("Metadata generation failed for " + absolutePath)
                         log.error(e)
 
@@ -123,7 +124,7 @@ const uploadFile = (path, parent) => {
                         return reject(e)
                     }
 
-                    const uploadTask = (index) => {
+                    const uploadTask = (index: number) => {
                         return new Promise((resolve, reject) => {
                             fsLocal.readChunk(absolutePath, (index * chunkSize), chunkSize).then((data) => {
                                 encryptData(data, key).then((encrypted) => {
@@ -143,7 +144,7 @@ const uploadFile = (path, parent) => {
                                             metaData: metaData,
                                             parent: parent,
                                             version: UPLOAD_VERSION
-                                        }).toString(),
+                                        } as any).toString(),
                                         data: encrypted,
                                         timeout: 86400000,
                                         from: FROM_ID
@@ -170,7 +171,7 @@ const uploadFile = (path, parent) => {
 
                             for(let i = 1; i < (fileChunks + 1); i++){
                                 uploadThreadsSemaphore.acquire().then(() => {
-                                    uploadTask(i).then((data) => {
+                                    uploadTask(i).then((data: any) => {
                                         region = data.region
                                         bucket = data.bucket
 
@@ -192,7 +193,7 @@ const uploadFile = (path, parent) => {
 
                         await markUploadAsDone({ uuid, uploadKey })
                     }
-                    catch(e){
+                    catch(e: any){
                         if(e.toString().toLowerCase().indexOf("already exists") !== -1){
                             return resolve(true)
                         }
@@ -239,7 +240,7 @@ const uploadFile = (path, parent) => {
     })
 }
 
-const UploadWindow = memo(({ userId, email, windowId }) => {
+const UploadWindow = memo(({ userId, email, windowId }: { userId: number, email: string, windowId: string }) => {
     const darkMode = useDarkMode()
     const lang = useLang()
     const platform = usePlatform()
@@ -257,7 +258,7 @@ const UploadWindow = memo(({ userId, email, windowId }) => {
     const bytes = useRef(0)
     const started = useRef(-1)
 
-    const startUploading = useCallback(async () => {
+    const startUploading = async () => {
         setFoldersCreated(0)
         setFoldersNeeded(0)
 
@@ -280,7 +281,7 @@ const UploadWindow = memo(({ userId, email, windowId }) => {
                         showToast({ message: pathModule.basename(files[i]) + " is a directory", status: "error" })
                     }
                 }
-                catch(e){
+                catch(e: any){
                     log.error(e)
 
                     showToast({ message: e.toString(), status: "error" })
@@ -299,7 +300,7 @@ const UploadWindow = memo(({ userId, email, windowId }) => {
                         }).catch(reject)
                     }))])
                 }
-                catch(e){
+                catch(e: any){
                     log.error(e)
     
                     showToast({ message: e.toString(), status: "error" })
@@ -312,11 +313,11 @@ const UploadWindow = memo(({ userId, email, windowId }) => {
             try{
                 for(let i = 0; i < args.local.filePaths.length; i++){
                     await new Promise((resolve, reject) => {
-                        const basePath = pathModule.normalize(args.local.filePaths[i])
-                        const folders = {}
-                        const files = {}
+                        const basePath: string = pathModule.normalize(args.local.filePaths[i])
+                        const folders: any = {}
+                        const files: any = {}
     
-                        fs.lstat(basePath).then((stat) => {
+                        fs.lstat(basePath).then((stat: any) => {
                             if(!stat.isDirectory()){
                                 return reject(pathModule.basename(basePath) + " is not a directory")
                             }
@@ -327,7 +328,7 @@ const UploadWindow = memo(({ userId, email, windowId }) => {
                                     lstat: true,
                                     type: "all",
                                     depth: 2147483648
-                                }).on("data", (item) => {
+                                }).on("data", (item: any) => {
                                     if(platform == "windows"){
                                         item.path = item.path.split("\\").join("/") // Convert windows \ style path seperators to / for internal database, we only use UNIX style path seperators internally
                                     }
@@ -349,17 +350,17 @@ const UploadWindow = memo(({ userId, email, windowId }) => {
                                             totalBytes.current += parseInt(item.stats.size.toString())
                                         }
                                     }
-                                }).on("warn", (warn) => {
+                                }).on("warn", (warn: any) => {
                                     log.error(warn)
                 
                                     showToast({ message: warn.toString(), status: "error" })
-                                }).on("error", (err) => {
+                                }).on("error", (err: any) => {
                                     return reject(err)
                                 }).on("end", async () => {
-                                    let baseParentUUID = uuidv4()
-                                    const baseParentName = pathModule.basename(basePath)
-                                    const foldersSorted = [...Object.keys(folders).sort((a, b) => a.length - b.length)]
-                                    const createdFolderUUIDs = {}
+                                    let baseParentUUID: string = uuidv4()
+                                    const baseParentName: string = pathModule.basename(basePath)
+                                    const foldersSorted: string[] = [...Object.keys(folders).sort((a, b) => a.length - b.length)]
+                                    const createdFolderUUIDs: any = {}
 
                                     setFoldersNeeded(foldersSorted.length + 1)
                 
@@ -407,7 +408,7 @@ const UploadWindow = memo(({ userId, email, windowId }) => {
                                                 }).catch(reject)
                                             }))])
                                         }
-                                        catch(e){
+                                        catch(e: any){
                                             log.error(e)
                     
                                             showToast({ message: e.toString(), status: "error" })
@@ -421,7 +422,7 @@ const UploadWindow = memo(({ userId, email, windowId }) => {
                     })
                 }
             }
-            catch(e){
+            catch(e: any){
                 log.error(e)
             
                 return showToast({ message: e.toString(), status: "error" })
@@ -429,24 +430,24 @@ const UploadWindow = memo(({ userId, email, windowId }) => {
 
             setDone(true)
         }
-    })
+    }
 
-    const calcSpeed = useCallback((now, started, bytes) => {
+    const calcSpeed = (now: number, started: number, bytes: number): number => {
         now = new Date().getTime() - 1000
 
         const secondsDiff = ((now - started) / 1000)
         const bps = Math.floor((bytes / secondsDiff) * speedMultiplier)
 
         return bps > 0 ? bps : 0
-    })
+    }
 
-    const calcTimeLeft = useCallback((loadedBytes, totalBytes, started) => {
+    const calcTimeLeft = (loadedBytes: number, totalBytes: number, started: number): number => {
         const elapsed = (new Date().getTime() - started)
         const speed = (loadedBytes / (elapsed / 1000))
         const remaining = ((totalBytes - loadedBytes) / speed)
 
         return remaining > 0 ? remaining : 0
-    })
+    }
 
     const throttleUpdates = useCallback(throttle(() => {
         setSpeed(calcSpeed(new Date().getTime(), started.current, bytes.current))
@@ -460,7 +461,7 @@ const UploadWindow = memo(({ userId, email, windowId }) => {
     useEffect(() => {
         startUploading()
 
-        const progressListener = eventListener.on("uploadProgressSeperate", (data) => {
+        const progressListener = eventListener.on("uploadProgressSeperate", (data: any) => {
             if(data.from == FROM_ID){
                 if(started.current == -1){
                     started.current = new Date().getTime()
@@ -547,7 +548,7 @@ const UploadWindow = memo(({ userId, email, windowId }) => {
                                         flexDirection="column"
                                     >
                                         <Progress
-                                            value={percent > 100 ? 100 : percent.toFixed(2)}
+                                            value={!isNaN(percent) ? 0 : percent > 100 ? 100 : parseFloat(percent.toFixed(2))}
                                             height="5px"
                                             borderRadius="10px"
                                             colorScheme="blue"

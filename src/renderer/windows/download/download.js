@@ -504,22 +504,22 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }) 
         })
     })
 
-    const calcSpeed = useCallback((now, started, bytes) => {
+    const calcSpeed = (now, started, bytes) => {
         now = new Date().getTime() - 1000
 
         const secondsDiff = ((now - started) / 1000)
         const bps = (bytes / secondsDiff)
 
         return bps > 0 ? bps : 0
-    })
+    }
 
-    const calcTimeLeft = useCallback((loadedBytes, totalBytes, started) => {
+    const calcTimeLeft = (loadedBytes, totalBytes, started) => {
         const elapsed = (new Date().getTime() - started)
         const speed = (loadedBytes / (elapsed / 1000))
         const remaining = ((totalBytes - loadedBytes) / speed)
 
         return remaining > 0 ? remaining : 0
-    })
+    }
 
     const throttleUpdates = useCallback(throttle(() => {
         setSpeed(calcSpeed(new Date().getTime(), started.current, bytes.current))

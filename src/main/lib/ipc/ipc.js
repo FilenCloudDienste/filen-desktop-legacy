@@ -182,6 +182,7 @@ const handleMessage = (type, data) => {
         else if(type == "restartApp"){
             try{
                 app.relaunch()
+                app.exit()
 
                 return resolve(true)
             }

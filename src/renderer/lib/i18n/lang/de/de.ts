@@ -128,7 +128,8 @@ const de: {
     syncTaskDeleteInRemote: "In der Cloud gelöscht",
     syncTaskDeleteInLocal: "Lokal gelöscht",
     queued: "Warte",
-    acquiringSyncLock: "Fordere sync lock an.."
+    acquiringSyncLock: "Fordere sync lock an..",
+    syncLocationCreated: "Synchronisierungsort erstellt. Um die Synchonisiation zu starten die Pausierung des Synchronisierungsort aufheben."
 }
 
 export default de

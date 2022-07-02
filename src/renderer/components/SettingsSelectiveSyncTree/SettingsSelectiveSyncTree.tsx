@@ -52,7 +52,7 @@ const TreeItem = memo(({ darkMode, lang, platform, item, location, excluded }: T
         return false
     }, [item, excluded])
 
-    const onToggleExcluded = useCallback(async () => {
+    const onToggleExcluded = async () => {
         if(isParentExcluded()){
             return false
         }
@@ -80,15 +80,15 @@ const TreeItem = memo(({ darkMode, lang, platform, item, location, excluded }: T
         catch(e){
             log.error(e)
         }
-    }, [])
+    }
 
-    const onToggleOpen = useCallback(() => {
+    const onToggleOpen = () => {
         if(item.children.length == 0){
             return false
         }
 
         setIsOpen(!isOpen)
-    }, [])
+    }
 
     return (
         <Box width="100%" height="auto" key={item.path} cursor="default">

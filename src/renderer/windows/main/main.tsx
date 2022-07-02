@@ -43,22 +43,22 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
     const allBytes = useRef<number>(0)
     const progressStarted = useRef<number>(-1)
 
-    const calcSpeed = useCallback((now: number, started: number, bytes: number): number => {
+    const calcSpeed = (now: number, started: number, bytes: number): number => {
         now = new Date().getTime() - 1000
 
         const secondsDiff: number = ((now - started) / 1000)
         const bps: number = Math.floor((bytes / secondsDiff) * speedMultiplier)
 
         return bps > 0 ? bps : 0
-    }, [])
+    }
 
-    const calcTimeLeft = useCallback((loadedBytes: number, totalBytes: number, started: number): number => {
+    const calcTimeLeft = (loadedBytes: number, totalBytes: number, started: number): number => {
         const elapsed: number = (new Date().getTime() - started)
         const speed: number = (loadedBytes / (elapsed / 1000))
         const remaining: number = ((totalBytes - loadedBytes) / speed)
 
         return remaining > 0 ? remaining : 0
-    }, [])
+    }
 
     const setDoneTasksThrottled = useCallback(throttle(({ doneTasks }) => {
         if(doneTasks.length > 0){

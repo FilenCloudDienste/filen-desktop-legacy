@@ -1,4 +1,6 @@
-const colors = {
+const colors: {
+    [key: string]: any
+} = {
     dark: {
         mac: {
             textPrimary: "white",
@@ -77,7 +79,7 @@ const colors = {
     }
 }
 
-const getColor = (platform, darkMode, name) => {
+const getColor = (platform: any, darkMode: any, name: any) => {
     return typeof colors[darkMode ? 'dark' : 'light'][platform][name] == "undefined" ? "#000000" : colors[darkMode ? 'dark' : 'light'][platform][name]
 }
 

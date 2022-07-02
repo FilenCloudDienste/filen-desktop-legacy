@@ -1,8 +1,10 @@
-import React, { memo, useState, useCallback, useEffect } from "react"
+import React, { memo, useState, useEffect } from "react"
 import Titlebar from "../../components/Titlebar"
 import { Image, Flex, Input, Link, Button, Spinner } from "@chakra-ui/react"
 import useDarkMode from "../../lib/hooks/useDarkMode"
+// @ts-ignore
 import DarkLogo from "../../../../src/assets/images/dark_logo.png"
+// @ts-ignore
 import LightLogo from "../../../../src/assets/images/light_logo.png"
 import { i18n } from "../../lib/i18n"
 import useLang from "../../lib/hooks/useLang"
@@ -17,21 +19,21 @@ import Container from "../../components/Container"
 const { shell, ipcRenderer } = window.require("electron")
 const log = window.require("electron-log")
 
-const AuthWindow = memo(({ windowId }) => {
+const AuthWindow = memo(({ windowId }: { windowId: string }) => {
     const darkMode = useDarkMode()
     const lang = useLang()
     const platform = usePlatform()
 
-    const [email, setEmail] = useState("")
-    const [password, setPassword] = useState("")
-    const [twoFactorCode, setTwoFactorCode] = useState("")
-    const [showTwoFactor, setShowTwoFactor] = useState(false)
-    const [isLoading, setIsLoading] = useState(false)
+    const [email, setEmail] = useState<string>("")
+    const [password, setPassword] = useState<string>("")
+    const [twoFactorCode, setTwoFactorCode] = useState<string>("")
+    const [showTwoFactor, setShowTwoFactor] = useState<boolean>(false)
+    const [isLoading, setIsLoading] = useState<boolean>(false)
 
-    const doLogin = useCallback(async () => {
-        let emailToSend = email.trim()
-        let passwordToSend = password.trim()
-        let twoFactorCodeToSend = twoFactorCode.trim()
+    const doLogin = async (): Promise<any> => {
+        let emailToSend: string = email.trim()
+        let passwordToSend: string = password.trim()
+        let twoFactorCodeToSend: string = twoFactorCode.trim()
 
         if(twoFactorCodeToSend.length == 0){
             twoFactorCodeToSend = "XXXXXX"
@@ -50,7 +52,7 @@ const AuthWindow = memo(({ windowId }) => {
         try{
             var authInfoResponse = await authInfo({ email: emailToSend })
         }
-        catch(e){
+        catch(e: any){
             if(e.toString() == "Invalid email."){
                 setEmail("")
                 setPassword("")
@@ -68,9 +70,9 @@ const AuthWindow = memo(({ windowId }) => {
             return showToast({ message: e.toString(), status: "error" })
         }
 
-        const authVersion = authInfoResponse.authVersion
-        const salt = authInfoResponse.salt
-        let masterKeys = ""
+        const authVersion: number = authInfoResponse.authVersion
+        const salt: string = authInfoResponse.salt
+        let masterKeys: string = ""
 
         try{
             const { derivedPassword, derivedMasterKeys } = await ipc.generatePasswordAndMasterKeysBasedOnAuthVersion({ rawPassword: passwordToSend, authVersion, salt })
@@ -78,7 +80,7 @@ const AuthWindow = memo(({ windowId }) => {
             passwordToSend = derivedPassword
             masterKeys = derivedMasterKeys
         }
-        catch(e){
+        catch(e: any){
             log.error("Could not derive password and master keys")
             log.error(e)
 
@@ -90,7 +92,7 @@ const AuthWindow = memo(({ windowId }) => {
         try{
             var loginResponse = await login({ email: emailToSend, password: passwordToSend, twoFactorCode: twoFactorCodeToSend })
         }
-        catch(e){
+        catch(e: any){
             setIsLoading(false)
 
             if(e.toString() == "Please enter your Two Factor Authentication code."){
@@ -141,9 +143,9 @@ const AuthWindow = memo(({ windowId }) => {
         }
 
         try{
-            var userInfoResponse = await userInfo({ apiKey: loginResponse.apiKey })
+            var userInfoResponse: any = await userInfo({ apiKey: loginResponse.apiKey })
         }
-        catch(e){
+        catch(e: any){
             log.error("Could not get user info for " + emailToSend)
             log.error(e)
 
@@ -160,7 +162,7 @@ const AuthWindow = memo(({ windowId }) => {
             await db.set("authVersion", authVersion)
             await db.set("isLoggedIn", true)
         }
-        catch(e){
+        catch(e: any){
             log.error("Could not save login values to DB")
             log.error(e)
 
@@ -174,7 +176,7 @@ const AuthWindow = memo(({ windowId }) => {
 
             setIsLoading(false)
         }
-        catch(e){
+        catch(e: any){
             log.error("Login done error")
             log.error(e)
 
@@ -184,7 +186,7 @@ const AuthWindow = memo(({ windowId }) => {
         }
 
         return true
-    })
+    }
 
     useEffect(() => {
         ipcRenderer.send("window-ready", windowId)

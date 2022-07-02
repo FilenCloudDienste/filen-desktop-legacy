@@ -1,22 +1,22 @@
 const cacheMap = new Map()
 
 const memoryCache = {
-    has: (key) => {
+    has: (key: string) => {
         return cacheMap.has(key)
     },
-    get: (key) => {
+    get: (key: string) => {
         if(cacheMap.has(key)){
             return cacheMap.get(key)
         }
 
         return null
     },
-    set: (key, value) => {
+    set: (key: string, value: any) => {
         cacheMap.set(key, value)
 
         return true
     },
-    delete: (key) => {
+    delete: (key: string) => {
         if(cacheMap.has(key)){
             cacheMap.delete(key)
         }

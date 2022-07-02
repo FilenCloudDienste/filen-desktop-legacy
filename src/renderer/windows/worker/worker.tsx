@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useRef, useCallback, useState } from "react"
+import React, { memo, useEffect, useRef, useState } from "react"
 import { listen } from "../../lib/worker/ipc"
 import sync from "../../lib/worker/sync"
 import { updateKeys } from "../../lib/user"
@@ -14,7 +14,7 @@ const log = window.require("electron-log")
 const https = window.require("https")
 const request = window.require("request")
 
-const checkInternet = () => {
+const checkInternet = (): any => {
     if(!window.navigator.onLine){
         db.set("isOnline", false).catch(log.error)
 
@@ -31,7 +31,7 @@ const checkInternet = () => {
         agent: new https.Agent({
             timeout: 15000
         })
-    }, (err, response, body) => {
+    }, (err: any, response: any, body: any) => {
         if(err){
             db.set("isOnline", false).catch(log.error)
 
@@ -57,21 +57,21 @@ const checkInternet = () => {
 }
 
 const WorkerWindow = memo(() => {
-    const initDone = useRef(false)
-    const isOnline = useIsOnline()
-    const syncIssues = useDb("syncIssues", [])
-    const paused = useDb("paused", false)
-    const [runningSyncTasks, setRunningSyncTasks] = useState(0)
-    const appVersion = useAppVersion()
-    const isLoggedIn = useDb("isLoggedIn", true)
+    const initDone = useRef<boolean>(false)
+    const isOnline: boolean = useIsOnline()
+    const syncIssues: any = useDb("syncIssues", [])
+    const paused: boolean = useDb("paused", false)
+    const [runningSyncTasks, setRunningSyncTasks] = useState<number>(0)
+    const appVersion: string = useAppVersion()
+    const isLoggedIn: boolean = useDb("isLoggedIn", true)
 
-    const init = useCallback(async () => {
+    const init = async (): Promise<any> => {
         if(initDone.current){
             return false
         }
 
         await new Promise((resolve) => {
-            const wait = setInterval(async () => {
+            const wait = setInterval(async (): Promise<any> => {
                 if(!isOnline){
                     return false
                 }
@@ -120,7 +120,7 @@ const WorkerWindow = memo(() => {
                 })
             }, 1000)
         }
-    })
+    }
 
     useEffect(() => {
         if(!isLoggedIn){
@@ -148,8 +148,8 @@ const WorkerWindow = memo(() => {
                             ipc.updateTrayTooltip("Filen v" + appVersion + "\nSyncing " + runningSyncTasks + " items")
                         }
                         else{
-                            db.get("userId").then((userId) => {
-                                db.get("syncLocations:" + userId).then((syncLocations) => {
+                            db.get("userId").then((userId: number) => {
+                                db.get("syncLocations:" + userId).then((syncLocations: any) => {
                                     if(Array.isArray(syncLocations) && syncLocations.length > 0 && syncLocations.filter(item => typeof item.remoteUUID == "string").length > 0){
                                         ipc.updateTrayIcon("normal")
                                         ipc.updateTrayTooltip("Filen v" + appVersion + "\nEverything synced")
@@ -178,11 +178,13 @@ const WorkerWindow = memo(() => {
     }, [syncIssues, paused, runningSyncTasks, appVersion, isOnline, isLoggedIn])
 
     useEffect(() => {
-        const offlineListener = window.addEventListener("offline", () => {
+        const offlineListener = (): void => {
             db.set("isOnline", false).catch(log.error)
-        })
+        }
 
-        const syncTaskListener = eventListener.on("syncTask", (data) => {
+        window.addEventListener("offline", offlineListener)
+
+        const syncTaskListener = eventListener.on("syncTask", (data: any) => {
             const task = data.data
 
             if(task.err){
@@ -198,7 +200,7 @@ const WorkerWindow = memo(() => {
             }
         })
 
-        const syncStatusListener = eventListener.on("syncStatus", (data) => {
+        const syncStatusListener = eventListener.on("syncStatus", (data: any) => {
             if(data.type == "init"){
                 setRunningSyncTasks(0)
             }
@@ -207,7 +209,7 @@ const WorkerWindow = memo(() => {
             }
         })
 
-        db.set("isOnline", true).then(() => {
+        db.set("isOnline", true).then((): void => {
             listen()
             init()
             checkInternet()

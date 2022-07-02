@@ -14,35 +14,37 @@ import colors from "../../styles/colors"
 import Container from "../../components/Container"
 import IsOnlineBottomToast from "../../components/IsOnlineBottomToast"
 import { BsFillFolderFill } from "react-icons/bs"
+// @ts-ignore
 import { List } from "react-virtualized"
 import { showToast } from "../../components/Toast"
 import { createFolder } from "../../lib/api"
+// @ts-ignore
 import { v4 as uuidv4 } from "uuid"
 
 const log = window.require("electron-log")
 const { ipcRenderer } = window.require("electron")
 
-const CloudWindow = memo(({ userId, email, windowId }) => {
-    const darkMode = useDarkMode()
-    const lang = useLang()
-    const platform = usePlatform()
+const CloudWindow = memo(({ userId, email, windowId }: { userId: number, email: string, windowId: string }) => {
+    const darkMode: boolean = useDarkMode()
+    const lang: string = useLang()
+    const platform: string = usePlatform()
 
-    const [isLoading, setIsLoading] = useState(true)
-    const url = useRef("")
-    const path = useRef("")
-    const mode = useRef(new URLSearchParams(window.location.search).get("mode")).current
-    const defaultFolderUUID = useRef(undefined)
-    const defaultFolderName = useRef(undefined)
-    const folderNames = useRef({}).current
-    const [currentItems, setCurrentItems] = useState([])
-    const [selectedFolder, setSelectedFolder] = useState(undefined)
-    const resultSent = useRef(false)
-    const [sendingResult, setSendingResult] = useState(false)
-    const [createFolderModalOpen, setCreateFolderModalOpen] = useState(false)
-    const [createFolderName, setCreateFolderName] = useState("")
-    const [isCreatingFolder, setIsCreatingFolder] = useState(false)
+    const [isLoading, setIsLoading] = useState<boolean>(true)
+    const url = useRef<any>("")
+    const path = useRef<any>("")
+    const mode = useRef<string>(new URLSearchParams(window.location.search).get("mode") as string).current
+    const defaultFolderUUID = useRef<any>(undefined)
+    const defaultFolderName = useRef<any>(undefined)
+    const folderNames = useRef<any>({}).current
+    const [currentItems, setCurrentItems] = useState<any>([])
+    const [selectedFolder, setSelectedFolder] = useState<any>(undefined)
+    const resultSent = useRef<boolean>(false)
+    const [sendingResult, setSendingResult] = useState<boolean>(false)
+    const [createFolderModalOpen, setCreateFolderModalOpen] = useState<boolean>(false)
+    const [createFolderName, setCreateFolderName] = useState<string>("")
+    const [isCreatingFolder, setIsCreatingFolder] = useState<boolean>(false)
 
-    const fetchFolderContent = useCallback(async (uuid) => {
+    const fetchFolderContent = async (uuid: string): Promise<any> => {
         setIsLoading(true)
 
         try{
@@ -52,10 +54,10 @@ const CloudWindow = memo(({ userId, email, windowId }) => {
                 masterKeys = []
             }
 
-            const response = await folderContent({ apiKey: await db.get("apiKey"), uuid })
+            const response: any = await folderContent({ apiKey: await db.get("apiKey"), uuid })
 
-            const folders = []
-            const files = []
+            const folders: any[] = []
+            const files: any[] = []
 
             for(let i = 0; i < response.folders.length; i++){
                 const folder = response.folders[i]
@@ -86,7 +88,7 @@ const CloudWindow = memo(({ userId, email, windowId }) => {
                 }
             }
 
-            setSelectedFolder(prev => prev.uuid !== uuid ? {
+            setSelectedFolder((prev: any) => prev.uuid !== uuid ? {
                 name: folderNames[uuid],
                 uuid
             } : prev)
@@ -98,19 +100,19 @@ const CloudWindow = memo(({ userId, email, windowId }) => {
         }
 
         setIsLoading(false)
-    })
+    }
 
-    const navigateToFolder = useCallback((uuid) => {
+    const navigateToFolder = (uuid: string): void => {
         url.current = url.current + "/" + uuid
         path.current = path.current + "/" + folderNames[uuid]
 
         fetchFolderContent(uuid)
-    })
+    }
 
-    const goBack = useCallback(() => {
-        const uuid = getParentFromParentFromURL(url.current)
-        let newURL = url.current.split("/").slice(0, -1).join("/")
-        let newPath = path.current.split("/").slice(0, -1).join("/")
+    const goBack = (): void => {
+        const uuid: string = getParentFromParentFromURL(url.current)
+        let newURL: string = url.current.split("/").slice(0, -1).join("/")
+        let newPath: string = path.current.split("/").slice(0, -1).join("/")
 
         if(newURL.endsWith("/")){
             newURL = newURL.slice(0, newURL.length - 1)
@@ -126,7 +128,7 @@ const CloudWindow = memo(({ userId, email, windowId }) => {
 
             fetchFolderContent(uuid)
         }
-    })
+    }
 
     useEffect(() => {
         if(createFolderModalOpen){
@@ -386,7 +388,7 @@ const CloudWindow = memo(({ userId, email, windowId }) => {
                                     position: "fixed",
                                     top: 120
                                 }}
-                                rowRenderer={({ index, key, style }) => {
+                                rowRenderer={({ index, key, style }: { index: number, key: string, style: any }) => {
                                     const item = currentItems[index]
 
                                     return (
@@ -482,8 +484,7 @@ const CloudWindow = memo(({ userId, email, windowId }) => {
                     borderRadius="15px"
                 >
                     <ModalCloseButton 
-                        color={colors(platform, darkMode, "textPrimary")} 
-                        _focus={{ _focus: false }} 
+                        color={colors(platform, darkMode, "textPrimary")}
                         _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }} 
                     />
                     <ModalHeader color={colors(platform, darkMode, "textPrimary")}>
@@ -556,7 +557,7 @@ const CloudWindow = memo(({ userId, email, windowId }) => {
                                                     parent
                                                 })
                                             }
-                                            catch(e){
+                                            catch(e: any){
                                                 log.error(e)
 
                                                 setIsCreatingFolder(false)

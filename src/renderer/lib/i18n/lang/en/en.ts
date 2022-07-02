@@ -128,7 +128,8 @@ const en: {
     syncTaskDeleteInRemote: "Deleted in the cloud",
     syncTaskDeleteInLocal: "Deleted locally",
     queued: "Queued",
-    acquiringSyncLock: "Acquiring sync lock.."
+    acquiringSyncLock: "Acquiring sync lock..",
+    syncLocationCreated: "Sync location created. To start the sync you have to unpause it."
 }
 
 export default en

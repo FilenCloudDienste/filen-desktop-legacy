@@ -16,18 +16,18 @@ import { BsFileEarmark } from "react-icons/bs"
 const log = window.require("electron-log")
 const { ipcRenderer } = window.require("electron")
 
-const SelectiveSyncWindow = memo(({ startingRoute, userId, email, windowId }) => {
-    const darkMode = useDarkMode()
-    const lang = useLang()
-    const platform = usePlatform()
+const SelectiveSyncWindow = memo(({ userId, email, windowId }: { userId: number, email: string, windowId: string }) => {
+    const darkMode: boolean = useDarkMode()
+    const lang: string = useLang()
+    const platform: string = usePlatform()
 
-    const args = useRef(JSON.parse(Base64.decode(decodeURIComponent(new URLSearchParams(window.location.search).get("args"))))).current
+    const args: any = useRef(JSON.parse(Base64.decode(decodeURIComponent(new URLSearchParams(window.location.search).get("args") as string)))).current
 
-    const [selectiveSyncRemoteTree, setSelectiveSyncRemoteTree] = useState({})
-    const [isLoadingSelectiveSyncTrees, setIsLoadingSelectiveSyncTrees] = useState(true)
+    const [selectiveSyncRemoteTree, setSelectiveSyncRemoteTree] = useState<any>({})
+    const [isLoadingSelectiveSyncTrees, setIsLoadingSelectiveSyncTrees] = useState<boolean>(true)
 
-    const convertTree = useCallback((tree) => {
-        const getPath = (ex, position) => {
+    const convertTree = (tree: any): any => {
+        const getPath = (ex: string[], position: number): string => {
             if(position <= 0){
                 return ex[0]
             }
@@ -41,11 +41,11 @@ const SelectiveSyncWindow = memo(({ startingRoute, userId, email, windowId }) =>
             return path.join("/")
         }
 
-        let paths = []
-        const result = []
-        const level = { result }
-        let files = []
-        let folders = []
+        let paths: string[] = []
+        const result: any = []
+        const level: any = { result }
+        let files: any = []
+        let folders: any = []
 
         for(const path in tree.files){
             if(!files.includes(path)){
@@ -59,18 +59,18 @@ const SelectiveSyncWindow = memo(({ startingRoute, userId, email, windowId }) =>
             }
         }
 
-        files = files.sort((a, b) => {
+        files = files.sort((a: string, b: string) => {
             return a.localeCompare(b)
         })
 
-        folders = folders.sort((a, b) => {
+        folders = folders.sort((a: string, b: string) => {
             return a.localeCompare(b)
         })
 
         paths = folders.concat(files)
 
-        paths.forEach(path => {
-            path.split("/").reduce((r, name, i, a) => {
+        paths.forEach((path: string) => {
+            path.split("/").reduce((r: any, name: string, i: number, a: string[]) => {
                 if(!r[name]){
                     const thisPath = getPath(a, i)
 
@@ -95,16 +95,14 @@ const SelectiveSyncWindow = memo(({ startingRoute, userId, email, windowId }) =>
         })
 
         return result
-    })
+    }
 
     useEffect(() => {
         if(typeof args.currentSyncLocation !== "undefined"){
             setIsLoadingSelectiveSyncTrees(true)
 
-            ipc.remoteTree(args.currentSyncLocation).then((remoteTree) => {
+            ipc.remoteTree(args.currentSyncLocation).then((remoteTree: any) => {
                 const convertedRemoteTree = convertTree(remoteTree.data)
-
-                console.log(remoteTree.data)
 
                 setSelectiveSyncRemoteTree(convertedRemoteTree)
                 setIsLoadingSelectiveSyncTrees(false)
@@ -150,15 +148,15 @@ const SelectiveSyncWindow = memo(({ startingRoute, userId, email, windowId }) =>
                                         color={colors(platform, darkMode, "textPrimary")} 
                                     />
                                 </Flex>
-                            ) : typeof selectiveSyncRemoteTree == "object" && selectiveSyncRemoteTree.length > 0 ? (
+                            ) : typeof selectiveSyncRemoteTree == "object" && Object.keys(selectiveSyncRemoteTree).length > 0 ? (
                                 <Flex
                                     flexDirection="column" 
                                     width="100%" 
                                     height="570px"
                                     paddingLeft="10px"
                                     paddingRight="10px"
-                                    paddingTop="5px"
-                                    paddingBottom="5px"
+                                    paddingTop="10px"
+                                    paddingBottom="10px"
                                     overflowY="scroll"
                                 >
                                     <SettingsSelectiveSyncTree

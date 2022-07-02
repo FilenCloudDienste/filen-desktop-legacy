@@ -1,7 +1,7 @@
 import colors from "./colors"
 import { EditorView } from "@codemirror/view"
 
-export const createCodeMirrorTheme = ({ platform, darkMode, type }) => {
+export const createCodeMirrorTheme = ({ platform, darkMode }: { platform: string, darkMode: boolean }) => {
     return EditorView.theme({
         "&": {
             color: colors(platform, darkMode, "textPrimary"),

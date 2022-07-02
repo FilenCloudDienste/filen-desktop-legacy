@@ -36,7 +36,7 @@ if(startingRoute[0] == "worker"){
 					<></>
 				}
 			>
-				<WorkerWindow />
+				<WorkerWindow windowId={getParams.get("id")} />
 			</Suspense>
 		)
 	})
@@ -50,7 +50,7 @@ else if(startingRoute[0] == "auth"){
 						<></>
 					}
 				>
-					<AuthWindow />
+					<AuthWindow windowId={getParams.get("id")} />
 				</Suspense>
 			</ChakraProvider>
 		)

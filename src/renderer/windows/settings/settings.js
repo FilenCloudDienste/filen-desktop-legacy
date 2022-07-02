@@ -27,6 +27,7 @@ import IsOnlineBottomToast from "../../components/IsOnlineBottomToast"
 import { BsKeyboard, BsFillFolderFill } from "react-icons/bs"
 import { List } from "react-virtualized"
 import { debounce } from "lodash"
+import { showToast } from "../../components/Toast"
 
 const log = window.require("electron-log")
 const { shell, ipcRenderer } = window.require("electron")
@@ -767,6 +768,21 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                                                                             }
         
                                                                             await db.set("syncLocations:" + userId, currentSyncLocations)
+
+                                                                            toast({
+                                                                                description: i18n(lang, "syncLocationCreated"),
+                                                                                status: "success",
+                                                                                duration: 7500,
+                                                                                isClosable: true,
+                                                                                position: "bottom",
+                                                                                containerStyle: {
+                                                                                    backgroundColor: "#0ac09d",
+                                                                                    maxWidth: "85%",
+                                                                                    height: "auto",
+                                                                                    fontSize: 14,
+                                                                                    borderRadius: "15px"
+                                                                                }
+                                                                            })
                                                                         }
                                                                         catch(e){
                                                                             log.error(e)
