@@ -1,7 +1,7 @@
-const EVENT_LISTENERS = []
+const EVENT_LISTENERS: any = []
 
 const eventListener = {
-    on: (name, listener) => {
+    on: (name: string, listener: Function) => {
         if(!EVENT_LISTENERS[name]){
             EVENT_LISTENERS[name] = []
         }
@@ -14,18 +14,18 @@ const eventListener = {
                     return true
                 }
         
-                EVENT_LISTENERS[name] = EVENT_LISTENERS[name].filter((filteredListener) => filteredListener !== listener)
+                EVENT_LISTENERS[name] = EVENT_LISTENERS[name].filter((filteredListener: Function) => filteredListener !== listener)
         
                 return true
             }
         }
     },
-    emit: (name, data) => {
+    emit: (name: string, data: any) => {
         if(!EVENT_LISTENERS[name]){
             return false
         }
 
-        EVENT_LISTENERS[name].forEach((listener) => {
+        EVENT_LISTENERS[name].forEach((listener: Function) => {
             listener(data)
         })
 

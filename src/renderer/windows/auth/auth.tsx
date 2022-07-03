@@ -90,7 +90,7 @@ const AuthWindow = memo(({ windowId }: { windowId: string }) => {
         }
 
         try{
-            var loginResponse = await login({ email: emailToSend, password: passwordToSend, twoFactorCode: twoFactorCodeToSend })
+            var loginResponse = await login({ email: emailToSend, password: passwordToSend, twoFactorCode: twoFactorCodeToSend, authVersion })
         }
         catch(e: any){
             setIsLoading(false)

@@ -125,7 +125,7 @@ export const authInfo = ({ email }: { email: string }): Promise<any> => {
     })
 }
 
-export const login = ({ email, password, twoFactorCode }: { email: string, password: string, twoFactorCode: string | number }): Promise<any> => {
+export const login = ({ email, password, twoFactorCode, authVersion }: { email: string, password: string, twoFactorCode: string | number, authVersion: number }): Promise<any> => {
     return new Promise((resolve, reject) => {
         apiRequest({
             method: "POST",
@@ -133,7 +133,8 @@ export const login = ({ email, password, twoFactorCode }: { email: string, passw
             data: {
                 email,
                 password,
-                twoFactorKey: twoFactorCode
+                twoFactorKey: twoFactorCode,
+                authVersion
             }
         }).then((response: any) => {
             if(!response.status){
