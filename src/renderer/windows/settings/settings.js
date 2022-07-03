@@ -27,7 +27,6 @@ import IsOnlineBottomToast from "../../components/IsOnlineBottomToast"
 import { BsKeyboard, BsFillFolderFill } from "react-icons/bs"
 import { List } from "react-virtualized"
 import { debounce } from "lodash"
-import { showToast } from "../../components/Toast"
 
 const log = window.require("electron-log")
 const { shell, ipcRenderer } = window.require("electron")

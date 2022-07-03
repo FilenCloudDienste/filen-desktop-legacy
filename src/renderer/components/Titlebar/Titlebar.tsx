@@ -15,6 +15,7 @@ interface Props {
 const Titlebar = memo(({ darkMode, lang, platform, title }: Props) => {
     const [hoveringExit, setHoveringExit] = useState<boolean>(false)
     const currentWindow: string = useRef(window.location.hash.split("#")[1]).current
+    const showX: boolean = useRef(currentWindow !== "main" && currentWindow !== "upload" && currentWindow !== "download").current
 
     return (
         <Flex
@@ -57,6 +58,7 @@ const Titlebar = memo(({ darkMode, lang, platform, title }: Props) => {
                             cursor="pointer" 
                             pointerEvents="all"
                             marginTop="1px"
+                            borderTopRightRadius={!showX ? "10px" : "0px"}
                             _hover={{
                                 backgroundColor: colors(platform, darkMode, "backgroundPrimary")
                             }} 
@@ -68,7 +70,7 @@ const Titlebar = memo(({ darkMode, lang, platform, title }: Props) => {
                             />
                         </Flex>
                         {
-                            currentWindow !== "main" && currentWindow !== "upload" && currentWindow !== "download" && (
+                            showX && (
                                 <Flex
                                     width="30px"
                                     height="25px"
