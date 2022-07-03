@@ -12,9 +12,11 @@ const useDarkMode = (): boolean => {
 	}, [colorScheme, userSelectedTheme])
 
 	useEffect(() => {
-		const listener: any = window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
+		const listener: any = (event: MediaQueryListEvent) => {
             setDarkMode(event.matches)
-        })
+        }
+
+		window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", listener)
 
 		return () => {
 			window.matchMedia("(prefers-color-scheme: dark)").removeEventListener("change", listener)

@@ -1,5 +1,5 @@
 import { apiServers, uploadServers, downloadServers, maxRetryAPIRequest, retryAPIRequestTimeout, maxRetryUpload, maxRetryDownload, retryUploadTimeout, retryDownloadTimeout } from "../constants"
-import { getRandomArbitrary, Semaphore, nodeBufferToArrayBuffer, getChunkSize } from "../helpers"
+import { getRandomArbitrary, Semaphore, nodeBufferToArrayBuffer } from "../helpers"
 import { hashFn, encryptMetadata, encryptMetadataPublicKey, decryptFolderLinkKey, decryptFileMetadata, decryptFolderName } from "../crypto"
 import db from "../db"
 import { sendToAllPorts } from "../worker/ipc"
@@ -10,9 +10,7 @@ const { ThrottleGroup } = window.require("speed-limiter")
 const { Readable } = window.require("stream")
 const request = window.require("request")
 
-const createFolderSemaphore = new Semaphore(1)
-const isWorkerThread = window.location.hash.indexOf("worker") !== -1
-
+export const createFolderSemaphore = new Semaphore(1)
 export const throttleGroupUpload = new ThrottleGroup({ rate: 1024 * 1024 * 1024 })
 export const throttleGroupDownload = new ThrottleGroup({ rate: 1024 * 1024 * 1024 })
 
@@ -48,11 +46,11 @@ export const getDownloadServer = () => {
     return downloadServers[getRandomArbitrary(0, (downloadServers.length - 1))]
 }
 
-export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, timeout = 500000 }) => {
+export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, timeout = 500000 }): Promise<any> => {
     return new Promise((resolve, reject) => {
         let currentTries = 0
 
-        const doRequest = async () => {
+        const doRequest = async (): Promise<any> => {
             if(!(await isOnline())){
                 return setTimeout(doRequest, retryAPIRequestTimeout)
             }
@@ -81,7 +79,7 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
                     timeout: 86400000
                 }),
                 body: JSON.stringify(data)
-            }, (err, response, body) => {
+            }, (err: any, response: any, body: any) => {
                 if(err){
                     log.error(err)
 
@@ -109,7 +107,7 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
     })
 }
 
-export const authInfo = ({ email }) => {
+export const authInfo = ({ email }: { email: string }): Promise<any> => {
     return new Promise((resolve, reject) => {
         apiRequest({
             method: "POST",
@@ -117,7 +115,7 @@ export const authInfo = ({ email }) => {
             data: {
                 email
             }
-        }).then((response) => {
+        }).then((response: any) => {
             if(!response.status){
                 return reject(response.message)
             }
@@ -127,7 +125,7 @@ export const authInfo = ({ email }) => {
     })
 }
 
-export const login = ({ email, password, twoFactorCode }) => {
+export const login = ({ email, password, twoFactorCode }: { email: string, password: string, twoFactorCode: string | number }): Promise<any> => {
     return new Promise((resolve, reject) => {
         apiRequest({
             method: "POST",
@@ -137,7 +135,7 @@ export const login = ({ email, password, twoFactorCode }) => {
                 password,
                 twoFactorKey: twoFactorCode
             }
-        }).then((response) => {
+        }).then((response: any) => {
             if(!response.status){
                 return reject(response.message)
             }
@@ -147,7 +145,7 @@ export const login = ({ email, password, twoFactorCode }) => {
     })
 }
 
-export const userInfo = ({ apiKey }) => {
+export const userInfo = ({ apiKey }: { apiKey: string }): Promise<any> => {
     return new Promise((resolve, reject) => {
         apiRequest({
             method: "POST",
@@ -155,7 +153,7 @@ export const userInfo = ({ apiKey }) => {
             data: {
                 apiKey
             }
-        }).then((response) => {
+        }).then((response: any) => {
             if(!response.status){
                 return reject(response.message)
             }
@@ -165,7 +163,7 @@ export const userInfo = ({ apiKey }) => {
     })
 }
 
-export const baseFolders = ({ apiKey }) => {
+export const baseFolders = ({ apiKey }: { apiKey: string }): Promise<any> => {
     return new Promise((resolve, reject) => {
         apiRequest({
             method: "POST",
@@ -174,7 +172,7 @@ export const baseFolders = ({ apiKey }) => {
                 apiKey,
                 includeDefault: "true"
             }
-        }).then((response) => {
+        }).then((response: any) => {
             if(!response.status){
                 return reject(response.message)
             }
@@ -184,7 +182,7 @@ export const baseFolders = ({ apiKey }) => {
     })
 }
 
-export const folderContent = ({ apiKey, uuid }) => {
+export const folderContent = ({ apiKey, uuid }: { apiKey: string, uuid: string }): Promise<any> => {
     return new Promise((resolve, reject) => {
         apiRequest({
             method: "POST",
@@ -196,7 +194,7 @@ export const folderContent = ({ apiKey, uuid }) => {
                 page: 1,
                 uuid
             }
-        }).then((response) => {
+        }).then((response: any) => {
             if(!response.status){
                 return reject(response.message)
             }
@@ -206,7 +204,7 @@ export const folderContent = ({ apiKey, uuid }) => {
     })
 }
 
-export const folderPresent = ({ apiKey, uuid }) => {
+export const folderPresent = ({ apiKey, uuid }: { apiKey: string, uuid: string }): Promise<any> => {
     return new Promise((resolve, reject) => {
         apiRequest({
             method: "POST",
@@ -215,7 +213,7 @@ export const folderPresent = ({ apiKey, uuid }) => {
                 apiKey,
                 uuid
             }
-        }).then((response) => {
+        }).then((response: any) => {
             if(!response.status){
                 return reject(response.message)
             }
@@ -225,7 +223,7 @@ export const folderPresent = ({ apiKey, uuid }) => {
     })
 }
 
-export const dirTree = ({ apiKey, uuid, deviceId, skipCache = false }) => {
+export const dirTree = ({ apiKey, uuid, deviceId, skipCache = false }: { apiKey: string, uuid: string, deviceId: string, skipCache: boolean }): Promise<any> => {
     return new Promise((resolve, reject) => {
         apiRequest({
             method: "POST",
@@ -236,7 +234,7 @@ export const dirTree = ({ apiKey, uuid, deviceId, skipCache = false }) => {
                 deviceId,
                 skipCache: skipCache ? 1 : 0
             }
-        }).then((response) => {
+        }).then((response: any) => {
             if(!response.status){
                 return reject(response.message)
             }
@@ -246,7 +244,7 @@ export const dirTree = ({ apiKey, uuid, deviceId, skipCache = false }) => {
     })
 }
 
-export const acquireLock = ({ apiKey, id }) => {
+export const acquireLock = ({ apiKey, id }: { apiKey: string, id: string | number }): Promise<any> => {
     return new Promise((resolve, reject) => {
         apiRequest({
             method: "POST",
@@ -255,7 +253,7 @@ export const acquireLock = ({ apiKey, id }) => {
                 apiKey,
                 id
             }
-        }).then((response) => {
+        }).then((response: any) => {
             if(!response.status){
                 return reject(response.message)
             }
@@ -265,7 +263,7 @@ export const acquireLock = ({ apiKey, id }) => {
     })
 }
 
-export const releaseLock = ({ apiKey, id }) => {
+export const releaseLock = ({ apiKey, id }: { apiKey: string, id: string | number }): Promise<any> => {
     return new Promise((resolve, reject) => {
         apiRequest({
             method: "POST",
@@ -274,7 +272,7 @@ export const releaseLock = ({ apiKey, id }) => {
                 apiKey,
                 id
             }
-        }).then((response) => {
+        }).then((response: any) => {
             if(!response.status){
                 return reject(response.message)
             }
@@ -284,7 +282,7 @@ export const releaseLock = ({ apiKey, id }) => {
     })
 }
 
-export const holdLock = ({ apiKey, id }) => {
+export const holdLock = ({ apiKey, id }: { apiKey: string, id: string | number }): Promise<any> => {
     return new Promise((resolve, reject) => {
         apiRequest({
             method: "POST",
@@ -293,7 +291,7 @@ export const holdLock = ({ apiKey, id }) => {
                 apiKey,
                 id
             }
-        }).then((response) => {
+        }).then((response: any) => {
             if(!response.status){
                 return reject(response.message)
             }
@@ -303,7 +301,7 @@ export const holdLock = ({ apiKey, id }) => {
     })
 }
 
-export const createFolder = ({ uuid, name, parent }) => {
+export const createFolder = ({ uuid, name, parent }: { uuid: string, name: string, parent: string }): Promise<any> => {
     return new Promise((resolve, reject) => {
         createFolderSemaphore.acquire().then(() => {
             const nameHashed = hashFn(name.toLowerCase())
@@ -321,7 +319,7 @@ export const createFolder = ({ uuid, name, parent }) => {
                                 nameHashed,
                                 parent
                             }
-                        }).then((response) => {
+                        }).then((response: any) => {
                             if(!response.status){
                                 createFolderSemaphore.release()
 
@@ -374,7 +372,7 @@ export const createFolder = ({ uuid, name, parent }) => {
     })
 }
 
-export const fileExists = ({ name, parent }) => {
+export const fileExists = ({ name, parent }: { name: string, parent: string }): Promise<{ exists: boolean, existsUUID: string }> => {
     return new Promise((resolve, reject) => {
         const nameHashed = hashFn(name.toLowerCase())
 
@@ -387,7 +385,7 @@ export const fileExists = ({ name, parent }) => {
                     parent,
                     nameHashed
                 }
-            }).then((response) => {
+            }).then((response: any) => {
                 if(!response.status){
                     return reject(response.message)
                 }
@@ -401,7 +399,7 @@ export const fileExists = ({ name, parent }) => {
     })
 }
 
-export const folderExists = ({ name, parent }) => {
+export const folderExists = ({ name, parent }: { name: string, parent: string }): Promise<{ exists: boolean, existsUUID: string }> => {
     return new Promise((resolve, reject) => {
         const nameHashed = hashFn(name.toLowerCase())
 
@@ -414,7 +412,7 @@ export const folderExists = ({ name, parent }) => {
                     parent,
                     nameHashed
                 }
-            }).then((response) => {
+            }).then((response: any) => {
                 if(!response.status){
                     return reject(response.message)
                 }
@@ -428,7 +426,7 @@ export const folderExists = ({ name, parent }) => {
     })
 }
 
-export const archiveFile = ({ existsUUID, updateUUID }) => {
+export const archiveFile = ({ existsUUID, updateUUID }: { existsUUID: string, updateUUID: string }): Promise<any> => {
     return new Promise((resolve, reject) => {
         db.get("apiKey").then((apiKey) => {
             apiRequest({
@@ -439,18 +437,18 @@ export const archiveFile = ({ existsUUID, updateUUID }) => {
                     uuid: existsUUID,
                     updateUUID
                 }
-            }).then((response) => {
+            }).then((response: any) => {
                 if(!response.status){
                     return reject(response.message)
                 }
     
-                return resolve()
+                return resolve(response.data)
             }).catch(reject)
         }).catch(reject)
     })
 }
 
-export const isSharingFolder = ({ uuid }) => {
+export const isSharingFolder = ({ uuid }: { uuid: string }): Promise<any> => {
     return new Promise((resolve, reject) => {
         db.get("apiKey").then((apiKey) => {
             apiRequest({
@@ -460,7 +458,7 @@ export const isSharingFolder = ({ uuid }) => {
                     apiKey,
                     uuid
                 }
-            }).then((response) => {
+            }).then((response: any) => {
                 if(!response.status){
                     return reject(response.message)
                 }
@@ -474,7 +472,7 @@ export const isSharingFolder = ({ uuid }) => {
     })
 }
 
-export const isPublicLinkingFolder = ({ uuid }) => {
+export const isPublicLinkingFolder = ({ uuid }: {uuid: string }): Promise<any> => {
     return new Promise((resolve, reject) => {
         db.get("apiKey").then((apiKey) => {
             apiRequest({
@@ -484,7 +482,7 @@ export const isPublicLinkingFolder = ({ uuid }) => {
                     apiKey,
                     uuid
                 }
-            }).then((response) => {
+            }).then((response: any) => {
                 if(!response.status){
                     return reject(response.message)
                 }
@@ -498,7 +496,7 @@ export const isPublicLinkingFolder = ({ uuid }) => {
     })
 }
 
-export const addItemToPublicLink = ({ data }) => {
+export const addItemToPublicLink = ({ data }: { data: any }): Promise<any> => {
     return new Promise((resolve, reject) => {
         apiRequest({
             method: "POST",
@@ -514,7 +512,7 @@ export const addItemToPublicLink = ({ data }) => {
     })
 }
 
-export const shareItem = ({ data }) => {
+export const shareItem = ({ data }: { data: any }): Promise<any> => {
     return new Promise((resolve, reject) => {
         apiRequest({
             method: "POST",
@@ -530,7 +528,7 @@ export const shareItem = ({ data }) => {
     })
 }
 
-export const isSharingItem = ({ uuid }) => {
+export const isSharingItem = ({ uuid }: { uuid: string }): Promise<any> => {
     return new Promise((resolve, reject) => {
         db.get("apiKey").then((apiKey) => {
             apiRequest({
@@ -554,7 +552,7 @@ export const isSharingItem = ({ uuid }) => {
     })
 }
 
-export const isItemInPublicLink = ({ uuid }) => {
+export const isItemInPublicLink = ({ uuid }: { uuid: string }): Promise<any> => {
     return new Promise((resolve, reject) => {
         db.get("apiKey").then((apiKey) => {
             apiRequest({
@@ -578,7 +576,7 @@ export const isItemInPublicLink = ({ uuid }) => {
     })
 }
 
-export const renameItemInPublicLink = ({ data }) => {
+export const renameItemInPublicLink = ({ data }: { data: any }): Promise<boolean> => {
     return new Promise((resolve, reject) => {
         apiRequest({
             method: "POST",
@@ -594,7 +592,7 @@ export const renameItemInPublicLink = ({ data }) => {
     })
 }
 
-export const renameSharedItem = ({ data }) => {
+export const renameSharedItem = ({ data }: { data: any }): Promise<boolean> => {
     return new Promise((resolve, reject) => {
         apiRequest({
             method: "POST",
@@ -610,7 +608,7 @@ export const renameSharedItem = ({ data }) => {
     })
 }
 
-export const getFolderContents = ({ uuid }) => {
+export const getFolderContents = ({ uuid }: { uuid: string }): Promise<any> => {
     return new Promise((resolve, reject) => {
         db.get("apiKey").then((apiKey) => {
             apiRequest({
@@ -631,14 +629,14 @@ export const getFolderContents = ({ uuid }) => {
     })
 }
 
-export const checkIfItemParentIsShared = ({ type, parent, metaData }) => {
+export const checkIfItemParentIsShared = ({ type, parent, metaData }: { type: string, parent: string, metaData: any }): Promise<any> => {
     return new Promise((resolve, reject) => {
         db.get("apiKey").then((apiKey) => {
             db.get("masterKeys").then((masterKeys) => {
                 let shareCheckDone = false
                 let linkCheckDone = false
                 let resolved = false
-                let doneInterval = undefined
+                let doneInterval: any = undefined
 
                 const done = () => {
                     if(shareCheckDone && linkCheckDone){
@@ -647,7 +645,7 @@ export const checkIfItemParentIsShared = ({ type, parent, metaData }) => {
                         if(!resolved){
                             resolved = true
 
-                            resolve()
+                            resolve(true)
                         }
 
                         return true
@@ -658,7 +656,7 @@ export const checkIfItemParentIsShared = ({ type, parent, metaData }) => {
 
                 doneInterval = setInterval(done, 100)
 
-                isSharingFolder({ uuid: parent }).then((data) => {
+                isSharingFolder({ uuid: parent }).then((data: any) => {
                     if(!data.sharing){
                         shareCheckDone = true
 
@@ -717,7 +715,7 @@ export const checkIfItemParentIsShared = ({ type, parent, metaData }) => {
                         }
                     }
                     else{
-                        getFolderContents({ uuid: metaData.uuid }).then(async (contents) => {
+                        getFolderContents({ uuid: metaData.uuid }).then(async (contents: any) => {
                             const itemsToShare = []
 
                             itemsToShare.push({
@@ -760,7 +758,7 @@ export const checkIfItemParentIsShared = ({ type, parent, metaData }) => {
 
                             for(let i = 0; i < folders.length; i++){
                                 try{
-                                    var decrypted = await decryptFolderName(folders[i].name, masterKeys)
+                                    var decrypted: any = await decryptFolderName(folders[i].name, masterKeys)
                                 }
                                 catch(e){
                                     //console.log(e)
@@ -856,7 +854,7 @@ export const checkIfItemParentIsShared = ({ type, parent, metaData }) => {
                     return done()
                 })
 
-                isPublicLinkingFolder({ uuid: parent }).then(async (data) => {
+                isPublicLinkingFolder({ uuid: parent }).then(async (data: any) => {
                     if(!data.linking){
                         linkCheckDone = true
 
@@ -884,7 +882,7 @@ export const checkIfItemParentIsShared = ({ type, parent, metaData }) => {
                             const link = data.links[i]
 
                             try{
-                                var key = await decryptFolderLinkKey(link.linkKey, masterKeys)
+                                var key: any = await decryptFolderLinkKey(link.linkKey, masterKeys)
                             }
                             catch(e){
                                 //console.log(e)
@@ -893,7 +891,7 @@ export const checkIfItemParentIsShared = ({ type, parent, metaData }) => {
                             if(typeof key == "string"){
                                 if(key.length > 0){
                                     try{
-                                        var encrypted = await encryptMetadata(JSON.stringify({
+                                        var encrypted: any = await encryptMetadata(JSON.stringify({
                                             name: metaData.name,
                                             size: metaData.size,
                                             mime: metaData.mime,
@@ -947,7 +945,7 @@ export const checkIfItemParentIsShared = ({ type, parent, metaData }) => {
                         }
                     }
                     else{
-                        getFolderContents({ uuid: metaData.uuid }).then(async (contents) => {
+                        getFolderContents({ uuid: metaData.uuid }).then(async (contents: any) => {
                             const itemsToLink = []
 
                             itemsToLink.push({
@@ -990,7 +988,7 @@ export const checkIfItemParentIsShared = ({ type, parent, metaData }) => {
 
                             for(let i = 0; i < folders.length; i++){
                                 try{
-                                    var decrypted = await decryptFolderName(folders[i].name, masterKeys)
+                                    var decrypted: any = await decryptFolderName(folders[i].name, masterKeys)
                                 }
                                 catch(e){
                                     //console.log(e)
@@ -1031,7 +1029,7 @@ export const checkIfItemParentIsShared = ({ type, parent, metaData }) => {
                                     const link = data.links[x]
 
                                     try{
-                                        var key = await decryptFolderLinkKey(link.linkKey, masterKeys)
+                                        var key: any = await decryptFolderLinkKey(link.linkKey, masterKeys)
                                     }
                                     catch(e){
                                         //console.log(e)
@@ -1057,7 +1055,7 @@ export const checkIfItemParentIsShared = ({ type, parent, metaData }) => {
                                             }
 
                                             try{
-                                                var encrypted = await encryptMetadata(itemMetadata, key)
+                                                var encrypted: any = await encryptMetadata(itemMetadata, key)
                                             }
                                             catch(e){
                                                 //console.log(e)
@@ -1124,14 +1122,14 @@ export const checkIfItemParentIsShared = ({ type, parent, metaData }) => {
     })
 }
 
-export const checkIfItemIsSharedForRename = ({ type, uuid, metaData }) => {
+export const checkIfItemIsSharedForRename = ({ type, uuid, metaData }: { type: string, uuid: string, metaData: any }): Promise<any> => {
     return new Promise((resolve, reject) => {
         db.get("apiKey").then((apiKey) => {
             db.get("masterKeys").then((masterKeys) => {
                 let shareCheckDone = false
                 let linkCheckDone = false
                 let resolved = false
-                let doneInterval = undefined
+                let doneInterval: any = undefined
 
                 const done = () => {
                     if(shareCheckDone && linkCheckDone){
@@ -1140,7 +1138,7 @@ export const checkIfItemIsSharedForRename = ({ type, uuid, metaData }) => {
                         if(!resolved){
                             resolved = true
 
-                            resolve()
+                            resolve(true)
                         }
 
                         return true
@@ -1151,7 +1149,7 @@ export const checkIfItemIsSharedForRename = ({ type, uuid, metaData }) => {
 
                 doneInterval = setInterval(done, 100)
 
-                isSharingItem({ uuid }).then((data) => {
+                isSharingItem({ uuid }).then((data: any) => {
                     if(!data.sharing){
                         shareCheckDone = true
 
@@ -1221,7 +1219,7 @@ export const checkIfItemIsSharedForRename = ({ type, uuid, metaData }) => {
                     return done()
                 })
 
-                isItemInPublicLink({ uuid }).then((data) => {
+                isItemInPublicLink({ uuid }).then((data: any) => {
                     if(!data.linking){
                         linkCheckDone = true
 
@@ -1302,7 +1300,7 @@ export const checkIfItemIsSharedForRename = ({ type, uuid, metaData }) => {
     })
 }
 
-export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "sync" }) => {
+export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "sync" }: { queryParams: any, data: any, timeout: number, from: string }): Promise<any> => {
     return new Promise((resolve, reject) => {
         Promise.all([
             db.get("networkingSettings"),
@@ -1346,7 +1344,7 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
             let currentTries = 0
             let totalBytes = 0
 
-            const doRequest = async () => {
+            const doRequest = async (): Promise<any> => {
                 if(!(await isOnline())){
                     return setTimeout(doRequest, retryUploadTimeout)
                 }
@@ -1360,7 +1358,7 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
                 let lastBytes = 0
                 const throttle = throttleGroupUpload.throttle()
 
-                const calcProgress = (written) => {
+                const calcProgress = (written: number) => {
                     let bytes = written
 
                     if(lastBytes == 0){
@@ -1394,7 +1392,7 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
                     headers: {
                         "User-Agent": "filen-desktop"
                     }
-                }, (err, response, body) => {
+                }, (err: any, response: any, body: any) => {
                     if(err){
                         log.error(err)
 
@@ -1462,7 +1460,7 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
     })
 }
 
-export const markUploadAsDone = ({ uuid, uploadKey }) => {
+export const markUploadAsDone = ({ uuid, uploadKey }: { uuid: string, uploadKey: string }): Promise<any> => {
     return new Promise((resolve, reject) => {
         apiRequest({
             method: "POST",
@@ -1481,7 +1479,7 @@ export const markUploadAsDone = ({ uuid, uploadKey }) => {
     })
 }
 
-export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }) => {
+export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }: { region: string, bucket: string, uuid: string, index: number, from: string }): Promise<any> => {
     return new Promise((resolve, reject) => {
         db.get("networkingSettings").then(async (networkingSettings) => {
             await new Promise((resolve) => {
@@ -1515,7 +1513,7 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }) =>
             let currentTries = 0
             let totalBytes = 0
 
-            const doRequest = async () => {
+            const doRequest = async (): Promise<any> => {
                 if(!(await isOnline())){
                     return setTimeout(doRequest, retryDownloadTimeout)
                 }
@@ -1543,7 +1541,7 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }) =>
                     }
                 })
         
-                request.on("response", (response) => {
+                request.on("response", (response: any) => {
                     if(response.statusCode !== 200){
                         log.error("Invalid http statuscode: " + response.statusCode)
 
@@ -1553,9 +1551,9 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }) =>
                         return setTimeout(doRequest, retryDownloadTimeout)
                     }
 
-                    let res = []
+                    let res: any = []
 
-                    response.on("error", (err) => {
+                    response.on("error", (err: any) => {
                         log.error(err)
 
                         if((-totalBytes) < 0){
@@ -1578,7 +1576,7 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }) =>
                         return setTimeout(doRequest, retryDownloadTimeout)
                     })
 
-                    response.pipe(throttle).on("data", (chunk) => {
+                    response.pipe(throttle).on("data", (chunk: Buffer) => {
                         if(res == null){
                             return false
                         }
@@ -1608,7 +1606,7 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }) =>
                         throttle.destroy()
 
                         return true
-                    }).on("error", (err) => {
+                    }).on("error", (err: any) => {
                         log.error(err)
 
                         if((-totalBytes) < 0){
@@ -1654,7 +1652,7 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }) =>
                     return setTimeout(doRequest, retryDownloadTimeout)
                 })
         
-                request.on("error", (err) => {
+                request.on("error", (err: any) => {
                     log.error(err)
 
                     if((-totalBytes) < 0){
@@ -1684,7 +1682,7 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }) =>
     })
 }
 
-export const trashItem = ({ type, uuid }) => {
+export const trashItem = ({ type, uuid }: { type: string, uuid: string }): Promise<boolean> => {
     return new Promise((resolve, reject) => {
         db.get("apiKey").then((apiKey) => {
             apiRequest({
@@ -1713,7 +1711,7 @@ export const trashItem = ({ type, uuid }) => {
     })
 }
 
-export const moveFile = ({ file, parent }) => {
+export const moveFile = ({ file, parent }: { file: any, parent: string }): Promise<boolean> => {
     return new Promise((resolve, reject) => {
         db.get("apiKey").then((apiKey) => {
             apiRequest({
@@ -1756,7 +1754,7 @@ export const moveFile = ({ file, parent }) => {
     })
 }
 
-export const moveFolder = ({ folder, parent }) => {
+export const moveFolder = ({ folder, parent }: { folder: any, parent: string }): Promise<boolean> => {
     return new Promise((resolve, reject) => {
         db.get("apiKey").then((apiKey) => {
             apiRequest({
@@ -1795,7 +1793,7 @@ export const moveFolder = ({ folder, parent }) => {
     })
 }
 
-export const renameFile = ({ file, name }) => {
+export const renameFile = ({ file, name }: { file: any, name: string }): Promise<boolean> => {
     return new Promise((resolve, reject) => {
         const nameHashed = hashFn(name.toLowerCase())
 
@@ -1855,7 +1853,7 @@ export const renameFile = ({ file, name }) => {
     })
 }
 
-export const renameFolder = ({ folder, name }) => {
+export const renameFolder = ({ folder, name }: { folder: any, name: string }): Promise<boolean> => {
     return new Promise((resolve, reject) => {
         const nameHashed = hashFn(name.toLowerCase())
 

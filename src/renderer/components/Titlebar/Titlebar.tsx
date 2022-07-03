@@ -68,7 +68,7 @@ const Titlebar = memo(({ darkMode, lang, platform, title }: Props) => {
                             />
                         </Flex>
                         {
-                            currentWindow !== "main" && (
+                            currentWindow !== "main" && currentWindow !== "upload" && currentWindow !== "download" && (
                                 <Flex
                                     width="30px"
                                     height="25px"

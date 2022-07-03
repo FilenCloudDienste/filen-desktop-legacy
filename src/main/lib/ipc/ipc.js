@@ -10,6 +10,12 @@ const tray = require("../tray")
 const memoryCache = require("../memoryCache")
 const trayMenu = require("../trayMenu")
 const { v4: uuidv4 } = require("uuid")
+const AutoLaunch = require("auto-launch")
+
+const autoLauncher = new AutoLaunch({
+    name: "Filen",
+    path: app.getPath("exe"),
+})
 
 const handleMessage = (type, data) => {
     return new Promise((resolve, reject) => {
@@ -322,31 +328,19 @@ const handleMessage = (type, data) => {
         else if(type == "setOpenOnStartup"){
             const { open } = data
 
-            try{
-                app.setLoginItemSettings({
-                    openAtLogin: open,
-                    openAsHidden: true,
-                    path: app.getPath("exe"),
-                    name: "Filen",
-                    args: [
-                        "--processStart", `"${app.getPath("exe")}"`,
-                        "--process-start-args", `"--hidden"`
-                    ]
-                })
+            if(open){
+                var promise = autoLauncher.enable()
+            }
+            else{
+                var promise = autoLauncher.disable()
+            }
 
-                return resolve(e)
-            }
-            catch(e){
-                return reject(e)
-            }
+            promise.then(() => {
+                return resolve(true)
+            }).catch(reject)
         }
         else if(type == "getOpenOnStartup"){
-            try{
-                return resolve(app.getLoginItemSettings().openAtLogin)
-            }
-            catch(e){
-                return reject(e)
-            }
+            autoLauncher.isEnabled().then(resolve).catch(reject)
         }
         else if(type == "getVersion"){
             try{
