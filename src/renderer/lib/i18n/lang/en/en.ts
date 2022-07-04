@@ -130,7 +130,12 @@ const en: {
     queued: "Queued",
     acquiringSyncLock: "Acquiring sync lock..",
     syncLocationCreated: "Sync location created. To start the sync you have to unpause it.",
-    checkingChanges: "Checking changes.."
+    checkingChanges: "Checking changes..",
+    syncModeTwoWayInfo: "Mirror every action in both directions",
+    syncModeLocalToCloudInfo: "Mirror every action locally to the cloud but never act on remote changes",
+    syncModeCloudToLocalInfo: "Mirror every action from the cloud but never act on local changes",
+    syncModeLocalBackupInfo: "Only upload data to the cloud, never delete anything or act on remote changes",
+    syncModeCloudBackupInfo: "Only download data from the cloud, never delete anything or act on local changes"
 }
 
 export default en

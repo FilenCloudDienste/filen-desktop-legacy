@@ -896,11 +896,69 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                                             <Tooltip 
                                                 label={
                                                     <Flex flexDirection="column">
-                                                        <Text color="white">
-                                                            This is
+                                                        <Text
+                                                            color="white"
+                                                            fontWeight="bold"
+                                                        >
+                                                            {i18n(lang, "syncModeTwoWay")}
                                                         </Text>
-                                                        <Text color="white">
-                                                            a text
+                                                        <Text 
+                                                            color="white" 
+                                                            fontSize={11}
+                                                        >
+                                                            {i18n(lang, "syncModeTwoWayInfo")}
+                                                        </Text>
+                                                        <Text
+                                                            color="white"
+                                                            fontWeight="bold"
+                                                            marginTop="10px"
+                                                        >
+                                                            {i18n(lang, "syncModeLocalToCloud")}
+                                                        </Text>
+                                                        <Text 
+                                                            color="white" 
+                                                            fontSize={11}
+                                                        >
+                                                            {i18n(lang, "syncModeLocalToCloudInfo")}
+                                                        </Text>
+                                                        <Text
+                                                            color="white"
+                                                            fontWeight="bold"
+                                                            marginTop="10px"
+                                                        >
+                                                            {i18n(lang, "syncModeCloudToLocal")}
+                                                        </Text>
+                                                        <Text 
+                                                            color="white" 
+                                                            fontSize={11}
+                                                        >
+                                                            {i18n(lang, "syncModeCloudToLocalInfo")}
+                                                        </Text>
+                                                        <Text
+                                                            color="white"
+                                                            fontWeight="bold"
+                                                            marginTop="10px"
+                                                        >
+                                                            {i18n(lang, "syncModeLocalBackup")}
+                                                        </Text>
+                                                        <Text 
+                                                            color="white" 
+                                                            fontSize={11}
+                                                        >
+                                                            {i18n(lang, "syncModeLocalBackupInfo")}
+                                                        </Text>
+                                                        <Text
+                                                            color="white"
+                                                            fontWeight="bold"
+                                                            marginTop="10px"
+                                                        >
+                                                            {i18n(lang, "syncModeCloudBackup")}
+                                                        </Text>
+                                                        <Text 
+                                                            color="white" 
+                                                            fontSize={11}
+                                                        >
+                                                            {i18n(lang, "syncModeCloudBackupInfo")}
                                                         </Text>
                                                     </Flex>
                                                 }

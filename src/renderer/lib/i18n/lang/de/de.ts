@@ -130,7 +130,12 @@ const de: {
     queued: "Warte",
     acquiringSyncLock: "Fordere sync lock an..",
     syncLocationCreated: "Synchronisierungsort erstellt. Um die Synchonisiation zu starten die Pausierung des Synchronisierungsort aufheben.",
-    checkingChanges: "Änderungen prüfen.."
+    checkingChanges: "Änderungen prüfen..",
+    syncModeTwoWayInfo: "Jede Aktion in beide Richtungen spiegeln",
+    syncModeLocalToCloudInfo: "Jede lokale Aktion in die Cloud spiegeln aber keine Cloud Änderungen lokal spiegeln",
+    syncModeCloudToLocalInfo: "Jede cloud Aktion lokal spiegeln aber keine lokalen Änderungen in die Cloud spiegeln",
+    syncModeLocalBackupInfo: "Lädt nur Daten in die Cloud hoch, löscht nichts und spiegelt keine cloud Änderungen",
+    syncModeCloudBackupInfo: "Lädt nur Daten aus der Cloud herunter, löscht nichts und spiegelt keine lokalen Änderungen"
 }
 
 export default de
