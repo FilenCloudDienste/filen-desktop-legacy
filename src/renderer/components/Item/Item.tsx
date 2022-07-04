@@ -3,7 +3,7 @@ import { Flex, Text, Progress, Spinner, Image } from "@chakra-ui/react"
 import { bpsToReadable, timeSince } from "../../lib/helpers"
 import colors from "../../styles/colors"
 import { BsFileEarmark, BsFillFolderFill } from "react-icons/bs"
-import { IoSearchOutline } from "react-icons/io5"
+import { IoSearchOutline, IoArrowDown, IoArrowUp } from "react-icons/io5"
 import { AiOutlinePauseCircle } from "react-icons/ai"
 import ipc from "../../lib/ipc"
 import memoryCache from "../../lib/memoryCache"
@@ -158,92 +158,120 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
                     >
                         {itemName}
                     </Text>
-                    {
-                        typeof task.realtime !== "undefined" ? (
-                            <>
-                                {
-                                    paused || task.task.percent <= 0 || !isOnline ? (
-                                        <Progress
-                                            isIndeterminate={true}
-                                            height="5px"
-                                            borderRadius="10px"
-                                            colorScheme="blue"
-                                            marginTop="5px"
-                                            width="100%"
-                                        />
-                                    ) : (
-                                        <Progress
-                                            value={task.task.percent > 100 ? 100 : parseFloat(task.task.percent.toFixed(2))}
-                                            height="5px"
-                                            borderRadius="10px"
-                                            colorScheme="blue"
-                                            min={0}
-                                            max={100}
-                                            marginTop="5px"
-                                            width="100%"
-                                        />
-                                    )
-                                }
-                            </>
-                        ) : (
-                            <>
-                                {
-                                    hovering && typeof task.task.path == "string" && typeof task.realtime == "undefined" ? (
-                                        <Text
-                                            noOfLines={1}
-                                            wordBreak="break-word"
-                                            color={colors(platform, darkMode, "textPrimary")}
-                                            marginTop="1px"
-                                            fontSize={11}
-                                            maxWidth="100%"
-                                            width="100%"
-                                        >
-                                            {pathModule.join(pathModule.basename(task.location.local), task.task.path)}
-                                        </Text>
-                                    ) : (
-                                        <Text
-                                            noOfLines={1}
-                                            wordBreak="break-word"
-                                            color={colors(platform, darkMode, "textPrimary")}
-                                            marginTop="1px"
-                                            fontSize={11}
-                                            maxWidth="100%"
-                                            width="100%"
-                                        >
-                                            {
-                                                task.type == "downloadFromRemote" && i18n(lang, "syncTaskDownloadFromRemote")
-                                            }
-                                            {
-                                                task.type == "uploadToRemote" && i18n(lang, "syncTaskUploadToRemote")
-                                            }
-                                            {
-                                                task.type == "renameInRemote" && i18n(lang, "syncTaskRenameInRemote")
-                                            }
-                                            {
-                                                task.type == "renameInLocal" && i18n(lang, "syncTaskRenameInLocal")
-                                            }
-                                            {
-                                                task.type == "moveInRemote" && i18n(lang, "syncTaskMoveInRemote")
-                                            }
-                                            {
-                                                task.type == "moveInLocal" && i18n(lang, "syncTaskMoveInLocal")
-                                            }
-                                            {
-                                                task.type == "deleteInRemote" && i18n(lang, "syncTaskDeleteInRemote")
-                                            }
-                                            {
-                                                task.type == "deleteInLocal" && i18n(lang, "syncTaskDeleteInLocal")
-                                            }
-                                            &nbsp;
-                                            &#8226;
-                                            &nbsp;
-                                            {itemTimeSince}
-                                        </Text>
-                                    )
-                                }
-                            </>
-                        )
-                    }
+                    <Flex
+                        alignItems="center"
+                    >
+                        {
+                            typeof task.realtime !== "undefined" ? (
+                                <>
+                                    {
+                                        task.type == "uploadToRemote" && (
+                                            <IoArrowUp
+                                                size={11}
+                                                color={colors(platform, darkMode, "textPrimary")}
+                                                style={{
+                                                    marginRight: "5px",
+                                                    marginTop: "3px"
+                                                }}
+                                            />
+                                        )
+                                    }
+                                    {
+                                        task.type == "downloadFromRemote" && (
+                                            <IoArrowDown
+                                                size={11}
+                                                color={colors(platform, darkMode, "textPrimary")}
+                                                style={{
+                                                    marginRight: "5px",
+                                                    marginTop: "3px"
+                                                }}
+                                            />
+                                        )
+                                    }
+                                    {
+                                        paused || task.task.percent <= 0 || !isOnline ? (
+                                            <Progress
+                                                isIndeterminate={true}
+                                                height="5px"
+                                                borderRadius="10px"
+                                                colorScheme="blue"
+                                                marginTop="5px"
+                                                width="100%"
+                                            />
+                                        ) : (
+                                            <Progress
+                                                value={task.task.percent > 100 ? 100 : parseFloat(task.task.percent.toFixed(2))}
+                                                height="5px"
+                                                borderRadius="10px"
+                                                colorScheme="blue"
+                                                min={0}
+                                                max={100}
+                                                marginTop="5px"
+                                                width="100%"
+                                            />
+                                        )
+                                    }
+                                </>
+                            ) : (
+                                <>
+                                    {
+                                        hovering && typeof task.task.path == "string" && typeof task.realtime == "undefined" ? (
+                                            <Text
+                                                noOfLines={1}
+                                                wordBreak="break-word"
+                                                color={colors(platform, darkMode, "textPrimary")}
+                                                marginTop="1px"
+                                                fontSize={11}
+                                                maxWidth="100%"
+                                                width="100%"
+                                            >
+                                                {pathModule.join(pathModule.basename(task.location.local), task.task.path)}
+                                            </Text>
+                                        ) : (
+                                            <Text
+                                                noOfLines={1}
+                                                wordBreak="break-word"
+                                                color={colors(platform, darkMode, "textPrimary")}
+                                                marginTop="1px"
+                                                fontSize={11}
+                                                maxWidth="100%"
+                                                width="100%"
+                                            >
+                                                {
+                                                    task.type == "downloadFromRemote" && i18n(lang, "syncTaskDownloadFromRemote")
+                                                }
+                                                {
+                                                    task.type == "uploadToRemote" && i18n(lang, "syncTaskUploadToRemote")
+                                                }
+                                                {
+                                                    task.type == "renameInRemote" && i18n(lang, "syncTaskRenameInRemote")
+                                                }
+                                                {
+                                                    task.type == "renameInLocal" && i18n(lang, "syncTaskRenameInLocal")
+                                                }
+                                                {
+                                                    task.type == "moveInRemote" && i18n(lang, "syncTaskMoveInRemote")
+                                                }
+                                                {
+                                                    task.type == "moveInLocal" && i18n(lang, "syncTaskMoveInLocal")
+                                                }
+                                                {
+                                                    task.type == "deleteInRemote" && i18n(lang, "syncTaskDeleteInRemote")
+                                                }
+                                                {
+                                                    task.type == "deleteInLocal" && i18n(lang, "syncTaskDeleteInLocal")
+                                                }
+                                                &nbsp;
+                                                &#8226;
+                                                &nbsp;
+                                                {itemTimeSince}
+                                            </Text>
+                                        )
+                                    }
+                                </>
+                            )
+                        }
+                    </Flex>
                 </Flex>
             </Flex>
             <Flex

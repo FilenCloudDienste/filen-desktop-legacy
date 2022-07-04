@@ -1362,8 +1362,6 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                 const promise = task.type == "folder" ? fsRemote.mkdir(task.path, remoteTreeNow, location, task, task.item.uuid) : fsRemote.upload(task.path, remoteTreeNow, location, task, task.item.uuid)
     
                                 promise.then((result) => {
-                                    maxConcurrentUploadsSemaphore.release()
-    
                                     emitSyncTask("uploadToRemote", {
                                         status: "done",
                                         task,
@@ -1381,6 +1379,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                         location
                                     })
 
+                                    maxConcurrentUploadsSemaphore.release()
                                     maxSyncTasksSemaphore.release()
     
                                     return resolve(result)
@@ -1457,8 +1456,6 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                 const promise = task.type == "folder" ? fsLocal.mkdir(task.path, location, task) : fsLocal.download(task.path, location, task)
     
                                 promise.then((result) => {
-                                    maxConcurrentDownloadsSemaphore.release()
-    
                                     emitSyncTask("downloadFromRemote", {
                                         status: "done",
                                         task,
@@ -1476,6 +1473,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                         location
                                     })
 
+                                    maxConcurrentDownloadsSemaphore.release()
                                     maxSyncTasksSemaphore.release()
     
                                     return resolve(result)
