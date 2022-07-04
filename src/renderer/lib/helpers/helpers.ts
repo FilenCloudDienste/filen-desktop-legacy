@@ -1,6 +1,6 @@
 import { defaultIgnored } from "../constants"
 
-export const normalizePlatform = (platform) => {
+export const normalizePlatform = (platform: string) => {
     if(platform == "darwin"){
         return "mac"
     }
@@ -12,15 +12,15 @@ export const normalizePlatform = (platform) => {
     }
 }
 
-export const getRandomArbitrary = (min, max) => {
+export const getRandomArbitrary = (min: number, max: number) => {
     return Math.floor(Math.random() * (max - min) + min)
 }
 
-export const sleep = (ms = 1000) => {
+export const sleep = (ms: number = 1000) => {
     return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-export const fileAndFolderNameValidation = (name) => {
+export const fileAndFolderNameValidation = (name: string) => {
   const regex = /[<>:"\/\\|?*\x00-\x1F]|^(?:aux|con|clock\$|nul|prn|com[1-9]|lpt[1-9])$/i
 
   if(regex.test(name)){
@@ -30,8 +30,8 @@ export const fileAndFolderNameValidation = (name) => {
   return true
 }
 
-export function compareVersions(current, got){
-	function compare(a, b) {
+export function compareVersions(current: string, got: string){
+	function compare(a: string, b: string) {
 		if (a === b) {
 		   return 0;
 		}
@@ -72,7 +72,7 @@ export function compareVersions(current, got){
 	}
 }
 
-export const formatBytes = (bytes, decimals = 2) => {
+export const formatBytes = (bytes: number, decimals: number = 2) => {
     if(bytes == 0){
         return "0 Bytes"
     }
@@ -86,7 +86,7 @@ export const formatBytes = (bytes, decimals = 2) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i]
 }
 
-export const getChunkSize = (bps) => {
+export const getChunkSize = (bps: number) => {
   const set = Math.floor(1024 * 16)
   const normal = Math.floor(bps / 10)
 
@@ -97,7 +97,7 @@ export const getChunkSize = (bps) => {
   return set
 }
 
-export function fetchWithTimeout(ms, promise) {
+export function fetchWithTimeout(ms: number, promise: Promise<any>) {
     return new Promise((resolve, reject) => {
         let timer = setTimeout(() => {
             return reject(new Error("Request timeout after " + ms + "ms"))
@@ -115,23 +115,23 @@ export function fetchWithTimeout(ms, promise) {
     })
 }
 
-export const arrayBufferToHex = (buffer) => {
+export const arrayBufferToHex = (buffer: any) => {
     return [...new Uint8Array(buffer)].map(x => x.toString(16).padStart(2, "0")).join("")
 }
 
-export const getParentFromURL = (url) => {
+export const getParentFromURL = (url: string) => {
     const ex = url.split("/")
 
     return ex[ex.length - 1].trim()
 }
 
-export const getParentFromParentFromURL = (url) => {
+export const getParentFromParentFromURL = (url: string) => {
     const ex = url.split("/")
 
     return ex[ex.length - 2].trim()
 }
 
-export const base64ToArrayBuffer = (base64) => {
+export const base64ToArrayBuffer = (base64: string) => {
     const binary_string = window.atob(base64)
     const len = binary_string.length
     const bytes = new Uint8Array(len)
@@ -143,7 +143,7 @@ export const base64ToArrayBuffer = (base64) => {
     return bytes.buffer
 }
 
-export function arrayBufferToBase64(arrayBuffer) {
+export function arrayBufferToBase64(arrayBuffer: ArrayBuffer) {
     var base64    = ''
     var encodings = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
   
@@ -195,11 +195,11 @@ export function arrayBufferToBase64(arrayBuffer) {
     return base64
 }
 
-export const generateRandomString = (length = 32) => {
+export const generateRandomString = (length: number = 32) => {
 	return window.btoa(Array.from(window.crypto.getRandomValues(new Uint8Array(length * 2))).map((b) => String.fromCharCode(b)).join("")).replace(/[+/]/g, "").substring(0, length)
 }
 
-export const convertArrayBufferToBinaryString = (u8Array) => {
+export const convertArrayBufferToBinaryString = (u8Array: any) => {
     let i, len = u8Array.length, b_str = ""
 
     for (i = 0; i < len; i++){
@@ -209,7 +209,7 @@ export const convertArrayBufferToBinaryString = (u8Array) => {
     return b_str
 }
 
-export function convertWordArrayToArrayBuffer(wordArray) {
+export function convertWordArrayToArrayBuffer(wordArray: any) {
     let arrayOfWords = wordArray.hasOwnProperty("words") ? wordArray.words : []
     let length = wordArray.hasOwnProperty("sigBytes") ? wordArray.sigBytes : arrayOfWords.length * 4
     let uInt8Array = new Uint8Array(length), index=0, word, i
@@ -226,9 +226,17 @@ export function convertWordArrayToArrayBuffer(wordArray) {
     return uInt8Array
 }
 
-export function Semaphore(max){
+export interface SemaphoreInterface {
+  acquire: Function,
+  release: Function,
+  count: Function,
+  setMax: Function,
+  purge: Function
+}
+
+export const Semaphore = function(this: SemaphoreInterface, max: number) {
     var counter = 0;
-    var waiting = [];
+    var waiting: any = [];
     var maxCount = max || 1
     
     var take = function() {
@@ -243,7 +251,7 @@ export function Semaphore(max){
       if(counter < maxCount) {
         counter++
         return new Promise(resolve => {
-        resolve();
+        resolve(true);
       });
       } else {
         return new Promise((resolve, err) => {
@@ -261,7 +269,7 @@ export function Semaphore(max){
       return counter
     }
 
-    this.setMax = function(newMax) {
+    this.setMax = function(newMax: number) {
         maxCount = newMax
     }
     
@@ -277,9 +285,9 @@ export function Semaphore(max){
       
       return unresolved;
     }
-}
+} as any as { new (max: number): SemaphoreInterface; };
 
-export const convertTimestampToMs = (timestamp) => {
+export const convertTimestampToMs = (timestamp: number) => {
     const date = new Date(timestamp * 1000)
 
     if(date.getFullYear() > 2100){
@@ -290,7 +298,7 @@ export const convertTimestampToMs = (timestamp) => {
     }
 }
 
-export const isFileOrFolderNameIgnoredByDefault = (name) => {
+export const isFileOrFolderNameIgnoredByDefault = (name: string) => {
     if(typeof name !== "string"){
 		return true
 	}
@@ -341,7 +349,7 @@ export const isFileOrFolderNameIgnoredByDefault = (name) => {
 		return true
 	}
 
-	let ext = name.split(".")
+	let ext: any = name.split(".")
 
 	ext = ext[ext.length - 1]
 
@@ -358,7 +366,7 @@ export const isFileOrFolderNameIgnoredByDefault = (name) => {
 	return false
 }
 
-export const fileNameToLowerCaseExt = (name) => {
+export const fileNameToLowerCaseExt = (name: string) => {
     if(name.indexOf(".") == -1){
 		return name
 	}
@@ -373,7 +381,7 @@ export const fileNameToLowerCaseExt = (name) => {
     return generatedFileName
 }
 
-export const bpsToReadable = (bps) => {
+export const bpsToReadable = (bps: number) => {
     if(!(bps > 0 && bps < (1024 * 1024 * 1024 * 1024))){
       bps = 1
     }
@@ -397,7 +405,7 @@ export const bpsToReadable = (bps) => {
     return Math.max(bps, 0.1).toFixed(1) + byteUnits[i];
 };
 
-export function nodeBufferToArrayBuffer(buf) {
+export function nodeBufferToArrayBuffer(buf: Buffer) {
     const ab = new ArrayBuffer(buf.length);
     const view = new Uint8Array(ab);
     for (let i = 0; i < buf.length; ++i) {
@@ -406,7 +414,8 @@ export function nodeBufferToArrayBuffer(buf) {
     return ab;
 }
 
-export function getTimeRemaining(endtime){
+export function getTimeRemaining(endtime: number){
+    // @ts-ignore
     const total = Date.parse(new Date(endtime)) - Date.parse(new Date());
     const seconds = Math.floor( (total/1000) % 60 );
     const minutes = Math.floor( (total/1000/60) % 60 );
@@ -426,8 +435,9 @@ export const isOnline = () => {
     return window.navigator.onLine
 }
 
-export function timeSince(ts, lang = "en") {
+export function timeSince(ts: number, lang: string = "en") {
     const date = new Date(ts)
+      // @ts-ignore
     var seconds = Math.floor((new Date() - date) / 1000);
     var interval = seconds / 31536000;
   
