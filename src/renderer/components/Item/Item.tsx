@@ -173,7 +173,7 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
                                         />
                                     ) : (
                                         <Progress
-                                            value={task.task.percent > 100 ? 100 : task.task.percent.toFixed(2)}
+                                            value={task.task.percent > 100 ? 100 : parseFloat(task.task.percent.toFixed(2))}
                                             height="5px"
                                             borderRadius="10px"
                                             colorScheme="blue"

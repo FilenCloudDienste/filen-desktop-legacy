@@ -548,7 +548,7 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number, email:
                                         flexDirection="column"
                                     >
                                         <Progress
-                                            value={!isNaN(percent) ? 0 : percent > 100 ? 100 : parseFloat(percent.toFixed(2))}
+                                            value={percent > 100 ? 100 : parseFloat(percent.toFixed(2))}
                                             height="5px"
                                             borderRadius="10px"
                                             colorScheme="blue"

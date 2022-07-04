@@ -15,7 +15,7 @@ interface Props {
 const Titlebar = memo(({ darkMode, lang, platform, title }: Props) => {
     const [hoveringExit, setHoveringExit] = useState<boolean>(false)
     const currentWindow: string = useRef(window.location.hash.split("#")[1]).current
-    const showX: boolean = useRef(currentWindow !== "main" && currentWindow !== "upload" && currentWindow !== "download").current
+    const showX: boolean = useRef(currentWindow !== "main").current
 
     return (
         <Flex
