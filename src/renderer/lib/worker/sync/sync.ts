@@ -4,6 +4,7 @@ import db from "../../db"
 import { acquireLock, releaseLock, holdLock } from "../../api"
 import ipc from "../../ipc"
 import { sendToAllPorts } from "../ipc"
+// @ts-ignore
 import { v4 as uuidv4 } from "uuid"
 import { maxRetrySyncTask, retrySyncTaskTimeout, maxConcurrentDownloads as maxConcurrentDownloadsPreset, maxConcurrentUploads as maxConcurrentUploadsPreset } from "../../constants"
 import { Semaphore } from "../../helpers"
@@ -13,19 +14,19 @@ const log = window.require("electron-log")
 const gitignoreParser = window.require("@gerhobbelt/gitignore-parser")
 const fs = window.require("fs-extra")
 
-let SYNC_RUNNING = false
-const SYNC_TIMEOUT = 5000
-let SYNC_LOCK_INTERVAL = undefined
-let TRYING_TO_HOLD_SYNC_LOCK = false
-let IS_FIRST_REQUEST = {}
-const WATCHERS = {}
-let SYNC_LOCK_ACQUIRED = false
+let SYNC_RUNNING: boolean = false
+const SYNC_TIMEOUT: number = 5000
+let SYNC_LOCK_INTERVAL: any = undefined
+let TRYING_TO_HOLD_SYNC_LOCK: boolean = false
+let IS_FIRST_REQUEST: any = {}
+const WATCHERS: any = {}
+let SYNC_LOCK_ACQUIRED: boolean = false
 const maxConcurrentUploadsSemaphore = new Semaphore(maxConcurrentUploadsPreset)
 const maxConcurrentDownloadsSemaphore = new Semaphore(maxConcurrentDownloadsPreset)
 const maxSyncTasksSemaphore = new Semaphore(1024)
 const syncLockSemaphore = new Semaphore(1)
 
-const acquireSyncLock = (id) => {
+const acquireSyncLock = (id: string | number): Promise<boolean> => {
     return new Promise((resolve) => {
         syncLockSemaphore.acquire().then(() => {
             log.info("Acquiring sync lock")
@@ -60,7 +61,7 @@ const acquireSyncLock = (id) => {
     })
 }
 
-const releaseSyncLock = (id) => {
+const releaseSyncLock = (id: string | number): Promise<boolean> => {
     return new Promise((resolve, reject) => {
         if(!SYNC_LOCK_ACQUIRED){
             return resolve(true)
@@ -91,7 +92,7 @@ const releaseSyncLock = (id) => {
     })
 }
 
-const holdSyncLock = (id) => {
+const holdSyncLock = (id: string | number): void => {
     clearInterval(SYNC_LOCK_INTERVAL)
 
     SYNC_LOCK_INTERVAL = setInterval(() => {
@@ -128,10 +129,10 @@ const holdSyncLock = (id) => {
     }, SYNC_TIMEOUT / 2)
 }
 
-const getDeltas = (type, before, now) => {
-    return new Promise((resolve, reject) => {
-        const deltasFiles = {}
-        const deltasFolders = {}
+const getDeltas = (type: string, before: any, now: any): Promise<any> => {
+    return new Promise((resolve, _) => {
+        const deltasFiles: any = {}
+        const deltasFolders: any = {}
         
         if(type == "local"){
             const beforeFiles = before.files
@@ -413,15 +414,15 @@ onlyGetBaseParent<Move/Delete>(tasks) will return
     path: "someOtherFile.txt"
 }
 */
-const onlyGetBaseParentMove = (tasks) => {
-    const sorted = tasks.sort((a, b) => {
+const onlyGetBaseParentMove = (tasks: any): any => {
+    const sorted = tasks.sort((a: any, b: any) => {
         return a.path.length - b.path.length
     })
 
-    const newTasks = []
-    const moving = []
+    const newTasks: any[] = []
+    const moving: any[] = []
     
-    const exists = (path) => {
+    const exists = (path: string) => {
     	for(let i = 0; i < moving.length; i++){
             if(path.startsWith(moving[i] + "/")){
                 return true
@@ -447,15 +448,15 @@ const onlyGetBaseParentMove = (tasks) => {
     return newTasks
 }
 
-const onlyGetBaseParentDelete = (tasks) => {
-    const sorted = tasks.sort((a, b) => {
+const onlyGetBaseParentDelete = (tasks: any): any => {
+    const sorted = tasks.sort((a: any, b: any) => {
         return a.path.length - b.path.length
     })
 
-    const newTasks = []
-    const deleting = []
+    const newTasks: any[] = []
+    const deleting: any[] = []
     
-    const exists = (path) => {
+    const exists = (path: string) => {
     	for(let i = 0; i < deleting.length; i++){
             if(path.startsWith(deleting[i] + "/")){
                 return true
@@ -495,11 +496,11 @@ Move tasks usually come twice, like so:
 }
 Since we only need one of them we sort them and return only one task for each task
 */
-const sortMoveRenameTasks = (tasks) => {
-    const added = {}
-    const newTasks = []
+const sortMoveRenameTasks = (tasks: any): any => {
+    const added: any = {}
+    const newTasks: any[] = []
 
-    tasks = tasks.filter(task => typeof task.from == "string" && typeof task.to == "string" && task.from !== task.to)
+    tasks = tasks.filter((task: any) => typeof task.from == "string" && typeof task.to == "string" && task.from !== task.to)
 
     for(let i = 0; i < tasks.length; i++){
         const task = tasks[i]
@@ -518,7 +519,7 @@ const sortMoveRenameTasks = (tasks) => {
     return newTasks
 }
 
-const addTaskToRedoList = (task) => {
+const addTaskToRedoList = (task: any): Promise<any> => {
     return new Promise((resolve, reject) => {
         db.get("userId").then((userId) => {
             db.get("syncTasksRedo:" + userId).then((syncTasksRedo) => {
@@ -539,7 +540,7 @@ const addTaskToRedoList = (task) => {
 }
 
 // Parse lists into .gitignore like compatible format
-const getIgnored = (location) => {
+const getIgnored = (location: any): Promise<any> => {
     return new Promise((resolve, reject) => {
         Promise.all([
             db.get("selectiveSync:remote:" + location.uuid),
@@ -565,7 +566,7 @@ const getIgnored = (location) => {
     })
 }
 
-const getSyncMode = (location) => {
+const getSyncMode = (location: any) => {
     return new Promise((resolve, reject) => {
         db.get("userId").then((userId) => {
             db.get("syncLocations:" + userId).then((syncLocations) => {
@@ -583,9 +584,9 @@ const getSyncMode = (location) => {
 
 // Sorting the tasks so we don't have duplicates or for example delete something that has been renamed or move something that has been renamed etc.
 // We also filter for ignored files/folders here + the sync mode
-const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameInRemote, moveInLocal, moveInRemote, deleteInLocal, deleteInRemote, location }) => {
+const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameInRemote, moveInLocal, moveInRemote, deleteInLocal, deleteInRemote, location }: { uploadToRemote: any, downloadFromRemote: any, renameInLocal: any, renameInRemote: any, moveInLocal: any, moveInRemote: any, deleteInLocal: any, deleteInRemote: any, location: any }): Promise<any> => {
     return new Promise(async (resolve, reject) => {
-        const isPathIncluded = (tasks, path) => {
+        const isPathIncluded = (tasks: any, path: string) => {
             for(let i = 0; i < tasks.length; i++){
                 if(path.indexOf(tasks[i]) !== -1){
                     return true
@@ -673,24 +674,24 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
             }
         }
     
-        let uploadToRemoteTasks = []
-        let downloadFromRemoteTasks = []
-        let renameInLocalTasks = []
-        let renameInRemoteTasks = []
-        let moveInLocalTasks = []
-        let moveInRemoteTasks = []
-        let deleteInLocalTasks = []
-        let deleteInRemoteTasks = []
+        let uploadToRemoteTasks: any[] = []
+        let downloadFromRemoteTasks: any[] = []
+        let renameInLocalTasks: any[] = []
+        let renameInRemoteTasks: any[] = []
+        let moveInLocalTasks: any[] = []
+        let moveInRemoteTasks: any[] = []
+        let deleteInLocalTasks: any[] = []
+        let deleteInRemoteTasks: any[] = []
     
         const renameInRemoteTasksSorted = sortMoveRenameTasks(renameInRemote)
-        const renamedInRemote = []
+        const renamedInRemote: any[] = []
         const moveInRemoteTasksSorted = sortMoveRenameTasks(moveInRemote)
-        const movedInRemote = []
+        const movedInRemote: any[] = []
 
         const renameInLocalTasksSorted = sortMoveRenameTasks(renameInLocal)
-        const renamedInLocal = []
+        const renamedInLocal: any[] = []
         const moveInLocalTasksSorted = sortMoveRenameTasks(moveInLocal)
-        const movedInLocal = []
+        const movedInLocal: any[] = []
 
         for(let i = 0; i < renameInRemoteTasksSorted.length; i++){
             if(
@@ -803,7 +804,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
     })
 }
 
-const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameInRemote, moveInLocal, moveInRemote, deleteInLocal, deleteInRemote, lastLocalTree, lastRemoteTree, localTreeNow, remoteTreeNow, location }) => {
+const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameInRemote, moveInLocal, moveInRemote, deleteInLocal, deleteInRemote, lastLocalTree, lastRemoteTree, localTreeNow, remoteTreeNow, location }: { uploadToRemote: any, downloadFromRemote: any, renameInLocal: any, renameInRemote: any, moveInLocal: any, moveInRemote: any, deleteInLocal: any, deleteInRemote: any, lastLocalTree: any, lastRemoteTree: any, localTreeNow: any, remoteTreeNow: any, location: any }): Promise<any> => {
     return new Promise(async (resolve, reject) => {
         try{
             var {
@@ -849,11 +850,11 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
         log.info("uploadToRemote", uploadToRemoteTasks)
         log.info("downloadFromRemote", downloadFromRemoteTasks)*/
 
-        const doneTasks = []
+        const doneTasks: any[] = []
 
         if(renameInRemoteTasks.length > 0){
             await Promise.allSettled([
-                ...renameInRemoteTasks.map(task => new Promise((resolve, reject) => {
+                ...renameInRemoteTasks.map((task: any) => new Promise((resolve, reject) => {
                     maxSyncTasksSemaphore.acquire().then(() => {
                         emitSyncTask("renameInRemote", {
                             status: "start",
@@ -863,7 +864,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                         let currentTries = 0
     
-                        const doTask = (lastErr) => {
+                        const doTask = (lastErr?: any) => {
                             if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
                                 log.error("renameInRemote task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
@@ -929,7 +930,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
         if(renameInLocalTasks.length > 0){
             await Promise.allSettled([
-                ...renameInLocalTasks.map(task => new Promise((resolve, reject) => {
+                ...renameInLocalTasks.map((task: any) => new Promise((resolve, reject) => {
                     maxSyncTasksSemaphore.acquire().then(() => {
                         emitSyncTask("renameInLocal", {
                             status: "start",
@@ -939,7 +940,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                         let currentTries = 0
     
-                        const doTask = (lastErr) => {
+                        const doTask = (lastErr?: any) => {
                             if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
                                 log.error("renameInLocal task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
@@ -1005,7 +1006,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
         if(moveInRemoteTasks.length > 0){
             await Promise.allSettled([
-                ...moveInRemoteTasks.map(task => new Promise((resolve, reject) => {
+                ...moveInRemoteTasks.map((task: any) => new Promise((resolve, reject) => {
                     maxSyncTasksSemaphore.acquire().then(() => {
                         emitSyncTask("moveInRemote", {
                             status: "start",
@@ -1015,7 +1016,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                         let currentTries = 0
     
-                        const doTask = (lastErr) => {
+                        const doTask = (lastErr?: any) => {
                             if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
                                 log.error("moveInRemote task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
@@ -1081,7 +1082,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
         if(moveInLocalTasks.length > 0){
             await Promise.allSettled([
-                ...moveInLocalTasks.map(task => new Promise((resolve, reject) => {
+                ...moveInLocalTasks.map((task: any) => new Promise((resolve, reject) => {
                     maxSyncTasksSemaphore.acquire().then(() => {
                         emitSyncTask("moveInLocal", {
                             status: "start",
@@ -1091,7 +1092,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                         let currentTries = 0
     
-                        const doTask = (lastErr) => {
+                        const doTask = (lastErr?: any) => {
                             if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
                                 log.error("moveInLocal task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
@@ -1157,7 +1158,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
         if(deleteInRemoteTasks.length > 0){
             await Promise.allSettled([
-                ...deleteInRemoteTasks.map(task => new Promise((resolve, reject) => {
+                ...deleteInRemoteTasks.map((task: any) => new Promise((resolve, reject) => {
                     maxSyncTasksSemaphore.acquire().then(() => {
                         emitSyncTask("deleteInRemote", {
                             status: "start",
@@ -1167,7 +1168,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                         let currentTries = 0
     
-                        const doTask = (lastErr) => {
+                        const doTask = (lastErr?: any) => {
                             if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
                                 log.error("deleteInRemote task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
@@ -1233,7 +1234,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
         if(deleteInLocalTasks.length > 0){
             await Promise.allSettled([
-                ...deleteInLocalTasks.map(task => new Promise((resolve, reject) => {
+                ...deleteInLocalTasks.map((task: any) => new Promise((resolve, reject) => {
                     maxSyncTasksSemaphore.acquire().then(() => {
                         emitSyncTask("deleteInLocal", {
                             status: "start",
@@ -1243,7 +1244,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                         let currentTries = 0
     
-                        const doTask = (lastErr) => {
+                        const doTask = (lastErr?: any) => {
                             if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
                                 log.error("deleteInLocal task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
@@ -1309,7 +1310,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
         if(uploadToRemoteTasks.length > 0){
             await Promise.allSettled([
-                ...uploadToRemoteTasks.map(task => new Promise((resolve, reject) => {
+                ...uploadToRemoteTasks.map((task: any) => new Promise((resolve, reject) => {
                     maxSyncTasksSemaphore.acquire().then(() => {
                         emitSyncTask("uploadToRemote", {
                             status: "start",
@@ -1319,7 +1320,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                         let currentTries = 0
     
-                        const doTask = (lastErr) => {
+                        const doTask = (lastErr?: any) => {
                             if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
                                 log.error("uploadToRemote task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
@@ -1403,7 +1404,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
         if(downloadFromRemoteTasks.length > 0){
             await Promise.allSettled([
-                ...downloadFromRemoteTasks.map(task => new Promise((resolve, reject) => {
+                ...downloadFromRemoteTasks.map((task: any) => new Promise((resolve, reject) => {
                     maxSyncTasksSemaphore.acquire().then(() => {
                         emitSyncTask("downloadFromRemote", {
                             status: "start",
@@ -1413,7 +1414,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                         let currentTries = 0
     
-                        const doTask = (lastErr) => {
+                        const doTask = (lastErr?: any) => {
                             if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
                                 log.error("downloadFromRemote task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
@@ -1501,23 +1502,23 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     })
 }
 
-const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTree, localTreeNow, remoteTreeNow }) => {
+const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTree, localTreeNow, remoteTreeNow }: { localDeltas: any, remoteDeltas: any, lastLocalTree: any, lastRemoteTree: any, localTreeNow: any, remoteTreeNow: any }): Promise<any> => {
     return new Promise((resolve, reject) => {
         const localFileDeltas = localDeltas.files
         const localFolderDeltas = localDeltas.folders
         const remoteFileDeltas = remoteDeltas.files
         const remoteFolderDeltas = remoteDeltas.folders
 
-        const uploadToRemote = []
-        const downloadFromRemote = []
-        const renameInLocal = []
-        const renameInRemote = []
-        const moveInLocal = []
-        const moveInRemote = []
-        const deleteInLocal = []
-        const deleteInRemote = []
+        const uploadToRemote: any[] = []
+        const downloadFromRemote: any[] = []
+        const renameInLocal: any[] = []
+        const renameInRemote: any[] = []
+        const moveInLocal: any[] = []
+        const moveInRemote: any[] = []
+        const deleteInLocal: any[] = []
+        const deleteInRemote: any[] = []
 
-        const addedToList = {}
+        const addedToList: any = {}
 
         for(const path in localFolderDeltas){
             const localDelta = localFolderDeltas[path]?.type
@@ -1812,8 +1813,8 @@ const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTre
     })
 }
 
-const applyDoneTasksToSavedState = ({ doneTasks, localTreeNow, remoteTreeNow }) => {
-    return new Promise((resolve, reject) => {
+const applyDoneTasksToSavedState = ({ doneTasks, localTreeNow, remoteTreeNow }: { doneTasks: any, localTreeNow: any, remoteTreeNow: any }): Promise<any> => {
+    return new Promise((resolve, _) => {
         for(let i = 0; i < doneTasks.length; i++){
             const { type, task } = doneTasks[i]
 
@@ -2221,7 +2222,7 @@ const applyDoneTasksToSavedState = ({ doneTasks, localTreeNow, remoteTreeNow }) 
     })
 }
 
-const addToSyncIssues = (type, message) => {
+const addToSyncIssues = (type: string, message: any): Promise<any> => {
     return new Promise((resolve, reject) => {
         db.get("syncIssues").then((syncIssues) => {
             if(!Array.isArray(syncIssues)){
@@ -2239,7 +2240,7 @@ const addToSyncIssues = (type, message) => {
     })
 }
 
-const updateLocationBusyStatus = (uuid, busy) => {
+const updateLocationBusyStatus = (uuid: string, busy: boolean): Promise<any> => {
     return new Promise((resolve, reject) => {
         db.get("userId").then((userId) => {
             db.get("syncLocations:" + userId).then((syncLocations) => {
@@ -2247,7 +2248,7 @@ const updateLocationBusyStatus = (uuid, busy) => {
                     syncLocations = []
                 }
 
-                syncLocations = syncLocations.map(location => location.uuid == uuid ? { ...location, busy } : location)
+                syncLocations = syncLocations.map((location: any) => location.uuid == uuid ? { ...location, busy } : location)
 
                 db.set("syncLocations:" + userId, syncLocations).then(resolve).catch(reject)
             }).catch(reject)
@@ -2255,7 +2256,7 @@ const updateLocationBusyStatus = (uuid, busy) => {
     })
 }
 
-const emitSyncTask = (type, data) => {
+const emitSyncTask = (type: string, data: any): void => {
     sendToAllPorts({
         type: "syncTask",
         data: {
@@ -2263,11 +2264,9 @@ const emitSyncTask = (type, data) => {
             data
         }
     })
-
-    return true
 }
 
-const emitSyncStatus = (type, data) => {
+const emitSyncStatus = (type: string, data: any): void => {
     sendToAllPorts({
         type: "syncStatus",
         data: {
@@ -2275,11 +2274,9 @@ const emitSyncStatus = (type, data) => {
             data
         }
     })
-
-    return true
 }
 
-const emitSyncStatusLocation = (type, data) => {
+const emitSyncStatusLocation = (type: string, data: any): void => {
     sendToAllPorts({
         type: "syncStatusLocation",
         data: {
@@ -2287,11 +2284,9 @@ const emitSyncStatusLocation = (type, data) => {
             data
         }
     })
-
-    return true
 }
 
-const removeRemoteLocation = (location) => {
+const removeRemoteLocation = (location: any): Promise<boolean> => {
     return new Promise(async (resolve) => {
         try{
             const userId = await db.get("userId")
@@ -2324,7 +2319,7 @@ const removeRemoteLocation = (location) => {
     })
 }
 
-const syncLocation = async (location) => {
+const syncLocation = async (location: any): Promise<any> => {
     if(location.paused){
         log.info("Sync location " + location.uuid + " -> " + location.local + " <-> " + location.remote + " [" + location.type + "] is paused")
 
@@ -2350,7 +2345,7 @@ const syncLocation = async (location) => {
             fsRemote.smokeTest(location.remoteUUID)
         ])
     }
-    catch(e){
+    catch(e: any){
         if(e.toString().toLowerCase().indexOf("remote folder") !== -1 && e.toString().toLowerCase().indexOf("is not present") !== -1){
             await removeRemoteLocation(location)
         }
@@ -2388,7 +2383,7 @@ const syncLocation = async (location) => {
         try{
             await ipc.watchDirectory(pathModule.normalize(location.local), location.uuid)
         }
-        catch(e){
+        catch(e: any){
             log.error("Could not start local directory watcher for location " + location.uuid)
             log.error(e)
 
@@ -2429,7 +2424,7 @@ const syncLocation = async (location) => {
             fsRemote.directoryTree(location.remoteUUID, typeof IS_FIRST_REQUEST[location.uuid] == "undefined", location)
         ])
     }
-    catch(e){
+    catch(e: any){
         if(e.toString().toLowerCase().indexOf("folder not found") !== -1){
             await removeRemoteLocation(location)
         }
@@ -2470,7 +2465,7 @@ const syncLocation = async (location) => {
             db.get("lastRemoteTree:" + location.uuid)
         ])
     }
-    catch(e){
+    catch(e: any){
         log.error("Could not get last local/remote tree for location " + location.uuid)
         log.error(e)
 
@@ -2501,7 +2496,7 @@ const syncLocation = async (location) => {
                 db.set("lastRemoteTree:" + location.uuid, remoteTreeNow)
             ])
         }
-        catch(e){
+        catch(e: any){
             log.error("Could not save lastLocalTree/lastRemoteTree to DB for location " + location.uuid)
             log.error(e)
         }
@@ -2522,7 +2517,7 @@ const syncLocation = async (location) => {
         var localDeltas = await getDeltas("local", lastLocalTree, localTreeNow)
         var remoteDeltas = await getDeltas("remote", lastRemoteTree, remoteTreeNow)
     }
-    catch(e){
+    catch(e: any){
         log.error("Could not get deltas for location " + location.uuid)
         log.error(e)
 
@@ -2554,7 +2549,7 @@ const syncLocation = async (location) => {
     try{
         var { uploadToRemote, downloadFromRemote, renameInLocal, renameInRemote, moveInLocal, moveInRemote, deleteInLocal, deleteInRemote } = await consumeDeltas({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTree, localTreeNow, remoteTreeNow })
     }
-    catch(e){
+    catch(e: any){
         log.error("Could not consume deltas for location " + location.uuid)
         log.error(e)
 
@@ -2586,7 +2581,7 @@ const syncLocation = async (location) => {
     try{
         var { doneTasks } = await consumeTasks({ uploadToRemote, downloadFromRemote, renameInLocal, renameInRemote, moveInLocal, moveInRemote, deleteInLocal, deleteInRemote, lastLocalTree, lastRemoteTree, localTreeNow, remoteTreeNow, location })
     }
-    catch(e){
+    catch(e: any){
         log.error("Could not consume tasks for location " + location.uuid)
         log.error(e)
 
@@ -2619,7 +2614,7 @@ const syncLocation = async (location) => {
             return false
         }
     }
-    catch(e){
+    catch(e: any){
         log.error("Could not get sync issues after consume for location " + location.uuid)
         log.error(e)
 
@@ -2640,7 +2635,7 @@ const syncLocation = async (location) => {
     try{
         var { localTreeNowApplied, remoteTreeNowApplied } = await applyDoneTasksToSavedState({ doneTasks, localTreeNow, remoteTreeNow })
     }
-    catch(e){
+    catch(e: any){
         log.error("Could not apply " + doneTasks.length + " done tasks to saved state for location " + location.uuid)
         log.error(e)
 
@@ -2675,7 +2670,7 @@ const syncLocation = async (location) => {
             db.set("remoteDataChanged:" + location.uuid, false)
         ])
     }
-    catch(e){
+    catch(e: any){
         log.error("Could not save lastLocalTree to DB for location " + location.uuid)
         log.error(e)
 
@@ -2702,7 +2697,7 @@ const syncLocation = async (location) => {
     return true
 }
 
-const restartSyncLoop = async () => {
+const restartSyncLoop = async (): Promise<any> => {
     emitSyncStatus("releaseSyncLock", {
         status: "start"
     })
@@ -2729,13 +2724,13 @@ const restartSyncLoop = async () => {
     return setTimeout(sync, SYNC_TIMEOUT)
 }
 
-const sync = async () => {
+const sync = async (): Promise<any> => {
     try{
         if(!(await db.get("isLoggedIn"))){
             return setTimeout(sync, SYNC_TIMEOUT)
         }
     }
-    catch(e){
+    catch(e: any){
         log.error(e)
 
         addToSyncIssues("getIsLoggedIn", "Could not get logged in status: " + e.toString())
@@ -2757,7 +2752,7 @@ const sync = async () => {
 
         var syncLocations = await db.get("syncLocations:" + userId)
     }
-    catch(e){
+    catch(e: any){
         log.error("Could not fetch syncLocations from DB")
         log.error(e)
 
@@ -2918,7 +2913,7 @@ const sync = async () => {
         try{
             await syncLocation(syncLocations[i])
         }
-        catch(e){
+        catch(e: any){
             log.error("Sync task for location " + syncLocations[i].uuid + " failed, reason:")
             log.error(e)
 

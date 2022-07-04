@@ -3,6 +3,7 @@ import memoryCache from "../../memoryCache"
 import { isFileOrFolderNameIgnoredByDefault, convertTimestampToMs, Semaphore } from "../../helpers"
 import { downloadChunk } from "../../api"
 import { decryptData } from "../../crypto"
+// @ts-ignore
 import { v4 as uuidv4 } from "uuid"
 import { maxDownloadThreads } from "../../constants"
 import db from "../../db"
@@ -16,16 +17,16 @@ const is = window.require("electron-is")
 const downloadThreadsSemaphore = new Semaphore(maxDownloadThreads)
 const localFSSemaphore = new Semaphore(1)
 
-export const normalizePath = (path) => {
+export const normalizePath = (path: string): string => {
     return pathModule.normalize(path)
 }
 
-export const checkLastModified = (path) => {
+export const checkLastModified = (path: string): Promise<{ changed: boolean, mtimeMs?: number }> => {
     return new Promise((resolve, reject) => {
         localFSSemaphore.acquire().then(() => {
             path = normalizePath(path)
 
-            fs.lstat(path).then((stat) => {
+            fs.lstat(path).then((stat: any) => {
                 if(stat.mtimeMs > 0){
                     localFSSemaphore.release()
 
@@ -44,12 +45,12 @@ export const checkLastModified = (path) => {
                         changed: true,
                         mtimeMs 
                     })
-                }).catch((err) => {
+                }).catch((err: any) => {
                     localFSSemaphore.release()
 
                     return reject(err)
                 })
-            }).catch((err) => {
+            }).catch((err: any) => {
                 localFSSemaphore.release()
 
                 return reject(err)
@@ -58,7 +59,7 @@ export const checkLastModified = (path) => {
     })
 }
 
-export const getTempDir = () => {
+export const getTempDir = (): Promise<string> => {
     return new Promise((resolve, reject) => {
         if(memoryCache.has("tmpDir")){
             return resolve(memoryCache.get("tmpDir"))
@@ -74,7 +75,7 @@ export const getTempDir = () => {
     })
 }
 
-export const smokeTest = (path) => {
+export const smokeTest = (path: string): Promise<boolean> => {
     return new Promise(async (resolve, reject) => {
         path = normalizePath(path)
 
@@ -100,7 +101,7 @@ export const smokeTest = (path) => {
     })
 }
 
-export const directoryTree = (path, skipCache = false, location) => {
+export const directoryTree = (path: string, skipCache: boolean = false, location?: any): Promise<any> => {
     return new Promise((resolve, reject) => {
         const cacheKey = "directoryTreeLocal:" + location.uuid
 
@@ -118,10 +119,10 @@ export const directoryTree = (path, skipCache = false, location) => {
 
             path = normalizePath(path)
 
-            const files = {}
-            const folders = {}
-            const ino = {}
-            const windows = is.windows()
+            const files: any = {}
+            const folders: any = {}
+            const ino: any = {}
+            const windows: boolean = is.windows()
 
             readdirp(path, {
                 alwaysStat: true,
@@ -129,7 +130,7 @@ export const directoryTree = (path, skipCache = false, location) => {
                 type: "all",
                 depth: 2147483648,
                 directoryFilter: ["!.filen.trash.local"]
-            }).on("data", (item) => {
+            }).on("data", (item: any) => {
                 if(windows){
                     item.path = item.path.split("\\").join("/") // Convert windows \ style path seperators to / for internal database, we only use UNIX style path seperators internally
                 }
@@ -167,9 +168,9 @@ export const directoryTree = (path, skipCache = false, location) => {
                         }
                     }
                 }
-            }).on("warn", (warn) => {
+            }).on("warn", (warn: any) => {
                 log.error(warn)
-            }).on("error", (err) => {
+            }).on("error", (err: any) => {
                 return reject(err)
             }).on("end", async () => {
                 const obj = {
@@ -197,23 +198,23 @@ export const directoryTree = (path, skipCache = false, location) => {
     })
 }
 
-export const readChunk = (path, offset, length) => {
+export const readChunk = (path: string, offset: number, length: number): Promise<Buffer> => {
     return new Promise((resolve, reject) => {
         path = pathModule.normalize(path)
 
-        fs.open(path, "r", (err, fd) => {
+        fs.open(path, "r", (err: any, fd: any) => {
             if(err){
                 return reject(err)
             }
 
             const buffer = Buffer.alloc(length)
 
-            fs.read(fd, buffer, 0, length, offset, (err, read) => {
+            fs.read(fd, buffer, 0, length, offset, (err: any, read: any) => {
                 if(err){
                     return reject(err)
                 }
 
-                let data = undefined
+                let data: any = undefined
 
                 if(read < length){
                     data = buffer.slice(0, read)
@@ -222,7 +223,7 @@ export const readChunk = (path, offset, length) => {
                     data = buffer
                 }
 
-                fs.close(fd, (err) => {
+                fs.close(fd, (err: any) => {
                     if(err){
                         return reject(err)
                     }
@@ -234,7 +235,7 @@ export const readChunk = (path, offset, length) => {
     })
 }
 
-export const rm = (path) => {
+export const rm = (path: string): Promise<boolean> => {
     return new Promise(async (resolve, reject) => {
         path = normalizePath(path)
 
@@ -276,22 +277,22 @@ export const rm = (path) => {
     })
 }
 
-export const mkdir = (path, location, task) => {
+export const mkdir = (path: string, location: any, task: any): Promise<any> => {
     return new Promise((resolve, reject) => {
         localFSSemaphore.acquire().then(() => {
             const absolutePath = normalizePath(location.local + "/" + path)
 
             fs.ensureDir(absolutePath).then(() => {
-                fs.lstat(absolutePath).then((stat)  => {
+                fs.lstat(absolutePath).then((stat: any)  => {
                     localFSSemaphore.release()
 
                     return resolve(stat)
-                }).catch((err) => {
+                }).catch((err: any) => {
                     localFSSemaphore.release()
 
                     return reject(err)
                 })
-            }).catch((err) => {
+            }).catch((err: any) => {
                 localFSSemaphore.release()
 
                 return reject(err)
@@ -300,7 +301,7 @@ export const mkdir = (path, location, task) => {
     })
 }
 
-export const download = (path, location, task) => {
+export const download = (path: string, location: any, task: any): Promise<any> => {
     return new Promise(async (resolve, reject) => {
         await new Promise((resolve) => {
             const getPausedStatus = () => {
@@ -354,13 +355,14 @@ export const download = (path, location, task) => {
                 const fileChunks = file.chunks
                 let currentWriteIndex = 0
 
-                const downloadTask = (index) => {
+                const downloadTask = (index: number): Promise<{ index: number, data: Buffer }> => {
                     return new Promise((resolve, reject) => {
                         downloadChunk({ 
                             region: file.region,
                             bucket: file.bucket,
                             uuid: file.uuid,
-                            index
+                            index,
+                            from: "sync"
                         }).then((data) => {
                             decryptData(data, file.metadata.key, file.version).then((decrypted) => {
                                 return resolve({
@@ -372,14 +374,14 @@ export const download = (path, location, task) => {
                     })
                 }
 
-                const writeChunk = (index, data) => {
+                const writeChunk = (index: number, data: Buffer) => {
                     if(index !== currentWriteIndex){
                         return setTimeout(() => {
                             writeChunk(index, data)
                         }, 10)
                     }
 
-                    stream.write(data, (err) => {
+                    stream.write(data, (err: any) => {
                         if(err){
                             return reject(err)
                         }
@@ -430,7 +432,7 @@ export const download = (path, location, task) => {
                     })
 
                     await new Promise((resolve, reject) => {
-                        stream.close((err) => {
+                        stream.close((err: any) => {
                             if(err){
                                 return reject(err)
                             }
@@ -448,7 +450,7 @@ export const download = (path, location, task) => {
                 move(fileTmpPath, absolutePath).then(() => {
                     fs.utimes(absolutePath, new Date(convertTimestampToMs(file.metadata.lastModified)), new Date(convertTimestampToMs(file.metadata.lastModified))).then(() => {
                         checkLastModified(absolutePath).then(() => {
-                            fs.lstat(absolutePath).then((stat) => {
+                            fs.lstat(absolutePath).then((stat: any) => {
                                 if(stat.size <= 0){
                                     rm(absolutePath)
             
@@ -465,7 +467,7 @@ export const download = (path, location, task) => {
     })
 }
 
-export const move = (before, after, overwrite = true) => {
+export const move = (before: string, after: string, overwrite: boolean = true): Promise<any> => {
     return new Promise((resolve, reject) => {
         localFSSemaphore.acquire().then(() => {
             try{
@@ -480,11 +482,11 @@ export const move = (before, after, overwrite = true) => {
     
             fs.move(before, after, {
                 overwrite
-            }).then((res) => {
+            }).then((res: any) => {
                 localFSSemaphore.release()
 
                 return resolve(res)
-            }).catch((err) => {
+            }).catch((err: any) => {
                 localFSSemaphore.release()
 
                 return reject(err)
@@ -493,7 +495,7 @@ export const move = (before, after, overwrite = true) => {
     })
 }
 
-export const rename = (before, after) => {
+export const rename = (before: string, after: string): Promise<any> => {
     return new Promise((resolve, reject) => {
         localFSSemaphore.acquire().then(() => {
             try{
@@ -506,11 +508,11 @@ export const rename = (before, after) => {
                 return reject(e)
             }
     
-            fs.rename(before, after).then((res) => {
+            fs.rename(before, after).then((res: any) => {
                 localFSSemaphore.release()
 
                 return resolve(res)
-            }).catch((err) => {
+            }).catch((err: any) => {
                 localFSSemaphore.release()
 
                 return reject(err)

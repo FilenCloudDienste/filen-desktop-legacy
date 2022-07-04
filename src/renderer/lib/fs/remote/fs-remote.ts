@@ -5,6 +5,7 @@ import memoryCache from "../../memoryCache"
 import { convertTimestampToMs, isFileOrFolderNameIgnoredByDefault, fileNameToLowerCaseExt, generateRandomString, Semaphore } from "../../helpers"
 import { normalizePath, smokeTest as smokeTestLocal, readChunk, checkLastModified } from "../local"
 import { chunkSize, maxUploadThreads } from "../../constants"
+// @ts-ignore
 import { v4 as uuidv4 } from "uuid"
 import { sendToAllPorts } from "../../worker/ipc"
 
@@ -16,9 +17,9 @@ const findOrCreateParentDirectorySemaphore = new Semaphore(1)
 const createDirectorySemaphore = new Semaphore(1)
 const uploadThreadsSemaphore = new Semaphore(maxUploadThreads)
 
-const UPLOAD_VERSION = 2
+const UPLOAD_VERSION: number = 2
 
-export const smokeTest = (uuid = "") => {
+export const smokeTest = (uuid: string = ""): Promise<boolean> => {
     return new Promise(async (resolve, reject) => {
         try{
             var response = await folderPresent({ apiKey: await db.get("apiKey"), uuid })
@@ -35,7 +36,7 @@ export const smokeTest = (uuid = "") => {
     })
 }
 
-export const directoryTree = (uuid = "", skipCache = false, location) => {
+export const directoryTree = (uuid: string = "", skipCache: boolean = false, location?: any): Promise<any> => {
     return new Promise((resolve, reject) => {
         Promise.all([
             db.get("deviceId"),
@@ -52,7 +53,7 @@ export const directoryTree = (uuid = "", skipCache = false, location) => {
             }
 
             dirTree({ apiKey, uuid, deviceId, skipCache }).then(async (response) => {
-                const cacheKey = "directoryTree:" + uuid + ":" + deviceId
+                const cacheKey: string = "directoryTree:" + uuid + ":" + deviceId
 
                 if(response.folders.length == 0 && response.files.length == 0){ // Data did not change
                     if(memoryCache.has(cacheKey)){
@@ -110,8 +111,8 @@ export const directoryTree = (uuid = "", skipCache = false, location) => {
                     type: "folder"
                 })
 
-                const addedFolders = {}
-                const addedFiles = {}
+                const addedFolders: any = {}
+                const addedFiles: any = {}
 
                 for(let i = 0; i < response.folders.length; i++){
                     const [uuid, metadata, parent] = response.folders[i]
@@ -197,8 +198,8 @@ export const directoryTree = (uuid = "", skipCache = false, location) => {
                     }
                 }
 
-                const nest = (items, uuid = "base", currentPath = "", link = "parent") => {
-                    return items.filter((item) => item[link] == uuid).map((item) => ({ 
+                const nest = (items: any, uuid: string = "base", currentPath: string = "", link: string = "parent"): any => {
+                    return items.filter((item: any) => item[link] == uuid).map((item: any) => ({ 
                         ...item,
                         path: item.type == "folder" ? (currentPath + "/" + item.name) : (currentPath + "/" + item.metadata.name),
                         children: nest(items, item.uuid, item.type == "folder" ? (currentPath + "/" + item.name) : (currentPath + "/" + item.metadata.name), link)
@@ -206,12 +207,12 @@ export const directoryTree = (uuid = "", skipCache = false, location) => {
                 }
 
                 const tree = nest(treeItems)
-                let reading = 0
-                const folders = {}
-                const files = {}
-                const uuids = {}
+                let reading: number = 0
+                const folders: any = {}
+                const files: any = {}
+                const uuids: any = {}
 
-                const iterateTree = (parent, callback) => {
+                const iterateTree = (parent: any, callback: Function) => {
                     if(parent.type == "folder"){
                         folders[parent.path] = parent
                         uuids[parent.uuid] = {
@@ -245,9 +246,9 @@ export const directoryTree = (uuid = "", skipCache = false, location) => {
                 reading += 1
 
                 iterateTree(tree[0], async () => {
-                    const newFiles = {}
-                    const newFolders = {}
-                    const newUUIDS = {}
+                    const newFiles: any = {}
+                    const newFolders: any = {}
+                    const newUUIDS: any = {}
 
                     for(const prop in files){
                         const newProp = prop.split("/").slice(2).join("/")
@@ -311,7 +312,7 @@ export const directoryTree = (uuid = "", skipCache = false, location) => {
     })
 }
 
-export const createDirectory = (uuid, name, parent) => {
+export const createDirectory = (uuid: string, name: string, parent: string): Promise<string> => {
     return new Promise((resolve, reject) => {
         createDirectorySemaphore.acquire().then(() => {
             folderExists({ name, parent }).then(({ exists, existsUUID }) => {
@@ -339,7 +340,7 @@ export const createDirectory = (uuid, name, parent) => {
     })
 }
 
-export const findOrCreateParentDirectory = (path, baseFolderUUID, remoteTreeNow) => {
+export const findOrCreateParentDirectory = (path: string, baseFolderUUID: string, remoteTreeNow: any): Promise<string> => {
 	return new Promise(async (resolve, reject) => {
         await findOrCreateParentDirectorySemaphore.acquire()
 
@@ -361,8 +362,8 @@ export const findOrCreateParentDirectory = (path, baseFolderUUID, remoteTreeNow)
             for(let i = 0; i < neededPathEx.length; i++){
                 currentPathArray.push(neededPathEx[i])
             
-                const currentPath = currentPathArray.join("/")
-                const currentParentPath = currentPathArray.slice(0, -1).join("/")
+                const currentPath: any = currentPathArray.join("/")
+                const currentParentPath: string = currentPathArray.slice(0, -1).join("/")
                 
                 if(typeof existingFolders[currentPath] == "undefined" && currentPath !== path){
                     try{
@@ -400,7 +401,7 @@ export const findOrCreateParentDirectory = (path, baseFolderUUID, remoteTreeNow)
     })
 }
 
-export const mkdir = (path, remoteTreeNow, location, task, uuid) => {
+export const mkdir = (path: string, remoteTreeNow: any, location: any, task: any, uuid: string): Promise<{ parent: string, uuid: string }> => {
     return new Promise(async (resolve, reject) => {
         const name = pathModule.basename(path)
 
@@ -432,7 +433,7 @@ export const mkdir = (path, remoteTreeNow, location, task, uuid) => {
     })
 }
 
-export const upload = (path, remoteTreeNow, location, task, uuid) => {
+export const upload = (path: string, remoteTreeNow: any, location: any, task: any, uuid: string): Promise<any> => {
     return new Promise(async (resolve, reject) => {
         await new Promise((resolve) => {
             const getPausedStatus = () => {
@@ -481,7 +482,7 @@ export const upload = (path, remoteTreeNow, location, task, uuid) => {
                 checkLastModified(absolutePath).then((checkLastModifiedRes) => {
                     findOrCreateParentDirectory(path, location.remoteUUID, remoteTreeNow).then(async (parent) => {
                         const size = parseInt(task.item.size.toString())
-                        const lastModified = checkLastModifiedRes.changed ? Math.floor(checkLastModifiedRes.mtimeMs) : Math.floor(task.item.lastModified)
+                        const lastModified = checkLastModifiedRes.changed ? Math.floor(checkLastModifiedRes.mtimeMs as number) : Math.floor(task.item.lastModified)
                         const mime = mimeTypes.lookup(name) || ""
                         const expire = "never"
                         let dummyOffset = 0
@@ -515,10 +516,11 @@ export const upload = (path, remoteTreeNow, location, task, uuid) => {
                             return reject(e)
                         }
     
-                        const uploadTask = (index) => {
+                        const uploadTask = (index: number) => {
                             return new Promise((resolve, reject) => {
                                 readChunk(absolutePath, (index * chunkSize), chunkSize).then((data) => {
                                     try{
+                                        // @ts-ignore
                                         var queryParams = new URLSearchParams({
                                             apiKey: apiKey,
                                             uuid: uuid,
@@ -544,7 +546,8 @@ export const upload = (path, remoteTreeNow, location, task, uuid) => {
                                         uploadChunk({
                                             queryParams,
                                             data: encrypted,
-                                            timeout: 86400000
+                                            timeout: 86400000,
+                                            from: "sync"
                                         }).then((response) => {
                                             if(!response.status){
                                                 return reject(new Error(response.message))
@@ -557,8 +560,8 @@ export const upload = (path, remoteTreeNow, location, task, uuid) => {
                             })
                         }
     
-                        let region = ""
-                        let bucket = ""
+                        let region: string = ""
+                        let bucket: string = ""
 
                         try{
                             await uploadTask(0)
@@ -568,7 +571,7 @@ export const upload = (path, remoteTreeNow, location, task, uuid) => {
 
                                 for(let i = 1; i < (fileChunks + 1); i++){
                                     uploadThreadsSemaphore.acquire().then(() => {
-                                        uploadTask(i).then((data) => {
+                                        uploadTask(i).then((data: any) => {
                                             region = data.region
                                             bucket = data.bucket
 
@@ -590,7 +593,7 @@ export const upload = (path, remoteTreeNow, location, task, uuid) => {
 
                             await markUploadAsDone({ uuid, uploadKey })
                         }
-                        catch(e){
+                        catch(e: any){
                             if(e.toString().toLowerCase().indexOf("already exists") !== -1){
                                 return resolve(true)
                             }
@@ -638,11 +641,11 @@ export const upload = (path, remoteTreeNow, location, task, uuid) => {
     })
 }
 
-export const rm = (type, uuid) => {
+export const rm = (type: string, uuid: string): Promise<any> => {
     return trashItem({ type, uuid })
 }
 
-export const move = (type, task, location, remoteTreeNow) => {
+export const move = (type: string, task: any, location: any, remoteTreeNow: any): Promise<boolean> => {
     return new Promise((resolve, reject) => {
         findOrCreateParentDirectory(task.to, location.remoteUUID, remoteTreeNow).then((parent) => {
             const promise = type == "file" ? moveFile({
@@ -670,7 +673,7 @@ export const move = (type, task, location, remoteTreeNow) => {
     })
 }
 
-export const rename = (type, task) => {
+export const rename = (type: string, task: any): Promise<boolean> => {
     const newName = pathModule.basename(task.to)
 
     return new Promise((resolve, reject) => {
