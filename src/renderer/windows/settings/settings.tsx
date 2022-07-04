@@ -11,6 +11,7 @@ import { VscAccount } from "react-icons/vsc"
 import useDb from "../../lib/hooks/useDb"
 import ipc from "../../lib/ipc"
 import * as fsLocal from "../../lib/fs/local"
+// @ts-ignore
 import { v4 as uuidv4 } from "uuid"
 import db from "../../lib/db"
 import { IoChevronForwardOutline, IoChevronBackOutline } from "react-icons/io5"
@@ -25,6 +26,7 @@ import { MdOutlineNetworkCheck } from "react-icons/md"
 import { FaCannabis, FaHackerrank } from "react-icons/fa"
 import IsOnlineBottomToast from "../../components/IsOnlineBottomToast"
 import { BsKeyboard, BsFillFolderFill } from "react-icons/bs"
+// @ts-ignore
 import { List } from "react-virtualized"
 import { debounce } from "lodash"
 
@@ -36,12 +38,12 @@ const fs = window.require("fs-extra")
 const STARTING_ROUTE_URL_PARAMS = new URLSearchParams(window.location.search)
 const STARTING_ROUTE = typeof STARTING_ROUTE_URL_PARAMS.get("page") == "string" ? STARTING_ROUTE_URL_PARAMS.get("page") : "general"
 
-const SettingsWindowGeneral = memo(({ darkMode, lang, platform }) => {
-    const [openAtStartupAsync, setOpenAtStartupAsync] = useState(undefined)
-    const [appVersionAsync, setAppVersionAsync] = useState(undefined)
-    const [openAtStartup, setOpenAtStartup] = useState(true)
-    const [appVersion, setAppVersion] = useState("1")
-    const [excludeDot, setExcludeDot] = useState(true)
+const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: boolean, lang: string, platform: string }) => {
+    const [openAtStartupAsync, setOpenAtStartupAsync] = useState<any>(undefined)
+    const [appVersionAsync, setAppVersionAsync] = useState<any>(undefined)
+    const [openAtStartup, setOpenAtStartup] = useState<boolean>(true)
+    const [appVersion, setAppVersion] = useState<string>("1")
+    const [excludeDot, setExcludeDot] = useState<boolean>(true)
 
     const getOpenAtStartup = () => {
         ipc.getOpenOnStartup().then((open) => {
@@ -248,7 +250,7 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }) => {
                         _active={{
                             outline: "none"
                         }} 
-                        onChange={(e) => {
+                        onChange={(e: any) => {
                             Promise.all([
                                 db.set("lang", e.nativeEvent.target.value),
                                 db.set("langSetManually", true)
@@ -322,17 +324,17 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }) => {
     )
 })
 
-const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
-    const syncLocations = useDb("syncLocations:" + userId, [])
+const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMode: boolean, lang: string, platform: string, userId: number }) => {
+    const syncLocations: any = useDb("syncLocations:" + userId, [])
     const toast = useToast()
-    const [syncSettingsModalOpen, setSyncSettingsModalOpen] = useState(false)
-    const [currentSyncLocation, setCurrentSyncLocation] = useState(undefined)
-    const [confirmDeleteModalOpen, setConfirmDeleteModalOpen] = useState(false)
-    const [ignoredFilesModalOpen, setIgnoredFilesModalOpen] = useState(false)
-    const [currentSyncLocationIgnored, setCurrentSyncLocationIgnored] = useState("")
-    const [isDeletingSyncLocation, setIsDeletingSyncLocation] = useState(false)
+    const [syncSettingsModalOpen, setSyncSettingsModalOpen] = useState<boolean>(false)
+    const [currentSyncLocation, setCurrentSyncLocation] = useState<any>(undefined)
+    const [confirmDeleteModalOpen, setConfirmDeleteModalOpen] = useState<boolean>(false)
+    const [ignoredFilesModalOpen, setIgnoredFilesModalOpen] = useState<boolean>(false)
+    const [currentSyncLocationIgnored, setCurrentSyncLocationIgnored] = useState<string>("")
+    const [isDeletingSyncLocation, setIsDeletingSyncLocation] = useState<boolean>(false)
 
-    const createNewSyncLocation = useCallback(() => {
+    const createNewSyncLocation = () => {
         db.get("syncLocations:" + userId).then((currentSyncLocations) => {
             ipc.selectFolder().then((result) => {
                 if(result.canceled){
@@ -351,7 +353,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                     return false
                 }
 
-                const ex = platform == "windows" ? localPath.indexOf("\\") : localPath.indexOf("//")
+                const ex = platform == "windows" ? localPath.split("\\") : localPath.split("//")
 
                 if(ex.length <= 1 || pathModule.dirname(localPath).length <= 0 || (ex.length >= 2 && ex[1].length <= 0)){
                     return toast({
@@ -404,7 +406,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                             currentSyncLocations = []
                         }
     
-                        if(currentSyncLocations.filter(location => location.local == localPath).length == 0){
+                        if(currentSyncLocations.filter((location: any) => location.local == localPath).length == 0){
                             currentSyncLocations.push({
                                 uuid,
                                 local: localPath,
@@ -448,7 +450,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
         }).catch((err) => {
             log.error(err)
         })
-    })
+    }
 
     const debounceFilenIgnore = useCallback(debounce((value, uuid) => {
         db.set("filenIgnore:" + uuid, value).catch(log.error)
@@ -504,8 +506,8 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                         </Flex>
                         <Flex marginTop="15px">
                             <Link 
-                                color={colors(platform, darkMode, "link")} t
-                                extDecoration="none" 
+                                color={colors(platform, darkMode, "link")}
+                                textDecoration="none" 
                                 _hover={{
                                     textDecoration: "none"
                                 }} 
@@ -532,7 +534,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                             rowCount={syncLocations.length}
                             rowHeight={55}
                             estimatedRowSize={syncLocations.length * 55}
-                            rowRenderer={({ index, key, style }) => {
+                            rowRenderer={({ index, key, style }: { index: number, key: string, style: any }) => {
                                 const location = syncLocations[index]
 
                                 return (
@@ -986,7 +988,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                                                 outline="none" 
                                                 _active={{ outline: "none" }} 
                                                 disabled={typeof currentSyncLocation.remote !== "string"} 
-                                                onChange={async (e) => {
+                                                onChange={async (e: any) => {
                                                     const type = e.nativeEvent.target.value
 
                                                     try{
@@ -1187,7 +1189,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                                                 _focus={{ outline: "none" }} 
                                                 outline="none" 
                                                 _active={{ outline: "none" }} 
-                                                onChange={async (event) => {
+                                                onChange={async (event: any) => {
                                                     const paused = event.nativeEvent.target.checked
 
                                                     try{
@@ -1267,8 +1269,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
                         {i18n(lang, "settings")}
                     </ModalHeader>
                     <ModalCloseButton 
-                        color={colors(platform, darkMode, "textPrimary")} 
-                        _focus={{ _focus: false }} 
+                        color={colors(platform, darkMode, "textPrimary")}
                         _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }}
                         disabled={isDeletingSyncLocation}
                     />
@@ -1432,11 +1433,11 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }) => {
     )
 })
 
-const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }) => {
-    const [logoutAlertOpen, setLogoutAlertOpen] = useState(false)
-    const [userInfo, setUserInfo] = useState(undefined)
+const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }: { darkMode: boolean, lang: string, platform: string, email: string }) => {
+    const [logoutAlertOpen, setLogoutAlertOpen] = useState<boolean>(false)
+    const [userInfo, setUserInfo] = useState<any>(undefined)
 
-    const logout = useCallback(async () => {
+    const logout = async () => {
         try{
             await Promise.all([
                 db.remove("apiKey"),
@@ -1454,7 +1455,7 @@ const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }) => {
         catch(e){
             log.error(e)
         }
-    })
+    }
 
     useEffect(() => {
         db.get("apiKey").then((apiKey) => {
@@ -1504,7 +1505,7 @@ const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }) => {
                                                 color={colors(platform, darkMode, "textPrimary")} 
                                                 fontSize={12} marginLeft="8px"
                                             >
-                                                {i18n(lang, "accountStorageUsed", false, ["__PERCENT__", "__MAX__"], [((userInfo.storageUsed / userInfo.maxStorage) * 100) >= 100 ? 100 : ((userInfo.storageUsed / userInfo.maxStorage) * 100).toFixed(2), formatBytes(userInfo.maxStorage)])}
+                                                {i18n(lang, "accountStorageUsed", false, ["__PERCENT__", "__MAX__"], [((userInfo.storageUsed / userInfo.maxStorage) * 100) >= 100 ? "100" : ((userInfo.storageUsed / userInfo.maxStorage) * 100).toFixed(2), formatBytes(userInfo.maxStorage)])}
                                             </Text>
                                         </Flex>
                                     </Flex>
@@ -1579,7 +1580,7 @@ const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }) => {
                                     marginTop="10px"
                                 >
                                     <Progress 
-                                        value={((userInfo.storageUsed / userInfo.maxStorage) * 100) >= 100 ? 100 : ((userInfo.storageUsed / userInfo.maxStorage) * 100).toFixed(2)}
+                                        value={((userInfo.storageUsed / userInfo.maxStorage) * 100) >= 100 ? 100 : parseFloat(((userInfo.storageUsed / userInfo.maxStorage) * 100).toFixed(2))}
                                         color="blue.100" 
                                         min={0} 
                                         max={100} 
@@ -1606,7 +1607,7 @@ const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }) => {
                                         color={colors(platform, darkMode, "textPrimary")} 
                                         fontSize={11}
                                     >
-                                        {i18n(lang, "accountStorageInUse", false, ["__PERCENT__"], [((userInfo.storageUsed / userInfo.maxStorage) * 100) >= 100 ? 100 : ((userInfo.storageUsed / userInfo.maxStorage) * 100).toFixed(2)])}
+                                        {i18n(lang, "accountStorageInUse", false, ["__PERCENT__"], [((userInfo.storageUsed / userInfo.maxStorage) * 100) >= 100 ? "100" : ((userInfo.storageUsed / userInfo.maxStorage) * 100).toFixed(2)])}
                                     </Text>
                                 </Flex>
                             </Flex>
@@ -1622,8 +1623,7 @@ const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }) => {
                                 borderRadius="15px"
                             >
                                 <ModalCloseButton 
-                                    color={colors(platform, darkMode, "textPrimary")} 
-                                    _focus={{ _focus: false }} 
+                                    color={colors(platform, darkMode, "textPrimary")}
                                     _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }} 
                                 />
                                 <ModalHeader color={colors(platform, darkMode, "textPrimary")}>
@@ -1674,8 +1674,8 @@ const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }) => {
     )
 })
 
-const SettingsWindowIssues = memo(({ darkMode, lang, platform }) => {
-    const syncIssues = useDb("syncIssues", [])
+const SettingsWindowIssues = memo(({ darkMode, lang, platform }: { darkMode: boolean, lang: string, platform: string }) => {
+    const syncIssues: any[] = useDb("syncIssues", [])
 
     const [clearIssuesModalOpen, setClearIssuesModalOpen] = useState(false)
 
@@ -1791,8 +1791,7 @@ const SettingsWindowIssues = memo(({ darkMode, lang, platform }) => {
                     borderRadius="15px"
                 >
                     <ModalCloseButton 
-                        color={colors(platform, darkMode, "textPrimary")} 
-                        _focus={{ _focus: false }} 
+                        color={colors(platform, darkMode, "textPrimary")}
                         _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }} 
                     />
                     <ModalHeader color={colors(platform, darkMode, "textPrimary")}>
@@ -1835,7 +1834,7 @@ const SettingsWindowIssues = memo(({ darkMode, lang, platform }) => {
     )
 })
 
-const SettingsWindowNetworking = memo(({ darkMode, lang, platform }) => {
+const SettingsWindowNetworking = memo(({ darkMode, lang, platform }: { darkMode: boolean, lang: string, platform: string }) => {
     const [throttlingModalOpen, setThrottlingModalOpen] = useState(false)
     const networkingSettings = useDb("networkingSettings", {
         uploadKbps: 0,
@@ -2007,8 +2006,7 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }) => {
                                 borderRadius="15px"
                             >
                                 <ModalCloseButton 
-                                    color={colors(platform, darkMode, "textPrimary")} 
-                                    _focus={{ _focus: false }} 
+                                    color={colors(platform, darkMode, "textPrimary")}
                                     _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }} 
                                 />
                                 <ModalHeader color={colors(platform, darkMode, "textPrimary")}>
@@ -2031,7 +2029,7 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }) => {
                                             <Input 
                                                 type="number" 
                                                 value={uploadKbps} 
-                                                onChange={(event) => setUploadKbps(event.target.value)} 
+                                                onChange={(event: any) => setUploadKbps(event.target.value)} 
                                                 placeholder="0 Kbps" 
                                                 userSelect="none" 
                                                 style={{
@@ -2066,7 +2064,7 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }) => {
                                             <Input 
                                                 type="number" 
                                                 value={downloadKbps} 
-                                                onChange={(event) => setDownloadKbps(event.target.value)} 
+                                                onChange={(event: any) => setDownloadKbps(event.target.value)} 
                                                 placeholder="0 Kbps" 
                                                 userSelect="none" 
                                                 style={{
@@ -2114,8 +2112,8 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }) => {
                                         onClick={async () => {
                                             db.set("networkingSettings", {
                                                 ...networkingSettings,
-                                                uploadKbps: parseInt(uploadKbps) > 0 ? parseInt(uploadKbps) : 0,
-                                                downloadKbps: parseInt(downloadKbps) > 0 ? parseInt(downloadKbps) : 0
+                                                uploadKbps: parseInt(uploadKbps.toString()) > 0 ? parseInt(uploadKbps.toString()) : 0,
+                                                downloadKbps: parseInt(downloadKbps.toString()) > 0 ? parseInt(downloadKbps.toString()) : 0
                                             }).catch(log.error)
 
                                             setThrottlingModalOpen(false)
@@ -2145,7 +2143,7 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }) => {
     )
 })
 
-const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }) => {
+const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }: { darkMode: boolean, lang: string, platform: string }) => {
     const defaultKeybinds = useRef([
         {
             type: "uploadFolders",
@@ -2177,16 +2175,16 @@ const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }) => {
         }
     ]).current
 
-    const [changeKeybindModalOpen, setChangeKeybindModalOpen] = useState(false)
-    const [currentKeybind, setCurrentKeybind] = useState("")
-    const [keybindToChange, setKeybindToChange] = useState("")
-    const keybinds = useDb("keybinds", defaultKeybinds)
+    const [changeKeybindModalOpen, setChangeKeybindModalOpen] = useState<boolean>(false)
+    const [currentKeybind, setCurrentKeybind] = useState<string>("")
+    const [keybindToChange, setKeybindToChange] = useState<string>("")
+    const keybinds: any[] = useDb("keybinds", defaultKeybinds)
 
-    const keydownListener = useCallback((e) => {
+    const keydownListener = (e: any) => {
         if(typeof e.key == "string" && e.key.length > 0){
             setCurrentKeybind((e.ctrlKey && e.key.toLowerCase() !== "control" ? "CommandOrControl+" : "") + (e.shiftKey && e.key.toLowerCase() !== "shift" ? "Shift+" : "") + (e.metaKey && e.key.toLowerCase() !== "meta" ? "Meta+" : "") + (e.altKey && e.key.toLowerCase() !== "alt" ? "Alt+" : "") + e.key.toUpperCase())
         }
-    })
+    }
 
     useEffect(() => {
         if(changeKeybindModalOpen){
@@ -2322,8 +2320,7 @@ const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }) => {
                     borderRadius="15px"
                 >
                     <ModalCloseButton 
-                        color={colors(platform, darkMode, "textPrimary")} 
-                        _focus={{ _focus: false }} 
+                        color={colors(platform, darkMode, "textPrimary")}
                         _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }}
                     />
                     <ModalHeader color={colors(platform, darkMode, "textPrimary")}>
@@ -2391,7 +2388,7 @@ const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }) => {
     )
 })
 
-const SettingsSelectionButton = memo(({ darkMode, lang, platform, selection, setSelection, type, title }) => {
+const SettingsSelectionButton = memo(({ darkMode, lang, platform, selection, setSelection, type, title }: { darkMode: boolean, lang: string, platform: string, selection: any, setSelection: any, type: string, title: string }) => {
     return (
         <Flex 
             width="80px"
@@ -2482,7 +2479,7 @@ const SettingsSelectionButton = memo(({ darkMode, lang, platform, selection, set
     )
 })
 
-const SettingsSelection = memo(({ darkMode, lang, platform, selection, setSelection }) => {
+const SettingsSelection = memo(({ darkMode, lang, platform, selection, setSelection }: { darkMode: boolean, lang: string, platform: string, selection: any, setSelection: any }) => {
     return (
         <Flex 
             flexDirection="row" 
@@ -2493,6 +2490,7 @@ const SettingsSelection = memo(({ darkMode, lang, platform, selection, setSelect
             paddingTop="20px" 
             userSelect="none" 
             style={{
+                // @ts-ignore
                 WebkitAppRegion: "drag"
             }} 
             backgroundColor={colors(platform, darkMode, "titlebarBackgroundPrimary")}
@@ -2503,6 +2501,7 @@ const SettingsSelection = memo(({ darkMode, lang, platform, selection, setSelect
                 height="auto" 
                 userSelect="none" 
                 style={{
+                    // @ts-ignore
                     WebkitAppRegion: "none"
                 }}
             >
@@ -2565,7 +2564,7 @@ const SettingsSelection = memo(({ darkMode, lang, platform, selection, setSelect
     )
 })
 
-const SettingsWindow = memo(({ startingRoute, userId, email, windowId }) => {
+const SettingsWindow = memo(({ startingRoute, userId, email, windowId }: { startingRoute: any, userId: number, email: string, windowId: string }) => {
     const darkMode = useDarkMode()
     const lang = useLang()
     const platform = usePlatform()
@@ -2609,9 +2608,7 @@ const SettingsWindow = memo(({ startingRoute, userId, email, windowId }) => {
                                     <SettingsWindowGeneral 
                                         darkMode={darkMode} 
                                         lang={lang} 
-                                        platform={platform} 
-                                        userId={userId} 
-                                        email={email} 
+                                        platform={platform}
                                     />
                                 )
                             }
@@ -2621,8 +2618,7 @@ const SettingsWindow = memo(({ startingRoute, userId, email, windowId }) => {
                                         darkMode={darkMode} 
                                         lang={lang} 
                                         platform={platform} 
-                                        userId={userId} 
-                                        email={email} 
+                                        userId={userId}
                                     />
                                 )
                             }
@@ -2631,8 +2627,7 @@ const SettingsWindow = memo(({ startingRoute, userId, email, windowId }) => {
                                     <SettingsWindowAccount 
                                         darkMode={darkMode} 
                                         lang={lang} 
-                                        platform={platform} 
-                                        userId={userId} 
+                                        platform={platform}
                                         email={email} 
                                     />
                                 )
@@ -2642,9 +2637,7 @@ const SettingsWindow = memo(({ startingRoute, userId, email, windowId }) => {
                                     <SettingsWindowIssues 
                                         darkMode={darkMode} 
                                         lang={lang} 
-                                        platform={platform} 
-                                        userId={userId} 
-                                        email={email} 
+                                        platform={platform}
                                     />
                                 )
                             }
@@ -2653,9 +2646,7 @@ const SettingsWindow = memo(({ startingRoute, userId, email, windowId }) => {
                                     <SettingsWindowNetworking
                                         darkMode={darkMode} 
                                         lang={lang} 
-                                        platform={platform} 
-                                        userId={userId} 
-                                        email={email} 
+                                        platform={platform}
                                     />
                                 )
                             }
@@ -2664,9 +2655,7 @@ const SettingsWindow = memo(({ startingRoute, userId, email, windowId }) => {
                                     <SettingsWindowKeybinds 
                                         darkMode={darkMode} 
                                         lang={lang} 
-                                        platform={platform} 
-                                        userId={userId} 
-                                        email={email} 
+                                        platform={platform}
                                     />
                                 )
                             }
