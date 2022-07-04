@@ -20,7 +20,7 @@ const eventListener = {
             }
         }
     },
-    emit: (name: string, data: any) => {
+    emit: (name: string, data?: any) => {
         if(!EVENT_LISTENERS[name]){
             return false
         }

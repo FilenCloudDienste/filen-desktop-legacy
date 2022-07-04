@@ -189,8 +189,6 @@ const handleMessage = (type, data) => {
             try{
                 app.relaunch()
                 app.exit()
-
-                return resolve(true)
             }
             catch(e){
                 return reject(e)
@@ -517,8 +515,6 @@ const handleMessage = (type, data) => {
                 }
 
                 app.quit()
-
-                return resolve(true)
             }).catch(reject)
         }
         else if(type == "openDownloadWindow"){
