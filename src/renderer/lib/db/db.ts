@@ -1,11 +1,11 @@
 import ipc from "../ipc"
 import memoryCache from "../memoryCache"
 
-const USE_MEMORY_CACHE = false
-const MEMORY_CACHE_KEY = "db:"
+const USE_MEMORY_CACHE: boolean = false
+const MEMORY_CACHE_KEY: string = "db:"
 
 const db = {
-    get: (key) => {
+    get: (key: string): Promise<any> => {
         return new Promise((resolve, reject) => {
             if(USE_MEMORY_CACHE){
                 if(memoryCache.has(MEMORY_CACHE_KEY + key)){
@@ -22,7 +22,7 @@ const db = {
             }).catch(reject)
         })
     },
-    set: (key, value) => {
+    set: (key: string, value: any): Promise<boolean> => {
         return new Promise((resolve, reject) => {
             ipc.db("set", key, value).then(() => {
                 if(USE_MEMORY_CACHE){
@@ -33,7 +33,7 @@ const db = {
             }).catch(reject)
         })
     },
-    remove: (key) => {
+    remove: (key: string): Promise<boolean> => {
         return new Promise((resolve, reject) => {
             ipc.db("remove", key).then(() => {
                 if(USE_MEMORY_CACHE){
@@ -44,7 +44,7 @@ const db = {
             }).catch(reject)
         })
     },
-    clear: () => {
+    clear: (): Promise<boolean> => {
         return new Promise((resolve, reject) => {
             ipc.db("clear").then(() => {
                 if(USE_MEMORY_CACHE){
@@ -55,7 +55,7 @@ const db = {
             }).catch(reject)
         })
     },
-    keys: () => {
+    keys: (): Promise<any> => {
         return new Promise((resolve, reject) => {
             ipc.db("keys").then(resolve).catch(reject)
         })

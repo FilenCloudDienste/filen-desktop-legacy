@@ -142,7 +142,7 @@ const ipc = {
             })
         })
     },
-    db: (action: string, key: string, value: any): Promise<any> => {
+    db: (action: string, key?: string, value?: any): Promise<any> => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
