@@ -155,7 +155,7 @@ const SelectiveSyncWindow = memo(({ userId, email, windowId }: { userId: number,
                                     height="570px"
                                     paddingLeft="10px"
                                     paddingRight="10px"
-                                    paddingTop="10px"
+                                    marginTop="12px"
                                     paddingBottom="10px"
                                     overflowY="scroll"
                                 >

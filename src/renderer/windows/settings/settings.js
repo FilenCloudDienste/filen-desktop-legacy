@@ -41,26 +41,38 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }) => {
     const [appVersionAsync, setAppVersionAsync] = useState(undefined)
     const [openAtStartup, setOpenAtStartup] = useState(true)
     const [appVersion, setAppVersion] = useState("1")
-    const excludeDot = useDb("excludeDot", true)
+    const [excludeDot, setExcludeDot] = useState(true)
 
-    const getOpenAtStartup = useCallback(() => {
+    const getOpenAtStartup = () => {
         ipc.getOpenOnStartup().then((open) => {
             setOpenAtStartupAsync(open)
             setOpenAtStartup(open)
         }).catch(log.error)
-    })
+    }
 
-    const getAppVersion = useCallback(() => {
+    const getAppVersion = () => {
         ipc.getVersion().then((version) => {
             setAppVersionAsync(version)
             setAppVersion(version)
         }).catch(log.error)
-    })
+    }
 
-    const populate = useCallback(() => {
+    const getExcludeDot = () => {
+        db.get("excludeDot").then((exclude) => {
+            if(exclude){
+                setExcludeDot(true)
+            }
+            else{
+                setExcludeDot(false)
+            }
+        }).catch(log.error)
+    }
+
+    const populate = () => {
         getOpenAtStartup()
         getAppVersion()
-    })
+        getExcludeDot()
+    }
 
     useEffect(() => {
         if(typeof openAtStartupAsync !== "undefined"){
@@ -195,7 +207,11 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }) => {
                             outline="none" 
                             _active={{ outline: "none" }} 
                             onChange={() => {
-                                db.set("excludeDot", !excludeDot).catch(log.error)
+                                const newVal = !excludeDot
+
+                                db.set("excludeDot", newVal).then(() => {
+                                    setExcludeDot(newVal)
+                                }).catch(log.error)
                             }}
                         />
                     </Flex>

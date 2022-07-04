@@ -1,10 +1,12 @@
-import React, { memo, useState, useCallback } from "react"
-import { Flex, Text, Box, Checkbox } from "@chakra-ui/react"
+import React, { memo, useState, useCallback, useEffect } from "react"
+import { Flex, Text, Box, Checkbox, Image } from "@chakra-ui/react"
 import { AiOutlineCaretRight, AiOutlineCaretDown } from "react-icons/ai"
 import useDb from "../../lib/hooks/useDb"
 import db from "../../lib/db"
 import { IoFolder, IoFolderOpen } from "react-icons/io5"
 import { BsFileEarmarkFill } from "react-icons/bs"
+import ipc from "../../lib/ipc"
+import getColor from "../../styles/colors"
 
 const log = window.require("electron-log")
 
@@ -26,7 +28,8 @@ interface TreeProps {
 }
 
 const TreeItem = memo(({ darkMode, lang, platform, item, location, excluded }: TreeItemProps) => {
-    const [isOpen, setIsOpen] = useState(false)
+    const [isOpen, setIsOpen] = useState<boolean>(false)
+    const [itemIcon, setItemIcon] = useState<string | undefined>(undefined)
 
     const isItemExcluded = useCallback(() => {
         if(typeof excluded[item.path] !== "undefined"){
@@ -90,45 +93,112 @@ const TreeItem = memo(({ darkMode, lang, platform, item, location, excluded }: T
         setIsOpen(!isOpen)
     }
 
+    useEffect(() => {
+        ipc.getFileIconName(item.name).then((icon) => {
+            if(typeof icon == "string" && icon.indexOf("data:") !== -1){
+                setItemIcon(icon)
+            }
+        }).catch(log.error)
+    }, [])
+
     return (
-        <Box width="100%" height="auto" key={item.path} cursor="default">
-            <Flex flexDirection="row" alignItems="center">
-                <Flex flexDirection="row" alignItems="center" width="auto">
-                    <Checkbox isChecked={!isItemExcluded()} _focus={{ outline: "none" }} outline="none" _active={{ outline: "none" }} onChange={onToggleExcluded} />
+        <Box 
+            width="100%"
+            height="auto" 
+            key={item.path} 
+            cursor="default"
+        >
+            <Flex 
+                flexDirection="row" 
+                alignItems="center"
+            >
+                <Flex 
+                    flexDirection="row" 
+                    alignItems="center" 
+                    width="auto"
+                >
+                    <Checkbox 
+                        isChecked={!isItemExcluded()} 
+                        _focus={{ outline: "none" }} 
+                        outline="none" 
+                        _active={{ outline: "none" }} 
+                        onChange={onToggleExcluded} 
+                    />
                 </Flex>
-                <Flex flexDirection="row" alignItems="center" width="auto" cursor={item.type == "folder" ? "pointer" : "default"} onClick={onToggleOpen} marginLeft="8px">
+                <Flex 
+                    flexDirection="row" 
+                    alignItems="center" 
+                    width="auto" 
+                    cursor={item.type == "folder" ? "pointer" : "default"} 
+                    onClick={onToggleOpen} 
+                    marginLeft="8px"
+                >
                     {
                         item.type == "folder" ? (
                             isOpen ? (
                                 <>
                                     <AiOutlineCaretDown color="white" />
-                                    <IoFolderOpen color="orange" style={{
-                                        marginLeft: 4
-                                    }} />
+                                    <IoFolderOpen 
+                                        color={platform == "mac" ? "#3ea0d5" : "#ffd04c"} 
+                                        style={{
+                                            marginLeft: 4
+                                        }} 
+                                    />
                                 </>
                             ) : (
                                 <>
                                     <AiOutlineCaretRight color="white" />
-                                    <IoFolder color="orange" style={{
-                                        marginLeft: 4
-                                    }} />
+                                    <IoFolder 
+                                        color={platform == "mac" ? "#3ea0d5" : "#ffd04c"} 
+                                        style={{
+                                            marginLeft: 4
+                                        }} 
+                                    />
                                 </>
                             )
                         ) : (
                             <>
-                                <BsFileEarmarkFill color="white" />
+                                {
+                                    typeof itemIcon == "string" ? (
+                                        <Image 
+                                            src={itemIcon}
+                                            width="16px"
+                                            height="16px" 
+                                        />
+                                    ) : (
+                                        <BsFileEarmarkFill color={getColor(platform, darkMode, "textPrimary")} />
+                                    )
+                                }
                             </>
                         )
                     }
                 </Flex>
-                <Flex flexDirection="row" alignItems="center" width="auto" cursor={item.type == "folder" ? "pointer" : "default"} onClick={onToggleOpen} marginLeft="8px">
+                <Flex 
+                    flexDirection="row" 
+                    alignItems="center" 
+                    width="auto" 
+                    cursor={item.type == "folder" ? "pointer" : "default"} 
+                    onClick={onToggleOpen} 
+                    marginLeft="8px"
+                >
                     <Text color="white">{item.name}</Text>
                 </Flex>
             </Flex>
-            <Box width="100%" height="auto" display={isOpen ? "block" : "none"} paddingLeft="30px">
+            <Box 
+                width="100%" 
+                height="auto" 
+                display={isOpen ? "block" : "none"} 
+                paddingLeft="30px"
+            >
                 {
                     item.children.length > 0 && (
-                        <Tree darkMode={darkMode} lang={lang} platform={platform} data={item.children} location={location} />
+                        <Tree 
+                            darkMode={darkMode} 
+                            lang={lang} 
+                            platform={platform} 
+                            data={item.children} 
+                            location={location} 
+                        />
                     )
                 }
             </Box>
@@ -139,7 +209,19 @@ const TreeItem = memo(({ darkMode, lang, platform, item, location, excluded }: T
 const Tree = memo(({ darkMode, lang, platform, data, location }: TreeProps) => {
     const excluded: any = useDb("selectiveSync:remote:" + location.uuid, {})
 
-    return data.map((item: any) => <TreeItem darkMode={darkMode} lang={lang} platform={platform} key={item.path} item={item} location={location} excluded={excluded} />)
+    return data.map((item: any) => {
+        return (
+            <TreeItem 
+                darkMode={darkMode} 
+                lang={lang} 
+                platform={platform} 
+                key={item.path} 
+                item={item} 
+                location={location} 
+                excluded={excluded} 
+            />
+        )
+    })
 })
 
 export default Tree

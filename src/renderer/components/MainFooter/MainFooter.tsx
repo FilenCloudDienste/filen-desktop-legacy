@@ -77,7 +77,7 @@ export default class MainFooter extends React.Component<Props> {
                                     {i18n(lang, "acquiringSyncLock")}
                                 </Text>
                             </Flex>
-                        ) : checkingChanges ? (
+                        ) : checkingChanges && (runningTasks.length + runningSyncTasks + Object.keys(currentUploads).length + Object.keys(currentDownloads).length) <= 0 ? (
                             <Flex alignItems="center">
                                 <Spinner
                                     width="12px"
