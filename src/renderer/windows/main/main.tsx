@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import React, { memo, useState, useEffect, useCallback, useRef } from "react"
 import useDarkMode from "../../lib/hooks/useDarkMode"
 import useLang from "../../lib/hooks/useLang"
@@ -118,7 +116,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
             }
         }).catch(log.error)
 
-        const syncTaskListener = eventListener.on("syncTask", (data) => {
+        const syncTaskListener = eventListener.on("syncTask", (data: any) => {
             const type: string = data.type
             const task: any = data.data
 
@@ -126,8 +124,8 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
             
             if(type == "uploadToRemote"){
                 if(task.err){
-                    setCurrentUploads(prev => Object.keys(prev).filter(key => key !== task.task.item.uuid).reduce((current, key) => Object.assign(current, { [key]: prev[key] }), {}))
-                    setRunningTasks(prev => [...prev.filter(item => item.task.uuid !== task.task.uuid)])
+                    setCurrentUploads((prev: any) => Object.keys(prev).filter(key => key !== task.task.item.uuid).reduce((current, key) => Object.assign(current, { [key]: prev[key] }), {}))
+                    setRunningTasks((prev: any) => [...prev.filter((item: any) => item.task.uuid !== task.task.uuid)])
                 }
                 else{
                     if(task.status == "start" && task.task.type == "file"){
@@ -142,7 +140,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
 
                         allBytes.current += Math.floor((task.task.item.size || 0) * sizeOverheadMultiplier)
 
-                        setCurrentUploads(prev => ({
+                        setCurrentUploads((prev: any) => ({
                             ...prev,
                             [task.task.item.uuid]: {
                                 ...task.task,
@@ -159,7 +157,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
                     }
                     else if(task.status == "started"){
                         if(task.task.type == "file"){
-                            setCurrentUploads(prev => Object.keys(prev).filter(key => key == task.task.item.uuid).length > 0 ? ({
+                            setCurrentUploads((prev: any) => Object.keys(prev).filter(key => key == task.task.item.uuid).length > 0 ? ({
                                 ...prev,
                                 [task.task.item.uuid]: {
                                     ...prev[task.task.item.uuid],
@@ -170,7 +168,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
                             }) : prev)
                         }
                         else{
-                            setRunningTasks(prev => [...[{
+                            setRunningTasks((prev: any) => [...[{
                                 type,
                                 task: {
                                     ...task.task,
@@ -181,9 +179,9 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
                         }
                     }
                     else if(task.status == "done"){
-                        setCurrentUploads(prev => Object.keys(prev).filter(key => key !== task.task.item.uuid).reduce((current, key) => Object.assign(current, { [key]: prev[key] }), {}))
-                        setRunningTasks(prev => [...prev.filter(item => item.task.uuid !== task.task.uuid)])
-                        setDoneTasks(prev => [...[{
+                        setCurrentUploads((prev: any) => Object.keys(prev).filter(key => key !== task.task.item.uuid).reduce((current, key) => Object.assign(current, { [key]: prev[key] }), {}))
+                        setRunningTasks((prev: any) => [...prev.filter((item: any) => item.task.uuid !== task.task.uuid)])
+                        setDoneTasks((prev: any) => [...[{
                             type,
                             task: {
                                 ...task.task,
@@ -196,8 +194,8 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
             }
             else if(type == "downloadFromRemote"){
                 if(task.err){
-                    setCurrentDownloads(prev => Object.keys(prev).filter(key => key !== task.task.item.uuid).reduce((current, key) => Object.assign(current, { [key]: prev[key] }), {}))
-                    setRunningTasks(prev => [...prev.filter(item => item.task.uuid !== task.task.uuid)])
+                    setCurrentDownloads((prev: any) => Object.keys(prev).filter(key => key !== task.task.item.uuid).reduce((current, key) => Object.assign(current, { [key]: prev[key] }), {}))
+                    setRunningTasks((prev: any) => [...prev.filter((item: any) => item.task.uuid !== task.task.uuid)])
                 }
                 else{
                     if(task.status == "start"  && task.task.type == "file"){
@@ -212,7 +210,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
 
                         allBytes.current += (task.task.item.metadata.size || 0)
 
-                        setCurrentDownloads(prev => ({
+                        setCurrentDownloads((prev: any) => ({
                             ...prev,
                             [task.task.item.uuid]: {
                                 ...task.task,
@@ -229,7 +227,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
                     }
                     else if(task.status == "started"){
                         if(task.task.type == "file"){
-                            setCurrentDownloads(prev => Object.keys(prev).filter(key => key == task.task.item.uuid).length > 0 ? ({
+                            setCurrentDownloads((prev: any) => Object.keys(prev).filter(key => key == task.task.item.uuid).length > 0 ? ({
                                 ...prev,
                                 [task.task.item.uuid]: {
                                     ...prev[task.task.item.uuid],
@@ -240,7 +238,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
                             }) : prev)
                         }
                         else{
-                            setRunningTasks(prev => [...[{
+                            setRunningTasks((prev: any) => [...[{
                                 type,
                                 task: {
                                     ...task.task,
@@ -251,9 +249,9 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
                         }
                     }
                     else if(task.status == "done"){
-                        setCurrentDownloads(prev => Object.keys(prev).filter(key => key !== task.task.item.uuid).reduce((current, key) => Object.assign(current, { [key]: prev[key] }), {}))
-                        setRunningTasks(prev => [...prev.filter(item => item.task.uuid !== task.task.uuid)])
-                        setDoneTasks(prev => [...[{
+                        setCurrentDownloads((prev: any) => Object.keys(prev).filter(key => key !== task.task.item.uuid).reduce((current, key) => Object.assign(current, { [key]: prev[key] }), {}))
+                        setRunningTasks((prev: any) => [...prev.filter((item: any) => item.task.uuid !== task.task.uuid)])
+                        setDoneTasks((prev: any) => [...[{
                             type,
                             task: {
                                 ...task.task,
@@ -266,11 +264,11 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
             }
             else{
                 if(task.err){
-                    setRunningTasks(prev => [...prev.filter(item => item.task.uuid !== task.task.uuid)])
+                    setRunningTasks((prev: any) => [...prev.filter((item: any) => item.task.uuid !== task.task.uuid)])
                 }
                 else{
                     if(task.status == "start"){
-                        setRunningTasks(prev => [...[{
+                        setRunningTasks((prev: any) => [...[{
                             type,
                             task: {
                                 ...task.task,
@@ -280,8 +278,8 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
                         }], ...prev])
                     }
                     else if(task.status == "done"){
-                        setRunningTasks(prev => [...prev.filter(item => item.task.uuid !== task.task.uuid)])
-                        setDoneTasks(prev => [...[{
+                        setRunningTasks((prev: any) => [...prev.filter((item: any) => item.task.uuid !== task.task.uuid)])
+                        setDoneTasks((prev: any) => [...[{
                             type,
                             task: {
                                 ...task.task,
@@ -294,10 +292,10 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
             }
         })
 
-        const uploadProgressListener = eventListener.on("uploadProgress", (data) => {
+        const uploadProgressListener = eventListener.on("uploadProgress", (data: any) => {
             const now: number = new Date().getTime()
 
-            setCurrentUploads(prev => Object.keys(prev).filter(key => key == data.uuid).length > 0 ? ({
+            setCurrentUploads((prev: any) => Object.keys(prev).filter(key => key == data.uuid).length > 0 ? ({
                 ...prev,
                 [data.uuid]: {
                     ...prev[data.uuid],
@@ -312,10 +310,10 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
             bytesSent.current += data.bytes
         })
 
-        const downloadProgressListener = eventListener.on("downloadProgress", (data) => {
+        const downloadProgressListener = eventListener.on("downloadProgress", (data: any) => {
             const now: number = new Date().getTime()
 
-            setCurrentDownloads(prev => Object.keys(prev).filter(key => key == data.uuid).length > 0 ? ({
+            setCurrentDownloads((prev: any) => Object.keys(prev).filter(key => key == data.uuid).length > 0 ? ({
                 ...prev,
                 [data.uuid]: {
                     ...prev[data.uuid],
@@ -330,7 +328,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
             bytesSent.current += data.bytes
         })
 
-        const syncStatusListener = eventListener.on("syncStatus", (data) => {
+        const syncStatusListener = eventListener.on("syncStatus", (data: any) => {
             const type: string = data.type
 
             if(type == "init"){
@@ -423,6 +421,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
                 isOnline={isOnline}
                 acquiringLock={acquiringLock}
                 checkingChanges={checkingChanges}
+                paused={paused}
             />
             <IsOnlineBottomToast
                 userId={userId}
@@ -432,15 +431,11 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
                 lang={lang}
             />
             <UpdateModal
-                userId={userId}
-                email={email}
                 platform={platform}
                 darkMode={darkMode}
                 lang={lang}
             />
             <MaxStorageModal
-                userId={userId}
-                email={email}
                 platform={platform}
                 darkMode={darkMode}
                 lang={lang}
