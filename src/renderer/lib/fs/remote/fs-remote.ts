@@ -5,7 +5,6 @@ import memoryCache from "../../memoryCache"
 import { convertTimestampToMs, isFileOrFolderNameIgnoredByDefault, fileNameToLowerCaseExt, generateRandomString, Semaphore } from "../../helpers"
 import { normalizePath, smokeTest as smokeTestLocal, readChunk, checkLastModified } from "../local"
 import { chunkSize, maxUploadThreads } from "../../constants"
-// @ts-ignore
 import { v4 as uuidv4 } from "uuid"
 import { sendToAllPorts } from "../../worker/ipc"
 
@@ -666,9 +665,7 @@ export const move = (type: string, task: any, location: any, remoteTreeNow: any)
                 parent
             })
 
-            promise.then(() => {
-                return resolve(true)
-            }).catch(reject)
+            promise.then(resolve).catch(reject)
         }).catch(reject)
     })
 }
@@ -699,8 +696,6 @@ export const rename = (type: string, task: any): Promise<boolean> => {
             name: newName
         })
         
-        promise.then(() => {
-            return resolve(true)
-        }).catch(reject)
+        promise.then(resolve).catch(reject)
     })
 }

@@ -9,6 +9,7 @@ import ipc from "../../lib/ipc"
 import useDb from "../../lib/hooks/useDb"
 import eventListener from "../../lib/eventListener"
 import useAppVersion from "../../lib/hooks/useAppVersion"
+import { maxConcurrentSyncTasks } from "../../lib/constants"
 
 const log = window.require("electron-log")
 const https = window.require("https")
@@ -145,7 +146,7 @@ const WorkerWindow = memo(() => {
                     else{
                         if(runningSyncTasks > 0){
                             ipc.updateTrayIcon("sync")
-                            ipc.updateTrayTooltip("Filen v" + appVersion + "\nSyncing " + runningSyncTasks + " items")
+                            ipc.updateTrayTooltip("Filen v" + appVersion + "\nSyncing " + runningSyncTasks + (runningSyncTasks >= maxConcurrentSyncTasks ? "+" : "") + " items")
                         }
                         else{
                             db.get("userId").then((userId: number) => {
@@ -176,6 +177,28 @@ const WorkerWindow = memo(() => {
             }
         }
     }, [syncIssues, paused, runningSyncTasks, appVersion, isOnline, isLoggedIn])
+
+    useEffect(() => {
+        (async () => {
+            if(!paused){
+                try{
+                    const userId = await db.get("userId")
+                    let currentSyncLocations = await db.get("syncLocations:" + userId)
+    
+                    if(!Array.isArray(currentSyncLocations)){
+                        currentSyncLocations = []
+                    }
+    
+                    for(let i = 0; i < currentSyncLocations.length; i++){
+                        await db.set("localDataChanged:" + currentSyncLocations[i].uuid, true)
+                    }
+                }
+                catch(e){
+                    log.error(e)
+                }
+            }
+        })()
+    }, [paused])
 
     useEffect(() => {
         const offlineListener = (): void => {

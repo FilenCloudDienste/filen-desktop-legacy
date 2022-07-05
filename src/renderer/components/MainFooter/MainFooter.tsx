@@ -5,6 +5,7 @@ import { AiOutlineCheckCircle, AiOutlinePauseCircle } from "react-icons/ai"
 import colors from "../../styles/colors"
 import isEqual from "react-fast-compare"
 import { i18n } from "../../lib/i18n"
+import { maxConcurrentSyncTasks } from "../../lib/constants"
 
 interface Props {
     userId: number,
@@ -109,7 +110,7 @@ export default class MainFooter extends React.Component<Props> {
                                                 marginLeft="5px" 
                                                 noOfLines={1}
                                             >
-                                                {i18n(lang, (runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length) == 1 ? "syncingItemsFooterSingular" : "syncingItemsFooterPlural", true, ["__COUNT__"], [(runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length)])}
+                                                {i18n(lang, (runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length) == 1 ? "syncingItemsFooterSingular" : "syncingItemsFooterPlural", true, ["__COUNT__"], [(runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length) + ((runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length) >= maxConcurrentSyncTasks ? "+" : "")])}
                                             </Text>
                                         </Flex>
                                     ) : runningSyncTasks > 0 ? (

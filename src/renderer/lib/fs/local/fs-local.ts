@@ -3,7 +3,6 @@ import memoryCache from "../../memoryCache"
 import { isFileOrFolderNameIgnoredByDefault, convertTimestampToMs, Semaphore } from "../../helpers"
 import { downloadChunk } from "../../api"
 import { decryptData } from "../../crypto"
-// @ts-ignore
 import { v4 as uuidv4 } from "uuid"
 import { maxDownloadThreads } from "../../constants"
 import db from "../../db"

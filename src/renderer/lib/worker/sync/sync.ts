@@ -4,9 +4,8 @@ import db from "../../db"
 import { acquireLock, releaseLock, holdLock } from "../../api"
 import ipc from "../../ipc"
 import { sendToAllPorts } from "../ipc"
-// @ts-ignore
 import { v4 as uuidv4 } from "uuid"
-import { maxRetrySyncTask, retrySyncTaskTimeout, maxConcurrentDownloads as maxConcurrentDownloadsPreset, maxConcurrentUploads as maxConcurrentUploadsPreset } from "../../constants"
+import { maxRetrySyncTask, retrySyncTaskTimeout, maxConcurrentDownloads as maxConcurrentDownloadsPreset, maxConcurrentUploads as maxConcurrentUploadsPreset, maxConcurrentSyncTasks } from "../../constants"
 import { Semaphore } from "../../helpers"
 
 const pathModule = window.require("path")
@@ -23,7 +22,7 @@ const WATCHERS: any = {}
 let SYNC_LOCK_ACQUIRED: boolean = false
 const maxConcurrentUploadsSemaphore = new Semaphore(maxConcurrentUploadsPreset)
 const maxConcurrentDownloadsSemaphore = new Semaphore(maxConcurrentDownloadsPreset)
-const maxSyncTasksSemaphore = new Semaphore(1024)
+const maxSyncTasksSemaphore = new Semaphore(maxConcurrentSyncTasks)
 const syncLockSemaphore = new Semaphore(1)
 
 const acquireSyncLock = (id: string | number): Promise<boolean> => {

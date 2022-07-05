@@ -1,4 +1,4 @@
-import { apiServers, uploadServers, downloadServers, maxRetryAPIRequest, retryAPIRequestTimeout, maxRetryUpload, maxRetryDownload, retryUploadTimeout, retryDownloadTimeout } from "../constants"
+import { apiServers, uploadServers, downloadServers, maxRetryAPIRequest, retryAPIRequestTimeout, maxRetryUpload, maxRetryDownload, retryUploadTimeout, retryDownloadTimeout, maxConcurrentAPIRequest } from "../constants"
 import { getRandomArbitrary, Semaphore, nodeBufferToArrayBuffer } from "../helpers"
 import { hashFn, encryptMetadata, encryptMetadataPublicKey, decryptFolderLinkKey, decryptFileMetadata, decryptFolderName } from "../crypto"
 import db from "../db"
@@ -11,6 +11,7 @@ const { Readable } = window.require("stream")
 const request = window.require("request")
 
 export const createFolderSemaphore = new Semaphore(1)
+export const apiRequestSemaphore = new Semaphore(maxConcurrentAPIRequest)
 export const throttleGroupUpload = new ThrottleGroup({ rate: 1024 * 1024 * 1024 })
 export const throttleGroupDownload = new ThrottleGroup({ rate: 1024 * 1024 * 1024 })
 
@@ -66,40 +67,44 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
 
             currentTries += 1
 
-            request({
-                method: method.toUpperCase(),
-                url: "https://" + getAPIServer() + endpoint,
-                timeout: 86400000,
-                headers: {
-                    "Content-Type": "application/json",
-                    "User-Agent": "filen-desktop"
-                },
-                agent: new https.Agent({
-                    keepAlive: true,
-                    timeout: 86400000
-                }),
-                body: JSON.stringify(data)
-            }, (err: any, response: any, body: any) => {
-                if(err){
-                    log.error(err)
+            apiRequestSemaphore.acquire().then(() => {
+                request({
+                    method: method.toUpperCase(),
+                    url: "https://" + getAPIServer() + endpoint,
+                    timeout: 86400000,
+                    headers: {
+                        "Content-Type": "application/json",
+                        "User-Agent": "filen-desktop"
+                    },
+                    agent: new https.Agent({
+                        keepAlive: true,
+                        timeout: 86400000
+                    }),
+                    body: JSON.stringify(data)
+                }, (err: any, response: any, body: any) => {
+                    apiRequestSemaphore.release()
 
-                    return setTimeout(doRequest, retryAPIRequestTimeout)
-                }
-
-                if(response.statusCode !== 200){
-                    log.error(new Error("API response " + response.statusCode + ", method: " + method.toUpperCase() + ", endpoint: " + endpoint + ", data: " + JSON.stringify(data)))
-
-                    return setTimeout(doRequest, retryAPIRequestTimeout) 
-                }
-
-                try{
-                    return resolve(JSON.parse(body))
-                }
-                catch(e){
-                    log.error(e)
-
-                    return setTimeout(doRequest, retryAPIRequestTimeout)
-                }
+                    if(err){
+                        log.error(err)
+    
+                        return setTimeout(doRequest, retryAPIRequestTimeout)
+                    }
+    
+                    if(response.statusCode !== 200){
+                        log.error(new Error("API response " + response.statusCode + ", method: " + method.toUpperCase() + ", endpoint: " + endpoint + ", data: " + JSON.stringify(data)))
+    
+                        return setTimeout(doRequest, retryAPIRequestTimeout) 
+                    }
+    
+                    try{
+                        return resolve(JSON.parse(body))
+                    }
+                    catch(e){
+                        log.error(e)
+    
+                        return setTimeout(doRequest, retryAPIRequestTimeout)
+                    }
+                })
             })
         }
 

@@ -350,7 +350,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
                     clearTimeout(acquiringLockTimeout.current)
                 }
             }
-            else if(type == "sync"){
+            else if(type == "sync" || type == "cleanup"){
                 setAcquiringLock(false)
                 clearTimeout(acquiringLockTimeout.current)
                 setCheckingChanges(false)

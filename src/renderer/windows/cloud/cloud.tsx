@@ -18,7 +18,6 @@ import { BsFillFolderFill } from "react-icons/bs"
 import { List } from "react-virtualized"
 import { showToast } from "../../components/Toast"
 import { createFolder } from "../../lib/api"
-// @ts-ignore
 import { v4 as uuidv4 } from "uuid"
 
 const log = window.require("electron-log")

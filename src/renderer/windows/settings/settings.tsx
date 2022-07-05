@@ -11,7 +11,6 @@ import { VscAccount } from "react-icons/vsc"
 import useDb from "../../lib/hooks/useDb"
 import ipc from "../../lib/ipc"
 import * as fsLocal from "../../lib/fs/local"
-// @ts-ignore
 import { v4 as uuidv4 } from "uuid"
 import db from "../../lib/db"
 import { IoChevronForwardOutline, IoChevronBackOutline } from "react-icons/io5"
@@ -27,7 +26,7 @@ import { FaCannabis, FaHackerrank } from "react-icons/fa"
 import IsOnlineBottomToast from "../../components/IsOnlineBottomToast"
 import { BsKeyboard, BsFillFolderFill } from "react-icons/bs"
 // @ts-ignore
-import { List } from "react-virtualized"
+import List from "react-virtualized/dist/commonjs/List"
 import { debounce } from "lodash"
 
 const log = window.require("electron-log")
@@ -609,6 +608,8 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                                     for(let i = 0; i < currentSyncLocations.length; i++){
                                                                         if(currentSyncLocations[i].uuid == location.uuid){
                                                                             currentSyncLocations[i].paused = false
+
+                                                                            await db.set("localDataChanged:" + currentSyncLocations[i].uuid, true)
                                                                         }
                                                                     }
             
@@ -1202,6 +1203,10 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                         for(let i = 0; i < currentSyncLocations.length; i++){
                                                             if(currentSyncLocations[i].uuid == currentSyncLocation.uuid){
                                                                 currentSyncLocations[i].paused = paused
+
+                                                                if(!paused){
+                                                                    await db.set("localDataChanged:" + currentSyncLocations[i].uuid, true)
+                                                                }
                                                             }
                                                         }
 

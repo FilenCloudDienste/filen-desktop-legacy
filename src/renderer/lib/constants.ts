@@ -72,3 +72,5 @@ export const maxRetryDownload: number = 512
 export const retryDownloadTimeout: number = 1000
 export const sizeOverheadMultiplier: number = 1
 export const speedMultiplier: number = 1
+export const maxConcurrentSyncTasks: number = 256
+export const maxConcurrentAPIRequest: number = 32
