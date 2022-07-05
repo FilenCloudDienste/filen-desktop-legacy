@@ -75,7 +75,7 @@ const en: {
     deleteSyncLocation: "Delete sync location",
     confirmDeleteSyncLocation: "Are you sure you want to delete this sync location?",
     delete: "Delete",
-    filenignoreHeader: "Ignored pattern, seperated by a new line",
+    filenignoreHeader: "Ignored pattern, separated by a new line",
     accountStorageUsed: "__PERCENT__% of __MAX__ used",
     logout: "Logout",
     accountCurrentPlan: "Current plan",

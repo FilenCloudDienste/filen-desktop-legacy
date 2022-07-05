@@ -39,7 +39,7 @@ const de: {
     select: "Auswählen",
     thisFolderIsEmpty: "Dieser Ordner ist leer",
     createFolder: "Ordner erstellen",
-    create: "erstellen",
+    create: "Erstellen",
     downloadDone: "Download abgeschlossen",
     openFolder: "Ordner öffnen",
     download: "Runterladen",
