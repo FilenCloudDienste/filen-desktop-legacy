@@ -120,7 +120,7 @@
 			"package.json"
 		],
 		"directories": {
-			"output": "./dist/",
+			"output": "./dist/${os}/${arch}",
 			"buildResources": "assets"
 		},
 		"publish": [
@@ -134,7 +134,8 @@
 			"target": {
 				"target": "nsis",
 				"arch": [
-					"x64"
+					"x64",
+					"arm64"
 				]
 			}
 		},
@@ -144,7 +145,7 @@
 			"allowElevation": true,
 			"createDesktopShortcut": true,
 			"createStartMenuShortcut": true,
-			"deleteAppDataOnUninstall": false,
+			"deleteAppDataOnUninstall": true,
 			"allowToChangeInstallationDirectory": false
 		},
 		"linux": {
