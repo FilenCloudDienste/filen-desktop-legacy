@@ -87,11 +87,11 @@ powerMonitor.on("suspend", () => {
 })
 
 powerMonitor.on("resume", () => {
-	db.set("suspend", false).catch(log.error)
+	setTimeout(() => db.set("suspend", false).catch(log.error), 5000)
 })
 
 powerMonitor.on("unlock-screen", () => {
-	db.set("suspend", false).catch(log.error)
+	setTimeout(() => db.set("suspend", false).catch(log.error), 5000)
 })
 
 if(!app.requestSingleInstanceLock()){
