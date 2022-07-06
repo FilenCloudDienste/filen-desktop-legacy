@@ -2416,7 +2416,7 @@ const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }: { darkMode: b
 const SettingsSelectionButton = memo(({ darkMode, lang, platform, selection, setSelection, type, title }: { darkMode: boolean, lang: string, platform: string, selection: any, setSelection: any, type: string, title: string }) => {
     return (
         <Flex 
-            width="80px"
+            minWidth="80px"
             height="100%"
             backgroundColor={selection == type ? colors(platform, darkMode, "backgroundPrimary") : "transparent"}
             borderRadius="15px"
