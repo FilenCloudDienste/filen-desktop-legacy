@@ -15,46 +15,44 @@ const log = window.require("electron-log")
 const { shell } = window.require("electron")
 
 const UpdateModal = memo(({ lang, darkMode, platform }: { lang: string, darkMode: boolean, platform: string }) => {
-    const isOnline = useIsOnline()
-    const [showModal, setShowModal] = useState(false)
-    const currentVersion = useRef("100")
-    const closed = useRef(false)
+    const isOnline: boolean = useIsOnline()
+    const [showModal, setShowModal] = useState<boolean>(false)
+    const currentVersion = useRef<string>("100")
+    const closed = useRef<boolean>(false)
 
-    const isUpdateAvailable = useCallback(() => {
-        (async () => {
-            if(closed.current){
-                return false
+    const isUpdateAvailable = async (): Promise<any> => {
+        if(closed.current){
+            return false
+        }
+
+        if(!isOnline){
+            return setTimeout(isUpdateAvailable, 5000)
+        }
+
+        try{
+            const response = await apiRequest({
+                method: "POST",
+                endpoint: "/v1/currentVersions",
+                data: {
+                    platform: "desktop"
+                },
+                timeout: 60000
+            })
+
+            if(!response.status){
+                return log.error(response.message)
             }
-    
-            if(!isOnline){
-                return setTimeout(isUpdateAvailable, 5000)
+
+            if(compareVersions(currentVersion.current, response.data.desktop) == "update" && !closed.current){
+                return setShowModal(true)
             }
-    
-            try{
-                const response = await apiRequest({
-                    method: "POST",
-                    endpoint: "/v1/currentVersions",
-                    data: {
-                        platform: "desktop"
-                    },
-                    timeout: 60000
-                })
-    
-                if(!response.status){
-                    return log.error(response.message)
-                }
-    
-                if(compareVersions(currentVersion.current, response.data.desktop) == "update" && !closed.current){
-                    return setShowModal(true)
-                }
-            }
-            catch(e){
-                log.error(e)
-            }
-    
-            return setTimeout(isUpdateAvailable, 60000)
-        })()
-    }, []) 
+        }
+        catch(e){
+            log.error(e)
+        }
+
+        return setTimeout(isUpdateAvailable, 60000)
+    }
     
     useEffect(() => {
         isUpdateAvailable()
@@ -107,7 +105,7 @@ const UpdateModal = memo(({ lang, darkMode, platform }: { lang: string, darkMode
                                 textDecoration: "none"
                             }}
                             marginTop="40px"
-                            onClick={() => shell.openExternal("https://cdn.filen.io/desktop/release/" + (platform == "linux" ? "filen.AppImage" : (platform == "mac" ? "filen.dmg" : "filen.exe"))).catch(log.error)}
+                            onClick={() => shell.openExternal("https://cdn.filen.io/desktop/release/" + (platform == "linux" ? "filen_" + process.arch + ".AppImage" : (platform == "mac" ? "filen" + process.arch + ".dmg" : "filen" + process.arch + ".exe"))).catch(log.error)}
                         >
                             {i18n(lang, "downloadUpdateBtn")}
                         </Link>

@@ -112,7 +112,7 @@
 		"npmRebuild": true,
 		"nodeGypRebuild": false,
 		"extends": null,
-		"artifactName": "filen.${ext}",
+		"artifactName": "filen_${arch}.${ext}",
 		"afterSign": "./scripts/notarize.js",
 		"files": [
 			"build",
@@ -121,7 +121,7 @@
 			"package.json"
 		],
 		"directories": {
-			"output": "./dist/${os}/${arch}",
+			"output": "./dist/",
 			"buildResources": "assets"
 		},
 		"publish": [
