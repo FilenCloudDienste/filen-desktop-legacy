@@ -6,6 +6,7 @@ const log = require("electron-log")
 const is = require("electron-is")
 const { autoUpdater } = require("electron-updater")
 const ipc = require("./lib/ipc")
+const db = require("./lib/db")
 
 let CHECK_UPDATE_INTERVAL = undefined
 let POWER_SAVE_BLOCKER = null
@@ -75,6 +76,22 @@ app.on("activate", () => {
 powerMonitor.on("shutdown", () => {
 	powerSaveBlocker.stop(POWER_SAVE_BLOCKER)
 	app.exit(0)
+})
+
+powerMonitor.on("lock-screen", () => {
+	db.set("suspend", true).catch(log.error)
+})
+
+powerMonitor.on("suspend", () => {
+	db.set("suspend", true).catch(log.error)
+})
+
+powerMonitor.on("resume", () => {
+	db.set("suspend", false).catch(log.error)
+})
+
+powerMonitor.on("unlock-screen", () => {
+	db.set("suspend", false).catch(log.error)
 })
 
 if(!app.requestSingleInstanceLock()){

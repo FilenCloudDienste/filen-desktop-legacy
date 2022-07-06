@@ -128,6 +128,22 @@ const holdSyncLock = (id: string | number): void => {
     }, SYNC_TIMEOUT / 2)
 }
 
+const isSuspended = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+        db.get("suspend").then((suspend) => {
+            if(typeof suspend == "boolean"){
+                return resolve(suspend)
+            }
+
+            return resolve(false)
+        }).catch((err) => {
+            log.error(err)
+
+            return resolve(false)
+        })
+    })
+}
+
 const getDeltas = (type: string, before: any, now: any): Promise<any> => {
     return new Promise((resolve, _) => {
         const deltasFiles: any = {}
@@ -2327,6 +2343,12 @@ const syncLocation = async (location: any): Promise<any> => {
         return true
     }
 
+    if((await isSuspended())){
+        await updateLocationBusyStatus(location.uuid, false)
+
+        return true
+    }
+
     await updateLocationBusyStatus(location.uuid, true)
 
     log.info("Starting sync task for location " + location.uuid + " -> " + location.local + " <-> " + location.remote + " [" + location.type + "] (" + JSON.stringify(location) + ")")
@@ -2345,6 +2367,12 @@ const syncLocation = async (location: any): Promise<any> => {
         ])
     }
     catch(e: any){
+        if((await isSuspended())){
+            updateLocationBusyStatus(location.uuid, false)
+
+            return false
+        }
+
         if(e.toString().toLowerCase().indexOf("remote folder") !== -1 && e.toString().toLowerCase().indexOf("is not present") !== -1){
             await removeRemoteLocation(location)
         }
@@ -2383,6 +2411,12 @@ const syncLocation = async (location: any): Promise<any> => {
             await ipc.watchDirectory(pathModule.normalize(location.local), location.uuid)
         }
         catch(e: any){
+            if((await isSuspended())){
+                await updateLocationBusyStatus(location.uuid, false)
+    
+                return false
+            }
+
             log.error("Could not start local directory watcher for location " + location.uuid)
             log.error(e)
 
@@ -2401,6 +2435,12 @@ const syncLocation = async (location: any): Promise<any> => {
             status: "done",
             location
         })
+    }
+
+    if((await isSuspended())){
+        await updateLocationBusyStatus(location.uuid, false)
+
+        return true
     }
 
     log.info("Getting directory trees for location " + location.uuid)
@@ -2424,6 +2464,12 @@ const syncLocation = async (location: any): Promise<any> => {
         ])
     }
     catch(e: any){
+        if((await isSuspended())){
+            await updateLocationBusyStatus(location.uuid, false)
+
+            return false
+        }
+
         if(e.toString().toLowerCase().indexOf("folder not found") !== -1){
             await removeRemoteLocation(location)
         }
@@ -2454,9 +2500,6 @@ const syncLocation = async (location: any): Promise<any> => {
 
         return false
     }
-
-    //log.info("localTreeNow", localTreeNow)
-    //log.info("remoteTreeNow", remoteTreeNow)
 
     try{
         var [lastLocalTree, lastRemoteTree] = await Promise.all([
@@ -2505,6 +2548,12 @@ const syncLocation = async (location: any): Promise<any> => {
         return false
     }
 
+    if((await isSuspended())){
+        await updateLocationBusyStatus(location.uuid, false)
+
+        return true
+    }
+
     log.info("Getting deltas for location " + location.uuid)
 
     emitSyncStatusLocation("getDeltas", {
@@ -2538,6 +2587,12 @@ const syncLocation = async (location: any): Promise<any> => {
         location
     })
 
+    if((await isSuspended())){
+        await updateLocationBusyStatus(location.uuid, false)
+
+        return true
+    }
+
     log.info("Consuming deltas for location " + location.uuid)
 
     emitSyncStatusLocation("consumeDeltas", {
@@ -2569,6 +2624,12 @@ const syncLocation = async (location: any): Promise<any> => {
         status: "done",
         location
     })
+
+    if((await isSuspended())){
+        await updateLocationBusyStatus(location.uuid, false)
+
+        return true
+    }
 
     log.info("Consuming tasks for location " + location.uuid)
 
@@ -2724,6 +2785,10 @@ const restartSyncLoop = async (): Promise<any> => {
 }
 
 const sync = async (): Promise<any> => {
+    if((await isSuspended())){
+        return setTimeout(sync, SYNC_TIMEOUT)
+    }
+
     try{
         if(!(await db.get("isLoggedIn"))){
             return setTimeout(sync, SYNC_TIMEOUT)
@@ -2835,6 +2900,10 @@ const sync = async (): Promise<any> => {
 
     if(SYNC_RUNNING){
         return log.info("Sync requested but already running, returning")
+    }
+
+    if((await isSuspended())){
+        return setTimeout(sync, SYNC_TIMEOUT)
     }
 
     emitSyncStatus("acquireSyncLock", {
