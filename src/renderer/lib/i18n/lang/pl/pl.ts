@@ -1,16 +1,16 @@
 const pl: {
     [key: string]: string
 } = {
-    loginEmailPlaceholder: "Adres email",
+    loginEmailPlaceholder: "Adres e-mail",
     loginPasswordPlaceholder: "Hasło",
     loginTwoFactorCodePlaceholder: "Kod uwierzytelniania dwuetapowego",
     loginBtn: "Zaloguj się",
     titlebarLogin: "Zaloguj się",
     loginInvalidFields: "Nieprawidłowe pola",
-    loginInvalidEmail: "Nieprawidłowy adres email",
-    loginInvalidEmailOrPassword: "Nieprawidłowe hasło lub adres email",
+    loginInvalidEmail: "Nieprawidłowy adres e-mail",
+    loginInvalidEmailOrPassword: "Nieprawidłowe hasło lub adres e-mail",
     loginAccountNotYetActivated: "Konto nie zostało jeszcze aktywowane",
-    loginWrongEmailOrPassword: "Nieprawidłowy adres email lub hasło",
+    loginWrongEmailOrPassword: "Nieprawidłowy adres e-mail lub hasło",
     invalidTwoFactorKey: "Nieprawidłowy kod uwierzytelniania dwuetapowego",
     titlebarMain: "Filen",
     titlebarSettings: "Ustawienia",
