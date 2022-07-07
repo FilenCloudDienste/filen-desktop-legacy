@@ -29,3 +29,7 @@ npm run start
 npm run build-{arch}
 
 ```
+
+# Contributing translations
+
+If you want to help us translate the app you can head over to this page https://github.com/FilenCloudDienste/filen-desktop/src/renderer/lib/i18n and check out the Readme provided there! :)
