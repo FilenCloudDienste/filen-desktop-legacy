@@ -108,7 +108,7 @@ const pl: {
     titlebarCloudWindow: "Chmura",
     updateAvailable: "Dostępna jest aktualizacja, rozważ pobranie najnowszej wersji, aby uzyskać poprawki błędów i ulepszenia wydajności",
     downloadUpdateBtn: "Pobierz aktualizację",
-    pause: "Wsztrymaj",
+    pause: "Wstrzymaj",
     resume: "Wznów",
     keybinds_uploadFolders: "Prześlij foldery",
     keybinds_uploadFiles: "Prześlij pliki",
