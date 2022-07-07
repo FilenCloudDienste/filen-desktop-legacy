@@ -3,6 +3,7 @@ import { getRandomArbitrary, Semaphore, nodeBufferToArrayBuffer } from "../helpe
 import { hashFn, encryptMetadata, encryptMetadataPublicKey, decryptFolderLinkKey, decryptFileMetadata, decryptFolderName } from "../crypto"
 import db from "../db"
 import { sendToAllPorts } from "../worker/ipc"
+import { logout } from "../../windows/settings/settings"
 
 const https = window.require("https")
 const log = window.require("electron-log")
@@ -97,7 +98,17 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
                     }
     
                     try{
-                        return resolve(JSON.parse(body))
+                        const obj = JSON.parse(body)
+
+                        if(typeof obj.message == "string"){
+                            if(obj.message.toLowerCase().indexOf("invalid api key") !== -1){
+                                logout().catch(log.error)
+
+                                return reject(new Error(obj.message))
+                            }
+                        }
+
+                        return resolve(obj)
                     }
                     catch(e){
                         log.error(e)

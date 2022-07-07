@@ -37,6 +37,26 @@ const fs = window.require("fs-extra")
 const STARTING_ROUTE_URL_PARAMS = new URLSearchParams(window.location.search)
 const STARTING_ROUTE = typeof STARTING_ROUTE_URL_PARAMS.get("page") == "string" ? STARTING_ROUTE_URL_PARAMS.get("page") : "general"
 
+export const logout = async () => {
+    try{
+        await Promise.all([
+            db.remove("apiKey"),
+            db.remove("email"),
+            db.remove("userId"),
+            db.remove("masterKeys"),
+            db.remove("authVersion"),
+            db.remove("isLoggedIn"),
+            db.remove("privateKey"),
+            db.remove("publicKey")
+        ])
+
+        ipc.restartApp().catch(log.error)
+    }
+    catch(e){
+        log.error(e)
+    }
+}
+
 const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: boolean, lang: string, platform: string }) => {
     const [openAtStartupAsync, setOpenAtStartupAsync] = useState<any>(undefined)
     const [appVersionAsync, setAppVersionAsync] = useState<any>(undefined)
@@ -1471,26 +1491,6 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
 const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }: { darkMode: boolean, lang: string, platform: string, email: string }) => {
     const [logoutAlertOpen, setLogoutAlertOpen] = useState<boolean>(false)
     const [userInfo, setUserInfo] = useState<any>(undefined)
-
-    const logout = async () => {
-        try{
-            await Promise.all([
-                db.remove("apiKey"),
-                db.remove("email"),
-                db.remove("userId"),
-                db.remove("masterKeys"),
-                db.remove("authVersion"),
-                db.remove("isLoggedIn"),
-                db.remove("privateKey"),
-                db.remove("publicKey")
-            ])
-
-            ipc.restartApp().catch(log.error)
-        }
-        catch(e){
-            log.error(e)
-        }
-    }
 
     useEffect(() => {
         db.get("apiKey").then((apiKey) => {
