@@ -1,5 +1,5 @@
 # Filen Desktop Client for Windows, macOS and Linux
-> Crossplatform desktop client written in JavaScript using Electron
+> Crossplatform desktop client written in JavaScript/TypeScript using Electron
 
 # Contributing translations
 

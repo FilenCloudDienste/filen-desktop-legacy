@@ -1403,6 +1403,10 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     maxConcurrentUploadsSemaphore.release()
     
                                     log.error(err)
+
+                                    if(err.toString().toLowerCase().indexOf("invalid upload key") !== -1){
+                                        return reject(err)
+                                    }
     
                                     return setTimeout(() => {
                                         doTask(err)

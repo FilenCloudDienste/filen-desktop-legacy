@@ -94,6 +94,7 @@
 		]
 	},
 	"devDependencies": {
+		"@types/request": "^2.48.8",
 		"concurrently": "^5.3.0",
 		"electron": "^19.0.7",
 		"electron-builder": "^23.1.0",
