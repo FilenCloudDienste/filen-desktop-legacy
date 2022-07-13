@@ -15,11 +15,9 @@ package-lock.json
 
 # production
 /build
-scripts/
-/scripts
-notarize/
-/notarize
 debug.js
+.env
+*.env
 
 # misc
 .DS_Store

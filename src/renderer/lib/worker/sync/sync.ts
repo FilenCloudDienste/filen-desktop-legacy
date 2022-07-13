@@ -534,26 +534,6 @@ const sortMoveRenameTasks = (tasks: any): any => {
     return newTasks
 }
 
-const addTaskToRedoList = (task: any): Promise<any> => {
-    return new Promise((resolve, reject) => {
-        db.get("userId").then((userId) => {
-            db.get("syncTasksRedo:" + userId).then((syncTasksRedo) => {
-                if(!Array.isArray(syncTasksRedo)){
-                    syncTasksRedo = []
-                }
-    
-                syncTasksRedo.push(task)
-    
-                db.set("syncTasksRedo:" + userId, syncTasksRedo).then(() => {
-                    log.info(JSON.stringify(task) + " added to sync redo list")
-
-                    return resolve(true)
-                }).catch(reject)
-            }).catch(reject)
-        }).catch(reject)
-    })
-}
-
 // Parse lists into .gitignore like compatible format
 const getIgnored = (location: any): Promise<any> => {
     return new Promise((resolve, reject) => {
@@ -892,18 +872,6 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     location,
                                     err: lastErr
                                 })
-            
-                                addTaskToRedoList({
-                                    type: "renameInRemote",
-                                    task,
-                                    location
-                                }).then(() => {
-                                    return reject(lastErr)
-                                }).catch((e) => {
-                                    log.error(e)
-    
-                                    return reject(lastErr)
-                                })
 
                                 maxSyncTasksSemaphore.release()
     
@@ -967,18 +935,6 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     task,
                                     location,
                                     err: lastErr
-                                })
-            
-                                addTaskToRedoList({
-                                    type: "renameInLocal",
-                                    task,
-                                    location
-                                }).then(() => {
-                                    return reject(lastErr)
-                                }).catch((e) => {
-                                    log.error(e)
-    
-                                    return reject(lastErr)
                                 })
 
                                 maxSyncTasksSemaphore.release()
@@ -1044,18 +1000,6 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     location,
                                     err: lastErr
                                 })
-            
-                                addTaskToRedoList({
-                                    type: "moveInRemote",
-                                    task,
-                                    location
-                                }).then(() => {
-                                    return reject(lastErr)
-                                }).catch((e) => {
-                                    log.error(e)
-    
-                                    return reject(lastErr)
-                                })
 
                                 maxSyncTasksSemaphore.release()
     
@@ -1119,18 +1063,6 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     task,
                                     location,
                                     err: lastErr
-                                })
-            
-                                addTaskToRedoList({
-                                    type: "moveInLocal",
-                                    task,
-                                    location
-                                }).then(() => {
-                                    return reject(lastErr)
-                                }).catch((e) => {
-                                    log.error(e)
-    
-                                    return reject(lastErr)
                                 })
 
                                 maxSyncTasksSemaphore.release()
@@ -1196,18 +1128,6 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     location,
                                     err: lastErr
                                 })
-            
-                                addTaskToRedoList({
-                                    type: "deleteInRemote",
-                                    task,
-                                    location
-                                }).then(() => {
-                                    return reject(lastErr)
-                                }).catch((e) => {
-                                    log.error(e)
-    
-                                    return reject(lastErr)
-                                })
 
                                 maxSyncTasksSemaphore.release()
     
@@ -1271,18 +1191,6 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     task,
                                     location,
                                     err: lastErr
-                                })
-    
-                                addTaskToRedoList({
-                                    type: "deleteInLocal",
-                                    task,
-                                    location
-                                }).then(() => {
-                                    return reject(lastErr)
-                                }).catch((e) => {
-                                    log.error(e)
-    
-                                    return reject(lastErr)
                                 })
 
                                 maxSyncTasksSemaphore.release()
@@ -1348,18 +1256,6 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     location,
                                     err: lastErr
                                 })
-            
-                                addTaskToRedoList({
-                                    type: "uploadToRemote",
-                                    task,
-                                    location
-                                }).then(() => {
-                                    return reject(lastErr)
-                                }).catch((e) => {
-                                    log.error(e)
-    
-                                    return reject(lastErr)
-                                })
 
                                 maxSyncTasksSemaphore.release()
     
@@ -1405,6 +1301,13 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     log.error(err)
 
                                     if(err.toString().toLowerCase().indexOf("invalid upload key") !== -1){
+                                        emitSyncTask("uploadToRemote", {
+                                            status: "err",
+                                            task,
+                                            location,
+                                            err
+                                        })
+
                                         return reject(err)
                                     }
     
@@ -1445,18 +1348,6 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     task,
                                     location,
                                     err: lastErr
-                                })
-            
-                                addTaskToRedoList({
-                                    type: "downloadFromRemote",
-                                    task,
-                                    location
-                                }).then(() => {
-                                    return reject(lastErr)
-                                }).catch((e) => {
-                                    log.error(e)
-    
-                                    return reject(lastErr)
                                 })
 
                                 maxSyncTasksSemaphore.release()
@@ -2932,43 +2823,6 @@ const sync = async (): Promise<any> => {
         status: "done"
     })
 
-    /*log.info("Checking if we need to redo any previous failed sync tasks")
-
-    emitSyncStatus("syncTasksRedo", {
-        status: "start"
-    })
-
-    try{
-        var syncTasksRedo = await db.get("syncTasksRedo:" + userId)
-    }
-    catch(e){
-        log.error("Could not get syncTasksRedo for userId " + userId)
-        log.error(e)
-
-        emitSyncStatus("syncTasksRedo", {
-            status: "err",
-            err: e
-        })
-
-        addToSyncIssues("getSyncTasksRedo", "Could not get syncTasksRedo: " + typeof userId)
-
-        return false
-    }
-
-    if(Array.isArray(syncTasksRedo) && syncTasksRedo.length > 0){
-        log.info("We need to redo " + syncTasksRedo.length + " sync tasks")
-
-        emitSyncStatus("syncTasksRedo", {
-            status: "done",
-            syncTasksRedo
-        })
-    }
-
-    emitSyncStatus("syncTasksRedo", {
-        status: "done",
-        syncTasksRedo: []
-    })*/
-
     log.info("Starting sync task")
     log.info(syncLocations.length + " syncLocations to sync")
 
@@ -3009,23 +2863,6 @@ const sync = async (): Promise<any> => {
     emitSyncStatus("cleanup", {
         status: "start"
     })
-
-    try{
-        await new Promise((resolve, reject) => {
-            db.get("userId").then((userId) => {
-                db.remove("syncTasksRedo:" + userId).then(resolve).catch(reject)
-            }).catch(reject)
-        })
-    }
-    catch(e){
-        log.error("Clean up failed")
-        log.error(e)
-
-        emitSyncStatus("cleanup", {
-            status: "err",
-            err: e
-        })
-    }
 
     emitSyncStatus("cleanup", {
         status: "done"

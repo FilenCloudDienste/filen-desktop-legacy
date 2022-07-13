@@ -11,7 +11,7 @@ const { Base64 } = require("js-base64")
 
 const STATIC_PATH = isDev ? "http://localhost:3000/" : "file://" + path.join(__dirname, "../../../../build/index.html")
 
-const createMain = () => {
+const createMain = (show = false) => {
     return new Promise(async (resolve, reject) => {
 		if(typeof shared.get("MAIN_WINDOW") !== "undefined"){
 			try{
@@ -96,13 +96,15 @@ const createMain = () => {
                 setTimeout(() => window.focus(), 250)
             })
 
-            ipcMain.once("window-ready", (_, id) => {
-                if(id == windowId){
-                    window.show()
-
-                    tray.positionWindowAtTray(window, windowTray)
-                }
-            })
+            if(show){
+                ipcMain.once("window-ready", (_, id) => {
+                    if(id == windowId){
+                        window.show()
+    
+                        tray.positionWindowAtTray(window, windowTray)
+                    }
+                })
+            }
 
             shared.set("MAIN_WINDOW", window)
 
@@ -655,11 +657,7 @@ const createWindows = () => {
 			}
 
             if(isLoggedIn){
-                const main = await createMain()
-
-				main.show()
-
-				main.once("ready-to-show", () => setTimeout(() => main.focus(), 250))
+                await createMain(false)
             }
             else{
                 await createAuth()

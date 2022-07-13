@@ -22,6 +22,7 @@
 		"auto-launch": "^5.0.5",
 		"cross-env": "^7.0.3",
 		"crypto-js": "^4.1.1",
+		"dotenv": "^10.0.0",
 		"electron-disable-file-drop": "^1.0.2",
 		"electron-is": "^3.0.0",
 		"electron-is-dev": "^1.2.0",

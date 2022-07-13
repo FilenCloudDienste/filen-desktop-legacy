@@ -29,8 +29,6 @@ const positionWindow = () => {
 const toggleMainWindow = () => {
     try{
         if(typeof shared.get("MAIN_WINDOW") !== "undefined"){
-            positionWindow()
-
             shared.get("MAIN_WINDOW").show()
         }
     }
@@ -42,10 +40,14 @@ const toggleMainWindow = () => {
 }
 
 const onClick = () => {
+    positionWindow()
+
     return toggleMainWindow()
 }
 
 const onRightClick = () => {
+    positionWindow()
+
     return true
 }
 
@@ -66,6 +68,8 @@ const createTray = () => {
         tray.setContextMenu(trayMenu.createMenu())
     
         shared.set("TRAY", tray)
+
+        positionWindow()
     
         return tray
     }
@@ -77,18 +81,12 @@ const createTray = () => {
 }
 
 const positionWindowAtTray = (window, tray) => {
+    if(typeof window == "undefined" || typeof tray == "undefined" || is.linux()){
+        return false
+    }
+
     try{
-        if(typeof window == "undefined"){
-            if(typeof shared.get("MAIN_WINDOW") == "undefined"){
-                return false
-            }
-    
-            window = shared.get("MAIN_WINDOW")
-        }
-        
-        if(!is.linux()){
-            trayWindowPositioner.position(window, tray.getBounds())
-        }
+        trayWindowPositioner.position(window, tray.getBounds())
     }
     catch(e){
         log.error("Could not position window at tray")

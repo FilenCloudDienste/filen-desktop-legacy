@@ -104,7 +104,7 @@ const handleMessage = (type, data) => {
                 return resolve(true)
             }
 
-            windows.createMain().then(() => {
+            windows.createMain(true).then(() => {
                 return resolve(true)
             }).catch(reject)
         }
@@ -127,7 +127,7 @@ const handleMessage = (type, data) => {
                 }
             }
 
-            windows.createMain().then(() => {
+            windows.createMain(true).then(() => {
                 return resolve(true)
             }).catch(reject)
         }

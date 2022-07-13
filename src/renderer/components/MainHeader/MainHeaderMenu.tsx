@@ -1,6 +1,6 @@
 import React from "react"
 import { Flex, Menu, MenuButton, MenuList, MenuItem, MenuDivider, forwardRef } from "@chakra-ui/react"
-import { HiOutlineCog } from "react-icons/hi"
+import { HiOutlineCog, HiOutlineMenu } from "react-icons/hi"
 import ipc from "../../lib/ipc"
 import colors from "../../styles/colors"
 import { IoGlobeOutline } from "react-icons/io5"
@@ -48,7 +48,7 @@ export default class MainHeaderMenu extends React.Component<Props> {
                     <MenuButton
                         as={forwardRef((props, ref) => (
                             <Flex ref={ref} {...props}>
-                                <HiOutlineCog
+                                <HiOutlineMenu
                                     size={24}
                                     color={colors(platform, darkMode, "textPrimary")}
                                 />
