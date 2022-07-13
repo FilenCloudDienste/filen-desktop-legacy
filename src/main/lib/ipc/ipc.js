@@ -678,17 +678,27 @@ const listen = () => {
             }
     
             handleMessage(type, data).then((response) => {
-                return event.sender.send("message", {
-                    messageId,
-                    messageSender,
-                    response
-                })
+                try{
+                    event.sender.send("message", {
+                        messageId,
+                        messageSender,
+                        response
+                    })
+                }
+                catch(e){
+                    log.error(e)
+                }
             }).catch((err) => {
-                return event.sender.send("message", {
-                    messageId,
-                    messageSender,
-                    err
-                })
+                try{
+                    event.sender.send("message", {
+                        messageId,
+                        messageSender,
+                        err
+                    })
+                }
+                catch(e){
+                    log.error(e)
+                }
             })
         })
     

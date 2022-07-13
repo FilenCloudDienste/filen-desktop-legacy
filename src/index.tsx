@@ -8,14 +8,24 @@ process.noAsar = true
 
 window.require("electron-disable-file-drop")
 
-window.onkeydown = (e: any) => {
-    if([82, 91].includes(e.which) && (e.ctrlKey || e.altKey || e.metaKey)){
+window.onkeydown = (e: KeyboardEvent) => {
+    if(
+        e.which == 82
+        || e.which == 82 && e.ctrlKey
+        || e.which == 82 && e.metaKey
+        || e.which == 82 && e.altKey
+    ){
         e.preventDefault()
     }
 }
 
-window.onkeyup = (e: any) => {
-    if([82, 91].includes(e.which) && (e.ctrlKey || e.altKey || e.metaKey)){
+window.onkeyup = (e: KeyboardEvent) => {
+    if(
+        e.which == 82
+        || e.which == 82 && e.ctrlKey
+        || e.which == 82 && e.metaKey
+        || e.which == 82 && e.altKey
+    ){
         e.preventDefault()
     }
 }

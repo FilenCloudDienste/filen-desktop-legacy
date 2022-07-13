@@ -13,16 +13,20 @@ const STATIC_PATH = isDev ? "http://localhost:3000/" : "file://" + path.join(__d
 
 const createMain = (show = false) => {
     return new Promise(async (resolve, reject) => {
-		if(typeof shared.get("MAIN_WINDOW") !== "undefined"){
-			try{
-				shared.get("MAIN_WINDOW").close()
-			}
-			catch(e){
-				log.error(e)
-			}
-		}
-
         try{
+            if(is.linux()){
+                show = true
+            }
+
+            if(typeof shared.get("MAIN_WINDOW") !== "undefined"){
+                try{
+                    shared.get("MAIN_WINDOW").close()
+                }
+                catch(e){
+                    log.error(e)
+                }
+            }
+
             const windowId = uuidv4()
 
             const window = new BrowserWindow({
@@ -58,7 +62,7 @@ const createMain = (show = false) => {
                 window.setSkipTaskbar(true)
             }
 
-            if(is.macOS() && !isDev){
+            if(is.macOS()){
                 app.dock.setIcon(nativeImage.createFromPath(path.join(__dirname, "../src/assets/icons/png/512x512.png")))
                 app.dock.hide()
             }
@@ -96,15 +100,13 @@ const createMain = (show = false) => {
                 setTimeout(() => window.focus(), 250)
             })
 
-            if(show){
-                ipcMain.once("window-ready", (_, id) => {
-                    if(id == windowId){
-                        window.show()
-    
-                        tray.positionWindowAtTray(window, windowTray)
-                    }
-                })
-            }
+            ipcMain.once("window-ready", (_, id) => {
+                if(id == windowId && show){
+                    window.show()
+
+                    tray.positionWindowAtTray(window, windowTray)
+                }
+            })
 
             shared.set("MAIN_WINDOW", window)
 
@@ -504,16 +506,16 @@ const createSelectiveSync = (windowId = uuidv4(), args = {}) => {
 
 const createAuth = () => {
     return new Promise(async (resolve, reject) => {
-		if(typeof shared.get("AUTH_WINDOW") !== "undefined"){
-			try{
-				shared.get("AUTH_WINDOW").close()
-			}
-			catch(e){
-				log.error(e)
-			}
-		}
-
         try{
+            if(typeof shared.get("AUTH_WINDOW") !== "undefined"){
+                try{
+                    shared.get("AUTH_WINDOW").close()
+                }
+                catch(e){
+                    log.error(e)
+                }
+            }
+
             const windowId = uuidv4()
 
             const window = new BrowserWindow({
@@ -570,16 +572,16 @@ const createAuth = () => {
 
 const createWorker = () => {
     return new Promise(async (resolve, reject) => {
-		if(typeof shared.get("WORKER_WINDOW") !== "undefined"){
-			try{
-				shared.get("WORKER_WINDOW").close()
-			}
-			catch(e){
-				log.error(e)
-			}
-		}
-
         try{
+            if(typeof shared.get("WORKER_WINDOW") !== "undefined"){
+                try{
+                    shared.get("WORKER_WINDOW").close()
+                }
+                catch(e){
+                    log.error(e)
+                }
+            }
+
             const windowId = uuidv4()
 
             const window = new BrowserWindow({
@@ -643,16 +645,12 @@ const createWindows = () => {
 
             var [isLoggedIn, deviceId, _] = await Promise.all([
                 db.get("isLoggedIn"),
-                db.get("deviceId"),
-                createWorker()
+                db.get("deviceId")
             ])
-        }
-        catch(e){
-            return reject(e)
-        }
 
-        try{
-			if(!deviceId){
+            await createWorker()
+
+            if(!deviceId){
 				await db.set("deviceId", uuidv4())
 			}
 

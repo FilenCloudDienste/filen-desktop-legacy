@@ -222,19 +222,20 @@ const AuthWindow = memo(({ windowId }: { windowId: string }) => {
                 {
                     showTwoFactor ? (
                         <Input 
-                        type="text" 
-                        value={twoFactorCode} 
-                        onChange={(event) => setTwoFactorCode(event.target.value)} 
-                        placeholder={i18n(lang, "loginTwoFactorCodePlaceholder")} 
-                        userSelect="none" 
-                        style={{
-                            border: "none",
-                            backgroundColor: darkMode ? "#171717" : "lightgray",
-                            color: "gray"
-                        }} 
-                        _placeholder={{
-                            color: "gray"
-                        }} />
+                            type="text" 
+                            value={twoFactorCode} 
+                            onChange={(event) => setTwoFactorCode(event.target.value)} 
+                            placeholder={i18n(lang, "loginTwoFactorCodePlaceholder")} 
+                            userSelect="all" 
+                            style={{
+                                border: "none",
+                                backgroundColor: darkMode ? "#171717" : "lightgray",
+                                color: "gray"
+                            }} 
+                            _placeholder={{
+                                color: "gray"
+                            }}
+                        />
                     ) : (
                         <>
                             <Input 
@@ -242,7 +243,7 @@ const AuthWindow = memo(({ windowId }: { windowId: string }) => {
                                 value={email} 
                                 onChange={(event) => setEmail(event.target.value)} 
                                 placeholder={i18n(lang, "loginEmailPlaceholder")} 
-                                userSelect="none" 
+                                userSelect="all" 
                                 style={{
                                     marginBottom: 10,
                                     border: "none",
@@ -258,7 +259,7 @@ const AuthWindow = memo(({ windowId }: { windowId: string }) => {
                                 value={password} 
                                 onChange={(event) => setPassword(event.target.value)} 
                                 placeholder={i18n(lang, "loginPasswordPlaceholder")} 
-                                userSelect="none" 
+                                userSelect="all" 
                                 style={{
                                     border: "none",
                                     backgroundColor: darkMode ? "#171717" : "lightgray",
