@@ -61,10 +61,6 @@ const MainHeader = memo(({ userId, email, platform, darkMode, lang, doneTasks, c
             paddingRight="15px" 
             paddingBottom="10px" 
             borderBottom={"1px solid " + colors(platform, darkMode, "borderPrimary")} 
-            style={{
-                // @ts-ignore
-                WebkitAppRegion: platform == "linux" ? "drag" : "no-drag"
-            }}
         >
             <Flex
                 flexDirection="row"

@@ -41,25 +41,25 @@ const createMain = (show = false) => {
 				transparent: true,
                 resizable: false,
                 titleBarStyle: is.macOS() ? "default" : "hidden",
-                skipTaskbar: false,
+                skipTaskbar: (is.macOS() || is.windows()) ? true : false,
                 fullscreenable: false,
                 maximizable: false,
                 minimizable: true,
                 hasShadow: false,
                 title: "Filen",
-                show: false,
+                show: is.linux() ? true : false,
                 backgroundColor: "rgba(0, 0, 0, 0)"
             })
 
             window.windowId = windowId
 
-            window.setMenuBarVisibility(false)
-            window.setAlwaysOnTop(true, "screen")
             window.setResizable(false)
             window.setMenu(null)
             
             if((is.macOS() || is.windows())){
                 window.setSkipTaskbar(true)
+                window.setAlwaysOnTop(true, "screen")
+                window.setMenuBarVisibility(false)
             }
 
             if(is.macOS()){

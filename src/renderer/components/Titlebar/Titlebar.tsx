@@ -30,8 +30,9 @@ const Titlebar = memo(({ darkMode, lang, platform, title }: Props) => {
                 borderTopLeftRadius: "10px",
                 borderTopRightRadius: "10px"
             }} 
+            zIndex={100001}
             position="fixed" 
-            height={platform == "linux" && currentWindow == "main" ? ("20px") : (platform == "mac" ? "27px" : "35px")}
+            height={platform == "linux" && currentWindow == "main" ? ("30px") : (platform == "mac" ? "27px" : "35px")}
         >
             {
                 ["windows", "linux"].includes(platform) && (
@@ -44,7 +45,6 @@ const Titlebar = memo(({ darkMode, lang, platform, title }: Props) => {
                             // @ts-ignore
                             WebkitAppRegion: "no-drag"
                         }}
-                        zIndex={1000}
                     >
                         <Flex
                             width="30px" 
@@ -60,8 +60,8 @@ const Titlebar = memo(({ darkMode, lang, platform, title }: Props) => {
                             marginTop="1px"
                             borderTopRightRadius={!showX ? "10px" : "0px"}
                             _hover={{
-                                backgroundColor: colors(platform, darkMode, "backgroundPrimary")
-                            }} 
+                                backgroundColor: colors(platform, darkMode, currentWindow == "main" ? "backgroundSecondary" : "backgroundPrimary")
+                            }}
                             onClick={() => ipc.minimizeWindow(currentWindow, new URLSearchParams(window.location.search).get("id") as string)}
                         >
                             <BsDash 
