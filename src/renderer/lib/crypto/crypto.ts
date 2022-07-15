@@ -613,8 +613,8 @@ export const generateKeypair = (): Promise<any> => {
 
                     if(b64PubKey.length > 16 && b64PrivKey.length > 16){
                         return resolve({
-                            publicKey: pubKey,
-                            privateKey: privKey
+                            publicKey: b64PubKey,
+                            privateKey: b64PrivKey
                         })
                     }
                     else{
