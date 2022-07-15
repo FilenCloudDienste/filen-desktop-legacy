@@ -3,6 +3,7 @@ import de from "./lang/de"
 import ru from "./lang/ru"
 import uk from "./lang/uk"
 import pl from "./lang/pl"
+import zh from "./lang/zh"
 
 const translations: {
     [key: string]: any
@@ -11,7 +12,8 @@ const translations: {
     de,
     ru,
     uk,
-    pl
+    pl,
+    zh
 }
 
 export const i18n = (lang: string = "en", text: string, firstUpperCase: boolean = true, replaceFrom: string[] = [], replaceTo: string[] = []) => {
