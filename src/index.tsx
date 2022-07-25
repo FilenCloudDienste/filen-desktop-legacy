@@ -8,27 +8,20 @@ process.noAsar = true
 
 window.require("electron-disable-file-drop")
 
-window.onkeydown = (e: KeyboardEvent) => {
+const keyEvent = (e: KeyboardEvent) => {
     if(
-        e.which == 82
-        || e.which == 82 && e.ctrlKey
-        || e.which == 82 && e.metaKey
-        || e.which == 82 && e.altKey
+        e.which == 116
+        || (e.which == 82 && e.ctrlKey)
+        || (e.which == 82 && e.metaKey)
+        || (e.which == 116 && e.ctrlKey)
+        || (e.which == 116 && e.metaKey)
     ){
         e.preventDefault()
     }
 }
 
-window.onkeyup = (e: KeyboardEvent) => {
-    if(
-        e.which == 82
-        || e.which == 82 && e.ctrlKey
-        || e.which == 82 && e.metaKey
-        || e.which == 82 && e.altKey
-    ){
-        e.preventDefault()
-    }
-}
+window.onkeydown = keyEvent
+window.onkeyup = keyEvent
 
 // @ts-ignore
 createRoot(document.getElementById("root")).render(<App />)
