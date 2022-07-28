@@ -1,5 +1,14 @@
 import { defaultIgnored } from "../constants"
 
+const pathModule = window.require("path")
+
+export const isSubdir = (parent: string, path: string) => {
+  const relative = pathModule.relative(parent, path)
+  const isSubdir = relative && !relative.startsWith("..") && !pathModule.isAbsolute(relative)
+
+  return isSubdir
+}
+
 export const normalizePlatform = (platform: string) => {
     if(platform == "darwin"){
         return "mac"

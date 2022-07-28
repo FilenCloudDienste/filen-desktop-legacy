@@ -136,7 +136,8 @@ const de: {
     syncModeCloudToLocalInfo: "Jede cloud Aktion lokal spiegeln aber keine lokalen Änderungen in die Cloud spiegeln",
     syncModeLocalBackupInfo: "Lädt nur Daten in die Cloud hoch, löscht nichts und spiegelt keine cloud Änderungen",
     syncModeCloudBackupInfo: "Lädt nur Daten aus der Cloud herunter, löscht nichts und spiegelt keine lokalen Änderungen",
-    cancel: "Abbrechen"
+    cancel: "Abbrechen",
+    cannotCreateSyncLocationLoop2: "Der von Ihnen ausgewählte Cloud Pfad ist bereits ein konfigurierter Synchronisierungsspeicherort. Dies könnte zu endlosen Synchronisationsschleifen führen."
 }
 
 export default de

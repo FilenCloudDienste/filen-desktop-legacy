@@ -20,7 +20,7 @@ import CodeMirror from "@uiw/react-codemirror"
 import { createCodeMirrorTheme } from "../../styles/codeMirror"
 import { GoIssueReopened } from "react-icons/go"
 import { userInfo as getUserInfo } from "../../lib/api"
-import { formatBytes } from "../../lib/helpers"
+import { formatBytes, isSubdir } from "../../lib/helpers"
 import { MdOutlineNetworkCheck } from "react-icons/md"
 import { FaCannabis, FaHackerrank } from "react-icons/fa"
 import IsOnlineBottomToast from "../../components/IsOnlineBottomToast"
@@ -429,7 +429,21 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                 }
 
                 if(Array.isArray(currentSyncLocations) && currentSyncLocations.length > 0){
-                    if(currentSyncLocations.filter(location => location.local == localPath || location.local.indexOf(localPath) !== -1 || localPath.indexOf(location.local) !== -1).length > 0){
+                    let found = false
+
+                    for(let i = 0; i < currentSyncLocations.length; i++){
+                        if(typeof currentSyncLocations[i].local == "string"){
+                            if(
+                                currentSyncLocations[i].local == localPath
+                                || isSubdir(currentSyncLocations[i].local, localPath)
+                                || isSubdir(localPath, currentSyncLocations[i].local)
+                            ){
+                                found = true
+                            }
+                        }
+                    }
+
+                    if(found){
                         return toast({
                             title: i18n(lang, "cannotCreateSyncLocation"),
                             description: i18n(lang, "cannotCreateSyncLocationLoop"),
@@ -827,10 +841,24 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                                         const { uuid, name, path } = result
 
                                                                         if(Array.isArray(currentSyncLocations) && currentSyncLocations.length > 0){
-                                                                            if(currentSyncLocations.filter(location => (typeof location.remote == "string" ? location.remote == path : false) || (typeof location.remote == "string" ? location.remote.indexOf(path) !== -1 : false) || (typeof location.remote == "string" ? path.indexOf(location.remote) !== -1 : false)).length > 0){
+                                                                            let found = false
+
+                                                                            for(let i = 0; i < currentSyncLocations.length; i++){
+                                                                                if(typeof currentSyncLocations[i].remote == "string"){
+                                                                                    if(
+                                                                                        currentSyncLocations[i].remote == path
+                                                                                        || isSubdir(currentSyncLocations[i].remote, path)
+                                                                                        || isSubdir(path, currentSyncLocations[i].remote)
+                                                                                    ){
+                                                                                        found = true
+                                                                                    }
+                                                                                }
+                                                                            }
+
+                                                                            if(found){
                                                                                 return toast({
                                                                                     title: i18n(lang, "cannotCreateSyncLocation"),
-                                                                                    description: i18n(lang, "cannotCreateSyncLocationLoop"),
+                                                                                    description: i18n(lang, "cannotCreateSyncLocationLoop2"),
                                                                                     status: "error",
                                                                                     duration: 5000,
                                                                                     isClosable: true,

@@ -118,7 +118,7 @@ const createMain = (show = false) => {
                             log.error(e)
                         }
                     })
-                }, 1)
+                }, 1000)
 
                 setTimeout(() => window.focus(), 250)
             })

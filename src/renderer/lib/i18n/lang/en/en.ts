@@ -136,7 +136,8 @@ const en: {
     syncModeCloudToLocalInfo: "Mirror every action from the cloud but never act on local changes",
     syncModeLocalBackupInfo: "Only upload data to the cloud, never delete anything or act on remote changes",
     syncModeCloudBackupInfo: "Only download data from the cloud, never delete anything or act on local changes",
-    cancel: "Cancel"
+    cancel: "Cancel",
+    cannotCreateSyncLocationLoop2: "The remote path you have selected is already a configured sync location. This could lead to endless sync loops"
 }
 
 export default en
