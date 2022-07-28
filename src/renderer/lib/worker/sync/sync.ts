@@ -1300,7 +1300,10 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                                     log.error(err)
 
-                                    if(err.toString().toLowerCase().indexOf("invalid upload key") !== -1){
+                                    if(
+                                        err.toString().toLowerCase().indexOf("invalid upload key") !== -1
+                                        || err.toString() == "deletedLocally"    
+                                    ){
                                         emitSyncTask("uploadToRemote", {
                                             status: "err",
                                             task,

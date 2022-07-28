@@ -11,10 +11,12 @@ import { sendToAllPorts } from "../../worker/ipc"
 const pathModule = window.require("path")
 const log = window.require("electron-log")
 const mimeTypes = window.require("mime-types")
+const fs = window.require("fs-extra")
 
 const findOrCreateParentDirectorySemaphore = new Semaphore(1)
 const createDirectorySemaphore = new Semaphore(1)
 const uploadThreadsSemaphore = new Semaphore(maxUploadThreads)
+const folderPathUUID = new Map()
 
 const UPLOAD_VERSION: number = 2
 
@@ -43,6 +45,10 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
             db.get("masterKeys"),
             db.get("excludeDot")
         ]).then(([deviceId, apiKey, masterKeys, excludeDot]) => {
+            if(excludeDot == null){
+                excludeDot = true
+            }
+            
             if(!Array.isArray(masterKeys)){
                 return reject(new Error("Master keys not array"))
             }
@@ -78,6 +84,8 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
 
                     return directoryTree(uuid, true).then(resolve).catch(reject)
                 }
+
+                folderPathUUID.clear()
 
                 if(typeof location !== "undefined"){
                     sendToAllPorts({
@@ -272,6 +280,8 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                                 ...folders[prop],
                                 path: newProp
                             }
+
+                            folderPathUUID.set(newProp, folders[prop].uuid)
                         }
                     }
 
@@ -339,8 +349,31 @@ export const createDirectory = (uuid: string, name: string, parent: string): Pro
     })
 }
 
-export const findOrCreateParentDirectory = (path: string, baseFolderUUID: string, remoteTreeNow: any): Promise<string> => {
+export const doesExistLocally = (path: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+        fs.access(pathModule.normalize(path)).then(() => {
+            return resolve(true)
+        }).catch(() => {
+            return resolve(false)
+        })
+    })
+}
+
+export const findOrCreateParentDirectory = (path: string, baseFolderUUID: string, remoteTreeNow: any, absolutePathLocal?: string): Promise<string> => {
 	return new Promise(async (resolve, reject) => {
+        if(absolutePathLocal){
+            if(!(await doesExistLocally(absolutePathLocal))){
+                return reject("deletedLocally")
+            }
+        }
+
+        const neededPathEx = path.split("/")
+        const neededParentPath = neededPathEx.slice(0, -1).join("/")
+
+        if(folderPathUUID.has(neededParentPath)){
+            return resolve(folderPathUUID.get(neededParentPath))
+        }
+
         await findOrCreateParentDirectorySemaphore.acquire()
 
         if(path.indexOf("/") == -1){
@@ -350,8 +383,6 @@ export const findOrCreateParentDirectory = (path: string, baseFolderUUID: string
         }
 
         const existingFolders = remoteTreeNow.folders
-        const neededPathEx = path.split("/")
-        const neededParentPath = neededPathEx.slice(0, -1).join("/")
         const currentPathArray = []
 
         let found = false
@@ -379,6 +410,8 @@ export const findOrCreateParentDirectory = (path: string, baseFolderUUID: string
                             name: createName,
                             type: "folder"
                         }
+
+                        folderPathUUID.set(currentPath, createUUID)
                     }
                     catch(e){
                         findOrCreateParentDirectorySemaphore.release()
@@ -391,6 +424,8 @@ export const findOrCreateParentDirectory = (path: string, baseFolderUUID: string
             if(typeof existingFolders[neededParentPath] == "object" && typeof existingFolders[neededParentPath].uuid == "string"){
                 found = true
                 foundParentUUID = existingFolders[neededParentPath].uuid
+
+                folderPathUUID.set(neededParentPath, existingFolders[neededParentPath].uuid)
             }
         }
 
@@ -402,6 +437,10 @@ export const findOrCreateParentDirectory = (path: string, baseFolderUUID: string
 
 export const mkdir = (path: string, remoteTreeNow: any, location: any, task: any, uuid: string): Promise<{ parent: string, uuid: string }> => {
     return new Promise(async (resolve, reject) => {
+        if(!(await doesExistLocally(normalizePath(location.local + "/" + path)))){
+            return reject("deletedLocally")
+        }
+
         const name = pathModule.basename(path)
 
         if(typeof uuid !== "string"){
@@ -417,10 +456,14 @@ export const mkdir = (path: string, remoteTreeNow: any, location: any, task: any
         }
 
         try{
-            var parent = await findOrCreateParentDirectory(path, location.remoteUUID, remoteTreeNow)
+            var parent = await findOrCreateParentDirectory(path, location.remoteUUID, remoteTreeNow, normalizePath(location.local + "/" + path))
         }
         catch(e){
             return reject(e)
+        }
+
+        if(!(await doesExistLocally(normalizePath(location.local + "/" + path)))){
+            return reject("deletedLocally")
         }
 
         createDirectory(uuid, name, parent).then((createdUUID) => {
@@ -473,13 +516,17 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
             uuid = uuidv4()
         }
 
+        if(!(await doesExistLocally(absolutePath))){
+            return reject("deletedLocally")
+        }
+
         Promise.all([
             db.get("apiKey"),
             db.get("masterKeys")
         ]).then(([apiKey, masterKeys]) => {
             smokeTestLocal(absolutePath).then(() => {
                 checkLastModified(absolutePath).then((checkLastModifiedRes) => {
-                    findOrCreateParentDirectory(path, location.remoteUUID, remoteTreeNow).then(async (parent) => {
+                    findOrCreateParentDirectory(path, location.remoteUUID, remoteTreeNow, absolutePath).then(async (parent) => {
                         const size = parseInt(task.item.size.toString())
                         const lastModified = checkLastModifiedRes.changed ? Math.floor(checkLastModifiedRes.mtimeMs as number) : Math.floor(task.item.lastModified)
                         const mime = mimeTypes.lookup(name) || ""

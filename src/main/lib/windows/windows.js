@@ -10,12 +10,35 @@ const { v4: uuidv4 } = require("uuid")
 const { Base64 } = require("js-base64")
 
 const STATIC_PATH = isDev ? "http://localhost:3000/" : "file://" + path.join(__dirname, "../../../../build/index.html")
+const DEV_TOOLS = false
+let activeWindows = []
+
+const wasOpenedAtSystemStart = () => {
+    try{
+        if(is.macOS()){
+            const loginSettings = app.getLoginItemSettings()
+
+            return loginSettings.wasOpenedAtLogin
+        }
+
+        return app.commandLine.hasSwitch("hidden")
+    }
+    catch(e){
+        log.error(e)
+
+        return false
+    }
+}
 
 const createMain = (show = false) => {
     return new Promise(async (resolve, reject) => {
         try{
             if(is.linux()){
                 show = true
+            }
+
+            if(wasOpenedAtSystemStart()){
+                show = false
             }
 
             if(typeof shared.get("MAIN_WINDOW") !== "undefined"){
@@ -46,9 +69,13 @@ const createMain = (show = false) => {
                 maximizable: false,
                 minimizable: true,
                 hasShadow: false,
-                title: "Filen",
                 show: is.linux() ? true : false,
-                backgroundColor: "rgba(0, 0, 0, 0)"
+                backgroundColor: "rgba(0, 0, 0, 0)",
+                ...(
+                    (is.linux() && !is.dev()) ? { icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png")) }
+                    : (is.windows() && !is.dev()) ? { icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico") }
+                    : { icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns") }
+                )
             })
 
             window.windowId = windowId
@@ -57,26 +84,22 @@ const createMain = (show = false) => {
             window.setMenu(null)
             
             if((is.macOS() || is.windows())){
-                window.setSkipTaskbar(true)
                 window.setAlwaysOnTop(true, "screen")
                 window.setMenuBarVisibility(false)
             }
 
-            if(is.macOS()){
-                app.dock.setIcon(nativeImage.createFromPath(path.join(__dirname, "../src/assets/icons/png/512x512.png")))
-                app.dock.hide()
-            }
-
             const windowTray = tray.createTray()
 
-            window.loadURL(STATIC_PATH + "#main")
+            window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "#main")
 
-            if(isDev){
+            if(DEV_TOOLS){
                 window.webContents.openDevTools({ mode: "detach" })
             }
 
 			window.once("closed", () => {
 				shared.remove("MAIN_WINDOW")
+
+                activeWindows = activeWindows.filter(window => window.id !== windowId)
 			})
 
 			window.once("show", () => {
@@ -95,20 +118,23 @@ const createMain = (show = false) => {
                             log.error(e)
                         }
                     })
-                }, 3000)
+                }, 1)
 
                 setTimeout(() => window.focus(), 250)
             })
 
             ipcMain.once("window-ready", (_, id) => {
+                tray.positionWindowAtTray(window, windowTray)
+
                 if(id == windowId && show){
                     window.show()
-
-                    tray.positionWindowAtTray(window, windowTray)
                 }
             })
 
             shared.set("MAIN_WINDOW", window)
+            activeWindows.push({ id: windowId, type: "MAIN_WINDOW" })
+
+            tray.positionWindowAtTray(window, windowTray)
 
             return resolve(window)
         }
@@ -147,16 +173,21 @@ const createSettings = (page = "general", windowId = uuidv4()) => {
                 maximizable: false,
                 minimizable: true,
                 hasShadow: false,
-                title: "Filen",
+                title: "Settings",
                 show: false,
-                backgroundColor: "rgba(0, 0, 0, 0)"
+                backgroundColor: "rgba(0, 0, 0, 0)",
+                ...(
+                    (is.linux() && !is.dev()) ? { icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png")) }
+                    : (is.windows() && !is.dev()) ? { icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico") }
+                    : { icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns") }
+                )
             })
 
             window.windowId = windowId
 
             window.loadURL(STATIC_PATH + "?page=" + page + "&id=" + encodeURIComponent(windowId) + "#settings")
 
-            if(isDev){
+            if(DEV_TOOLS){
                 window.webContents.openDevTools({ mode: "detach" })
             }
 
@@ -172,6 +203,21 @@ const createSettings = (page = "general", windowId = uuidv4()) => {
 
                     shared.set("SETTINGS_WINDOWS", settingsWindows)
                 }
+
+                activeWindows = activeWindows.filter(window => window.id !== windowId)
+
+                if(is.macOS()){
+                    const active = JSON.stringify(activeWindows.map(window => window.type))
+
+                    if(
+                        JSON.stringify(["MAIN_WINDOW", "WORKER_WINDOW"]) == active
+                        || JSON.stringify(["WORKER_WINDOW", "MAIN_WINDOW"]) == active
+                        || JSON.stringify(["MAIN_WINDOW"]) == active
+                        || JSON.stringify(["WORKER_WINDOW"]) == active
+                    ){
+                        app.dock.hide()
+                    }
+                }
 			})
 
 			window.once("show", () => setTimeout(() => window.focus(), 250))
@@ -181,6 +227,12 @@ const createSettings = (page = "general", windowId = uuidv4()) => {
                     window.show()
                 }
             })
+
+            if(is.macOS()){
+                window.once("show", () => {
+                    app.dock.show().catch(log.error)
+                })
+            }
 
             let settingsWindows = shared.get("SETTINGS_WINDOWS")
 
@@ -193,6 +245,7 @@ const createSettings = (page = "general", windowId = uuidv4()) => {
             }
 
             shared.set("SETTINGS_WINDOWS", settingsWindows)
+            activeWindows.push({ id: windowId, type: "SETTINGS_WINDOWS" })
 
             return resolve(window)
         }
@@ -223,16 +276,21 @@ const createUpload = (args = {}, windowId = uuidv4()) => {
                 maximizable: false,
                 minimizable: true,
                 hasShadow: false,
-                title: "Filen",
+                title: "Upload",
                 show: false,
-                backgroundColor: "rgba(0, 0, 0, 0)"
+                backgroundColor: "rgba(0, 0, 0, 0)",
+                ...(
+                    (is.linux() && !is.dev()) ? { icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png")) }
+                    : (is.windows() && !is.dev()) ? { icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico") }
+                    : { icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns") }
+                )
             })
 
             window.windowId = windowId
 
             window.loadURL(STATIC_PATH + "?args=" + encodeURIComponent(Base64.encode(JSON.stringify(args))) + "&id=" + encodeURIComponent(windowId) + "#upload")
 
-            if(isDev){
+            if(DEV_TOOLS){
                 window.webContents.openDevTools({ mode: "detach" })
             }
 
@@ -248,6 +306,21 @@ const createUpload = (args = {}, windowId = uuidv4()) => {
 
                     shared.set("UPLOAD_WINDOWS", currentUploadWindows)
                 }
+
+                activeWindows = activeWindows.filter(window => window.id !== windowId)
+
+                if(is.macOS()){
+                    const active = JSON.stringify(activeWindows.map(window => window.type))
+
+                    if(
+                        JSON.stringify(["MAIN_WINDOW", "WORKER_WINDOW"]) == active
+                        || JSON.stringify(["WORKER_WINDOW", "MAIN_WINDOW"]) == active
+                        || JSON.stringify(["MAIN_WINDOW"]) == active
+                        || JSON.stringify(["WORKER_WINDOW"]) == active
+                    ){
+                        app.dock.hide()
+                    }
+                }
 			})
 
 			window.once("show", () => setTimeout(() => window.focus(), 250))
@@ -257,6 +330,12 @@ const createUpload = (args = {}, windowId = uuidv4()) => {
                     window.show()
                 }
             })
+
+            if(is.macOS()){
+                window.once("show", () => {
+                    app.dock.show().catch(log.error)
+                })
+            }
 
             let uploadWindows = shared.get("UPLOAD_WINDOWS")
 
@@ -269,6 +348,7 @@ const createUpload = (args = {}, windowId = uuidv4()) => {
             }
 
             shared.set("UPLOAD_WINDOWS", uploadWindows)
+            activeWindows.push({ id: windowId, type: "UPLOAD_WINDOWS" })
 
             return resolve(window)
         }
@@ -299,16 +379,21 @@ const createDownload = (args = {}, windowId = uuidv4()) => {
                 maximizable: false,
                 minimizable: true,
                 hasShadow: false,
-                title: "Filen",
+                title: "Download",
                 show: false,
-                backgroundColor: "rgba(0, 0, 0, 0)"
+                backgroundColor: "rgba(0, 0, 0, 0)",
+                ...(
+                    (is.linux() && !is.dev()) ? { icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png")) }
+                    : (is.windows() && !is.dev()) ? { icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico") }
+                    : { icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns") }
+                )
             })
 
             window.windowId = windowId
 
             window.loadURL(STATIC_PATH + "?args=" + encodeURIComponent(Base64.encode(JSON.stringify(args))) + "&id=" + encodeURIComponent(windowId) + "#download")
 
-            if(isDev){
+            if(DEV_TOOLS){
                 window.webContents.openDevTools({ mode: "detach" })
             }
 
@@ -324,6 +409,21 @@ const createDownload = (args = {}, windowId = uuidv4()) => {
 
                     shared.set("DOWNLOAD_WINDOWS", currentDownloadWindows)
                 }
+
+                activeWindows = activeWindows.filter(window => window.id !== windowId)
+
+                if(is.macOS()){
+                    const active = JSON.stringify(activeWindows.map(window => window.type))
+
+                    if(
+                        JSON.stringify(["MAIN_WINDOW", "WORKER_WINDOW"]) == active
+                        || JSON.stringify(["WORKER_WINDOW", "MAIN_WINDOW"]) == active
+                        || JSON.stringify(["MAIN_WINDOW"]) == active
+                        || JSON.stringify(["WORKER_WINDOW"]) == active
+                    ){
+                        app.dock.hide()
+                    }
+                }
 			})
 
 			window.once("show", () => setTimeout(() => window.focus(), 250))
@@ -333,6 +433,12 @@ const createDownload = (args = {}, windowId = uuidv4()) => {
                     window.show()
                 }
             })
+
+            if(is.macOS()){
+                window.once("show", () => {
+                    app.dock.show().catch(log.error)
+                })
+            }
 
             let downloadWindows = shared.get("DOWNLOAD_WINDOWS")
 
@@ -345,6 +451,7 @@ const createDownload = (args = {}, windowId = uuidv4()) => {
             }
 
             shared.set("DOWNLOAD_WINDOWS", downloadWindows)
+            activeWindows.push({ id: windowId, type: "DOWNLOAD_WINDOWS" })
 
             return resolve(window)
         }
@@ -374,16 +481,21 @@ const createCloud = (windowId = uuidv4(), mode = "selectFolder") => {
                 maximizable: false,
                 minimizable: true,
                 hasShadow: false,
-                title: "Filen",
+                title: "Cloud",
                 show: false,
-                backgroundColor: "rgba(0, 0, 0, 0)"
+                backgroundColor: "rgba(0, 0, 0, 0)",
+                ...(
+                    (is.linux() && !is.dev()) ? { icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png")) }
+                    : (is.windows() && !is.dev()) ? { icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico") }
+                    : { icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns") }
+                )
             })
 
             window.windowId = windowId
 
             window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "&mode=" + mode + "#cloud")
 
-            if(isDev){
+            if(DEV_TOOLS){
                 window.webContents.openDevTools({ mode: "detach" })
             }
 
@@ -399,6 +511,21 @@ const createCloud = (windowId = uuidv4(), mode = "selectFolder") => {
 
                     shared.set("CLOUD_WINDOWS", cloudWindows)
                 }
+
+                activeWindows = activeWindows.filter(window => window.id !== windowId)
+
+                if(is.macOS()){
+                    const active = JSON.stringify(activeWindows.map(window => window.type))
+
+                    if(
+                        JSON.stringify(["MAIN_WINDOW", "WORKER_WINDOW"]) == active
+                        || JSON.stringify(["WORKER_WINDOW", "MAIN_WINDOW"]) == active
+                        || JSON.stringify(["MAIN_WINDOW"]) == active
+                        || JSON.stringify(["WORKER_WINDOW"]) == active
+                    ){
+                        app.dock.hide()
+                    }
+                }
 			})
 
 			window.once("show", () => setTimeout(() => window.focus(), 250))
@@ -408,6 +535,12 @@ const createCloud = (windowId = uuidv4(), mode = "selectFolder") => {
                     window.show()
                 }
             })
+
+            if(is.macOS()){
+                window.once("show", () => {
+                    app.dock.show().catch(log.error)
+                })
+            }
 
             let cloudWindows = shared.get("CLOUD_WINDOWS")
 
@@ -420,6 +553,7 @@ const createCloud = (windowId = uuidv4(), mode = "selectFolder") => {
             }
 
             shared.set("CLOUD_WINDOWS", cloudWindows)
+            activeWindows.push({ id: windowId, type: "CLOUD_WINDOWS" })
 
             return resolve(window)
         }
@@ -449,16 +583,21 @@ const createSelectiveSync = (windowId = uuidv4(), args = {}) => {
                 maximizable: false,
                 minimizable: true,
                 hasShadow: false,
-                title: "Filen",
+                title: "Selective sync",
                 show: false,
-                backgroundColor: "rgba(0, 0, 0, 0)"
+                backgroundColor: "rgba(0, 0, 0, 0)",
+                ...(
+                    (is.linux() && !is.dev()) ? { icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png")) }
+                    : (is.windows() && !is.dev()) ? { icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico") }
+                    : { icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns") }
+                )
             })
 
             window.windowId = windowId
 
             window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "&args=" + encodeURIComponent(Base64.encode(JSON.stringify(args))) + "#selectiveSync")
 
-            if(isDev){
+            if(DEV_TOOLS){
                 window.webContents.openDevTools({ mode: "detach" })
             }
 
@@ -474,6 +613,21 @@ const createSelectiveSync = (windowId = uuidv4(), args = {}) => {
 
                     shared.set("SELECTIVE_SYNC_WINDOWS", selectiveSyncWindows)
                 }
+
+                activeWindows = activeWindows.filter(window => window.id !== windowId)
+
+                if(is.macOS()){
+                    const active = JSON.stringify(activeWindows.map(window => window.type))
+
+                    if(
+                        JSON.stringify(["MAIN_WINDOW", "WORKER_WINDOW"]) == active
+                        || JSON.stringify(["WORKER_WINDOW", "MAIN_WINDOW"]) == active
+                        || JSON.stringify(["MAIN_WINDOW"]) == active
+                        || JSON.stringify(["WORKER_WINDOW"]) == active
+                    ){
+                        app.dock.hide()
+                    }
+                }
 			})
 
 			window.once("show", () => setTimeout(() => window.focus(), 250))
@@ -483,6 +637,12 @@ const createSelectiveSync = (windowId = uuidv4(), args = {}) => {
                     window.show()
                 }
             })
+
+            if(is.macOS()){
+                window.once("show", () => {
+                    app.dock.show().catch(log.error)
+                })
+            }
 
             let selectiveSyncWindows = shared.get("SELECTIVE_SYNC_WINDOWS")
 
@@ -495,6 +655,7 @@ const createSelectiveSync = (windowId = uuidv4(), args = {}) => {
             }
 
             shared.set("SELECTIVE_SYNC_WINDOWS", selectiveSyncWindows)
+            activeWindows.push({ id: windowId, type: "SELECTIVE_SYNC_WINDOWS" })
 
             return resolve(window)
         }
@@ -535,21 +696,47 @@ const createAuth = () => {
                 maximizable: false,
                 minimizable: true,
                 hasShadow: false,
-                title: "Filen",
+                title: "Login",
                 show: false,
-                backgroundColor: "rgba(0, 0, 0, 0)"
+                backgroundColor: "rgba(0, 0, 0, 0)",
+                ...(
+                    (is.linux() && !is.dev()) ? { icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png")) }
+                    : (is.windows() && !is.dev()) ? { icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico") }
+                    : { icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns") }
+                )
             })
 
             window.windowId = windowId
 
             window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "#auth")
 
-            if(isDev){
+            if(DEV_TOOLS){
                 window.webContents.openDevTools({ mode: "detach" })
             }
 
 			window.once("closed", () => {
 				shared.remove("AUTH_WINDOW")
+
+                setTimeout(() => {
+                    if(typeof shared.get("MAIN_WINDOW") == "undefined"){
+                        app.quit()
+                    }
+                }, 3000)
+
+                activeWindows = activeWindows.filter(window => window.id !== windowId)
+
+                if(is.macOS()){
+                    const active = JSON.stringify(activeWindows.map(window => window.type))
+
+                    if(
+                        JSON.stringify(["MAIN_WINDOW", "WORKER_WINDOW"]) == active
+                        || JSON.stringify(["WORKER_WINDOW", "MAIN_WINDOW"]) == active
+                        || JSON.stringify(["MAIN_WINDOW"]) == active
+                        || JSON.stringify(["WORKER_WINDOW"]) == active
+                    ){
+                        app.dock.hide()
+                    }
+                }
 			})
 
 			window.once("show", () => setTimeout(() => window.focus(), 250))
@@ -560,7 +747,14 @@ const createAuth = () => {
                 }
             })
 
+            if(is.macOS()){
+                window.once("show", () => {
+                    app.dock.show().catch(log.error)
+                })
+            }
+
             shared.set("AUTH_WINDOW", window)
+            activeWindows.push({ id: windowId, type: "AUTH_WINDOW" })
 
             return resolve(window)
         }
@@ -604,7 +798,7 @@ const createWorker = () => {
 
             await window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "#worker")
             
-            if(isDev){
+            if(DEV_TOOLS){
                 window.webContents.openDevTools({ mode: "detach" })
             }
 
@@ -615,9 +809,12 @@ const createWorker = () => {
 			window.once("closed", () => {
 				shared.remove("WORKER_WINDOW")
                 shared.remove("WORKER_WINDOW_DEBUGGER")
+
+                activeWindows = activeWindows.filter(window => window.id !== windowId)
 			})
 
             shared.set("WORKER_WINDOW", window)
+            activeWindows.push({ id: windowId, type: "WORKER_WINDOW" })
     
             return resolve(window)
         }
@@ -649,6 +846,11 @@ const createWindows = () => {
             ])
 
             await createWorker()
+
+            if(is.macOS()){
+                app.dock.setIcon(nativeImage.createFromPath(path.join(__dirname, "../src/assets/icons/png/512x512.png")))
+                app.dock.hide()
+            }
 
             if(!deviceId){
 				await db.set("deviceId", uuidv4())

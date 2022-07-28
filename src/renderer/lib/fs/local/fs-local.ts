@@ -109,6 +109,10 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
             db.get(cacheKey),
             db.get("excludeDot")
         ]).then(([localDataChanged, cachedLocalTree, excludeDot]) => {
+            if(excludeDot == null){
+                excludeDot = true
+            }
+            
             if(!localDataChanged && cachedLocalTree !== null && !skipCache){
                 return resolve({
                     changed: false,

@@ -1,41 +1,17 @@
-const { Level } = require("level")
 const pathModule = require("path")
 const { app } = require("electron")
 const memoryCache = require("../memoryCache")
-const log = require("electron-log")
+const fs = require("fs-extra")
+const writeFileAtomic = require("write-file-atomic")
+const crypto = require("crypto")
 
 const DB_VERSION = 1
 const DB_PATH = pathModule.join(app.getPath("userData"), "db_v" + DB_VERSION)
-let DB_READY = false
-const USE_MEMORY_CACHE = false
+const USE_MEMORY_CACHE = true
 const MEMORY_CACHE_KEY = "db:"
 
-const db = new Level(DB_PATH, {
-    valueEncoding: "json"
-})
-
-db.open().then(() => {
-    DB_READY = true
-
-    log.info("DB opened at " + DB_PATH)
-}).catch((err) => {
-    log.error(err)
-})
-
-const isDbReady = () => {
-    return new Promise((resolve, reject) => {
-        if(DB_READY){
-            return resolve(true)
-        }
-
-        const wait = setInterval(() => {
-            if(DB_READY){
-                clearInterval(wait)
-
-                return resolve(true)
-            }
-        }, 100)
-    })
+const hashKey = (key) => {
+    return crypto.createHash("sha256").update(key).digest("hex")
 }
 
 module.exports = {
@@ -43,103 +19,140 @@ module.exports = {
         return new Promise((resolve, reject) => {
             if(USE_MEMORY_CACHE){
                 if(memoryCache.has(MEMORY_CACHE_KEY + key)){
-                    try{
-                        return resolve(JSON.parse(memoryCache.get(MEMORY_CACHE_KEY + key)))
-                    }
-                    catch(e){
-                        return reject(e)
-                    }
+                    return resolve(memoryCache.get(MEMORY_CACHE_KEY + key))
                 }
             }
-            
-            isDbReady().then(() => {
-                db.get(key).then((value) => {
-                    try{
-                        const val = JSON.parse(value)
 
-                        if(USE_MEMORY_CACHE){
-                            memoryCache.set(MEMORY_CACHE_KEY + key, val)
-                        }
+            if(typeof key !== "string"){
+                return reject(new Error("Invalid key type, expected string, got " + typeof key))
+            }
 
-                        return resolve(val)
-                    }
-                    catch(e){
-                        return reject(e)
-                    }
-                }).catch((err) => {
-                    if(err.code == "LEVEL_NOT_FOUND" || err.toString().indexOf("NotFound:")){
+            const keyHash = hashKey(key)
+
+            fs.readFile(pathModule.join(DB_PATH, keyHash + ".json")).then((data) => {
+                try{
+                    const val = JSON.parse(data)
+
+                    if(typeof val !== "object"){
                         return resolve(null)
                     }
 
-                    return reject(err)
-                })
+                    if(typeof val.key !== "string" || typeof val.value == "undefined"){
+                        return resolve(null)
+                    }
+
+                    if(val.key !== key){
+                        return resolve(null)
+                    }
+
+                    if(USE_MEMORY_CACHE){
+                        memoryCache.set(MEMORY_CACHE_KEY + key, val.value)
+                    }
+
+                    return resolve(val.value)
+                }
+                catch(e){
+                    return reject(e)
+                }
+            }).catch(() => {
+                return resolve(null)
             })
         })
     },
     set: (key, value) => {
         return new Promise((resolve, reject) => {
-            isDbReady().then(() => {
+            if(typeof key !== "string"){
+                return reject(new Error("Invalid key type, expected string, got " + typeof key))
+            }
+
+            try{
+                var val = JSON.stringify({
+                    key,
+                    value
+                }, (_, val) => typeof val == "bigint" ? val.toString() : val)
+            }
+            catch(e){
+                return reject(e)
+            }
+
+            const keyHash = hashKey(key)
+
+            fs.ensureFile(pathModule.join(DB_PATH, keyHash + ".json")).then(() => {
+                writeFileAtomic(pathModule.join(DB_PATH, keyHash + ".json"), val).then(() => {
+                    if(USE_MEMORY_CACHE){
+                        memoryCache.set(MEMORY_CACHE_KEY + key, value)
+                    }
+
+                    return resolve(true)
+                }).catch(reject)
+            }).catch(reject)
+        })
+    },
+    remove: (key) => {
+        return new Promise((resolve, reject) => {
+            if(typeof key !== "string"){
+                return reject(new Error("Invalid key type, expected string, got " + typeof key))
+            }
+
+            const keyHash = hashKey(key)
+
+            fs.unlink(pathModule.join(DB_PATH, keyHash + ".json")).then(() => {
+                if(USE_MEMORY_CACHE){
+                    if(memoryCache.has(MEMORY_CACHE_KEY + key)){
+                        memoryCache.delete(MEMORY_CACHE_KEY + key)
+                    }
+                }
+
+                return resolve(true)
+            }).catch(reject)
+        })
+    },
+    clear: () => {
+        return new Promise((resolve, reject) => {
+            fs.readdir(DB_PATH).then(async (dir) => {
                 try{
-                    var val = JSON.stringify(value, (_, val) => typeof val == "bigint" ? val.toString() : val)
+                    for(let i = 0; i < dir.length; i++){
+                        await fs.unlink(pathModule.join(DB_PATH, dir[i]))
+                    }
                 }
                 catch(e){
                     return reject(e)
                 }
 
-                db.put(key, val).then(() => {
-                    if(USE_MEMORY_CACHE){
-                        memoryCache.set(MEMORY_CACHE_KEY + key, val)
-                    }
-
-                    return resolve(true)
-                }).catch(reject)
-            })
-        })
-    },
-    remove: (key) => {
-        return new Promise((resolve, reject) => {
-            isDbReady().then(() => {
-                db.del(key).then(() => {
-                    if(USE_MEMORY_CACHE){
-                        if(memoryCache.has(MEMORY_CACHE_KEY + key)){
-                            memoryCache.delete(MEMORY_CACHE_KEY + key)
-                        }
-                    }
-
-                    return resolve(true)
-                }).catch(reject)
-            })
-        })
-    },
-    clear: () => {
-        return new Promise((resolve, reject) => {
-            isDbReady().then(() => {
-                db.clear().then(() => {
+                if(USE_MEMORY_CACHE){
                     memoryCache.cache.forEach((_, key) => {
                         if(key.startsWith(MEMORY_CACHE_KEY)){
                             memoryCache.delete(key)
                         }
                     })
+                }
 
-                    return resolve(true)
-                }).catch(reject)
-            })
+                return resolve(true)
+            }).catch(reject)
         })
     },
     keys: () => {
         return new Promise((resolve, reject) => {
-            isDbReady().then(() => {
-                try{
-                    if(USE_MEMORY_CACHE){
-                        return resolve([...memoryCache.cache.forEach((_, key) => key)])
-                    }
+            fs.readdir(DB_PATH).then(async (files) => {
+                const keys = []
 
-                    return resolve(db.keys())
+                try{
+                    for(let i = 0; i < files.length; i++){
+                        const obj = JSON.parse(await fs.readFile(pathModule.join(DB_PATH, files[i])))
+
+                        if(typeof obj == "object"){
+                            if(typeof obj.key == "string"){
+                                keys.push(obj.key)
+                            }
+                        }
+                    }
                 }
                 catch(e){
                     return reject(e)
                 }
-            })
+
+                return resolve(keys)
+            }).catch(reject)
         })
     }
 }

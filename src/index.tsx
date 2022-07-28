@@ -9,6 +9,10 @@ process.noAsar = true
 window.require("electron-disable-file-drop")
 
 const keyEvent = (e: KeyboardEvent) => {
+    if(window.location.href.indexOf("auth") !== -1){
+        return
+    }
+
     if(
         e.which == 116
         || (e.which == 82 && e.ctrlKey)

@@ -27,7 +27,7 @@ const de: {
     aboutRemaining: "Etwa __TIME__ verbleibend",
     noSyncActivityYet: "Noch keine Aktivität",
     createOne: "Erstelle einen",
-    noSyncLocationsSetupYet: "Noch kein Synchronisierungsort eingerichtet",
+    noSyncLocationsSetupYet: "Noch keinen Synchronisierungsort eingerichtet",
     storageUsed: "__USED__ benutzt von __MAX__",
     quitFilen: "Filen schließen",
     openWebsite: "Webseite öffnen",
@@ -135,7 +135,8 @@ const de: {
     syncModeLocalToCloudInfo: "Jede lokale Aktion in die Cloud spiegeln aber keine Cloud Änderungen lokal spiegeln",
     syncModeCloudToLocalInfo: "Jede cloud Aktion lokal spiegeln aber keine lokalen Änderungen in die Cloud spiegeln",
     syncModeLocalBackupInfo: "Lädt nur Daten in die Cloud hoch, löscht nichts und spiegelt keine cloud Änderungen",
-    syncModeCloudBackupInfo: "Lädt nur Daten aus der Cloud herunter, löscht nichts und spiegelt keine lokalen Änderungen"
+    syncModeCloudBackupInfo: "Lädt nur Daten aus der Cloud herunter, löscht nichts und spiegelt keine lokalen Änderungen",
+    cancel: "Abbrechen"
 }
 
 export default de

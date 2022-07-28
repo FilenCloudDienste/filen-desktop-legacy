@@ -19,23 +19,20 @@ const emitToWorker = (data) => {
 }
 
 module.exports = (path, locationUUID) => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         if(typeof SUBS[path] !== "undefined"){
             return resolve(SUBS[path])
         }
 
-        try{
-            SUBS[path] = nodeWatch(pathModule.normalize(path), {
-                recursive: true,
-                persistent: true
-            }, (event, name) => {
-                return emitToWorker({ event, name, watchPath: path, locationUUID })
-            })
+        SUBS[path] = nodeWatch(pathModule.normalize(path), {
+            recursive: true,
+            persistent: true
+        })
 
-            return resolve(SUBS[path])
-        }
-        catch(e){
-            return reject(e)
-        }
+        SUBS[path].on("change", (event, name) => emitToWorker({ event, name, watchPath: path, locationUUID }))
+
+        SUBS[path].on("error", (err) => log.error(err))
+
+        return resolve(SUBS[path])
     })
 }

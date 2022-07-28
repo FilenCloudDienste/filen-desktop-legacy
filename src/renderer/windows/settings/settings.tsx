@@ -50,7 +50,7 @@ export const logout = async () => {
             db.remove("publicKey")
         ])
 
-        ipc.restartApp().catch(log.error)
+        ipc.exitApp().catch(log.error)
     }
     catch(e){
         log.error(e)
@@ -80,6 +80,12 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
 
     const getExcludeDot = () => {
         db.get("excludeDot").then((exclude) => {
+            if(exclude == null){
+                setExcludeDot(true)
+
+                return
+            }
+
             if(exclude){
                 setExcludeDot(true)
             }
@@ -164,7 +170,7 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
                     alignItems="center" 
                     width="80%" 
                     margin="0px auto" 
-                    marginTop="10px" 
+                    marginTop={platform == "linux" ? "50px" : "10px"}
                     paddingBottom="5px" 
                     borderBottom={"1px solid " + colors(platform, darkMode, "borderPrimary")}
                 >
@@ -402,9 +408,9 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                     return false
                 }
 
-                const ex = platform == "windows" ? localPath.split("\\") : localPath.split("//")
+                const parsedPath = pathModule.parse(localPath)
 
-                if(ex.length <= 1 || pathModule.dirname(localPath).length <= 0 || (ex.length >= 2 && ex[1].length <= 0)){
+                if(parsedPath.root == parsedPath.dir){
                     return toast({
                         title: i18n(lang, "cannotCreateSyncLocation"),
                         description: i18n(lang, "cannotCreateSyncLocationSubdir"),
@@ -446,7 +452,8 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                     fs.access(localPath, fs.constants.R_OK | fs.constants.W_OK),
                     fsLocal.smokeTest(localPath)
                 ]).then(async () => {
-                    const uuid = uuidv4()
+                    const uuid: string = uuidv4()
+                    let created: boolean = false
     
                     try{
                         let currentSyncLocations = await db.get("syncLocations:" + userId)
@@ -467,9 +474,28 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                 busy: false,
                                 localChanged: false
                             })
+
+                            created = true
                         }
     
                         await db.set("syncLocations:" + userId, currentSyncLocations)
+
+                        if(created){
+                            toast({
+                                description: i18n(lang, "syncLocationCreated"),
+                                status: "success",
+                                duration: 7500,
+                                isClosable: true,
+                                position: "bottom",
+                                containerStyle: {
+                                    backgroundColor: "#0ac09d",
+                                    maxWidth: "85%",
+                                    height: "auto",
+                                    fontSize: 14,
+                                    borderRadius: "15px"
+                                }
+                            })
+                        }
                     }
                     catch(e){
                         log.error(e)

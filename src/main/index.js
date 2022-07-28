@@ -75,6 +75,7 @@ app.on("activate", () => {
 
 powerMonitor.on("shutdown", () => {
 	powerSaveBlocker.stop(POWER_SAVE_BLOCKER)
+
 	app.exit(0)
 })
 
@@ -99,7 +100,65 @@ if(!app.requestSingleInstanceLock()){
 }
 else{
 	app.whenReady().then(() => {
-		Menu.setApplicationMenu(Menu.buildFromTemplate([]))
+		Menu.setApplicationMenu(Menu.buildFromTemplate([
+			{
+				label: "Application",
+				submenu: [
+					{
+						label: "About Application",
+						selector: "orderFrontStandardAboutPanel:"
+					},
+					{
+						type: "separator"
+					},
+					{
+						label: "Quit",
+						accelerator: "Command+Q",
+						click: () => {
+							app.quit()
+						} 
+					}
+				]
+			},
+			{
+				label: "Edit",
+				submenu: [
+					{
+						label: "Undo",
+						accelerator: "CmdOrCtrl+Z",
+						selector: "undo:"
+					},
+					{
+						label: "Redo",
+						accelerator: "Shift+CmdOrCtrl+Z",
+						selector: "redo:"
+					},
+					{
+						type: "separator"
+					},
+					{
+						label: "Cut",
+						accelerator: "CmdOrCtrl+X",
+						selector: "cut:"
+					},
+					{
+						label: "Copy",
+						accelerator: "CmdOrCtrl+C",
+						selector: "copy:"
+					},
+					{
+						label: "Paste",
+						accelerator: "CmdOrCtrl+V",
+						selector: "paste:"
+					},
+					{
+						label: "Select All",
+						accelerator: "CmdOrCtrl+A",
+						selector: "selectAll:"
+					}
+				]
+			}
+		]))
 
 		POWER_SAVE_BLOCKER = powerSaveBlocker.start("prevent-app-suspension")
 

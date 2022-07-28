@@ -105,7 +105,7 @@ const UpdateModal = memo(({ lang, darkMode, platform }: { lang: string, darkMode
                                 textDecoration: "none"
                             }}
                             marginTop="40px"
-                            onClick={() => shell.openExternal("https://cdn.filen.io/desktop/release/" + (platform == "linux" ? "filen_" + process.arch + ".AppImage" : (platform == "mac" ? "filen" + process.arch + ".dmg" : "filen" + process.arch + ".exe"))).catch(log.error)}
+                            onClick={() => shell.openExternal("https://filen.io/apps").catch(log.error)}
                         >
                             {i18n(lang, "downloadUpdateBtn")}
                         </Link>

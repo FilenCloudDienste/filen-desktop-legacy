@@ -789,6 +789,20 @@ const ipc = {
             })
         })
     },
+    exitApp: (): Promise<any> => {
+        return new Promise((resolve, reject) => {
+            const messageId = uuidv4()
+
+            resolves[messageId] = resolve
+            rejects[messageId] = reject
+
+            return ipcRenderer.send("message", {
+                messageId,
+                messageSender: MESSAGE_SENDER,
+                type: "exitApp"
+            })
+        })
+    },
     openDownloadWindow: (args: any): Promise<any> => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()

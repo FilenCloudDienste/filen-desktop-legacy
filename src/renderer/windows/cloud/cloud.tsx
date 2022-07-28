@@ -226,7 +226,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number, email: 
                                         flexDirection="row" 
                                         alignItems="center" 
                                         justifyContent="center" 
-                                        width="70%"
+                                        width="60%"
                                     >
                                         {
                                             url.current.indexOf("/") !== -1 && (
@@ -265,6 +265,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number, email: 
                                             }} 
                                             onClick={() => setCreateFolderModalOpen(true)}
                                             marginRight="10px"
+                                            noOfLines={1}
                                         >
                                             {i18n(lang, "createFolder")}
                                         </Link>

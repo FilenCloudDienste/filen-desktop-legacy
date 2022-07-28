@@ -118,16 +118,16 @@ const handleMessage = (type, data) => {
                 }
             }
 
-            if(typeof shared.get("AUTH_WINDOW") !== "undefined"){
-                try{
-                    shared.get("AUTH_WINDOW").close()
-                }
-                catch(e){
-                   log.error(e)
-                }
-            }
-
             windows.createMain(true).then(() => {
+                if(typeof shared.get("AUTH_WINDOW") !== "undefined"){
+                    try{
+                        shared.get("AUTH_WINDOW").close()
+                    }
+                    catch(e){
+                       log.error(e)
+                    }
+                }
+
                 return resolve(true)
             }).catch(reject)
         }
@@ -516,6 +516,9 @@ const handleMessage = (type, data) => {
 
                 app.quit()
             }).catch(reject)
+        }
+        else if(type == "exitApp"){
+            app.quit()
         }
         else if(type == "openDownloadWindow"){
             windows.createDownload(data.args).then(() => {

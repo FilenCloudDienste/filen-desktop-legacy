@@ -1,4 +1,4 @@
-import React, { memo, useState, useEffect } from "react"
+import React, { memo, useState, useEffect, useRef } from "react"
 import Titlebar from "../../components/Titlebar"
 import { Image, Flex, Input, Link, Button, Spinner } from "@chakra-ui/react"
 import useDarkMode from "../../lib/hooks/useDarkMode"
@@ -29,6 +29,7 @@ const AuthWindow = memo(({ windowId }: { windowId: string }) => {
     const [twoFactorCode, setTwoFactorCode] = useState<string>("")
     const [showTwoFactor, setShowTwoFactor] = useState<boolean>(false)
     const [isLoading, setIsLoading] = useState<boolean>(false)
+    const passwordFieldRef = useRef<any>()
 
     const doLogin = async (): Promise<any> => {
         let emailToSend: string = email.trim()
@@ -221,21 +222,43 @@ const AuthWindow = memo(({ windowId }: { windowId: string }) => {
                 />
                 {
                     showTwoFactor ? (
-                        <Input 
-                            type="text" 
-                            value={twoFactorCode} 
-                            onChange={(event) => setTwoFactorCode(event.target.value)} 
-                            placeholder={i18n(lang, "loginTwoFactorCodePlaceholder")} 
-                            userSelect="all" 
-                            style={{
-                                border: "none",
-                                backgroundColor: darkMode ? "#171717" : "lightgray",
-                                color: "gray"
-                            }} 
-                            _placeholder={{
-                                color: "gray"
-                            }}
-                        />
+                        <>
+                            <Input 
+                                type="text" 
+                                value={twoFactorCode} 
+                                onChange={(event) => setTwoFactorCode(event.target.value)} 
+                                placeholder={i18n(lang, "loginTwoFactorCodePlaceholder")} 
+                                userSelect="all" 
+                                style={{
+                                    border: "none",
+                                    backgroundColor: darkMode ? "#171717" : "lightgray",
+                                    color: "gray"
+                                }}
+                                onKeyDown={(e) => {
+                                    if(e.key == "Enter"){
+                                        doLogin()
+                                    }
+                                }}
+                                _placeholder={{
+                                    color: "gray"
+                                }}
+                            />
+                            <Link 
+                                color="#0A84FF" 
+                                textDecoration="none" 
+                                _hover={{
+                                    textDecoration: "none"
+                                }}
+                                marginTop="15px"
+                                marginBottom="5px"
+                                onClick={() => {
+                                    setTwoFactorCode("")
+                                    setShowTwoFactor(false)
+                                }}
+                            >
+                                {i18n(lang, "cancel")}
+                            </Link>
+                        </>
                     ) : (
                         <>
                             <Input 
@@ -252,14 +275,20 @@ const AuthWindow = memo(({ windowId }: { windowId: string }) => {
                                 }} 
                                 _placeholder={{
                                     color: "gray"
-                                }} 
+                                }}
+                                onKeyDown={(e) => {
+                                    if(e.key == "Enter"){
+                                        passwordFieldRef.current?.focus()
+                                    }
+                                }}
                             />
                             <Input 
                                 type="password" 
                                 value={password} 
                                 onChange={(event) => setPassword(event.target.value)} 
                                 placeholder={i18n(lang, "loginPasswordPlaceholder")} 
-                                userSelect="all" 
+                                userSelect="all"
+                                ref={passwordFieldRef}
                                 style={{
                                     border: "none",
                                     backgroundColor: darkMode ? "#171717" : "lightgray",
@@ -267,7 +296,12 @@ const AuthWindow = memo(({ windowId }: { windowId: string }) => {
                                 }} 
                                 _placeholder={{
                                     color: "gray"
-                                }} 
+                                }}
+                                onKeyDown={(e) => {
+                                    if(e.key == "Enter"){
+                                        doLogin()
+                                    }
+                                }}
                             />
                         </>
                     )
