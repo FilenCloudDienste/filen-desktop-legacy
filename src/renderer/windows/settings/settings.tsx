@@ -1101,8 +1101,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                 borderColor={colors(platform, darkMode, "borderPrimary")}
                                                 _focus={{ outline: "none" }} 
                                                 outline="none" 
-                                                _active={{ outline: "none" }} 
-                                                disabled={typeof currentSyncLocation.remote !== "string"} 
+                                                _active={{ outline: "none" }}
                                                 onChange={async (e: any) => {
                                                     const type = e.nativeEvent.target.value
 
@@ -1272,10 +1271,6 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                 textDecoration="none" 
                                                 _hover={{ textDecoration: "none" }} 
                                                 onClick={() => {
-                                                    if(typeof currentSyncLocation.remote !== "string"){
-                                                        return false
-                                                    }
-
                                                     setSyncSettingsModalOpen(false)
                                                     setTimeout(() => setIgnoredFilesModalOpen(true), 100)
                                                 }}
@@ -1299,8 +1294,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                         </Text>
                                         <Flex>
                                             <Switch 
-                                                isChecked={currentSyncLocation.paused} 
-                                                disabled={typeof currentSyncLocation.remote !== "string"} 
+                                                isChecked={currentSyncLocation.paused}
                                                 _focus={{ outline: "none" }} 
                                                 outline="none" 
                                                 _active={{ outline: "none" }} 
