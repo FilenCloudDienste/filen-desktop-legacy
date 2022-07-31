@@ -136,6 +136,8 @@ const pl: {
     syncModeCloudToLocalInfo: "Odzwierciedlaj wszystkie działania z chmury, ale nigdy nie działaj na lokalne zmiany",
     syncModeLocalBackupInfo: "Przesyłaj dane tylko do chmury, nigdy niczego nie usuwaj ani nie działaj na podstawie zdalnych zmian",
     syncModeCloudBackupInfo: "Pobieraj dane tylko z chmury, nigdy niczego nie usuwaj ani nie działaj na podstawie lokalnych zmian"
+    cancel: "Anuluj",
+    cannotCreateSyncLocationLoop2: "Wybrana ścieżka zdalna jest już skonfigurowaną lokalizacją synchronizacji. Może to prowadzić do niekończących się pętli synchronizacji"
 }
 
 export default pl
