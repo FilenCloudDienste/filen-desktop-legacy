@@ -92,7 +92,7 @@ export const generatePasswordAndMasterKeysBasedOnAuthVersion = ({ rawPassword, a
     })
 }
 
-export const hashPassword = (password: string): string => { //old and deprecated, no longer in use
+export const hashPassword = (password: string): string => { //old & deprecated, not in use anymore, just here for backwards compatibility
     return sha512(sha384(sha256(sha1(password)))) + sha512(md5(md4(md2(password))))
 }
 
@@ -266,7 +266,7 @@ export const encryptData = (data: any, key: string): Promise<string | Buffer> =>
 
 export const decryptData = (data: any, key: string, version: number): Promise<Uint8Array> => {
     return new Promise(async (resolve, reject) => {
-        if(version == 1){
+        if(version == 1){ //old & deprecated, not in use anymore, just here for backwards compatibility
             try{
                 const sliced = convertArrayBufferToBinaryString(new Uint8Array(data.slice(0, 16)))
 
