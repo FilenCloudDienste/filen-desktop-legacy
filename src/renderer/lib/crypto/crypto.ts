@@ -53,7 +53,7 @@ export const generatePasswordAndMasterKeysBasedOnAuthVersion = ({ rawPassword, a
         let derivedPassword = ""
         let derivedMasterKeys: any = undefined
 
-        if(authVersion == 1){
+        if(authVersion == 1){ //old & deprecated, not in use anymore, just here for backwards compatibility
             try{
                 derivedPassword = hashPassword(rawPassword)
                 derivedMasterKeys = hashFn(rawPassword)
@@ -110,7 +110,7 @@ export const decryptMetadata = (data: string, key: any): Promise<string> => {
 
         const sliced = data.slice(0, 8)
 
-        if(sliced == "U2FsdGVk"){ //old deprecated
+        if(sliced == "U2FsdGVk"){ //old & deprecated, not in use anymore, just here for backwards compatibility
             try{
                 const decrypted = CryptoJS.AES.decrypt(data, key).toString(CryptoJS.enc.Utf8)
 
