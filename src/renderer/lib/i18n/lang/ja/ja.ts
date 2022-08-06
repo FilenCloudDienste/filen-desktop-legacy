@@ -47,7 +47,7 @@ const ja: {
     open: "開く",
     noFilesOrFoldersUploadedYet: "ファイル・フォルダーのアップロードはありません",
     uploadDone: "アップロード完了",
-    preparingUpload: "処理中",
+    preparingUpload: "準備中",
     preparingUploadFolders: "アップロード先のフォルダーを作成中",
     launchAtSystemStartup: "スタートアップに登録",
     darkMode: "ダークモード",
