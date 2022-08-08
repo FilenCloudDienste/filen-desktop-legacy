@@ -1,4 +1,4 @@
-const en: {
+const nl: {
   [key: string]: string;
 } = {
   loginEmailPlaceholder: "E-mailadres",
