@@ -140,4 +140,4 @@ const nl: {
   cannotCreateSyncLocationLoop2: "De cloud locatie die u hebt geselecteerd is al een geconfigureerde synchronisatielocatie. Dit kan leiden tot eindeloze synchronisatie lussen",
 };
 
-export default en;
+export default nl;
