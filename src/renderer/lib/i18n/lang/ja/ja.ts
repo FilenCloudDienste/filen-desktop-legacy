@@ -52,7 +52,7 @@ const ja: {
     launchAtSystemStartup: "スタートアップに登録",
     darkMode: "ダークモード",
     excludeDot: "ドットから始まるファイルを除外（推奨）",
-    excludeDotTooltip: ".gitignoreや.DS_Storeなどの、「.」から始まるファイル・フォルダーを除外します。"",
+    excludeDotTooltip: ".gitignoreや.DS_Storeなどの、「.」から始まるファイル・フォルダーを除外します。",
     language: "言語",
     saveLogs: "ログを保存",
     cannotCreateSyncLocation: "同期場所の作成に失敗しました",
