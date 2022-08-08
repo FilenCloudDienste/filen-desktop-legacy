@@ -1,5 +1,5 @@
 import React, { memo, useState, useEffect, useRef } from "react"
-import { Flex, Text, Link, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, Button, Input, Spinner, Image } from "@chakra-ui/react"
+import { Flex, Text, Link, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, Input, Spinner, Image } from "@chakra-ui/react"
 import useDarkMode from "../../lib/hooks/useDarkMode"
 import useLang from "../../lib/hooks/useLang"
 import usePlatform from "../../lib/hooks/usePlatform"
@@ -60,7 +60,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number, email: 
 
             for(let i = 0; i < response.folders.length; i++){
                 const folder: any = response.folders[i]
-                const folderName: any = await ipc.decryptFolderName(folder.name)
+                const folderName: string = await ipc.decryptFolderName(folder.name)
 
                 if(folderName.length > 0){
                     folderNames[folder.uuid] = folderName
@@ -80,7 +80,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number, email: 
                 if(metadata.name.length > 0){
                     files.push({
                         ...file,
-                        metadata: metadata,
+                        metadata,
                         icon: await ipc.getFileIconName(metadata.name),
                         type: "file"
                     })

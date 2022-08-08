@@ -1051,65 +1051,65 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                 label={
                                                     <Flex flexDirection="column">
                                                         <Text
-                                                            color="white"
+                                                            color={colors(platform, darkMode, "textPrimary")} 
                                                             fontWeight="bold"
                                                         >
                                                             {i18n(lang, "syncModeTwoWay")}
                                                         </Text>
                                                         <Text 
-                                                            color="white" 
+                                                            color={colors(platform, darkMode, "textPrimary")} 
                                                             fontSize={11}
                                                         >
                                                             {i18n(lang, "syncModeTwoWayInfo")}
                                                         </Text>
                                                         <Text
-                                                            color="white"
+                                                            color={colors(platform, darkMode, "textPrimary")} 
                                                             fontWeight="bold"
                                                             marginTop="10px"
                                                         >
                                                             {i18n(lang, "syncModeLocalToCloud")}
                                                         </Text>
                                                         <Text 
-                                                            color="white" 
+                                                            color={colors(platform, darkMode, "textPrimary")} 
                                                             fontSize={11}
                                                         >
                                                             {i18n(lang, "syncModeLocalToCloudInfo")}
                                                         </Text>
                                                         <Text
-                                                            color="white"
+                                                            color={colors(platform, darkMode, "textPrimary")} 
                                                             fontWeight="bold"
                                                             marginTop="10px"
                                                         >
                                                             {i18n(lang, "syncModeCloudToLocal")}
                                                         </Text>
                                                         <Text 
-                                                            color="white" 
+                                                            color={colors(platform, darkMode, "textPrimary")} 
                                                             fontSize={11}
                                                         >
                                                             {i18n(lang, "syncModeCloudToLocalInfo")}
                                                         </Text>
                                                         <Text
-                                                            color="white"
+                                                            color={colors(platform, darkMode, "textPrimary")} 
                                                             fontWeight="bold"
                                                             marginTop="10px"
                                                         >
                                                             {i18n(lang, "syncModeLocalBackup")}
                                                         </Text>
                                                         <Text 
-                                                            color="white" 
+                                                            color={colors(platform, darkMode, "textPrimary")} 
                                                             fontSize={11}
                                                         >
                                                             {i18n(lang, "syncModeLocalBackupInfo")}
                                                         </Text>
                                                         <Text
-                                                            color="white"
+                                                            color={colors(platform, darkMode, "textPrimary")} 
                                                             fontWeight="bold"
                                                             marginTop="10px"
                                                         >
                                                             {i18n(lang, "syncModeCloudBackup")}
                                                         </Text>
                                                         <Text 
-                                                            color="white" 
+                                                            color={colors(platform, darkMode, "textPrimary")} 
                                                             fontSize={11}
                                                         >
                                                             {i18n(lang, "syncModeCloudBackupInfo")}
