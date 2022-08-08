@@ -6,6 +6,7 @@ import pl from "./lang/pl"
 import zh from "./lang/zh"
 import ja from "./lang/ja"
 import da from "./lang/da"
+import nl from "./lang/nl"
 
 const translations: {
     [key: string]: any
