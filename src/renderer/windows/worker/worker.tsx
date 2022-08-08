@@ -111,7 +111,9 @@ const WorkerWindow = memo(() => {
                         db.set("paused", false),
                         db.set("syncIssues", []),
                         db.set("maxStorageReached", false),
-                        db.set("suspend", false)
+                        db.set("suspend", false),
+                        db.set("uploadPaused", false),
+                        db.set("downloadPaused", false)
                     ]).then(() => {
                         sync()
                     }).catch((err) => {

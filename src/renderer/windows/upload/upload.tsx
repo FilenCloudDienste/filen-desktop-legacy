@@ -14,7 +14,6 @@ import * as fsRemote from "../../lib/fs/remote"
 import db from "../../lib/db"
 import { markUploadAsDone, checkIfItemParentIsShared, uploadChunk } from "../../lib/api"
 import { convertTimestampToMs, getTimeRemaining, bpsToReadable, Semaphore, fileNameToLowerCaseExt, generateRandomString } from "../../lib/helpers"
-// @ts-ignore
 import { v4 as uuidv4 } from "uuid"
 import { maxUploadThreads, chunkSize, maxConcurrentUploads, sizeOverheadMultiplier, speedMultiplier } from "../../lib/constants"
 import eventListener from "../../lib/eventListener"
@@ -32,17 +31,17 @@ const readdirp = window.require("readdirp")
 const { ipcRenderer } = window.require("electron")
 
 const UPLOAD_VERSION = 2
-const FROM_ID = uuidv4()
+const FROM_ID = "upload-" + uuidv4()
 const params = new URLSearchParams(window.location.search)
 const passedArgs = typeof params.get("args") == "string" ? JSON.parse(Base64.decode(decodeURIComponent(params.get("args") as string))) : undefined
 const uploadSemaphore = new Semaphore(maxConcurrentUploads)
 const uploadThreadsSemaphore = new Semaphore(maxUploadThreads)
 
-const uploadFile = (path: string, parent: string) => {
+const uploadFile = (path: string, parent: string): Promise<boolean> => {
     return new Promise(async (resolve, reject) => {
         await new Promise((resolve) => {
             const getPausedStatus = () => {
-                db.get("paused").then((paused) => {
+                db.get("uploadPaused").then((paused) => {
                     if(paused){
                         return setTimeout(getPausedStatus, 1000)
                     }
@@ -219,7 +218,8 @@ const uploadFile = (path: string, parent: string) => {
                         log.error(e)
                     }
 
-                    return resolve({
+                    /*
+                    {
                         uuid,
                         bucket,
                         region,
@@ -233,7 +233,10 @@ const uploadFile = (path: string, parent: string) => {
                             mime,
                             lastModified
                         }
-                    })
+                    }
+                    */
+
+                    return resolve(true)
                 }).catch(reject)
             }).catch(reject)
         }).catch(reject)
@@ -245,7 +248,7 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number, email:
     const lang = useLang()
     const platform = usePlatform()
     const args = useRef(passedArgs).current
-    const paused = useDb("paused", false)
+    const paused = useDb("uploadPaused", false)
 
     const [timeLeft, setTimeLeft] = useState(1)
     const [speed, setSpeed] = useState(0)
@@ -261,6 +264,15 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number, email:
     const startUploading = async () => {
         setFoldersCreated(0)
         setFoldersNeeded(0)
+
+        try{
+            await db.set("uploadPaused", false)
+        }
+        catch(e: any){
+            log.error(e)
+
+            showToast({ message: e.toString(), status: "error" })
+        }
 
         if(args.type == "files"){
             const files = args.local.filePaths
@@ -603,7 +615,7 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number, email:
                                                                     textDecoration="none" 
                                                                     _hover={{ textDecoration: "none" }} 
                                                                     marginLeft="10px" 
-                                                                    onClick={() => db.set("paused", false)}
+                                                                    onClick={() => db.set("uploadPaused", false)}
                                                                 >
                                                                     {i18n(lang, "resume")}
                                                                 </Link>
@@ -613,7 +625,7 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number, email:
                                                                     textDecoration="none" 
                                                                     _hover={{ textDecoration: "none" }} 
                                                                     marginLeft="10px" 
-                                                                    onClick={() => db.set("paused", true)}
+                                                                    onClick={() => db.set("uploadPaused", true)}
                                                                 >
                                                                     {i18n(lang, "pause")}
                                                                 </Link>

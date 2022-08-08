@@ -77,10 +77,7 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
                         "Content-Type": "application/json",
                         "User-Agent": "filen-desktop"
                     },
-                    agent: new https.Agent({
-                        keepAlive: true,
-                        timeout: 86400000
-                    }),
+                    family: 4,
                     body: JSON.stringify(data)
                 }, (err: any, response: any, body: any) => {
                     apiRequestSemaphore.release()
@@ -1329,7 +1326,7 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
 
             await new Promise((resolve) => {
                 const getPausedStatus = () => {
-                    db.get("paused").then((paused) => {
+                    db.get(from == "sync" ? "paused" : from.indexOf("download") !== -1 ? "downloadPaused" : from.indexOf("upload") !== -1 ? "uploadPaused" : "paused").then((paused) => {
                         if(paused){
                             return setTimeout(getPausedStatus, 1000)
                         }
@@ -1401,10 +1398,7 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
                 const req = request({
                     url: "https://" + getUploadServer() + "/v2/upload?" + queryParams,
                     method: "POST",
-                    agent: new https.Agent({
-                        keepAlive: true,
-                        timeout: 86400000
-                    }),
+                    family: 4,
                     timeout: 86400000,
                     headers: {
                         "User-Agent": "filen-desktop"
@@ -1501,7 +1495,7 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }: { 
         db.get("networkingSettings").then(async (networkingSettings) => {
             await new Promise((resolve) => {
                 const getPausedStatus = () => {
-                    db.get("paused").then((paused) => {
+                    db.get(from == "sync" ? "paused" : from.indexOf("download") !== -1 ? "downloadPaused" : from.indexOf("upload") !== -1 ? "uploadPaused" : "paused").then((paused) => {
                         if(paused){
                             return setTimeout(getPausedStatus, 1000)
                         }
@@ -1548,11 +1542,8 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }: { 
                     port: 443,
                     path: "/" + region + "/" + bucket + "/" + uuid + "/" + index,
                     method: "GET",
-                    agent: new https.Agent({
-                        keepAlive: true,
-                        timeout: 86400000
-                    }),
                     timeout: 86400000,
+                    family: 4,
                     headers: {
                         "User-Agent": "filen-desktop"
                     }

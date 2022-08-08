@@ -14,7 +14,6 @@ import * as fsLocal from "../../lib/fs/local"
 import db from "../../lib/db"
 import { apiRequest, downloadChunk } from "../../lib/api"
 import { convertTimestampToMs, bpsToReadable, getTimeRemaining, Semaphore } from "../../lib/helpers"
-// @ts-ignore
 import { v4 as uuidv4 } from "uuid"
 import { maxDownloadThreads, maxConcurrentDownloads } from "../../lib/constants"
 import eventListener from "../../lib/eventListener"
@@ -29,7 +28,7 @@ const pathModule = window.require("path")
 const fs = window.require("fs-extra")
 const { shell, ipcRenderer } = window.require("electron")
 
-const FROM_ID: string = uuidv4()
+const FROM_ID: string = "download-" + uuidv4()
 const params: URLSearchParams = new URLSearchParams(window.location.search)
 const passedArgs = typeof params.get("args") == "string" ? JSON.parse(Base64.decode(decodeURIComponent(params.get("args") as string))) : undefined
 const downloadSemaphore = new Semaphore(maxConcurrentDownloads)
@@ -69,7 +68,7 @@ const downloadFile = (absolutePath: string, file: any) => {
                 const fileChunks = file.chunks
                 let currentWriteIndex = 0
 
-                const downloadTask = (index: number): Promise<any> => {
+                const downloadTask = (index: number): Promise<{ index: number, data: Buffer }> => {
                     return new Promise((resolve, reject) => {
                         downloadChunk({
                             region: file.region,
@@ -100,11 +99,7 @@ const downloadFile = (absolutePath: string, file: any) => {
                             return reject(err)
                         }
 
-                        console.log(file.uuid, index, "written")
-
                         currentWriteIndex += 1
-
-                        return true
                     })
                 }
 
@@ -114,7 +109,7 @@ const downloadFile = (absolutePath: string, file: any) => {
 
                         for(let i = 0; i < fileChunks; i++){
                             downloadThreadsSemaphore.acquire().then(() => {
-                                downloadTask(i).then(({ index, data }: { index: number, data: any }) => {
+                                downloadTask(i).then(({ index, data }) => {
                                     writeChunk(index, data)
 
                                     done += 1
@@ -191,7 +186,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }: 
     const [speed, setSpeed] = useState<number>(0)
     const [percent, setPercent] = useState<number>(0)
     const [done, setDone] = useState<boolean>(false)
-    const paused: boolean = useDb("paused", false)
+    const paused: boolean = useDb("downloadPaused", false)
 
     const totalBytes = useRef<number>(0)
     const bytes = useRef<number>(0)
@@ -203,22 +198,23 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }: 
         Promise.all([
             db.get("apiKey"),
             db.get("privateKey"),
-            db.get("masterKeys")
+            db.get("masterKeys"),
+            db.set("downloadPaused", false)
         ]).then(async ([apiKey, privateKey, masterKeys]) => {
             apiRequest({
                 method: "POST",
-                endpoint: args.shared ? ("/v1/download/dir/shared") : (args.linked ? ("/v1/download/dir/link") : ("/v1/download/dir")),
-                data: args.shared ? ({
+                endpoint: args.shared ? "/v1/download/dir/shared" : args.linked ? "/v1/download/dir/link" : "/v1/download/dir",
+                data: args.shared ? {
                     apiKey,
                     uuid: args.uuid
-                }) : (args.linked ? ({
+                } : args.linked ? {
                     uuid: args.linkUUID,
                     parent: args.uuid,
-                    password: typeof args.password == "string" ? (args.password.length < 32 ? (await ipc.hashFn(args.password)) : args.password) : ""
-                }) : ({
+                    password: typeof args.password == "string" ? args.password.length < 32 ? await ipc.hashFn(args.password) : args.password : ""
+                } : {
                     apiKey,
                     uuid: args.uuid
-                }))
+                }
             }).then(async (response) => {
                 if(!response.status){
                     showToast({ message: response.message, status: "error" })
@@ -231,7 +227,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }: 
 
                 const treeItems = []
                 const { uuid: baseFolderUUID, name: baseFolderMetadata, parent: baseFolderParent } = response.data.folders[0]
-                const baseFolderName = baseFolderMetadata == "default" ? "Default" : (args.shared ? (await ipc.decryptFolderNamePrivateKey(baseFolderMetadata, privateKey)) : (args.linked ? (await ipc.decryptFolderNameLink(baseFolderMetadata, args.linkKey)) : (await ipc.decryptFolderName(baseFolderMetadata))))
+                const baseFolderName = baseFolderMetadata == "default" ? "Default" : args.shared ? await ipc.decryptFolderNamePrivateKey(baseFolderMetadata, privateKey) : args.linked ? await ipc.decryptFolderNameLink(baseFolderMetadata, args.linkKey) : await ipc.decryptFolderName(baseFolderMetadata)
                 
                 if(baseFolderParent !== "base"){
                     showToast({ message: "Invalid base folder parent", status: "error" })
@@ -268,7 +264,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }: 
                         continue
                     }
 
-                    const name = metadata == "default" ? "Default" : (args.shared ? (await ipc.decryptFolderNamePrivateKey(metadata, privateKey)) : (args.linked ? (await ipc.decryptFolderNameLink(metadata, args.linkKey)) : (await ipc.decryptFolderName(metadata))))
+                    const name = metadata == "default" ? "Default" : args.shared ? await ipc.decryptFolderNamePrivateKey(metadata, privateKey) : args.linked ? await ipc.decryptFolderNameLink(metadata, args.linkKey) : await ipc.decryptFolderName(metadata)
 
                     if(name.length > 0){
                         if(!addedFolders[parent + ":" + name]){
@@ -286,7 +282,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }: 
 
                 for(let i = 0; i < response.data.files.length; i++){
                     const { uuid, bucket, region, chunks, parent, metadata, version, timestamp } = response.data.files[i]
-                    const decrypted = args.shared ? (await ipc.decryptFileMetadataPrivateKey(metadata, privateKey)) : (args.linked ? (await ipc.decryptFileMetadataLink(metadata, args.linkKey)) : (await ipc.decryptFileMetadata(metadata, masterKeys)))
+                    const decrypted = args.shared ? await ipc.decryptFileMetadataPrivateKey(metadata, privateKey) : args.linked ? await ipc.decryptFileMetadataLink(metadata, args.linkKey) : await ipc.decryptFileMetadata(metadata, masterKeys)
 
                     if(typeof decrypted.lastModified == "number"){
                         if(decrypted.lastModified <= 0){
@@ -398,9 +394,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }: 
                         fs.access(pathModule.normalize(pathModule.join(baseDownloadPath, "..")), fs.constants.R_OK | fs.constants.W_OK),
                         fsLocal.smokeTest(pathModule.normalize(pathModule.join(baseDownloadPath, "..")))
                     ]).then(() => {
-                        fs.remove(baseDownloadPath, {
-                            recursive: true
-                        }).then(() => {
+                        fsLocal.rm(baseDownloadPath).then(() => {
                             fs.mkdir(baseDownloadPath, {
                                 recursive: true,
                                 overwrite: true
@@ -438,8 +432,6 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }: 
                                                     downloadSemaphore.release()
 
                                                     filesDownloaded += 1
-
-                                                    console.log("filesDownloaded", filesDownloaded)
 
                                                     return resolve(true)
                                                 }).catch(reject)
@@ -524,7 +516,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }: 
 
     const throttleUpdates = useCallback(throttle(() => {
         setSpeed(calcSpeed(new Date().getTime(), started.current, bytes.current))
-        setPercent(Math.round((bytes.current / totalBytes.current) * 100))
+        setPercent((bytes.current / totalBytes.current) * 100)
     }, 250), [])
 
     const throttleTimeLeft = useCallback(throttle(() => {
@@ -771,7 +763,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }: 
                                                                 textDecoration="none" 
                                                                 _hover={{ textDecoration: "none" }} 
                                                                 marginLeft="10px" 
-                                                                onClick={() => db.set("paused", false)}
+                                                                onClick={() => db.set("downloadPaused", false)}
                                                             >
                                                                 {i18n(lang, "resume")}
                                                             </Link>
@@ -781,7 +773,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }: 
                                                                 textDecoration="none" 
                                                                 _hover={{ textDecoration: "none" }} 
                                                                 marginLeft="10px" 
-                                                                onClick={() => db.set("paused", true)}
+                                                                onClick={() => db.set("downloadPaused", true)}
                                                             >
                                                                 {i18n(lang, "pause")}
                                                             </Link>
@@ -804,7 +796,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }: 
 const DownloadFile = memo(({ userId, email, platform, darkMode, lang, args }: { userId: number, email: string, platform: string, darkMode: boolean, lang: string, args: any }) => {
     const [downloadPath, setDownloadPath] = useState<string>("")
     const [isDownloading, setIsDownloading] = useState<boolean>(false)
-    const paused: boolean = useDb("paused", false)
+    const paused: boolean = useDb("downloadPaused", false)
 
     const startDownloading = () => {
         setIsDownloading(true)

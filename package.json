@@ -44,7 +44,7 @@
 		"js-sha512": "^0.8.0",
 		"lodash": "^4.17.21",
 		"mime-types": "^2.1.35",
-		"node-watch": "^0.7.3",
+		"node-watch": "github:FilenCloudDienste/node-watch-fs-extra",
 		"react": "^18.0.0",
 		"react-dom": "^18.0.0",
 		"react-fast-compare": "^3.2.0",

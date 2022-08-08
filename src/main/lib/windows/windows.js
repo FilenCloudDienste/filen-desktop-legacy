@@ -10,7 +10,7 @@ const { v4: uuidv4 } = require("uuid")
 const { Base64 } = require("js-base64")
 
 const STATIC_PATH = isDev ? "http://localhost:3000/" : "file://" + path.join(__dirname, "../../../../build/index.html")
-const DEV_TOOLS = false
+const DEV_TOOLS = isDev ? true : false
 let activeWindows = []
 
 const wasOpenedAtSystemStart = () => {

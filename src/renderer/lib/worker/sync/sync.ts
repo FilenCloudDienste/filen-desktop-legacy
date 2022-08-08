@@ -2135,7 +2135,7 @@ const applyDoneTasksToSavedState = ({ doneTasks, localTreeNow, remoteTreeNow }: 
     })
 }
 
-const addToSyncIssues = (type: string, message: any): Promise<any> => {
+const addToSyncIssues = (type: string, message: any): Promise<boolean> => {
     return new Promise((resolve, reject) => {
         db.get("syncIssues").then((syncIssues) => {
             if(!Array.isArray(syncIssues)){
@@ -2148,12 +2148,12 @@ const addToSyncIssues = (type: string, message: any): Promise<any> => {
                 timestamp: new Date().getTime()
             })
 
-            db.set("syncIssues", syncIssues).then(resolve).catch(reject)
+            db.set("syncIssues", syncIssues).then(() => resolve(true)).catch(reject)
         })
     })
 }
 
-const updateLocationBusyStatus = (uuid: string, busy: boolean): Promise<any> => {
+const updateLocationBusyStatus = (uuid: string, busy: boolean): Promise<boolean> => {
     return new Promise((resolve, reject) => {
         db.get("userId").then((userId) => {
             db.get("syncLocations:" + userId).then((syncLocations) => {
@@ -2163,7 +2163,7 @@ const updateLocationBusyStatus = (uuid: string, busy: boolean): Promise<any> => 
 
                 syncLocations = syncLocations.map((location: any) => location.uuid == uuid ? { ...location, busy } : location)
 
-                db.set("syncLocations:" + userId, syncLocations).then(resolve).catch(reject)
+                db.set("syncLocations:" + userId, syncLocations).then(() => resolve(true)).catch(reject)
             }).catch(reject)
         }).catch(reject)
     })
@@ -2622,8 +2622,8 @@ const syncLocation = async (location: any): Promise<any> => {
 
     try{
         await Promise.all([
-            db.set("lastLocalTree:" + location.uuid, localTreeNowApplied),
-            db.set("lastRemoteTree:" + location.uuid, remoteTreeNowApplied),
+            db.set("lastLocalTree:" + location.uuid, doneTasks.length > 0 ? localTreeNowApplied : localTreeNow),
+            db.set("lastRemoteTree:" + location.uuid, doneTasks.length > 0 ? remoteTreeNowApplied : remoteTreeNow),
             db.set("localDataChanged:" + location.uuid, false),
             db.set("remoteDataChanged:" + location.uuid, false)
         ])
