@@ -22,6 +22,7 @@ import { AiOutlineCheckCircle } from "react-icons/ai"
 import { showToast } from "../../components/Toast"
 import { decryptData } from "../../lib/crypto"
 import useDb from "../../lib/hooks/useDb"
+import { AiOutlinePauseCircle } from "react-icons/ai"
 
 const log = window.require("electron-log")
 const pathModule = window.require("path")
@@ -701,6 +702,24 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }: 
                             </Button>
                         </Flex>
                         {
+                            isGettingTree && !done && percent <= 0 && !isDownloading && (
+                                <Flex
+                                    marginTop="25px"
+                                    width="80%"
+                                    height="auto"
+                                    flexDirection="column"
+                                >
+                                    <Text 
+                                        fontSize={14}
+                                        color={colors(platform, darkMode, "textPrimary")}
+                                        noOfLines={1}
+                                    >
+                                        {i18n(lang, "preparingUploadFolders")}
+                                    </Text>
+                                </Flex>
+                            )
+                        }
+                        {
                             percent > 0 && !done && (
                                 <Flex
                                     marginTop="25px"
@@ -725,11 +744,12 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }: 
                                     >
                                         {
                                             paused ? (
-                                                <Spinner
-                                                    width="14px"
-                                                    height="14px"
+                                                <AiOutlinePauseCircle
+                                                    size={14}
                                                     color={colors(platform, darkMode, "textPrimary")}
-                                                    marginTop="5px"
+                                                    style={{
+                                                        marginTop: "5px"
+                                                    }}
                                                 />
                                             ) : (() => {
                                                 const remainingReadable = getTimeRemaining((new Date().getTime() + (timeLeft * 1000)))
