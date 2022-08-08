@@ -1,3 +1,3 @@
-import en from "./en"
+import nl from "./nl"
 
-export default en
+export default nl
