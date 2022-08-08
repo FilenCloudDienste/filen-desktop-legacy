@@ -85,19 +85,9 @@ const WorkerWindow = memo(() => {
                 }
 
                 if(isLoggedIn && isOnline){
-                    try{
-                        var userId = await db.get("userId")
-                        var syncLocations = await db.get("syncLocations:" + userId)
-                    }
-                    catch(e){
-                        return log.error(e)
-                    }
+                    clearInterval(wait)
 
-                    if(Array.isArray(syncLocations) && syncLocations.filter(location => typeof location.remoteUUID == "string" && location.remoteUUID.length > 32).length > 0){
-                        clearInterval(wait)
-
-                        return resolve(true)
-                    }
+                    return resolve(true)
                 }
             }, 1000)
         })
@@ -113,7 +103,8 @@ const WorkerWindow = memo(() => {
                         db.set("maxStorageReached", false),
                         db.set("suspend", false),
                         db.set("uploadPaused", false),
-                        db.set("downloadPaused", false)
+                        db.set("downloadPaused", false),
+                        db.set("isOnline", true)
                     ]).then(() => {
                         sync()
                     }).catch((err) => {
@@ -235,11 +226,9 @@ const WorkerWindow = memo(() => {
             }
         })
 
-        db.set("isOnline", true).then((): void => {
-            listen()
-            init()
-            checkInternet()
-        }).catch(log.error)
+        listen()
+        init()
+        checkInternet()
 
         return () => {
             window.removeEventListener("offline", offlineListener)

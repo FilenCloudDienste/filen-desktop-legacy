@@ -1,4 +1,4 @@
-const { ipcMain, dialog, app, systemPreferences, globalShortcut } = require("electron")
+const { ipcMain, dialog, app, systemPreferences, globalShortcut, BrowserWindow } = require("electron")
 const db = require("../db")
 const shared = require("../shared")
 const windows = require("../windows")
@@ -146,10 +146,14 @@ const handleMessage = (type, data) => {
             }).catch(reject)
         }
         else if(type == "selectFolder"){
-            let selectWindow = shared.get("WORKER_WINDOW")
+            let selectWindow = BrowserWindow.getFocusedWindow()
 
-            if(typeof selectWindow == "undefined"){
-                selectWindow = shared.get("MAIN_WINDOW")
+            if(selectWindow == null){
+                selectWindow = shared.get("WORKER_WINDOW")
+
+                if(typeof selectWindow == "undefined"){
+                    selectWindow = shared.get("MAIN_WINDOW")
+                }
             }
 
             dialog.showOpenDialog(selectWindow, {
@@ -349,10 +353,14 @@ const handleMessage = (type, data) => {
             }
         }
         else if(type == "saveLogs"){
-            let selectWindow = shared.get("WORKER_WINDOW")
+            let selectWindow = BrowserWindow.getFocusedWindow()
 
-            if(typeof selectWindow == "undefined"){
-                selectWindow = shared.get("MAIN_WINDOW")
+            if(selectWindow == null){
+                selectWindow = shared.get("WORKER_WINDOW")
+
+                if(typeof selectWindow == "undefined"){
+                    selectWindow = shared.get("MAIN_WINDOW")
+                }
             }
 
             dialog.showOpenDialog(selectWindow, {

@@ -250,7 +250,7 @@ export const updateKeys = () => {
                             return reject(e)
                         }
     
-                        console.log("Master keys updated.")
+                        log.info("Master keys updated.")
     
                         updatePublicAndPrivateKey().then(() => {
                             return resolve(true)
@@ -261,7 +261,7 @@ export const updateKeys = () => {
                         })
                     }
                     else{
-                        console.log("Could not decrypt master keys.")
+                        log.error("Could not decrypt master keys.")
     
                         updatePublicAndPrivateKey().then(() => {
                             return resolve(true)

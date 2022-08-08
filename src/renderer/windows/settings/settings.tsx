@@ -575,6 +575,29 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
         db.set("filenIgnore:" + uuid, value).catch(log.error)
     }, 1000), [])
 
+    const toggleSyncPauseStatus = async (location: any, paused: boolean) => {
+        try{
+            let currentSyncLocations = await db.get("syncLocations:" + userId)
+
+            if(!Array.isArray(currentSyncLocations)){
+                currentSyncLocations = []
+            }
+
+            for(let i = 0; i < currentSyncLocations.length; i++){
+                if(currentSyncLocations[i].uuid == location.uuid){
+                    currentSyncLocations[i].paused = paused
+
+                    await db.set("localDataChanged:" + currentSyncLocations[i].uuid, true)
+                }
+            }
+
+            await db.set("syncLocations:" + userId, currentSyncLocations)
+        }
+        catch(e){
+            log.error(e)
+        }
+    }
+
     useEffect(() => {
         if(typeof currentSyncLocation !== "undefined"){
             for(let i = 0; i < syncLocations.length; i++){
@@ -717,28 +740,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                             size={15}
                                                             cursor="pointer"
                                                             pointerEvents="all"
-                                                            onClick={async () => {
-                                                                try{
-                                                                    let currentSyncLocations = await db.get("syncLocations:" + userId)
-            
-                                                                    if(!Array.isArray(currentSyncLocations)){
-                                                                        currentSyncLocations = []
-                                                                    }
-            
-                                                                    for(let i = 0; i < currentSyncLocations.length; i++){
-                                                                        if(currentSyncLocations[i].uuid == location.uuid){
-                                                                            currentSyncLocations[i].paused = false
-
-                                                                            await db.set("localDataChanged:" + currentSyncLocations[i].uuid, true)
-                                                                        }
-                                                                    }
-            
-                                                                    await db.set("syncLocations:" + userId, currentSyncLocations)
-                                                                }
-                                                                catch(e){
-                                                                    log.error(e)
-                                                                }
-                                                            }}
+                                                            onClick={() => toggleSyncPauseStatus(location, false)}
                                                         />
                                                     ) : (
                                                         <>
@@ -747,6 +749,9 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                                     <Flex 
                                                                         alignItems="center" 
                                                                         paddingTop="3px"
+                                                                        cursor="pointer"
+                                                                        pointerEvents="all"
+                                                                        onClick={() => toggleSyncPauseStatus(location, true)}
                                                                     >
                                                                         <IoChevronBackOutline 
                                                                             color={colors(platform, darkMode, "textPrimary")} 
@@ -764,6 +769,9 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                                     <Flex 
                                                                         alignItems="center" 
                                                                         paddingTop="3px"
+                                                                        cursor="pointer"
+                                                                        pointerEvents="all"
+                                                                        onClick={() => toggleSyncPauseStatus(location, true)}
                                                                     >
                                                                         <IoChevronForwardOutline 
                                                                             color={colors(platform, darkMode, "textPrimary")}
@@ -777,6 +785,9 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                                     <Flex 
                                                                         alignItems="center" 
                                                                         paddingTop="3px"
+                                                                        cursor="pointer"
+                                                                        pointerEvents="all"
+                                                                        onClick={() => toggleSyncPauseStatus(location, true)}
                                                                     >
                                                                         <IoChevronBackOutline 
                                                                             color={colors(platform, darkMode, "textPrimary")} 
@@ -790,6 +801,9 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                                     <Flex 
                                                                         alignItems="center" 
                                                                         paddingTop="3px"
+                                                                        cursor="pointer"
+                                                                        pointerEvents="all"
+                                                                        onClick={() => toggleSyncPauseStatus(location, true)}
                                                                     >
                                                                         <HiOutlineSave 
                                                                             color={colors(platform, darkMode, "textPrimary")} 
@@ -807,6 +821,9 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                                     <Flex 
                                                                         alignItems="center" 
                                                                         paddingTop="3px"
+                                                                        cursor="pointer"
+                                                                        pointerEvents="all"
+                                                                        onClick={() => toggleSyncPauseStatus(location, true)}
                                                                     >
                                                                         <IoChevronBackOutline 
                                                                             color={colors(platform, darkMode, "textPrimary")} 

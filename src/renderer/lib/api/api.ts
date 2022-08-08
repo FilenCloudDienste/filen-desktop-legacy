@@ -1705,7 +1705,7 @@ export const trashItem = ({ type, uuid }: { type: string, uuid: string }): Promi
                     if(
                         response.message.toString().toLowerCase().indexOf("already") !== -1
                         || response.message.toString().toLowerCase().indexOf("does not exist") !== -1
-                        || response.message.toString().toLowerCase().indexOf("not found") !== -1
+                        || (response.message.toString().toLowerCase().indexOf("not found") !== -1 && response.message.toString().toLowerCase().indexOf("api") == -1)
                     ){
                         return resolve(true)
                     }
@@ -1735,7 +1735,7 @@ export const moveFile = ({ file, parent }: { file: any, parent: string }): Promi
                     if(
                         response.message.toString().toLowerCase().indexOf("already") !== -1
                         || response.message.toString().toLowerCase().indexOf("does not exist") !== -1
-                        || response.message.toString().toLowerCase().indexOf("not found") !== -1
+                        || (response.message.toString().toLowerCase().indexOf("not found") !== -1 && response.message.toString().toLowerCase().indexOf("api") == -1)
                     ){
                         return resolve(true)
                     }
@@ -1834,7 +1834,7 @@ export const renameFile = ({ file, name }: { file: any, name: string }): Promise
                         if(
                             response.message.toString().toLowerCase().indexOf("already") !== -1
                             || response.message.toString().toLowerCase().indexOf("does not exist") !== -1
-                            || response.message.toString().toLowerCase().indexOf("not found") !== -1
+                            || (response.message.toString().toLowerCase().indexOf("not found") !== -1 && response.message.toString().toLowerCase().indexOf("api") == -1)
                         ){
                             return resolve(true)
                         }
@@ -1884,7 +1884,7 @@ export const renameFolder = ({ folder, name }: { folder: any, name: string }): P
                         if(
                             response.message.toString().toLowerCase().indexOf("already") !== -1
                             || response.message.toString().toLowerCase().indexOf("does not exist") !== -1
-                            || response.message.toString().toLowerCase().indexOf("not found") !== -1
+                            || (response.message.toString().toLowerCase().indexOf("not found") !== -1 && response.message.toString().toLowerCase().indexOf("api") == -1)
                         ){
                             return resolve(true)
                         }
