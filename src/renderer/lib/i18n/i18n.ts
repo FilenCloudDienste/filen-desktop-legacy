@@ -18,7 +18,8 @@ const translations: {
     pl,
     zh,
     ja,
-    da
+    da,
+    nl
 }
 
 export const i18n = (lang: string = "en", text: string, firstUpperCase: boolean = true, replaceFrom: string[] = [], replaceTo: string[] = []) => {

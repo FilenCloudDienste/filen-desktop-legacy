@@ -303,6 +303,16 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
                             Deutsch
                         </option>
                         <option 
+                            value="nl" 
+                            style={{
+                                backgroundColor: colors(platform, darkMode, "backgroundSecondary"),
+                                height: "30px",
+                                borderRadius: "10px"
+                            }}
+                        >
+                            Nederlands
+                        </option>
+                        <option 
                             value="ru" 
                             style={{
                                 backgroundColor: colors(platform, darkMode, "backgroundSecondary"),
