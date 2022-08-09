@@ -438,7 +438,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                     return false
                 }
 
-                const parsedPath = pathModule.parse(localPath)
+                /*const parsedPath = pathModule.parse(localPath)
 
                 if(parsedPath.root == parsedPath.dir){
                     return toast({
@@ -456,7 +456,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                             borderRadius: "15px"
                         }
                     })
-                }
+                }*/
 
                 if(Array.isArray(currentSyncLocations) && currentSyncLocations.length > 0){
                     let found = false
