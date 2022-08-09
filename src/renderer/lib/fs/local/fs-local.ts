@@ -1,6 +1,6 @@
 import ipc from "../../ipc"
 import memoryCache from "../../memoryCache"
-import { isFileOrFolderNameIgnoredByDefault, convertTimestampToMs, Semaphore } from "../../helpers"
+import { isFileOrFolderNameIgnoredByDefault, convertTimestampToMs, Semaphore, isFolderPathExcluded } from "../../helpers"
 import { downloadChunk } from "../../api"
 import { decryptData } from "../../crypto"
 import { v4 as uuidv4 } from "uuid"
@@ -132,7 +132,8 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
                 lstat: true,
                 type: "all",
                 depth: 2147483648,
-                directoryFilter: ["!.filen.trash.local"]
+                directoryFilter: ["!.filen.trash.local", "!System Volume Information"],
+                fileFilter: ["!System Volume Information"]
             }).on("data", (item: any) => {
                 if(windows){
                     item.path = item.path.split("\\").join("/") // Convert windows \ style path seperators to / for internal database, we only use UNIX style path seperators internally
@@ -144,7 +145,7 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
                     include = false
                 }
 
-                if(include && !isFileOrFolderNameIgnoredByDefault(item.basename)){
+                if(include && !isFileOrFolderNameIgnoredByDefault(item.basename) && !isFolderPathExcluded(item.path)){
                     if(item.stats.isDirectory()){
                         folders[item.path] = {
                             name: item.basename,
@@ -172,7 +173,7 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
                     }
                 }
             }).on("warn", (warn: any) => {
-                log.error(warn)
+                log.warn("Readdirp warning:", warn)
             }).on("error", (err: any) => {
                 return reject(err)
             }).on("end", async () => {

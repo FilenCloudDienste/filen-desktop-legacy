@@ -12,7 +12,8 @@ export const downloadServers: string[] = [
 
 export const defaultIgnored: {
     names: string[],
-    extensions: string[]
+    extensions: string[],
+    folders: string[]
 } = {
     names: [
         ".ds_store",
@@ -39,8 +40,7 @@ export const defaultIgnored: {
         "COM6",
         "COM7",
         "COM8",
-        "COM9",
-        ".filen.trash.local"
+        "COM9"
     ],
     extensions: [
         "tmp",
@@ -53,6 +53,13 @@ export const defaultIgnored: {
         "BridgeCache",
         "download",
         "fcpcache"
+    ],
+    folders: [
+        ".filen.trash.local",
+        "$RECYCLE.BIN\\",
+        "$RECYCLE.BIN/",
+        ".Trash",
+        ".local/share/Trash"
     ]
 }
 

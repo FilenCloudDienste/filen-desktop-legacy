@@ -296,7 +296,7 @@ export const Semaphore = function(this: SemaphoreInterface, max: number) {
     }
 } as any as { new (max: number): SemaphoreInterface; };
 
-export const convertTimestampToMs = (timestamp: number) => {
+export const convertTimestampToMs = (timestamp: number): number => {
     const date = new Date(timestamp * 1000)
 
     if(date.getFullYear() > 2100){
@@ -307,7 +307,17 @@ export const convertTimestampToMs = (timestamp: number) => {
     }
 }
 
-export const isFileOrFolderNameIgnoredByDefault = (name: string) => {
+export const isFolderPathExcluded = (path: string): boolean => {
+  for(let i = 0; i < defaultIgnored.folders.length; i++){
+    if(path.toLowerCase().indexOf(defaultIgnored.folders[i].toLowerCase()) !== -1){
+      return true
+    }
+  }
+
+  return false
+}
+
+export const isFileOrFolderNameIgnoredByDefault = (name: string): boolean => {
     if(typeof name !== "string"){
 		return true
 	}

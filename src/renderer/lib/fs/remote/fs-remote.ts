@@ -2,7 +2,7 @@ import { folderPresent, dirTree, createFolder, folderExists, uploadChunk, markUp
 import db from "../../db"
 import { decryptFolderName, decryptFileMetadata, hashFn, encryptMetadata, encryptData } from "../../crypto"
 import memoryCache from "../../memoryCache"
-import { convertTimestampToMs, isFileOrFolderNameIgnoredByDefault, fileNameToLowerCaseExt, generateRandomString, Semaphore } from "../../helpers"
+import { convertTimestampToMs, isFileOrFolderNameIgnoredByDefault, fileNameToLowerCaseExt, generateRandomString, Semaphore, isFolderPathExcluded } from "../../helpers"
 import { normalizePath, smokeTest as smokeTestLocal, readChunk, checkLastModified } from "../local"
 import { chunkSize, maxUploadThreads } from "../../constants"
 import { v4 as uuidv4 } from "uuid"
