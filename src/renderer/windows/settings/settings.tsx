@@ -448,6 +448,24 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                     return false
                 }
 
+                if(["/", "c:", "c:/", "c://", "c:\\", "c:\\\\"].includes(localPath.toLowerCase())){
+                    return toast({
+                        title: i18n(lang, "cannotCreateSyncLocation"),
+                        description: i18n(lang, "cannotCreateSyncLocationSubdir"),
+                        status: "error",
+                        duration: 10000,
+                        isClosable: true,
+                        position: "bottom",
+                        containerStyle: {
+                            backgroundColor: "rgba(255, 69, 58, 1)",
+                            maxWidth: "85%",
+                            height: "auto",
+                            fontSize: 14,
+                            borderRadius: "15px"
+                        }
+                    })
+                }
+
                 /*const parsedPath = pathModule.parse(localPath)
 
                 if(parsedPath.root == parsedPath.dir){
