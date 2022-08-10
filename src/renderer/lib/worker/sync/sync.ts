@@ -23,70 +23,64 @@ let SYNC_LOCK_ACQUIRED: boolean = false
 const maxConcurrentUploadsSemaphore = new Semaphore(maxConcurrentUploadsPreset)
 const maxConcurrentDownloadsSemaphore = new Semaphore(maxConcurrentDownloadsPreset)
 const maxSyncTasksSemaphore = new Semaphore(maxConcurrentSyncTasks)
-const syncLockSemaphore = new Semaphore(1)
 
 const acquireSyncLock = (id: string | number): Promise<boolean> => {
     return new Promise((resolve) => {
-        syncLockSemaphore.acquire().then(() => {
-            log.info("Acquiring sync lock")
+        if(SYNC_LOCK_ACQUIRED){
+            return resolve(true)
+        }
 
-            const acquire = async () => {
-                acquireLock({ apiKey: await db.get("apiKey"), id }).then(() => {
-                    log.info("Sync lock acquired")
-        
-                    holdSyncLock(id)
+        log.info("Acquiring sync lock")
 
-                    syncLockSemaphore.release()
+        const acquire = async () => {
+            acquireLock({ apiKey: await db.get("apiKey"), id }).then(() => {
+                log.info("Sync lock acquired")
 
-                    SYNC_LOCK_ACQUIRED = true
-        
-                    return resolve(true)
-                }).catch((err) => {
-                    if(err.toString().toLowerCase().indexOf("sync locked") == -1){
-                        log.error("Could not acquire sync lock from API")
-                        log.error(err)
-                    }
+                SYNC_LOCK_ACQUIRED = true
+                TRYING_TO_HOLD_SYNC_LOCK = false
 
-                    syncLockSemaphore.release()
+                holdSyncLock(id)
+    
+                return resolve(true)
+            }).catch((err) => {
+                if(err.toString().toLowerCase().indexOf("sync locked") == -1){
+                    log.error("Could not acquire sync lock from API")
+                    log.error(err)
+                }
 
-                    SYNC_LOCK_ACQUIRED = false
-        
-                    return setTimeout(acquire, 1000)
-                })
-            }
+                SYNC_LOCK_ACQUIRED = false
+    
+                return setTimeout(acquire, 1000)
+            })
+        }
 
-            return acquire()
-        })
+        return acquire()
     })
 }
 
 const releaseSyncLock = (id: string | number): Promise<boolean> => {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
         if(!SYNC_LOCK_ACQUIRED){
             return resolve(true)
         }
 
-        syncLockSemaphore.acquire().then(async () => {
-            log.info("Releasing sync lock")
+        log.info("Releasing sync lock")
 
-            releaseLock({ apiKey: await db.get("apiKey"), id }).then(() => {
-                log.info("Sync lock released")
+        TRYING_TO_HOLD_SYNC_LOCK = false
 
-                clearInterval(SYNC_LOCK_INTERVAL)
+        clearInterval(SYNC_LOCK_INTERVAL)
 
-                SYNC_LOCK_ACQUIRED = false
+        releaseLock({ apiKey: await db.get("apiKey"), id }).then(() => {
+            log.info("Sync lock released")
 
-                syncLockSemaphore.release()
+            SYNC_LOCK_ACQUIRED = false
 
-                return resolve(true)
-            }).catch((err) => {
-                log.error("Could not release sync lock from API")
-                log.error(err)
+            return resolve(true)
+        }).catch((err) => {
+            log.error("Could not release sync lock from API")
+            log.error(err)
 
-                syncLockSemaphore.release()
-
-                return reject(err)
-            })
+            return reject(err)
         })
     })
 }
@@ -94,38 +88,34 @@ const releaseSyncLock = (id: string | number): Promise<boolean> => {
 const holdSyncLock = (id: string | number): void => {
     clearInterval(SYNC_LOCK_INTERVAL)
 
-    SYNC_LOCK_INTERVAL = setInterval(() => {
-        syncLockSemaphore.acquire().then(async () => {
-            if(!TRYING_TO_HOLD_SYNC_LOCK && SYNC_LOCK_ACQUIRED){
-                TRYING_TO_HOLD_SYNC_LOCK = true
-    
-                log.info("Holding sync lock")
-    
-                try{
-                    await holdLock({ apiKey: await db.get("apiKey"), id })
-                }
-                catch(e){
-                    log.error("Could not hold sync lock from API")
-                    log.error(e)
-    
-                    TRYING_TO_HOLD_SYNC_LOCK = false
+    TRYING_TO_HOLD_SYNC_LOCK = false
 
-                    syncLockSemaphore.release()
-    
-                    return false
-                }
-    
+    SYNC_LOCK_INTERVAL = setInterval(async () => {
+        if(!TRYING_TO_HOLD_SYNC_LOCK && SYNC_LOCK_ACQUIRED){
+            TRYING_TO_HOLD_SYNC_LOCK = true
+
+            log.info("Holding sync lock")
+
+            try{
+                await holdLock({ apiKey: await db.get("apiKey"), id })
+            }
+            catch(e){
+                log.error("Could not hold sync lock from API")
+                log.error(e)
+
                 TRYING_TO_HOLD_SYNC_LOCK = false
-    
-                log.info("Sync lock held")
+                SYNC_LOCK_ACQUIRED = false
 
-                syncLockSemaphore.release()
+                clearInterval(SYNC_LOCK_INTERVAL)
+
+                return false
             }
-            else{
-                syncLockSemaphore.release()
-            }
-        })
-    }, SYNC_TIMEOUT / 2)
+
+            TRYING_TO_HOLD_SYNC_LOCK = false
+
+            //log.info("Sync lock held")
+        }
+    }, 1000)
 }
 
 const isSuspended = (): Promise<boolean> => {
@@ -836,20 +826,32 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
             deleteInRemoteTasks
         })*/
 
-        /*log.info("renameInRemote", renameInRemoteTasks)
-        log.info("renameInLocal", renameInLocalTasks)
-        log.info("moveInRemote", moveInRemoteTasks)
-        log.info("moveInLocal", moveInLocalTasks)
-        log.info("deleteInRemote", deleteInRemoteTasks)
-        log.info("deleteInLocal", deleteInLocalTasks)
-        log.info("uploadToRemote", uploadToRemoteTasks)
-        log.info("downloadFromRemote", downloadFromRemoteTasks)*/
+        log.info("renameInRemote", renameInRemoteTasks.length)
+        log.info("renameInLocal", renameInLocalTasks.length)
+        log.info("moveInRemote", moveInRemoteTasks.length)
+        log.info("moveInLocal", moveInLocalTasks.length)
+        log.info("deleteInRemote", deleteInRemoteTasks.length)
+        log.info("deleteInLocal", deleteInLocalTasks.length)
+        log.info("uploadToRemote", uploadToRemoteTasks.length)
+        log.info("downloadFromRemote", downloadFromRemoteTasks.length)
 
         const doneTasks: any[] = []
 
         if(renameInRemoteTasks.length > 0){
             await Promise.allSettled([
                 ...renameInRemoteTasks.map((task: any) => new Promise((resolve, reject) => {
+                    if(typeof task !== "object"){
+                        return resolve(true)
+                    }
+
+                    if(typeof task.item !== "object"){
+                        return resolve(true)
+                    }
+
+                    if(typeof task.item.uuid !== "string"){
+                        return resolve(true)
+                    }
+
                     maxSyncTasksSemaphore.acquire().then(() => {
                         emitSyncTask("renameInRemote", {
                             status: "start",
@@ -879,7 +881,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                             }
     
                             currentTries += 1
-    
+
                             fsRemote.rename(task.type, task).then((done) => {
                                 emitSyncTask("renameInRemote", {
                                     status: "done",
@@ -914,6 +916,18 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
         if(renameInLocalTasks.length > 0){
             await Promise.allSettled([
                 ...renameInLocalTasks.map((task: any) => new Promise((resolve, reject) => {
+                    if(typeof task !== "object"){
+                        return resolve(true)
+                    }
+
+                    if(typeof task.from !== "string"){
+                        return resolve(true)
+                    }
+
+                    if(typeof task.to !== "string"){
+                        return resolve(true)
+                    }
+
                     maxSyncTasksSemaphore.acquire().then(() => {
                         emitSyncTask("renameInLocal", {
                             status: "start",
@@ -978,6 +992,18 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
         if(moveInRemoteTasks.length > 0){
             await Promise.allSettled([
                 ...moveInRemoteTasks.map((task: any) => new Promise((resolve, reject) => {
+                    if(typeof task !== "object"){
+                        return resolve(true)
+                    }
+
+                    if(typeof task.item !== "object"){
+                        return resolve(true)
+                    }
+
+                    if(typeof task.item.uuid !== "string"){
+                        return resolve(true)
+                    }
+
                     maxSyncTasksSemaphore.acquire().then(() => {
                         emitSyncTask("moveInRemote", {
                             status: "start",
@@ -1042,6 +1068,18 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
         if(moveInLocalTasks.length > 0){
             await Promise.allSettled([
                 ...moveInLocalTasks.map((task: any) => new Promise((resolve, reject) => {
+                    if(typeof task !== "object"){
+                        return resolve(true)
+                    }
+
+                    if(typeof task.from !== "string"){
+                        return resolve(true)
+                    }
+
+                    if(typeof task.to !== "string"){
+                        return resolve(true)
+                    }
+
                     maxSyncTasksSemaphore.acquire().then(() => {
                         emitSyncTask("moveInLocal", {
                             status: "start",
@@ -1106,6 +1144,18 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
         if(deleteInRemoteTasks.length > 0){
             await Promise.allSettled([
                 ...deleteInRemoteTasks.map((task: any) => new Promise((resolve, reject) => {
+                    if(typeof task !== "object"){
+                        return resolve(true)
+                    }
+
+                    if(typeof task.item !== "object"){
+                        return resolve(true)
+                    }
+
+                    if(typeof task.item.uuid !== "string"){
+                        return resolve(true)
+                    }
+
                     maxSyncTasksSemaphore.acquire().then(() => {
                         emitSyncTask("deleteInRemote", {
                             status: "start",
@@ -1170,6 +1220,14 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
         if(deleteInLocalTasks.length > 0){
             await Promise.allSettled([
                 ...deleteInLocalTasks.map((task: any) => new Promise((resolve, reject) => {
+                    if(typeof task !== "object"){
+                        return resolve(true)
+                    }
+
+                    if(typeof task.path !== "string"){
+                        return resolve(true)
+                    }
+
                     maxSyncTasksSemaphore.acquire().then(() => {
                         emitSyncTask("deleteInLocal", {
                             status: "start",
@@ -1234,6 +1292,18 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
         if(uploadToRemoteTasks.length > 0){
             await Promise.allSettled([
                 ...uploadToRemoteTasks.map((task: any) => new Promise((resolve, reject) => {
+                    if(typeof task !== "object"){
+                        return resolve(true)
+                    }
+
+                    if(typeof task.item !== "object"){
+                        return resolve(true)
+                    }
+
+                    if(typeof task.item.uuid !== "string"){
+                        return resolve(true)
+                    }
+
                     maxSyncTasksSemaphore.acquire().then(() => {
                         emitSyncTask("uploadToRemote", {
                             status: "start",
@@ -1302,6 +1372,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
                                     if(
                                         err.toString().toLowerCase().indexOf("invalid upload key") !== -1
+                                        || err.toString().toLowerCase().indexOf("chunks are not matching") !== -1
                                         || err.toString() == "deletedLocally"    
                                     ){
                                         emitSyncTask("uploadToRemote", {
@@ -1330,6 +1401,14 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
         if(downloadFromRemoteTasks.length > 0){
             await Promise.allSettled([
                 ...downloadFromRemoteTasks.map((task: any) => new Promise((resolve, reject) => {
+                    if(typeof task !== "object"){
+                        return resolve(true)
+                    }
+
+                    if(typeof task.path !== "string"){
+                        return resolve(true)
+                    }
+
                     maxSyncTasksSemaphore.acquire().then(() => {
                         emitSyncTask("downloadFromRemote", {
                             status: "start",

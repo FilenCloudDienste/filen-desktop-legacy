@@ -59,14 +59,8 @@ const SelectiveSyncWindow = memo(({ userId, email, windowId }: { userId: number,
             }
         }
 
-        files = files.sort((a: string, b: string) => {
-            return a.localeCompare(b)
-        })
-
-        folders = folders.sort((a: string, b: string) => {
-            return a.localeCompare(b)
-        })
-
+        files = files.sort((a: string, b: string) => a.localeCompare(b))
+        folders = folders.sort((a: string, b: string) => a.localeCompare(b))
         paths = folders.concat(files)
 
         paths.forEach((path: string) => {

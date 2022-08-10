@@ -219,9 +219,9 @@ export const listen = () => {
             const basename: string = pathModule.basename(name)
             const path: string = name.slice(watchPath.length + 1)
 
-            if(isFileOrFolderNameIgnoredByDefault(basename)){
-                return false
-            }
+            //if(isFileOrFolderNameIgnoredByDefault(basename)){
+            //    return false
+            //}
 
             new Promise((resolve) => {
                 const check = (): any => {

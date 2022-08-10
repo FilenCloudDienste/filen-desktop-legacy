@@ -1,4 +1,4 @@
-import React, { memo, useState, useCallback, useEffect } from "react"
+import React, { memo, useState, useCallback, useEffect, useRef } from "react"
 import { Flex, Text, Box, Checkbox, Image } from "@chakra-ui/react"
 import { AiOutlineCaretRight, AiOutlineCaretDown } from "react-icons/ai"
 import useDb from "../../lib/hooks/useDb"
@@ -137,7 +137,9 @@ const TreeItem = memo(({ darkMode, lang, platform, item, location, excluded }: T
                         item.type == "folder" ? (
                             isOpen ? (
                                 <>
-                                    <AiOutlineCaretDown color="white" />
+                                    <AiOutlineCaretDown
+                                        color="gray"
+                                    />
                                     <IoFolderOpen 
                                         color={platform == "mac" ? "#3ea0d5" : "#ffd04c"} 
                                         style={{
@@ -147,7 +149,9 @@ const TreeItem = memo(({ darkMode, lang, platform, item, location, excluded }: T
                                 </>
                             ) : (
                                 <>
-                                    <AiOutlineCaretRight color="white" />
+                                    <AiOutlineCaretRight
+                                        color="gray"
+                                    />
                                     <IoFolder 
                                         color={platform == "mac" ? "#3ea0d5" : "#ffd04c"} 
                                         style={{
@@ -181,7 +185,11 @@ const TreeItem = memo(({ darkMode, lang, platform, item, location, excluded }: T
                     onClick={onToggleOpen} 
                     marginLeft="8px"
                 >
-                    <Text color="white">{item.name}</Text>
+                    <Text
+                        color={getColor(platform, darkMode, "textPrimary")}
+                    >
+                        {item.name}
+                    </Text>
                 </Flex>
             </Flex>
             <Box 

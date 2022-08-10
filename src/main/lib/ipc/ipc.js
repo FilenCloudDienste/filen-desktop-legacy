@@ -511,7 +511,7 @@ const handleMessage = (type, data) => {
                 message: "Are you sure you want to quit?",
                 type: "warning",
                 buttons: [
-                    "Close",
+                    "Quit",
                     "Cancel"
                 ],
                 defaultId: 0,
