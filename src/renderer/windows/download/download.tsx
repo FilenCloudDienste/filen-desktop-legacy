@@ -37,17 +37,7 @@ const downloadThreadsSemaphore = new Semaphore(maxDownloadThreads)
 
 const downloadFile = (absolutePath: string, file: any) => {
     return new Promise((resolve, reject) => {
-        try{
-            var parentPath = pathModule.dirname(absolutePath)
-        }
-        catch(e){
-            return reject(e)
-        }
-
-        Promise.all([
-            fs.ensureDir(parentPath),
-            fsLocal.getTempDir()
-        ]).then(([_, tmpDir]) => {
+        fsLocal.getTempDir().then((tmpDir) => {
             try{
                 var fileTmpPath = fsLocal.normalizePath(tmpDir + "/" + uuidv4())
             }

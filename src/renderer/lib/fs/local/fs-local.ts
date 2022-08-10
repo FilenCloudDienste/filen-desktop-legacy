@@ -339,17 +339,13 @@ export const download = (path: string, location: any, task: any): Promise<any> =
 
         try{
             var absolutePath = normalizePath(location.local + "/" + path)
-            var parentPath = pathModule.dirname(absolutePath)
             var file = task.item
         }
         catch(e){
             return reject(e)
         }
 
-        Promise.all([
-            fs.ensureDir(parentPath),
-            getTempDir()
-        ]).then(([_, tmpDir]) => {
+        getTempDir().then((tmpDir) => {
             try{
                 var fileTmpPath = normalizePath(tmpDir + "/" + uuidv4())
             }
