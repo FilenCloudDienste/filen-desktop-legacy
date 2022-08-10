@@ -127,14 +127,16 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
             const ino: any = {}
             const windows: boolean = is.windows()
 
-            readdirp(path, {
+            const dirStream = readdirp(path, {
                 alwaysStat: true,
                 lstat: true,
                 type: "all",
                 depth: 2147483648,
                 directoryFilter: ["!.filen.trash.local", "!System Volume Information"],
                 fileFilter: ["!System Volume Information"]
-            }).on("data", (item: any) => {
+            })
+            
+            dirStream.on("data", (item: any) => {
                 if(windows){
                     item.path = item.path.split("\\").join("/") // Convert windows \ style path seperators to / for internal database, we only use UNIX style path seperators internally
                 }
@@ -172,11 +174,21 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
                         }
                     }
                 }
-            }).on("warn", (warn: any) => {
+            })
+            
+            dirStream.on("warn", (warn: any) => {
                 log.warn("Readdirp warning:", warn)
-            }).on("error", (err: any) => {
+            })
+            
+            dirStream.on("error", (err: any) => {
+                dirStream.destroy()
+                
                 return reject(err)
-            }).on("end", async () => {
+            })
+            
+            dirStream.on("end", async () => {
+                dirStream.destroy()
+                
                 const obj = {
                     files,
                     folders,
