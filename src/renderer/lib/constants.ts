@@ -56,10 +56,11 @@ export const defaultIgnored: {
     ],
     folders: [
         ".filen.trash.local",
-        "$RECYCLE.BIN\\",
-        "$RECYCLE.BIN/",
+        "$RECYCLE.BIN",
         ".Trash",
-        ".local/share/Trash"
+        ".local/share/Trash",
+        "/share/Trash",
+        "local/share/Trash"
     ]
 }
 

@@ -263,9 +263,11 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                         delete files[prop].children
 
                         if(newProp.length > 0){
-                            newFiles[newProp] = {
-                                ...files[prop],
-                                path: newProp
+                            if(!isFolderPathExcluded(newProp)){
+                                newFiles[newProp] = {
+                                    ...files[prop],
+                                    path: newProp
+                                }
                             }
                         }
                     }
@@ -276,12 +278,14 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                         delete folders[prop].children
 
                         if(newProp.length > 0){
-                            newFolders[newProp] = {
-                                ...folders[prop],
-                                path: newProp
+                            if(!isFolderPathExcluded(newProp)){
+                                newFolders[newProp] = {
+                                    ...folders[prop],
+                                    path: newProp
+                                }
+    
+                                folderPathUUID.set(newProp, folders[prop].uuid)
                             }
-
-                            folderPathUUID.set(newProp, folders[prop].uuid)
                         }
                     }
 
@@ -289,9 +293,11 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                         const newValue = uuids[prop].path.split("/").slice(2).join("/")
 
                         if(newValue.length > 0){
-                            newUUIDS[prop] = {
-                                ...uuids[prop],
-                                path: newValue
+                            if(!isFolderPathExcluded(newValue)){
+                                newUUIDS[prop] = {
+                                    ...uuids[prop],
+                                    path: newValue
+                                }
                             }
                         }
                     }
