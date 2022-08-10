@@ -133,7 +133,7 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
                 type: "all",
                 depth: 2147483648,
                 directoryFilter: ["!.filen.trash.local", "!System Volume Information"],
-                fileFilter: ["!System Volume Information"]
+                fileFilter: ["!.filen.trash.local", "!System Volume Information"]
             })
             
             dirStream.on("data", (item: any) => {
