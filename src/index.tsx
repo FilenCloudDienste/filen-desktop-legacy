@@ -3,6 +3,10 @@ import "./renderer/styles/index.css"
 import App from "./renderer/App"
 import { createRoot } from "react-dom/client"
 
+const log = window.require("electron-log")
+
+Object.assign(console, log.functions)
+
 // @ts-ignore
 process.noAsar = true
 
