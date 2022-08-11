@@ -135,6 +135,7 @@
 			}
 		],
 		"win": {
+			"publisherName": "Filen Cloud Dienste UG (haftungsbeschränkt)",
 			"icon": "./assets/icons/win/icon.ico",
 			"target": {
 				"target": "nsis",
@@ -154,6 +155,9 @@
 			"allowToChangeInstallationDirectory": false
 		},
 		"linux": {
+			"maintainer": "Filen Cloud Dienste UG (haftungsbeschränkt)",
+			"vendor": "Filen Cloud Dienste UG (haftungsbeschränkt)",
+			"category": "Utility",
 			"icon": "./assets/icons/png/",
 			"target": {
 				"target": "AppImage",
@@ -168,6 +172,8 @@
 			"gatekeeperAssess": false,
 			"entitlements": "./assets/entitlements.mac.plist",
 			"entitlementsInherit": "./assets/entitlements.mac.plist",
+			"category": "public.app-category.productivity",
+			"darkModeSupport": true,
 			"target": {
 				"target": "dmg",
 				"arch": [
