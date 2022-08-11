@@ -11,6 +11,7 @@ const memoryCache = require("../memoryCache")
 const trayMenu = require("../trayMenu")
 const { v4: uuidv4 } = require("uuid")
 const AutoLaunch = require("auto-launch")
+const syncLock = require("../syncLock")
 
 const autoLauncher = new AutoLaunch({
     name: "Filen",
@@ -563,6 +564,16 @@ const handleMessage = (type, data) => {
             trayMenu.upload(data.type)
 
             return resolve(true)
+        }
+        else if(type == "acquireSyncLock"){
+            syncLock.acquireSyncLock("sync").then(() => {
+                return resolve(true)
+            }).catch(reject)
+        }
+        else if(type == "releaseSyncLock"){
+            syncLock.releaseSyncLock("sync").then(() => {
+                return resolve(true)
+            }).catch(reject)
         }
         else{
             return reject("Invalid message type: " + type.toString())

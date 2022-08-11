@@ -129,7 +129,7 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
 
             const dirStream = readdirp(path, {
                 alwaysStat: true,
-                lstat: true,
+                lstat: false,
                 type: "all",
                 depth: 2147483648,
                 directoryFilter: ["!.filen.trash.local", "!System Volume Information"],
@@ -137,13 +137,17 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
             })
             
             dirStream.on("data", (item: any) => {
+                if(item.stats.isSymbolicLink()){
+                    return
+                }
+
                 if(windows){
                     item.path = item.path.split("\\").join("/") // Convert windows \ style path seperators to / for internal database, we only use UNIX style path seperators internally
                 }
 
                 let include = true
 
-                if(excludeDot && item.basename.startsWith(".")){
+                if(excludeDot && (item.basename.startsWith(".") || item.path.indexOf("/.") !== -1 || item.path.startsWith("."))){
                     include = false
                 }
 

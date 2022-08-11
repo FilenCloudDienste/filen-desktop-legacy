@@ -992,6 +992,34 @@ const ipc = {
             })
         })
     },
+    acquireSyncLock: (): Promise<any> => {
+        return new Promise((resolve, reject) => {
+            const messageId = uuidv4()
+
+            resolves[messageId] = resolve
+            rejects[messageId] = reject
+
+            return ipcRenderer.send("message", {
+                messageId,
+                messageSender: MESSAGE_SENDER,
+                type: "acquireSyncLock"
+            })
+        })
+    },
+    releaseSyncLock: (): Promise<any> => {
+        return new Promise((resolve, reject) => {
+            const messageId = uuidv4()
+
+            resolves[messageId] = resolve
+            rejects[messageId] = reject
+
+            return ipcRenderer.send("message", {
+                messageId,
+                messageSender: MESSAGE_SENDER,
+                type: "releaseSyncLock"
+            })
+        })
+    },
 }
 
 export default ipc

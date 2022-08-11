@@ -385,19 +385,46 @@ export const isFileOrFolderNameIgnoredByDefault = (name: string): boolean => {
 	return false
 }
 
+export const pathToLowerCaseExtFileName = (path: string) => {
+	if(path.indexOf(".") == -1){
+		return path
+	}
+
+	const pathEx = path.split("/")
+
+	if(pathEx.length <= 1){
+		return path
+	}
+
+	const fileNameEx = pathEx[pathEx.length - 1].split(".")
+
+	if(fileNameEx.length <= 1){
+		return path
+	}
+
+	const lowerCaseFileEnding = fileNameEx[fileNameEx.length - 1].toLowerCase()
+
+	fileNameEx.pop()
+	pathEx.pop()
+
+	const fileNameWithLowerCaseEnding = pathEx.join("/") + "/" + fileNameEx.join(".") + "." + lowerCaseFileEnding
+
+	return fileNameWithLowerCaseEnding
+}
+
 export const fileNameToLowerCaseExt = (name: string) => {
     if(name.indexOf(".") == -1){
 		return name
 	}
     
-    let generatedFileName = name
-    let fileNameEx = generatedFileName.split(".")
-    let lowerCaseFileEnding = fileNameEx[fileNameEx.length - 1].toLowerCase()
-    fileNameEx.pop()
-    const fileNameWithLowerCaseEnding = fileNameEx.join(".") + "." + lowerCaseFileEnding
-    generatedFileName = fileNameWithLowerCaseEnding
+    const fileNameEx = name.split(".")
+    const lowerCaseFileEnding = fileNameEx[fileNameEx.length - 1].toLowerCase()
 
-    return generatedFileName
+    fileNameEx.pop()
+
+    const fileNameWithLowerCaseEnding = fileNameEx.join(".") + "." + lowerCaseFileEnding
+
+    return fileNameWithLowerCaseEnding
 }
 
 export const bpsToReadable = (bps: number) => {

@@ -65,8 +65,8 @@ export const defaultIgnored: {
 }
 
 export const chunkSize: number = (1024 * 1024)
-export const maxConcurrentUploads: number = 4
-export const maxConcurrentDownloads: number = 4
+export const maxConcurrentUploads: number = 5
+export const maxConcurrentDownloads: number = 5
 export const maxDownloadThreads: number = 64
 export const maxUploadThreads: number = 8
 export const maxConcurrentTransfers: number = 10

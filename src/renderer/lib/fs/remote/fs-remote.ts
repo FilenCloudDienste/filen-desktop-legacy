@@ -170,6 +170,7 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                     }
 
                     decrypted.lastModified = convertTimestampToMs(decrypted.lastModified)
+                    decrypted.name = fileNameToLowerCaseExt(decrypted.name)
 
                     if(decrypted.name.length > 0){
                         if(!isFileOrFolderNameIgnoredByDefault(decrypted.name) && !addedFiles[parent + ":" + decrypted.name]){
@@ -263,7 +264,13 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                         delete files[prop].children
 
                         if(newProp.length > 0){
-                            if(!isFolderPathExcluded(newProp)){
+                            let include = true
+
+                            if(excludeDot && (newProp.indexOf("/.") !== -1 || newProp.startsWith("."))){
+                                include = false
+                            }
+
+                            if(include && !isFolderPathExcluded(newProp)){
                                 newFiles[newProp] = {
                                     ...files[prop],
                                     path: newProp
@@ -278,7 +285,13 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                         delete folders[prop].children
 
                         if(newProp.length > 0){
-                            if(!isFolderPathExcluded(newProp)){
+                            let include = true
+
+                            if(excludeDot && (newProp.indexOf("/.") !== -1 || newProp.startsWith("."))){
+                                include = false
+                            }
+
+                            if(include && !isFolderPathExcluded(newProp)){
                                 newFolders[newProp] = {
                                     ...folders[prop],
                                     path: newProp
@@ -293,7 +306,13 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                         const newValue = uuids[prop].path.split("/").slice(2).join("/")
 
                         if(newValue.length > 0){
-                            if(!isFolderPathExcluded(newValue)){
+                            let include = true
+
+                            if(excludeDot && (newValue.indexOf("/.") !== -1 || newValue.startsWith("."))){
+                                include = false
+                            }
+
+                            if(include && !isFolderPathExcluded(newValue)){
                                 newUUIDS[prop] = {
                                     ...uuids[prop],
                                     path: newValue

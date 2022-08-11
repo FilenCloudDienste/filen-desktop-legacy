@@ -1,12 +1,11 @@
 import * as fsLocal from "../../fs/local"
 import * as fsRemote from "../../fs/remote"
 import db from "../../db"
-import { acquireLock, releaseLock, holdLock } from "../../api"
 import ipc from "../../ipc"
 import { sendToAllPorts } from "../ipc"
 import { v4 as uuidv4 } from "uuid"
 import { maxRetrySyncTask, retrySyncTaskTimeout, maxConcurrentDownloads as maxConcurrentDownloadsPreset, maxConcurrentUploads as maxConcurrentUploadsPreset, maxConcurrentSyncTasks } from "../../constants"
-import { Semaphore } from "../../helpers"
+import { Semaphore, pathToLowerCaseExtFileName, fileNameToLowerCaseExt } from "../../helpers"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
@@ -15,108 +14,11 @@ const fs = window.require("fs-extra")
 
 let SYNC_RUNNING: boolean = false
 const SYNC_TIMEOUT: number = 5000
-let SYNC_LOCK_INTERVAL: any = undefined
-let TRYING_TO_HOLD_SYNC_LOCK: boolean = false
 let IS_FIRST_REQUEST: any = {}
 const WATCHERS: any = {}
-let SYNC_LOCK_ACQUIRED: boolean = false
 const maxConcurrentUploadsSemaphore = new Semaphore(maxConcurrentUploadsPreset)
 const maxConcurrentDownloadsSemaphore = new Semaphore(maxConcurrentDownloadsPreset)
 const maxSyncTasksSemaphore = new Semaphore(maxConcurrentSyncTasks)
-
-const acquireSyncLock = (id: string | number): Promise<boolean> => {
-    return new Promise((resolve) => {
-        if(SYNC_LOCK_ACQUIRED){
-            return resolve(true)
-        }
-
-        log.info("Acquiring sync lock")
-
-        const acquire = async () => {
-            acquireLock({ apiKey: await db.get("apiKey"), id }).then(() => {
-                log.info("Sync lock acquired")
-
-                SYNC_LOCK_ACQUIRED = true
-                TRYING_TO_HOLD_SYNC_LOCK = false
-
-                holdSyncLock(id)
-    
-                return resolve(true)
-            }).catch((err) => {
-                if(err.toString().toLowerCase().indexOf("sync locked") == -1){
-                    log.error("Could not acquire sync lock from API")
-                    log.error(err)
-                }
-
-                SYNC_LOCK_ACQUIRED = false
-    
-                return setTimeout(acquire, 1000)
-            })
-        }
-
-        return acquire()
-    })
-}
-
-const releaseSyncLock = (id: string | number): Promise<boolean> => {
-    return new Promise(async (resolve, reject) => {
-        if(!SYNC_LOCK_ACQUIRED){
-            return resolve(true)
-        }
-
-        log.info("Releasing sync lock")
-
-        TRYING_TO_HOLD_SYNC_LOCK = false
-
-        clearInterval(SYNC_LOCK_INTERVAL)
-
-        releaseLock({ apiKey: await db.get("apiKey"), id }).then(() => {
-            log.info("Sync lock released")
-
-            SYNC_LOCK_ACQUIRED = false
-
-            return resolve(true)
-        }).catch((err) => {
-            log.error("Could not release sync lock from API")
-            log.error(err)
-
-            return reject(err)
-        })
-    })
-}
-
-const holdSyncLock = (id: string | number): void => {
-    clearInterval(SYNC_LOCK_INTERVAL)
-
-    TRYING_TO_HOLD_SYNC_LOCK = false
-
-    SYNC_LOCK_INTERVAL = setInterval(async () => {
-        if(!TRYING_TO_HOLD_SYNC_LOCK && SYNC_LOCK_ACQUIRED){
-            TRYING_TO_HOLD_SYNC_LOCK = true
-
-            log.info("Holding sync lock")
-
-            try{
-                await holdLock({ apiKey: await db.get("apiKey"), id })
-            }
-            catch(e){
-                log.error("Could not hold sync lock from API")
-                log.error(e)
-
-                TRYING_TO_HOLD_SYNC_LOCK = false
-                SYNC_LOCK_ACQUIRED = false
-
-                clearInterval(SYNC_LOCK_INTERVAL)
-
-                return false
-            }
-
-            TRYING_TO_HOLD_SYNC_LOCK = false
-
-            //log.info("Sync lock held")
-        }
-    }, 1000)
-}
 
 const isSuspended = (): Promise<boolean> => {
     return new Promise((resolve) => {
@@ -134,6 +36,16 @@ const isSuspended = (): Promise<boolean> => {
     })
 }
 
+const convertDeltaObjectPropToLowerCaseExt = (obj: any) => {
+    const newObj: any = {}
+
+    for(const prop in obj){
+        newObj[pathToLowerCaseExtFileName(prop)] = obj[prop]
+    }
+
+    return newObj
+}
+
 const getDeltas = (type: string, before: any, now: any): Promise<any> => {
     return new Promise((resolve, _) => {
         const deltasFiles: any = {}
@@ -146,12 +58,14 @@ const getDeltas = (type: string, before: any, now: any): Promise<any> => {
             const nowFiles = now.files
             const nowFolders = now.folders
             const nowIno = now.ino
+            const beforeFilesLower = convertDeltaObjectPropToLowerCaseExt(before.files)
+            const nowFilesLower = convertDeltaObjectPropToLowerCaseExt(now.files)
 
             for(const path in nowFiles){
                 const beforeEntry = beforeFiles[path]
                 const nowEntry = nowFiles[path]
 
-                if(!beforeEntry){
+                if(!beforeFilesLower[pathToLowerCaseExtFileName(path)]){
                     deltasFiles[path] = {
                         type: "NEW"
                     }
@@ -174,7 +88,7 @@ const getDeltas = (type: string, before: any, now: any): Promise<any> => {
             }
 
             for(const path of Object.keys(beforeFiles)){
-                if(!(path in nowFiles)){
+                if(!(pathToLowerCaseExtFileName(path) in nowFilesLower)){
                     deltasFiles[path] = {
                         type: "DELETED"
                     }
@@ -205,61 +119,63 @@ const getDeltas = (type: string, before: any, now: any): Promise<any> => {
             }
 
             for(const ino in nowIno){
-                const nowPath = nowIno[ino]?.path
-                const beforePath = beforeIno[ino]?.path
+                const nowPath = nowIno[ino]?.path || ""
+                const beforePath = beforeIno[ino]?.path || ""
 
                 if(typeof nowPath == "string" && typeof beforePath == "string"){
-                    if(nowPath !== beforePath && nowIno[ino].type == beforeIno[ino].type){
-                        const nowPathDir = pathModule.dirname(nowPath)
-                        const beforePathDir = pathModule.dirname(beforePath)
-                        const nowBasename = pathModule.basename(nowPath)
-                        const beforeBasename = pathModule.basename(beforePath)
-                        const action = nowPathDir !== beforePathDir ? "MOVED" : "RENAMED"
-
-                        if(action == "RENAMED" && nowBasename == beforeBasename){
-                            deltasFiles[beforePath] = {
-                                type: "UNCHANGED"
-                            }
-
-                            deltasFiles[nowPath] = {
-                                type: "UNCHANGED"
-                            }
-
-                            continue
-                        }
-                        
-                        if(typeof beforeFiles[beforePath] !== "undefined"){
-                            const nowEntry = beforeFiles[nowPath]
-
-                            if(!nowEntry){ // Did the file exist before? If so we just update it rather than move/rename it and delete the old one
+                    if(nowPath.length > 0 && beforePath.length > 0){
+                        if(nowPath !== beforePath && nowIno[ino].type == beforeIno[ino].type){
+                            const nowPathDir = pathModule.dirname(nowPath)
+                            const beforePathDir = pathModule.dirname(beforePath)
+                            const nowBasename = fileNameToLowerCaseExt(pathModule.basename(nowPath))
+                            const beforeBasename = fileNameToLowerCaseExt(pathModule.basename(beforePath))
+                            const action = (nowPathDir.toLowerCase() !== beforePathDir.toLowerCase()) ? "MOVED" : "RENAMED"
+    
+                            if(action == "RENAMED" && nowBasename == beforeBasename){
                                 deltasFiles[beforePath] = {
-                                    type: action,
-                                    from: beforePath,
-                                    to: nowPath
+                                    type: "UNCHANGED"
                                 }
     
                                 deltasFiles[nowPath] = {
-                                    type: action,
-                                    from: beforePath,
-                                    to: nowPath
-                                }
-                            }
-                        }
-
-                        if(typeof beforeFolders[beforePath] !== "undefined"){
-                            const nowEntry = beforeFolders[nowPath]
-
-                            if(!nowEntry){ // Did the folder exist before? If so we just update it rather than move/rename it and delete the old one
-                                deltasFolders[beforePath] = {
-                                    type: action,
-                                    from: beforePath,
-                                    to: nowPath
+                                    type: "UNCHANGED"
                                 }
     
-                                deltasFolders[nowPath] = {
-                                    type: action,
-                                    from: beforePath,
-                                    to: nowPath
+                                continue
+                            }
+                            
+                            if(typeof beforeFiles[beforePath] !== "undefined"){
+                                const nowEntry = beforeFiles[nowPath]
+    
+                                if(!nowEntry){ // Did the file exist before? If so we just update it rather than move/rename it and delete the old one
+                                    deltasFiles[beforePath] = {
+                                        type: action,
+                                        from: beforePath,
+                                        to: nowPath
+                                    }
+        
+                                    deltasFiles[nowPath] = {
+                                        type: action,
+                                        from: beforePath,
+                                        to: nowPath
+                                    }
+                                }
+                            }
+    
+                            if(typeof beforeFolders[beforePath] !== "undefined"){
+                                const nowEntry = beforeFolders[nowPath]
+    
+                                if(!nowEntry){ // Did the folder exist before? If so we just update it rather than move/rename it and delete the old one
+                                    deltasFolders[beforePath] = {
+                                        type: action,
+                                        from: beforePath,
+                                        to: nowPath
+                                    }
+        
+                                    deltasFolders[nowPath] = {
+                                        type: action,
+                                        from: beforePath,
+                                        to: nowPath
+                                    }
                                 }
                             }
                         }
@@ -274,12 +190,14 @@ const getDeltas = (type: string, before: any, now: any): Promise<any> => {
             const nowFiles = now.files
             const nowFolders = now.folders
             const nowUUIDs = now.uuids
+            const beforeFilesLower = convertDeltaObjectPropToLowerCaseExt(before.files)
+            const nowFilesLower = convertDeltaObjectPropToLowerCaseExt(now.files)
 
             for(const path in nowFiles){
                 const beforeEntry = beforeFiles[path]
                 const nowEntry = nowFiles[path]
 
-                if(!beforeEntry){
+                if(!beforeFilesLower[pathToLowerCaseExtFileName(path)]){
                     deltasFiles[path] = {
                         type: "NEW"
                     }
@@ -302,7 +220,7 @@ const getDeltas = (type: string, before: any, now: any): Promise<any> => {
             }
 
             for(const path of Object.keys(beforeFiles)){
-                if(!(path in nowFiles)){
+                if(!(pathToLowerCaseExtFileName(path) in nowFilesLower)){
                     deltasFiles[path] = {
                         type: "DELETED"
                     }
@@ -333,61 +251,63 @@ const getDeltas = (type: string, before: any, now: any): Promise<any> => {
             }
 
             for(const uuid in nowUUIDs){
-                const nowPath = nowUUIDs[uuid]?.path
-                const beforePath = beforeUUIDs[uuid]?.path
+                const nowPath = nowUUIDs[uuid]?.path || ""
+                const beforePath = beforeUUIDs[uuid]?.path || ""
 
                 if(typeof nowPath == "string" && typeof beforePath == "string"){
-                    if(nowPath !== beforePath && nowUUIDs[uuid].type == beforeUUIDs[uuid].type){
-                        const nowPathDir = pathModule.dirname(nowPath)
-                        const beforePathDir = pathModule.dirname(beforePath)
-                        const nowBasename = pathModule.basename(nowPath)
-                        const beforeBasename = pathModule.basename(beforePath)
-                        const action = nowPathDir !== beforePathDir ? "MOVED" : "RENAMED"
-
-                        if(action == "RENAMED" && nowBasename == beforeBasename){
-                            deltasFiles[beforePath] = {
-                                type: "UNCHANGED"
-                            }
-
-                            deltasFiles[nowPath] = {
-                                type: "UNCHANGED"
-                            }
-
-                            continue
-                        }
-                        
-                        if(typeof beforeFiles[beforePath] !== "undefined"){
-                            const nowEntry = beforeFiles[nowPath]
-
-                            if(!nowEntry){ // Did the file exist before? If so we just update it rather than move/rename it and delete the old one
+                    if(nowPath.length > 0 && beforePath.length > 0){
+                        if(nowPath !== beforePath && nowUUIDs[uuid].type == beforeUUIDs[uuid].type){
+                            const nowPathDir = pathModule.dirname(nowPath)
+                            const beforePathDir = pathModule.dirname(beforePath)
+                            const nowBasename = fileNameToLowerCaseExt(pathModule.basename(nowPath))
+                            const beforeBasename = fileNameToLowerCaseExt(pathModule.basename(beforePath))
+                            const action = (nowPathDir.toLowerCase() !== beforePathDir.toLowerCase()) ? "MOVED" : "RENAMED"
+    
+                            if(action == "RENAMED" && nowBasename == beforeBasename){
                                 deltasFiles[beforePath] = {
-                                    type: action,
-                                    from: beforePath,
-                                    to: nowPath
+                                    type: "UNCHANGED"
                                 }
     
                                 deltasFiles[nowPath] = {
-                                    type: action,
-                                    from: beforePath,
-                                    to: nowPath
-                                }
-                            }
-                        }
-
-                        if(typeof beforeFolders[beforePath] !== "undefined"){
-                            const nowEntry = beforeFolders[nowPath]
-
-                            if(!nowEntry){ // Did the folder exist before? If so we just update it rather than move/rename it and delete the old one
-                                deltasFolders[beforePath] = {
-                                    type: action,
-                                    from: beforePath,
-                                    to: nowPath
+                                    type: "UNCHANGED"
                                 }
     
-                                deltasFolders[nowPath] = {
-                                    type: action,
-                                    from: beforePath,
-                                    to: nowPath
+                                continue
+                            }
+                            
+                            if(typeof beforeFiles[beforePath] !== "undefined"){
+                                const nowEntry = beforeFiles[nowPath]
+    
+                                if(!nowEntry){ // Did the file exist before? If so we just update it rather than move/rename it and delete the old one
+                                    deltasFiles[beforePath] = {
+                                        type: action,
+                                        from: beforePath,
+                                        to: nowPath
+                                    }
+        
+                                    deltasFiles[nowPath] = {
+                                        type: action,
+                                        from: beforePath,
+                                        to: nowPath
+                                    }
+                                }
+                            }
+    
+                            if(typeof beforeFolders[beforePath] !== "undefined"){
+                                const nowEntry = beforeFolders[nowPath]
+    
+                                if(!nowEntry){ // Did the folder exist before? If so we just update it rather than move/rename it and delete the old one
+                                    deltasFolders[beforePath] = {
+                                        type: action,
+                                        from: beforePath,
+                                        to: nowPath
+                                    }
+        
+                                    deltasFolders[nowPath] = {
+                                        type: action,
+                                        from: beforePath,
+                                        to: nowPath
+                                    }
                                 }
                             }
                         }
@@ -817,14 +737,28 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
             return reject(e)
         }
 
-        /*return console.log({
+
+
+
+
+        /*releaseSyncLock("sync")
+
+        return console.log({
             renameInLocalTasks,
             renameInRemoteTasks,
             moveInLocalTasks,
             moveInRemoteTasks,
             deleteInLocalTasks,
-            deleteInRemoteTasks
+            deleteInRemoteTasks,
+            uploadToRemoteTasks,
+            downloadFromRemoteTasks
         })*/
+
+
+
+
+
+        
 
         log.info("renameInRemote", renameInRemoteTasks.length)
         log.info("renameInLocal", renameInLocalTasks.length)
@@ -2740,7 +2674,7 @@ const restartSyncLoop = async (): Promise<any> => {
     })
 
     try{
-        await releaseSyncLock("sync")
+        await ipc.releaseSyncLock()
     }
     catch(e){
         log.error("Could not release sync lock from API")
@@ -2888,7 +2822,7 @@ const sync = async (): Promise<any> => {
     })
 
     try{
-        await acquireSyncLock("sync")
+        await ipc.acquireSyncLock()
     }
     catch(e){
         emitSyncStatus("acquireSyncLock", {
