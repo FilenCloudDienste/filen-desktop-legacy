@@ -4,8 +4,8 @@ import { isFileOrFolderNameIgnoredByDefault, convertTimestampToMs, Semaphore, is
 import { downloadChunk } from "../../api"
 import { decryptData } from "../../crypto"
 import { v4 as uuidv4 } from "uuid"
-import { maxDownloadThreads } from "../../constants"
 import db from "../../db"
+import * as constants from "../../constants"
 
 const fs = window.require("fs-extra")
 const pathModule = window.require("path")
@@ -13,7 +13,7 @@ const readdirp = window.require("readdirp")
 const log = window.require("electron-log")
 const is = window.require("electron-is")
 
-const downloadThreadsSemaphore = new Semaphore(maxDownloadThreads)
+const downloadThreadsSemaphore = new Semaphore(constants.maxDownloadThreads)
 const localFSSemaphore = new Semaphore(1)
 
 export const normalizePath = (path: string): string => {
@@ -126,9 +126,10 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
             const folders: any = {}
             const ino: any = {}
             const windows: boolean = is.windows()
+            let statting: number = 0
 
             const dirStream = readdirp(path, {
-                alwaysStat: true,
+                alwaysStat: false,
                 lstat: false,
                 type: "all",
                 depth: 2147483648,
@@ -136,48 +137,57 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
                 fileFilter: ["!.filen.trash.local", "!System Volume Information"]
             })
             
-            dirStream.on("data", (item: any) => {
-                if(item.stats.isSymbolicLink()){
-                    return
-                }
+            dirStream.on("data", async (item: any) => {
+                statting += 1
 
-                if(windows){
-                    item.path = item.path.split("\\").join("/") // Convert windows \ style path seperators to / for internal database, we only use UNIX style path seperators internally
-                }
+                try{
+                    if(windows){
+                        item.path = item.path.split("\\").join("/") // Convert windows \ style path seperators to / for internal database, we only use UNIX style path seperators internally
+                    }
+    
+                    let include = true
+    
+                    if(excludeDot && (item.basename.startsWith(".") || item.path.indexOf("/.") !== -1 || item.path.startsWith("."))){
+                        include = false
+                    }
+    
+                    if(include && !isFileOrFolderNameIgnoredByDefault(item.basename) && !isFolderPathExcluded(item.path)){
+                        item.stats = await fs.lstat(item.fullPath)
 
-                let include = true
-
-                if(excludeDot && (item.basename.startsWith(".") || item.path.indexOf("/.") !== -1 || item.path.startsWith("."))){
-                    include = false
-                }
-
-                if(include && !isFileOrFolderNameIgnoredByDefault(item.basename) && !isFolderPathExcluded(item.path)){
-                    if(item.stats.isDirectory()){
-                        folders[item.path] = {
-                            name: item.basename,
-                            lastModified: convertTimestampToMs(parseInt(item.stats.mtimeMs.toString())) //.toString() because of BigInt
-                        }
-
-                        ino[item.stats.ino] = {
-                            type: "folder",
-                            path: item.path
+                        if(!item.stats.isSymbolicLink()){
+                            if(item.stats.isDirectory()){
+                                folders[item.path] = {
+                                    name: item.basename,
+                                    lastModified: convertTimestampToMs(parseInt(item.stats.mtimeMs.toString())) //.toString() because of BigInt
+                                }
+        
+                                ino[item.stats.ino] = {
+                                    type: "folder",
+                                    path: item.path
+                                }
+                            }
+                            else{
+                                if(item.stats.size > 0){
+                                    files[item.path] = {
+                                        name: item.basename,
+                                        size: parseInt(item.stats.size.toString()), //.toString() because of BigInt
+                                        lastModified: convertTimestampToMs(parseInt(item.stats.mtimeMs.toString())) //.toString() because of BigInt
+                                    }
+        
+                                    ino[item.stats.ino] = {
+                                        type: "file",
+                                        path: item.path
+                                    }
+                                }
+                            }
                         }
                     }
-                    else{
-                        if(item.stats.size > 0){
-                            files[item.path] = {
-                                name: item.basename,
-                                size: parseInt(item.stats.size.toString()), //.toString() because of BigInt
-                                lastModified: convertTimestampToMs(parseInt(item.stats.mtimeMs.toString())) //.toString() because of BigInt
-                            }
-
-                            ino[item.stats.ino] = {
-                                type: "file",
-                                path: item.path
-                            }
-                        }
-                    }
                 }
+                catch(e){
+                    log.error(e)
+                }
+
+                statting -= 1
             })
             
             dirStream.on("warn", (warn: any) => {
@@ -191,6 +201,18 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
             })
             
             dirStream.on("end", async () => {
+                await new Promise((resolve) => {
+                    const wait = setInterval(() => {
+                        if(statting <= 0){
+                            clearInterval(wait)
+
+                            return resolve(true)
+                        }
+                    }, 10)
+                })
+
+                statting = 0
+
                 dirStream.destroy()
                 
                 const obj = {
