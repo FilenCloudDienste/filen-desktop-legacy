@@ -4,6 +4,7 @@ import { hashFn, encryptMetadata, encryptMetadataPublicKey, decryptFolderLinkKey
 import db from "../db"
 import { sendToAllPorts } from "../worker/ipc"
 import { logout } from "../../windows/settings/settings"
+import striptags from "striptags"
 
 const https = window.require("https")
 const log = window.require("electron-log")
@@ -752,16 +753,18 @@ export const checkIfItemParentIsShared = ({ type, parent, metaData }: { type: st
 
                                 if(typeof decrypted == "object"){
                                     if(typeof decrypted.name == "string"){
+                                        decrypted.name = striptags(decrypted.name)
+
                                         if(decrypted.name.length > 0){
                                             itemsToShare.push({
                                                 uuid: files[i].uuid,
                                                 parent: files[i].parent,
                                                 metadata: {
                                                     name: decrypted.name,
-                                                    size: decrypted.size,
-                                                    mime: decrypted.mime,
+                                                    size: parseInt(decrypted.size),
+                                                    mime: striptags(decrypted.mime),
                                                     key: decrypted.key,
-                                                    lastModified: decrypted.lastModified
+                                                    lastModified: parseInt(decrypted.lastModified)
                                                 },
                                                 type: "file"
                                             })
@@ -772,7 +775,7 @@ export const checkIfItemParentIsShared = ({ type, parent, metaData }: { type: st
 
                             for(let i = 0; i < folders.length; i++){
                                 try{
-                                    var decrypted: any = await decryptFolderName(folders[i].name, masterKeys)
+                                    var decrypted: any = striptags(await decryptFolderName(folders[i].name, masterKeys))
                                 }
                                 catch(e){
                                     //console.log(e)
@@ -982,16 +985,18 @@ export const checkIfItemParentIsShared = ({ type, parent, metaData }: { type: st
 
                                 if(typeof decrypted == "object"){
                                     if(typeof decrypted.name == "string"){
+                                        decrypted.name = striptags(decrypted.name)
+
                                         if(decrypted.name.length > 0){
                                             itemsToLink.push({
                                                 uuid: files[i].uuid,
                                                 parent: files[i].parent,
                                                 metadata: {
                                                     name: decrypted.name,
-                                                    size: decrypted.size,
-                                                    mime: decrypted.mime,
+                                                    size: parseInt(decrypted.size),
+                                                    mime: striptags(decrypted.mime),
                                                     key: decrypted.key,
-                                                    lastModified: decrypted.lastModified
+                                                    lastModified: parseInt(decrypted.lastModified)
                                                 },
                                                 type: "file"
                                             })
@@ -1002,7 +1007,7 @@ export const checkIfItemParentIsShared = ({ type, parent, metaData }: { type: st
 
                             for(let i = 0; i < folders.length; i++){
                                 try{
-                                    var decrypted: any = await decryptFolderName(folders[i].name, masterKeys)
+                                    var decrypted: any = striptags(await decryptFolderName(folders[i].name, masterKeys))
                                 }
                                 catch(e){
                                     //console.log(e)

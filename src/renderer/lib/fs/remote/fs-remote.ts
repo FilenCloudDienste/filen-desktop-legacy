@@ -367,12 +367,6 @@ export const doesExistLocally = (path: string): Promise<boolean> => {
 
 export const findOrCreateParentDirectory = (path: string, baseFolderUUID: string, remoteTreeNow: any, absolutePathLocal?: string): Promise<string> => {
 	return new Promise(async (resolve, reject) => {
-        if(absolutePathLocal){
-            if(!(await doesExistLocally(absolutePathLocal))){
-                return reject("deletedLocally")
-            }
-        }
-
         const neededPathEx = path.split("/")
         const neededParentPath = neededPathEx.slice(0, -1).join("/")
 
@@ -381,6 +375,12 @@ export const findOrCreateParentDirectory = (path: string, baseFolderUUID: string
         }
 
         await findOrCreateParentDirectorySemaphore.acquire()
+
+        if(absolutePathLocal){
+            if(!(await doesExistLocally(absolutePathLocal))){
+                return reject("deletedLocally")
+            }
+        }
 
         if(path.indexOf("/") == -1){
             findOrCreateParentDirectorySemaphore.release()
@@ -466,10 +466,6 @@ export const mkdir = (path: string, remoteTreeNow: any, location: any, task: any
         }
         catch(e){
             return reject(e)
-        }
-
-        if(!(await doesExistLocally(normalizePath(location.local + "/" + path)))){
-            return reject("deletedLocally")
         }
 
         createDirectory(uuid, name, parent).then((createdUUID) => {
@@ -569,7 +565,11 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
                         }
     
                         const uploadTask = (index: number) => {
-                            return new Promise((resolve, reject) => {
+                            return new Promise(async (resolve, reject) => {
+                                if(!(await doesExistLocally(absolutePath))){
+                                    return reject("deletedLocally")
+                                }
+
                                 readChunk(absolutePath, (index * chunkSize), chunkSize).then((data) => {
                                     try{
                                         // @ts-ignore

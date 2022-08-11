@@ -1,5 +1,6 @@
 import memoryCache from "../memoryCache"
 import { arrayBufferToHex, base64ToArrayBuffer, arrayBufferToBase64, generateRandomString, convertArrayBufferToBinaryString, convertWordArrayToArrayBuffer } from "../helpers"
+import striptags from "striptags"
 
 const CryptoJS = window.require("crypto-js")
 const md2 = window.require("js-md2")
@@ -186,6 +187,8 @@ export const decryptFolderName = (metadata: string, masterKeys: string[]): Promi
 
                 if(obj && typeof obj == "object"){
                     if(typeof obj.name == "string"){
+                        obj.name = striptags(obj.name)
+
                         if(obj.name.length > 0){
                             folderName = obj.name
 
@@ -334,10 +337,12 @@ export const decryptFileMetadata = (metadata: string, masterKeys: string[]): Pro
     
                 if(obj && typeof obj == "object"){
                     if(typeof obj.name == "string"){
+                        obj.name = striptags(obj.name)
+
                         if(obj.name.length > 0){
                             fileName = obj.name
                             fileSize = parseInt(obj.size)
-                            fileMime = obj.mime
+                            fileMime = striptags(obj.mime)
                             fileKey = obj.key
                             fileLastModified = parseInt(obj.lastModified)
     
@@ -425,6 +430,8 @@ export const decryptFolderNameLink = (metadata: string, linkKey: string): Promis
 
             if(obj && typeof obj == "object"){
                 if(typeof obj.name == "string"){
+                    obj.name = striptags(obj.name)
+
                     if(obj.name.length > 0){
                         folderName = obj.name
                     }
@@ -464,12 +471,14 @@ export const decryptFileMetadataLink = (metadata: string, linkKey: string): Prom
 
             if(obj && typeof obj == "object"){
                 if(typeof obj.name == "string"){
+                    obj.name = striptags(obj.name)
+
                     if(obj.name.length > 0){
                         fileName = obj.name
                         fileSize = parseInt(obj.size)
-                        fileMime = obj.mime
+                        fileMime = striptags(obj.mime)
                         fileKey = obj.key
-                        fileLastModified = obj.lastModified
+                        fileLastModified = parseInt(obj.lastModified)
                     }
                 }
             }
@@ -515,7 +524,7 @@ export const decryptFolderNamePrivateKey = (metadata: string, privateKey: any): 
                 name: "RSA-OAEP"
             }, privateKey, base64ToArrayBuffer(metadata))
 
-            folderName = JSON.parse(textDecoder.decode(decrypted)).name
+            folderName = striptags(JSON.parse(textDecoder.decode(decrypted)).name)
         }
         catch(e){
            log.error(e)
@@ -553,11 +562,11 @@ export const decryptFileMetadataPrivateKey = (metadata: string, privateKey: any)
             decrypted = JSON.parse(textDecoder.decode(decrypted))
 
             if(decrypted && typeof decrypted == "object"){
-                fileName = decrypted.name
+                fileName = striptags(decrypted.name)
                 fileSize = parseInt(decrypted.size)
-                fileMime = decrypted.mime
+                fileMime = striptags(decrypted.mime)
                 fileKey = decrypted.key
-                fileLastModified = decrypted.lastModified
+                fileLastModified = parseInt(decrypted.lastModified)
             }
         }
         catch(e){

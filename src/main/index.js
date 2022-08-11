@@ -8,6 +8,8 @@ const { autoUpdater } = require("electron-updater")
 const ipc = require("./lib/ipc")
 const db = require("./lib/db")
 
+Object.assign(console, log.functions)
+
 let CHECK_UPDATE_INTERVAL = undefined
 let POWER_SAVE_BLOCKER = null
 
