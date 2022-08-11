@@ -1,13 +1,17 @@
-const { Menu, app, ipcMain, dialog } = require("electron")
+const { Menu, app, ipcMain, dialog, BrowserWindow } = require("electron")
 const shared = require("../shared")
 const log = require("electron-log")
 const { v4: uuidv4 } = require("uuid")
 
 const upload = (type = "folders") => {
-    let selectWindow = shared.get("WORKER_WINDOW")
+    let selectWindow = BrowserWindow.getFocusedWindow()
 
-    if(typeof selectWindow == "undefined"){
-        selectWindow = shared.get("MAIN_WINDOW")
+    if(selectWindow == null){
+        selectWindow = shared.get("WORKER_WINDOW")
+
+        if(typeof selectWindow == "undefined"){
+            selectWindow = shared.get("MAIN_WINDOW")
+        }
     }
 
     dialog.showOpenDialog(selectWindow, {
