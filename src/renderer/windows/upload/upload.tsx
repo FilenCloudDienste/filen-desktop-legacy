@@ -281,7 +281,7 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number, email:
 
             for(let i = 0; i < files.length; i++){
                 try{
-                    const stat = await fs.lstat(pathModule.normalize(files[i]))
+                    const stat = await fsLocal.gracefulLStat(pathModule.normalize(files[i]))
 
                     if(!stat.isDirectory()){
                         if(stat.size > 0){
@@ -330,46 +330,89 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number, email:
                         const folders: any = {}
                         const files: any = {}
     
-                        fs.lstat(basePath).then((stat: any) => {
+                        fsLocal.gracefulLStat(basePath).then((stat: any) => {
                             if(!stat.isDirectory()){
                                 return reject(pathModule.basename(basePath) + " is not a directory")
                             }
             
                             fsLocal.smokeTest(basePath).then(() => {
-                                readdirp(basePath, {
-                                    alwaysStat: true,
-                                    lstat: true,
+                                let statting = 0
+
+                                const dirStream = readdirp(basePath, {
+                                    alwaysStat: false,
+                                    lstat: false,
                                     type: "all",
                                     depth: 2147483648
-                                }).on("data", (item: any) => {
-                                    if(platform == "windows"){
-                                        item.path = item.path.split("\\").join("/") // Convert windows \ style path seperators to / for internal database, we only use UNIX style path seperators internally
-                                    }
-                    
-                                    if(item.stats.isDirectory()){
-                                        folders[item.path] = {
-                                            name: item.basename,
-                                            lastModified: convertTimestampToMs(parseInt(item.stats.mtimeMs.toString())) //.toString() because of BigInt
+                                })
+                                
+                                dirStream.on("data", async (item: any) => {
+                                    statting += 1
+
+                                    try{
+                                        if(platform == "windows"){
+                                            item.path = item.path.split("\\").join("/") // Convert windows \ style path seperators to / for internal database, we only use UNIX style path seperators internally
                                         }
-                                    }
-                                    else{
-                                        if(item.stats.size > 0){
-                                            files[item.path] = {
-                                                name: item.basename,
-                                                size: parseInt(item.stats.size.toString()), //.toString() because of BigInt
-                                                lastModified: convertTimestampToMs(parseInt(item.stats.mtimeMs.toString())) //.toString() because of BigInt
+
+                                        item.stats = await fsLocal.gracefulLStat(item.fullPath)
+                        
+                                        if(!item.stats.isSymbolicLink()){
+                                            if(item.stats.isDirectory()){
+                                                folders[item.path] = {
+                                                    name: item.basename,
+                                                    lastModified: convertTimestampToMs(parseInt(item.stats.mtimeMs.toString())) //.toString() because of BigInt
+                                                }
                                             }
-                
-                                            totalBytes.current += parseInt(item.stats.size.toString())
+                                            else{
+                                                if(item.stats.size > 0){
+                                                    files[item.path] = {
+                                                        name: item.basename,
+                                                        size: parseInt(item.stats.size.toString()), //.toString() because of BigInt
+                                                        lastModified: convertTimestampToMs(parseInt(item.stats.mtimeMs.toString())) //.toString() because of BigInt
+                                                    }
+                        
+                                                    totalBytes.current += parseInt(item.stats.size.toString())
+                                                }
+                                            }
                                         }
                                     }
-                                }).on("warn", (warn: any) => {
+                                    catch(e: any){
+                                        log.error(e)
+                
+                                        showToast({ message: e.toString(), status: "error" })
+                                    }
+
+                                    statting -= 1
+                                })
+                                
+                                dirStream.on("warn", (warn: any) => {
                                     log.error(warn)
                 
                                     showToast({ message: warn.toString(), status: "error" })
-                                }).on("error", (err: any) => {
+                                })
+                                
+                                dirStream.on("error", (err: any) => {
+                                    dirStream.destroy()
+
+                                    statting = 0
+                                    
                                     return reject(err)
-                                }).on("end", async () => {
+                                })
+                                
+                                dirStream.on("end", async () => {
+                                    await new Promise((resolve) => {
+                                        const wait = setInterval(() => {
+                                            if(statting <= 0){
+                                                clearInterval(wait)
+                    
+                                                return resolve(true)
+                                            }
+                                        }, 10)
+                                    })
+                    
+                                    statting = 0
+                    
+                                    dirStream.destroy()
+
                                     let baseParentUUID: string = uuidv4()
                                     const baseParentName: string = pathModule.basename(basePath)
                                     const foldersSorted: string[] = [...Object.keys(folders).sort((a, b) => a.length - b.length)]

@@ -678,23 +678,10 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
             }
         }
 
-        //renameInRemoteTasks = sortMoveRenameTasks(renameInRemoteTasks)
-        //renameInLocalTasks = sortMoveRenameTasks(renameInLocalTasks)
         moveInRemoteTasks = onlyGetBaseParentMove(moveInRemoteTasks)
         moveInLocalTasks = onlyGetBaseParentMove(moveInLocalTasks)
         deleteInRemoteTasks = onlyGetBaseParentDelete(deleteInRemoteTasks)
         deleteInLocalTasks = onlyGetBaseParentDelete(deleteInLocalTasks)
-
-        /*return console.log({
-            renameInRemoteTasks: syncMode == "twoWay" || syncMode == "localToCloud" || syncMode == "localBackup" ? renameInRemoteTasks : [],
-            renameInLocalTasks: syncMode == "twoWay" || syncMode == "cloudToLocal" || syncMode == "cloudBackup" ? renameInLocalTasks : [],
-            moveInRemoteTasks: syncMode == "twoWay" || syncMode == "localToCloud" || syncMode == "localBackup" ? moveInRemoteTasks : [],
-            moveInLocalTasks: syncMode == "twoWay" || syncMode == "cloudToLocal" || syncMode == "cloudBackup" ? moveInLocalTasks : [],
-            deleteInRemoteTasks: syncMode == "twoWay" || syncMode == "localToCloud" ? deleteInRemoteTasks : [],
-            deleteInLocalTasks: syncMode == "twoWay" || syncMode == "cloudToLocal" ? deleteInLocalTasks : [],
-            uploadToRemoteTasks: syncMode == "twoWay" || syncMode == "localToCloud" || syncMode == "localBackup" ? uploadToRemoteTasks : [],
-            downloadFromRemoteTasks: syncMode == "twoWay" || syncMode == "cloudToLocal" || syncMode == "cloudBackup" ? downloadFromRemoteTasks : []
-        })*/
     
         return resolve({
             renameInRemoteTasks: syncMode == "twoWay" || syncMode == "localToCloud" || syncMode == "localBackup" ? renameInRemoteTasks : [],

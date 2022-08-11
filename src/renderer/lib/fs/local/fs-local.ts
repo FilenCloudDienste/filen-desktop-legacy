@@ -25,7 +25,7 @@ export const checkLastModified = (path: string): Promise<{ changed: boolean, mti
         localFSSemaphore.acquire().then(() => {
             path = normalizePath(path)
 
-            fs.lstat(path).then((stat: any) => {
+            gracefulLStat(path).then((stat: any) => {
                 if(stat.mtimeMs > 0){
                     localFSSemaphore.release()
 
@@ -84,8 +84,8 @@ export const smokeTest = (path: string): Promise<boolean> => {
             const tmpDir = await getTempDir()
 
             await Promise.all([
-                fs.lstat(path),
-                fs.lstat(tmpDir)
+                gracefulLStat(path),
+                gracefulLStat(tmpDir)
             ])
         }
         catch(e){
@@ -97,6 +97,32 @@ export const smokeTest = (path: string): Promise<boolean> => {
         localFSSemaphore.release()
 
         return resolve(true)
+    })
+}
+
+export const gracefulLStat = (path: string): Promise<any> => {
+    return new Promise((resolve, reject) => {
+        path = pathModule.normalize(path)
+
+        const max = 32
+        const timeout = 1000
+        let current = 0
+
+        const stat = (): void => {
+            if(current > max){
+                return reject("Max tries reached for gracefulLStat: " + path)
+            }
+
+            current += 1
+
+            fs.lstat(path).then(resolve).catch((err: any) => {
+                log.error(err)
+
+                return setTimeout(stat, timeout)
+            })
+        }
+
+        return stat()
     })
 }
 
@@ -152,7 +178,7 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
                     }
     
                     if(include && !isFileOrFolderNameIgnoredByDefault(item.basename) && !isFolderPathExcluded(item.path)){
-                        item.stats = await fs.lstat(item.fullPath)
+                        item.stats = await gracefulLStat(item.fullPath)
 
                         if(!item.stats.isSymbolicLink()){
                             if(item.stats.isDirectory()){
@@ -196,6 +222,8 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
             
             dirStream.on("error", (err: any) => {
                 dirStream.destroy()
+
+                statting = 0
                 
                 return reject(err)
             })
@@ -325,7 +353,7 @@ export const mkdir = (path: string, location: any, task: any): Promise<any> => {
             const absolutePath = normalizePath(location.local + "/" + path)
 
             fs.ensureDir(absolutePath).then(() => {
-                fs.lstat(absolutePath).then((stat: any)  => {
+                gracefulLStat(absolutePath).then((stat: any)  => {
                     localFSSemaphore.release()
 
                     return resolve(stat)
@@ -488,7 +516,7 @@ export const download = (path: string, location: any, task: any): Promise<any> =
                 move(fileTmpPath, absolutePath).then(() => {
                     fs.utimes(absolutePath, new Date(convertTimestampToMs(file.metadata.lastModified)), new Date(convertTimestampToMs(file.metadata.lastModified))).then(() => {
                         checkLastModified(absolutePath).then(() => {
-                            fs.lstat(absolutePath).then((stat: any) => {
+                            gracefulLStat(absolutePath).then((stat: any) => {
                                 if(stat.size <= 0){
                                     rm(absolutePath)
             

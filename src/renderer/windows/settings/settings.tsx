@@ -1673,7 +1673,7 @@ const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }: { darkM
                                                 color={colors(platform, darkMode, "textPrimary")} 
                                                 fontSize={12} marginLeft="8px"
                                             >
-                                                {i18n(lang, "accountStorageUsed", false, ["__PERCENT__", "__MAX__"], [((userInfo.storageUsed / userInfo.maxStorage) * 100) >= 100 ? "100" : ((userInfo.storageUsed / userInfo.maxStorage) * 100).toFixed(2), formatBytes(userInfo.maxStorage)])}
+                                                {i18n(lang, "accountStorageUsed", true, ["__PERCENT__", "__MAX__"], [((userInfo.storageUsed / userInfo.maxStorage) * 100) >= 100 ? "100" : ((userInfo.storageUsed / userInfo.maxStorage) * 100).toFixed(2), formatBytes(userInfo.maxStorage)])}
                                             </Text>
                                         </Flex>
                                     </Flex>

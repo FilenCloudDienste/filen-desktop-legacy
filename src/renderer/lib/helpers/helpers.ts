@@ -370,17 +370,19 @@ export const isFileOrFolderNameIgnoredByDefault = (name: string): boolean => {
 
 	let ext: any = name.split(".")
 
-	ext = ext[ext.length - 1]
+	if(ext.length >= 2){
+    ext = ext[ext.length - 1]
 
-	if(typeof ext == "string"){
-		ext = ext.trim()
+    if(typeof ext == "string"){
+      ext = ext.trim()
 
-		if(ext.length > 0){
-			if(defaultIgnored.extensions.includes(ext)){
-				return true
-			}
-		}
-	}
+      if(ext.length > 0){
+        if(defaultIgnored.extensions.includes(ext)){
+          return true
+        }
+      }
+    }
+  }
 
 	return false
 }

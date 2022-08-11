@@ -152,7 +152,7 @@ const downloadFile = (absolutePath: string, file: any) => {
                 fsLocal.move(fileTmpPath, absolutePath).then(() => {
                     fs.utimes(absolutePath, new Date(convertTimestampToMs(file.metadata.lastModified)), new Date(convertTimestampToMs(file.metadata.lastModified))).then(() => {
                         fsLocal.checkLastModified(absolutePath).then(() => {
-                            fs.lstat(absolutePath).then((stat: any) => {
+                            fsLocal.gracefulLStat(absolutePath).then((stat: any) => {
                                 if(stat.size <= 0){
                                     fsLocal.rm(absolutePath)
             
