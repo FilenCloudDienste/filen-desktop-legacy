@@ -19,6 +19,7 @@ import { List } from "react-virtualized"
 import { showToast } from "../../components/Toast"
 import { createFolder } from "../../lib/api"
 import { v4 as uuidv4 } from "uuid"
+import { updateKeys } from "../../lib/user"
 
 const log = window.require("electron-log")
 const { ipcRenderer } = window.require("electron")
@@ -138,6 +139,8 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number, email: 
     useEffect(() => {
         (async () => {
             try{
+                await updateKeys()
+                
                 const response = await baseFolders({ apiKey: await db.get("apiKey") })
     
                 for(let i = 0; i < response.folders.length; i++){

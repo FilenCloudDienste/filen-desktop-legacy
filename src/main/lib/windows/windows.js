@@ -1,16 +1,15 @@
 const { BrowserWindow, app, nativeImage, ipcMain } = require("electron")
 const path = require("path")
-const isDev = require("electron-is-dev")
-const db = require("../db")
 const is = require("electron-is")
+const db = require("../db")
 const tray = require("../tray")
 const shared = require("../shared")
 const log = require("electron-log")
 const { v4: uuidv4 } = require("uuid")
 const { Base64 } = require("js-base64")
 
-const STATIC_PATH = isDev ? "http://localhost:3000/" : "file://" + path.join(__dirname, "../../../../build/index.html")
-const DEV_TOOLS = isDev ? true : false
+const STATIC_PATH = is.dev() ? "http://localhost:3000/" : "file://" + path.join(__dirname, "../../../../build/index.html")
+const DEV_TOOLS = is.dev() ? true : false
 let activeWindows = []
 
 const wasOpenedAtSystemStart = () => {
@@ -764,6 +763,90 @@ const createAuth = () => {
     })
 }
 
+const createUpdate = (windowId = uuidv4()) => {
+    return new Promise(async (resolve, reject) => {
+        try{
+            if(typeof shared.get("UPDATE_WINDOW") !== "undefined"){
+                shared.get("UPDATE_WINDOW").close()
+            }
+
+            const window = new BrowserWindow({
+                width: 500,
+                height: 400,
+                webPreferences: {
+                    nodeIntegration: true,
+                    backgroundThrottling: false,
+                    contextIsolation: false
+                },
+                frame: false,
+                transparent: true,
+                titleBarStyle: is.macOS() ? "hidden" : "default",
+                titleBarOverlay: true,
+                resizable: false,
+                skipTaskbar: false,
+                fullscreenable: false,
+                maximizable: false,
+                minimizable: true,
+                hasShadow: false,
+                title: "Download",
+                show: false,
+                backgroundColor: "rgba(0, 0, 0, 0)",
+                ...(
+                    (is.linux() && !is.dev()) ? { icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png")) }
+                    : (is.windows() && !is.dev()) ? { icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico") }
+                    : { icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns") }
+                )
+            })
+
+            window.windowId = windowId
+
+            window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "#update")
+
+            if(DEV_TOOLS){
+                window.webContents.openDevTools({ mode: "detach" })
+            }
+
+            window.once("closed", () => {
+                activeWindows = activeWindows.filter(window => window.id !== windowId)
+
+                if(is.macOS()){
+                    const active = JSON.stringify(activeWindows.map(window => window.type))
+
+                    if(
+                        JSON.stringify(["MAIN_WINDOW", "WORKER_WINDOW"]) == active
+                        || JSON.stringify(["WORKER_WINDOW", "MAIN_WINDOW"]) == active
+                        || JSON.stringify(["MAIN_WINDOW"]) == active
+                        || JSON.stringify(["WORKER_WINDOW"]) == active
+                    ){
+                        app.dock.hide()
+                    }
+                }
+			})
+
+			window.once("show", () => setTimeout(() => window.focus(), 250))
+            
+            ipcMain.once("window-ready", (_, id) => {
+                if(id == windowId){
+                    window.show()
+                }
+            })
+
+            if(is.macOS()){
+                window.once("show", () => {
+                    app.dock.show().catch(log.error)
+                })
+            }
+
+            shared.set("UPDATE_WINDOW", window)
+
+            return resolve(window)
+        }
+        catch(e){
+            return reject(e)
+        }
+    })
+}
+
 const createWorker = () => {
     return new Promise(async (resolve, reject) => {
         try{
@@ -880,5 +963,6 @@ module.exports = {
     createDownload,
 	createCloud,
     createUpload,
-    createSelectiveSync
+    createSelectiveSync,
+    createUpdate
 }

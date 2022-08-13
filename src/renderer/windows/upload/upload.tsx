@@ -13,7 +13,7 @@ import * as fsLocal from "../../lib/fs/local"
 import * as fsRemote from "../../lib/fs/remote"
 import db from "../../lib/db"
 import { markUploadAsDone, checkIfItemParentIsShared, uploadChunk } from "../../lib/api"
-import { convertTimestampToMs, getTimeRemaining, bpsToReadable, Semaphore, fileNameToLowerCaseExt, generateRandomString } from "../../lib/helpers"
+import { convertTimestampToMs, getTimeRemaining, bpsToReadable, Semaphore, generateRandomString } from "../../lib/helpers"
 import { v4 as uuidv4 } from "uuid"
 import { maxUploadThreads, chunkSize, maxConcurrentUploads, sizeOverheadMultiplier, speedMultiplier } from "../../lib/constants"
 import eventListener from "../../lib/eventListener"
@@ -60,7 +60,7 @@ const uploadFile = (path: string, parent: string): Promise<boolean> => {
 
         try{
             var absolutePath = pathModule.normalize(path)
-            var name = fileNameToLowerCaseExt(pathModule.basename(absolutePath))
+            var name = pathModule.basename(absolutePath)
             var nameHashed = hashFn(name.toLowerCase())
         }
         catch(e){

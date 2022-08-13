@@ -1,7 +1,7 @@
 process.noAsar = true
 
 const { app, BrowserWindow, powerMonitor, powerSaveBlocker, Menu } = require("electron")
-const { createWindows } = require("./lib/windows")
+const { createWindows, createUpdate } = require("./lib/windows")
 const log = require("electron-log")
 const is = require("electron-is")
 const { autoUpdater } = require("electron-updater")
@@ -12,11 +12,12 @@ Object.assign(console, log.functions)
 
 let CHECK_UPDATE_INTERVAL = undefined
 let POWER_SAVE_BLOCKER = null
+let UPDATE_WINDOW_SHOWN = false
 
 autoUpdater.logger = log
 autoUpdater.allowDowngrade = false
 autoUpdater.autoDownload = true
-autoUpdater.autoInstallOnAppQuit = true
+autoUpdater.autoInstallOnAppQuit = false
 
 const initWindows = () => {
 	log.info("Initializing startup windows")
@@ -41,26 +42,48 @@ if(is.dev()){
 
 autoUpdater.on("checking-for-update", () => {
 	log.info("Checking if an update is available")
+
+	ipc.emitGlobal("checkingForUpdate")
 })
 
 autoUpdater.on("update-available", (info) => {
 	log.info("Update available:", info)
+
+	ipc.emitGlobal("updateAvailable", info)
 })
 
 autoUpdater.on("update-not-available", (info) => {
 	log.info("No update available:", info)
+
+	ipc.emitGlobal("updateNotAvailable", info)
 })
 
 autoUpdater.on("error", (err) => {
 	log.info(err)
+
+	ipc.emitGlobal("updateError", err)
 })
 
 autoUpdater.on("download-progress", (progress) => {
 	log.info("Downloading update:", progress)
+
+	ipc.emitGlobal("updateDownloadProgress", progress)
 })
 
 autoUpdater.on("update-downloaded", (info) => {
 	log.info("Update downloaded:", info)
+
+	ipc.emitGlobal("updateDownloaded", info)
+
+	if(!UPDATE_WINDOW_SHOWN){
+		UPDATE_WINDOW_SHOWN = true
+
+		createUpdate().catch((err) => {
+			log.error(err)
+
+			UPDATE_WINDOW_SHOWN = false
+		})
+	}
 })
 
 app.on("window-all-closed", () => {

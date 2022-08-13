@@ -1,5 +1,6 @@
 {
 	"name": "filen-desktop",
+	"author": "Filen Cloud Dienste UG (haftungsbeschränkt) <support@filen.io>",
 	"version": "2.0.3",
 	"private": true,
 	"engines": {
@@ -10,31 +11,16 @@
 		"@emotion/react": "^11.8.2",
 		"@emotion/styled": "^11.8.1",
 		"@gerhobbelt/gitignore-parser": "^0.2.0-9",
-		"@testing-library/jest-dom": "^5.16.3",
-		"@testing-library/react": "^11.2.7",
-		"@testing-library/user-event": "^12.8.3",
-		"@types/jest": "^28.1.3",
-		"@types/node": "^18.0.0",
-		"@types/react": "^18.0.14",
-		"@types/react-dom": "^18.0.5",
-		"@types/uuid": "^8.3.4",
 		"@uiw/react-codemirror": "^4.7.0",
 		"auto-launch": "^5.0.5",
-		"chokidar": "^3.5.3",
-		"cross-env": "^7.0.3",
 		"crypto-js": "^4.1.1",
-		"dotenv": "^10.0.0",
 		"electron-disable-file-drop": "^1.0.2",
 		"electron-is": "^3.0.0",
-		"electron-is-dev": "^1.2.0",
 		"electron-log": "^4.4.6",
-		"electron-store": "^8.0.2",
 		"electron-traywindow-positioner": "^1.1.1",
 		"electron-updater": "^5.0.1",
 		"framer-motion": "^3.10.6",
 		"fs-extra": "^10.1.0",
-		"http": "^0.0.1-security",
-		"https": "^1.0.0",
 		"js-base64": "^3.7.2",
 		"js-md2": "^0.2.2",
 		"js-md4": "^0.3.2",
@@ -50,14 +36,12 @@
 		"react-fast-compare": "^3.2.0",
 		"react-icons": "^4.3.1",
 		"react-router-dom": "^6.3.0",
-		"react-scripts": "5.0.0",
 		"react-virtualized": "^9.22.3",
 		"readdirp": "^3.6.0",
 		"request": "^2.88.2",
 		"socket.io-client": "^2.4.0",
 		"speed-limiter": "^1.0.2",
 		"striptags": "^3.2.0",
-		"typescript": "^4.7.4",
 		"uuid": "^8.3.2",
 		"write-file-atomic": "^4.0.1"
 	},
@@ -97,13 +81,25 @@
 		]
 	},
 	"devDependencies": {
+		"@testing-library/jest-dom": "^5.16.5",
+		"@testing-library/react": "^13.3.0",
+		"@testing-library/user-event": "^14.4.3",
+		"@types/jest": "^28.1.6",
+		"@types/node": "^18.7.2",
+		"@types/react": "^18.0.17",
+		"@types/react-dom": "^18.0.6",
 		"@types/request": "^2.48.8",
+		"@types/uuid": "^8.3.4",
 		"concurrently": "^5.3.0",
-		"electron": "^19.0.9",
-		"electron-builder": "^23.1.0",
+		"cross-env": "^7.0.3",
+		"dotenv": "^16.0.1",
+		"electron": "^20.0.2",
+		"electron-builder": "^23.3.3",
 		"electron-icon-builder": "^2.0.1",
 		"electron-notarize": "^1.2.1",
 		"electronmon": "^1.1.2",
+		"react-scripts": "^5.0.1",
+		"typescript": "^4.7.4",
 		"wait-on": "^5.3.0"
 	},
 	"homepage": "./",
@@ -114,9 +110,9 @@
 		"asar": false,
 		"npmRebuild": false,
 		"nodeGypRebuild": false,
-		"extends": null,
 		"artifactName": "filen_${arch}.${ext}",
 		"afterSign": "./scripts/notarize.js",
+		"extends": null,
 		"files": [
 			"build",
 			"node_modules",
@@ -135,7 +131,10 @@
 			}
 		],
 		"win": {
-			"publisherName": "Filen Cloud Dienste UG (haftungsbeschränkt)",
+			"publisherName": [
+				"Filen Cloud Dienste UG (haftungsbeschränkt)"
+			],
+			"verifyUpdateCodeSignature": false,
 			"icon": "./assets/icons/win/icon.ico",
 			"target": {
 				"target": "nsis",
@@ -143,12 +142,18 @@
 					"x64",
 					"arm64"
 				]
-			}
+			},
+			"publish": [
+				{
+					"provider": "generic",
+					"url": "https://cdn.filen.io/desktop/release/"
+				}
+			]
 		},
 		"nsis": {
 			"oneClick": false,
 			"perMachine": false,
-			"allowElevation": true,
+			"allowElevation": false,
 			"createDesktopShortcut": true,
 			"createStartMenuShortcut": true,
 			"deleteAppDataOnUninstall": true,
@@ -165,7 +170,13 @@
 					"x64",
 					"arm64"
 				]
-			}
+			},
+			"publish": [
+				{
+					"provider": "generic",
+					"url": "https://cdn.filen.io/desktop/release/"
+				}
+			]
 		},
 		"mac": {
 			"hardenedRuntime": true,
@@ -181,6 +192,12 @@
 					"arm64"
 				]
 			},
+			"publish": [
+				{
+					"provider": "generic",
+					"url": "https://cdn.filen.io/desktop/release/"
+				}
+			],
 			"icon": "./assets/icons/mac/icon.icns"
 		},
 		"dmg": {

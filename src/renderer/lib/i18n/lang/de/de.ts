@@ -137,7 +137,11 @@ const de: {
     syncModeLocalBackupInfo: "Lädt nur Daten in die Cloud hoch, löscht nichts und spiegelt keine cloud Änderungen",
     syncModeCloudBackupInfo: "Lädt nur Daten aus der Cloud herunter, löscht nichts und spiegelt keine lokalen Änderungen",
     cancel: "Abbrechen",
-    cannotCreateSyncLocationLoop2: "Der von Ihnen ausgewählte Cloud Pfad ist bereits ein konfigurierter Synchronisierungsspeicherort. Dies könnte zu endlosen Synchronisationsschleifen führen."
+    cannotCreateSyncLocationLoop2: "Der von Ihnen ausgewählte Cloud Pfad ist bereits ein konfigurierter Synchronisierungsspeicherort. Dies könnte zu endlosen Synchronisationsschleifen führen.",
+    titlebarUpdateAvailable: "Update verfügbar",
+    updateWindowInfo: "Eine neue Version wurde heruntergeladen und steht zur Installation bereit. Bitte installieren Sie sie sobald möglich um von Fehlerbehebungen und neuen Features zu profitieren.",
+    updateWindowButton: "Installieren",
+    updateWindowInfo2: "Die App wird beendet, das Update installiert und neu gestartet. Bitte unterbrechen Sie diesen Vorgang nicht."
 }
 
 export default de

@@ -12,6 +12,7 @@ const DownloadWindow = lazy(() => import("./windows/download"))
 const UploadWindow = lazy(() => import("./windows/upload"))
 const CloudWindow = lazy(() => import("./windows/cloud"))
 const SelectiveSyncWindow = lazy(() => import("./windows/selectiveSync"))
+const UpdateWindow = lazy(() => import("./windows/update"))
 
 const startingRoute = window.location.hash.replace("#", "").split("/")
 const getParams = new URLSearchParams(window.location.search)
@@ -177,6 +178,22 @@ else if(startingRoute[0] == "cloud"){
 					}
 				>
 					<CloudWindow userId={userId} email={email} windowId={getParams.get("id")} />
+				</Suspense>
+			</ChakraProvider>
+		)
+	})
+}
+
+else if(startingRoute[0] == "update"){
+	App = memo(() => {
+		return (
+			<ChakraProvider theme={customTheme}>
+				<Suspense
+					fallback={
+						<></>
+					}
+				>
+					<UpdateWindow windowId={getParams.get("id")} />
 				</Suspense>
 			</ChakraProvider>
 		)

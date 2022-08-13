@@ -1,5 +1,4 @@
 import eventListener from "../eventListener"
-// @ts-ignore
 import { v4 as uuidv4 } from "uuid"
 
 const { ipcRenderer } = window.require("electron")
@@ -1020,6 +1019,34 @@ const ipc = {
             })
         })
     },
+    openUpdateWindow: (): Promise<any> => {
+        return new Promise((resolve, reject) => {
+            const messageId = uuidv4()
+
+            resolves[messageId] = resolve
+            rejects[messageId] = reject
+
+            return ipcRenderer.send("message", {
+                messageId,
+                messageSender: MESSAGE_SENDER,
+                type: "openUpdateWindow"
+            })
+        })
+    },
+    installUpdate: (): Promise<any> => {
+        return new Promise((resolve, reject) => {
+            const messageId = uuidv4()
+
+            resolves[messageId] = resolve
+            rejects[messageId] = reject
+
+            return ipcRenderer.send("message", {
+                messageId,
+                messageSender: MESSAGE_SENDER,
+                type: "installUpdate"
+            })
+        })
+    }
 }
 
 export default ipc

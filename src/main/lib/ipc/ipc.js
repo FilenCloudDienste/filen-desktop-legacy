@@ -12,6 +12,7 @@ const trayMenu = require("../trayMenu")
 const { v4: uuidv4 } = require("uuid")
 const AutoLaunch = require("auto-launch")
 const syncLock = require("../syncLock")
+const { autoUpdater } = require("electron-updater")
 
 const autoLauncher = new AutoLaunch({
     name: "Filen",
@@ -574,6 +575,21 @@ const handleMessage = (type, data) => {
             syncLock.releaseSyncLock("sync").then(() => {
                 return resolve(true)
             }).catch(reject)
+        }
+        else if(type == "openUpdateWindow"){
+            windows.createUpdate().then(() => {
+                return resolve(true)
+            }).catch(reject)
+        }
+        else if(type == "installUpdate"){
+            try{
+                autoUpdater.quitAndInstall(false, true)
+
+                return resolve(true)
+            }
+            catch(e){
+                return reject(e)
+            }
         }
         else{
             return reject("Invalid message type: " + type.toString())

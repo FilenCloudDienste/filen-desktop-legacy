@@ -308,13 +308,20 @@ export const convertTimestampToMs = (timestamp: number): number => {
 }
 
 export const isFolderPathExcluded = (path: string): boolean => {
-  for(let i = 0; i < defaultIgnored.folders.length; i++){
-    if(path.toLowerCase().indexOf(defaultIgnored.folders[i].toLowerCase()) !== -1){
-      return true
-    }
-  }
+	const real = path
 
-  return false
+	path = path.toLowerCase()
+
+	for(let i = 0; i < defaultIgnored.folders.length; i++){
+		if(
+			path.indexOf(defaultIgnored.folders[i].toLowerCase()) !== -1
+			|| real.indexOf(defaultIgnored.folders[i]) !== -1
+		){
+			return true
+		}
+	}
+
+  	return false
 }
 
 export const isFileOrFolderNameIgnoredByDefault = (name: string): boolean => {

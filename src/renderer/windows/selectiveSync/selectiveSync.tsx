@@ -1,4 +1,4 @@
-import React, { memo, useState, useEffect, useCallback, useRef } from "react"
+import React, { memo, useState, useEffect, useRef } from "react"
 import { Flex, Spinner, Text } from "@chakra-ui/react"
 import useDarkMode from "../../lib/hooks/useDarkMode"
 import useLang from "../../lib/hooks/useLang"
@@ -12,6 +12,7 @@ import { Base64 } from "js-base64"
 import SettingsSelectiveSyncTree from "../../components/SettingsSelectiveSyncTree"
 import colors from "../../styles/colors"
 import { BsFileEarmark } from "react-icons/bs"
+import { updateKeys } from "../../lib/user"
 
 const log = window.require("electron-log")
 const { ipcRenderer } = window.require("electron")
@@ -95,11 +96,15 @@ const SelectiveSyncWindow = memo(({ userId, email, windowId }: { userId: number,
         if(typeof args.currentSyncLocation !== "undefined"){
             setIsLoadingSelectiveSyncTrees(true)
 
-            ipc.remoteTree(args.currentSyncLocation).then((remoteTree: any) => {
-                const convertedRemoteTree = convertTree(remoteTree.data)
-
-                setSelectiveSyncRemoteTree(convertedRemoteTree)
-                setIsLoadingSelectiveSyncTrees(false)
+            updateKeys().then(() => {
+                ipc.remoteTree(args.currentSyncLocation).then((remoteTree: any) => {
+                    const convertedRemoteTree = convertTree(remoteTree.data)
+    
+                    setSelectiveSyncRemoteTree(convertedRemoteTree)
+                    setIsLoadingSelectiveSyncTrees(false)
+                }).catch((err) => {
+                    log.error(err)
+                })
             }).catch((err) => {
                 log.error(err)
             })

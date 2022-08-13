@@ -5,7 +5,7 @@ import ipc from "../../ipc"
 import { sendToAllPorts } from "../ipc"
 import { v4 as uuidv4 } from "uuid"
 import { maxRetrySyncTask, retrySyncTaskTimeout, maxConcurrentDownloads as maxConcurrentDownloadsPreset, maxConcurrentUploads as maxConcurrentUploadsPreset, maxConcurrentSyncTasks } from "../../constants"
-import { Semaphore, pathToLowerCaseExtFileName, fileNameToLowerCaseExt } from "../../helpers"
+import { Semaphore } from "../../helpers"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
@@ -36,16 +36,6 @@ const isSuspended = (): Promise<boolean> => {
     })
 }
 
-const convertDeltaObjectPropToLowerCaseExt = (obj: any) => {
-    const newObj: any = {}
-
-    for(const prop in obj){
-        newObj[pathToLowerCaseExtFileName(prop)] = obj[prop]
-    }
-
-    return newObj
-}
-
 const getDeltas = (type: string, before: any, now: any): Promise<any> => {
     return new Promise((resolve, _) => {
         const deltasFiles: any = {}
@@ -58,24 +48,22 @@ const getDeltas = (type: string, before: any, now: any): Promise<any> => {
             const nowFiles = now.files
             const nowFolders = now.folders
             const nowIno = now.ino
-            const beforeFilesLower = convertDeltaObjectPropToLowerCaseExt(before.files)
-            const nowFilesLower = convertDeltaObjectPropToLowerCaseExt(now.files)
 
             for(const path in nowFiles){
                 const beforeEntry = beforeFiles[path]
                 const nowEntry = nowFiles[path]
 
-                if(!beforeFilesLower[pathToLowerCaseExtFileName(path)]){
+                if(!beforeFiles[path]){
                     deltasFiles[path] = {
                         type: "NEW"
                     }
                 }
-                else if(beforeEntry.lastModified == nowEntry.lastModified){
+                else if((beforeEntry?.lastModified || 0) == (nowEntry?.lastModified || 0)){
                     deltasFiles[path] = {
                         type: "UNCHANGED"
                     }
                 }
-                else if(beforeEntry.lastModified < nowEntry.lastModified){
+                else if((beforeEntry?.lastModified || 1) < (nowEntry?.lastModified || 0)){
                     deltasFiles[path] = {
                         type: "NEWER"
                     }
@@ -88,7 +76,7 @@ const getDeltas = (type: string, before: any, now: any): Promise<any> => {
             }
 
             for(const path of Object.keys(beforeFiles)){
-                if(!(pathToLowerCaseExtFileName(path) in nowFilesLower)){
+                if(!(path in nowFiles)){
                     deltasFiles[path] = {
                         type: "DELETED"
                     }
@@ -127,9 +115,9 @@ const getDeltas = (type: string, before: any, now: any): Promise<any> => {
                         if(nowPath !== beforePath && nowIno[ino].type == beforeIno[ino].type){
                             const nowPathDir = pathModule.dirname(nowPath)
                             const beforePathDir = pathModule.dirname(beforePath)
-                            const nowBasename = fileNameToLowerCaseExt(pathModule.basename(nowPath))
-                            const beforeBasename = fileNameToLowerCaseExt(pathModule.basename(beforePath))
-                            const action = (nowPathDir.toLowerCase() !== beforePathDir.toLowerCase()) ? "MOVED" : "RENAMED"
+                            const nowBasename = pathModule.basename(nowPath)
+                            const beforeBasename = pathModule.basename(beforePath)
+                            const action = (nowPathDir !== beforePathDir) ? "MOVED" : "RENAMED"
     
                             if(action == "RENAMED" && nowBasename == beforeBasename){
                                 deltasFiles[beforePath] = {
@@ -190,24 +178,22 @@ const getDeltas = (type: string, before: any, now: any): Promise<any> => {
             const nowFiles = now.files
             const nowFolders = now.folders
             const nowUUIDs = now.uuids
-            const beforeFilesLower = convertDeltaObjectPropToLowerCaseExt(before.files)
-            const nowFilesLower = convertDeltaObjectPropToLowerCaseExt(now.files)
 
             for(const path in nowFiles){
                 const beforeEntry = beforeFiles[path]
                 const nowEntry = nowFiles[path]
 
-                if(!beforeFilesLower[pathToLowerCaseExtFileName(path)]){
+                if(!beforeFiles[path]){
                     deltasFiles[path] = {
                         type: "NEW"
                     }
                 }
-                else if(beforeEntry.metadata.lastModified == nowEntry.metadata.lastModified){
+                else if((beforeEntry?.metadata?.lastModified || 0) == (nowEntry?.metadata?.lastModified || 0)){
                     deltasFiles[path] = {
                         type: "UNCHANGED"
                     }
                 }
-                else if(beforeEntry.metadata.lastModified < nowEntry.metadata.lastModified){
+                else if((beforeEntry?.metadata?.lastModified || 1) < (nowEntry?.metadata?.lastModified || 0)){
                     deltasFiles[path] = {
                         type: "NEWER"
                     }
@@ -220,7 +206,7 @@ const getDeltas = (type: string, before: any, now: any): Promise<any> => {
             }
 
             for(const path of Object.keys(beforeFiles)){
-                if(!(pathToLowerCaseExtFileName(path) in nowFilesLower)){
+                if(!(path in nowFiles)){
                     deltasFiles[path] = {
                         type: "DELETED"
                     }
@@ -259,9 +245,9 @@ const getDeltas = (type: string, before: any, now: any): Promise<any> => {
                         if(nowPath !== beforePath && nowUUIDs[uuid].type == beforeUUIDs[uuid].type){
                             const nowPathDir = pathModule.dirname(nowPath)
                             const beforePathDir = pathModule.dirname(beforePath)
-                            const nowBasename = fileNameToLowerCaseExt(pathModule.basename(nowPath))
-                            const beforeBasename = fileNameToLowerCaseExt(pathModule.basename(beforePath))
-                            const action = (nowPathDir.toLowerCase() !== beforePathDir.toLowerCase()) ? "MOVED" : "RENAMED"
+                            const nowBasename = pathModule.basename(nowPath)
+                            const beforeBasename = pathModule.basename(beforePath)
+                            const action = (nowPathDir !== beforePathDir) ? "MOVED" : "RENAMED"
     
                             if(action == "RENAMED" && nowBasename == beforeBasename){
                                 deltasFiles[beforePath] = {

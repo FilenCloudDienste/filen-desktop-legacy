@@ -137,7 +137,11 @@ const en: {
     syncModeLocalBackupInfo: "Only upload data to the cloud, never delete anything or act on remote changes",
     syncModeCloudBackupInfo: "Only download data from the cloud, never delete anything or act on local changes",
     cancel: "Cancel",
-    cannotCreateSyncLocationLoop2: "The remote path you have selected is already a configured sync location. This could lead to endless sync loops"
+    cannotCreateSyncLocationLoop2: "The remote path you have selected is already a configured sync location. This could lead to endless sync loops",
+    titlebarUpdateAvailable: "Update available",
+    updateWindowInfo: "A new version has been downloaded and is ready to be installed. Please install it as soon as possible to benefit from bug fixes and new features.",
+    updateWindowButton: "Install",
+    updateWindowInfo2: "The app will exit, install the update and restart itself. Please do not interrupt this process."
 }
 
 export default en

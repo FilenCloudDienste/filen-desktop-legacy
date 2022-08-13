@@ -1,5 +1,6 @@
 const { app } = require("electron")
 const request = require("request")
+const log = require("electron-log")
 
 const retryAPIRequestTimeout = 1000
 const maxRetryAPIRequest = 1024

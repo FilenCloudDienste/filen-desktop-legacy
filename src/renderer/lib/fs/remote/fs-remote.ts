@@ -2,7 +2,7 @@ import { folderPresent, dirTree, createFolder, folderExists, uploadChunk, markUp
 import db from "../../db"
 import { decryptFolderName, decryptFileMetadata, hashFn, encryptMetadata, encryptData } from "../../crypto"
 import memoryCache from "../../memoryCache"
-import { convertTimestampToMs, isFileOrFolderNameIgnoredByDefault, fileNameToLowerCaseExt, generateRandomString, Semaphore, isFolderPathExcluded } from "../../helpers"
+import { convertTimestampToMs, isFileOrFolderNameIgnoredByDefault, generateRandomString, Semaphore, isFolderPathExcluded } from "../../helpers"
 import { normalizePath, smokeTest as smokeTestLocal, readChunk, checkLastModified } from "../local"
 import { chunkSize, maxUploadThreads } from "../../constants"
 import { v4 as uuidv4 } from "uuid"
@@ -170,7 +170,6 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                     }
 
                     decrypted.lastModified = convertTimestampToMs(decrypted.lastModified)
-                    decrypted.name = fileNameToLowerCaseExt(decrypted.name)
 
                     if(decrypted.name.length > 0){
                         if(!isFileOrFolderNameIgnoredByDefault(decrypted.name) && !addedFiles[parent + ":" + decrypted.name]){
@@ -518,7 +517,7 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
 
         try{
             var absolutePath = normalizePath(location.local + "/" + path)
-            var name = fileNameToLowerCaseExt(pathModule.basename(absolutePath))
+            var name = pathModule.basename(absolutePath)
             var nameHashed = hashFn(name.toLowerCase())
         }
         catch(e){
