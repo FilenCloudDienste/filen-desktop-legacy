@@ -141,7 +141,8 @@ const de: {
     titlebarUpdateAvailable: "Update verfügbar",
     updateWindowInfo: "Eine neue Version wurde heruntergeladen und steht zur Installation bereit. Bitte installieren Sie sie sobald möglich um von Fehlerbehebungen und neuen Features zu profitieren.",
     updateWindowButton: "Installieren",
-    updateWindowInfo2: "Die App wird beendet, das Update installiert und neu gestartet. Bitte unterbrechen Sie diesen Vorgang nicht."
+    updateWindowInfo2: "Die App wird beendet und der Update Vorgang gestartet. Bitte unterbrechen Sie diesen Vorgang nicht.",
+    titlebarUpdateInstalled: "Update installiert"
 }
 
 export default de

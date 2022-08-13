@@ -1975,14 +1975,6 @@ const SettingsWindowIssues = memo(({ darkMode, lang, platform }: { darkMode: boo
                     </ModalBody>
                     <ModalFooter>
                         <Link 
-                            color="gray" 
-                            textDecoration="none" 
-                            _hover={{ textDecoration: "none" }} 
-                            onClick={() => setClearIssuesModalOpen(false)}
-                        >
-                            {i18n(lang, "close")}
-                        </Link>
-                        <Link 
                             color={colors(platform, darkMode, "link")} 
                             textDecoration="none" 
                             _hover={{ textDecoration: "none" }} 
@@ -2010,6 +2002,16 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }: { darkMode:
     })
     const [uploadKbps, setUploadKbps] = useState(0)
     const [downloadKbps, setDownloadKbps] = useState(0)
+
+    const updateThrottling = async (): Promise<void> => {
+        db.set("networkingSettings", {
+            ...networkingSettings,
+            uploadKbps: parseInt(uploadKbps.toString()) > 0 ? parseInt(uploadKbps.toString()) : 0,
+            downloadKbps: parseInt(downloadKbps.toString()) > 0 ? parseInt(downloadKbps.toString()) : 0
+        }).catch(log.error)
+
+        setThrottlingModalOpen(false)
+    }
 
     useEffect(() => {
         if(typeof networkingSettings == "object"){
@@ -2211,7 +2213,12 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }: { darkMode:
                                                 }} 
                                                 _placeholder={{
                                                     color: "gray"
-                                                }} 
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if(e.key == "Enter"){
+                                                        updateThrottling()
+                                                    }
+                                                }}
                                             />
                                         </Flex>
                                     </Flex>
@@ -2246,7 +2253,12 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }: { darkMode:
                                                 }} 
                                                 _placeholder={{
                                                     color: "gray"
-                                                }} 
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if(e.key == "Enter"){
+                                                        updateThrottling()
+                                                    }
+                                                }}
                                             />
                                         </Flex>
                                     </Flex>
@@ -2265,27 +2277,11 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }: { darkMode:
                                 </ModalBody>
                                 <ModalFooter>
                                     <Link 
-                                        color="gray" 
-                                        textDecoration="none" 
-                                        _hover={{ textDecoration: "none" }} 
-                                        onClick={() => setThrottlingModalOpen(false)}
-                                    >
-                                        {i18n(lang, "close")}
-                                    </Link>
-                                    <Link 
                                         color={colors(platform, darkMode, "link")} 
                                         textDecoration="none" 
                                         _hover={{ textDecoration: "none" }} 
                                         marginLeft="10px" 
-                                        onClick={async () => {
-                                            db.set("networkingSettings", {
-                                                ...networkingSettings,
-                                                uploadKbps: parseInt(uploadKbps.toString()) > 0 ? parseInt(uploadKbps.toString()) : 0,
-                                                downloadKbps: parseInt(downloadKbps.toString()) > 0 ? parseInt(downloadKbps.toString()) : 0
-                                            }).catch(log.error)
-
-                                            setThrottlingModalOpen(false)
-                                        }}
+                                        onClick={() => updateThrottling()}
                                     >
                                         {i18n(lang, "save")}
                                     </Link>

@@ -193,7 +193,7 @@ else if(startingRoute[0] == "update"){
 						<></>
 					}
 				>
-					<UpdateWindow windowId={getParams.get("id")} />
+					<UpdateWindow windowId={getParams.get("id")} toVersion={getParams.get("toVersion")} />
 				</Suspense>
 			</ChakraProvider>
 		)

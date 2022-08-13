@@ -763,7 +763,7 @@ const createAuth = () => {
     })
 }
 
-const createUpdate = (windowId = uuidv4()) => {
+const createUpdate = (windowId = uuidv4(), toVersion = "1") => {
     return new Promise(async (resolve, reject) => {
         try{
             if(typeof shared.get("UPDATE_WINDOW") !== "undefined"){
@@ -800,13 +800,15 @@ const createUpdate = (windowId = uuidv4()) => {
 
             window.windowId = windowId
 
-            window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "#update")
+            window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "&toVersion=" + toVersion + "#update")
 
             if(DEV_TOOLS){
                 window.webContents.openDevTools({ mode: "detach" })
             }
 
             window.once("closed", () => {
+                shared.remove("UPDATE_WINDOW")
+
                 activeWindows = activeWindows.filter(window => window.id !== windowId)
 
                 if(is.macOS()){

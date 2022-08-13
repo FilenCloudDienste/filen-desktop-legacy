@@ -141,7 +141,8 @@ const en: {
     titlebarUpdateAvailable: "Update available",
     updateWindowInfo: "A new version has been downloaded and is ready to be installed. Please install it as soon as possible to benefit from bug fixes and new features.",
     updateWindowButton: "Install",
-    updateWindowInfo2: "The app will exit, install the update and restart itself. Please do not interrupt this process."
+    updateWindowInfo2: "The app will exit and start the update flow. Please do not interrupt this process.",
+    titlebarUpdateInstalled: "Update installed"
 }
 
 export default en

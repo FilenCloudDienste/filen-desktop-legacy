@@ -7,6 +7,7 @@ const is = require("electron-is")
 const { autoUpdater } = require("electron-updater")
 const ipc = require("./lib/ipc")
 const db = require("./lib/db")
+const { v4: uuidv4 } = require("uuid")
 
 Object.assign(console, log.functions)
 
@@ -77,12 +78,15 @@ autoUpdater.on("update-downloaded", (info) => {
 
 	if(!UPDATE_WINDOW_SHOWN){
 		UPDATE_WINDOW_SHOWN = true
+		autoUpdater.autoInstallOnAppQuit = false
 
-		createUpdate().catch((err) => {
-			log.error(err)
-
-			UPDATE_WINDOW_SHOWN = false
-		})
+		setTimeout(() => {
+			createUpdate(uuidv4(), info.version).catch((err) => {
+				log.error(err)
+	
+				UPDATE_WINDOW_SHOWN = false
+			})
+		}, 5000)
 	}
 })
 

@@ -1,4 +1,4 @@
-import React, { memo, useState, useCallback, useEffect, useRef } from "react"
+import React, { memo, useState, useEffect } from "react"
 import { Flex, Text, Box, Checkbox, Image } from "@chakra-ui/react"
 import { AiOutlineCaretRight, AiOutlineCaretDown } from "react-icons/ai"
 import useDb from "../../lib/hooks/useDb"
@@ -31,7 +31,7 @@ const TreeItem = memo(({ darkMode, lang, platform, item, location, excluded }: T
     const [isOpen, setIsOpen] = useState<boolean>(false)
     const [itemIcon, setItemIcon] = useState<string | undefined>(undefined)
 
-    const isItemExcluded = useCallback(() => {
+    const isItemExcluded = (): boolean => {
         if(typeof excluded[item.path] !== "undefined"){
             return true
         }
@@ -43,9 +43,9 @@ const TreeItem = memo(({ darkMode, lang, platform, item, location, excluded }: T
         }
 
         return false
-    }, [item, excluded])
+    }
 
-    const isParentExcluded = useCallback(() => {
+    const isParentExcluded = (): boolean => {
         for(const path in excluded){
             if(item.path.indexOf(item.type == "folder" ? path + "/" : path) !== -1 && item.path !== path){
                 return true
@@ -53,7 +53,7 @@ const TreeItem = memo(({ darkMode, lang, platform, item, location, excluded }: T
         }
 
         return false
-    }, [item, excluded])
+    }
 
     const onToggleExcluded = async () => {
         if(isParentExcluded()){
@@ -77,8 +77,6 @@ const TreeItem = memo(({ darkMode, lang, platform, item, location, excluded }: T
             }
 
             await db.set("selectiveSync:remote:" + location.uuid, currentExcluded)
-
-            console.log(currentExcluded)
         }
         catch(e){
             log.error(e)
@@ -180,13 +178,14 @@ const TreeItem = memo(({ darkMode, lang, platform, item, location, excluded }: T
                 <Flex 
                     flexDirection="row" 
                     alignItems="center" 
-                    width="auto" 
+                    width="90%" 
                     cursor={item.type == "folder" ? "pointer" : "default"} 
                     onClick={onToggleOpen} 
                     marginLeft="8px"
                 >
                     <Text
                         color={getColor(platform, darkMode, "textPrimary")}
+                        noOfLines={1}
                     >
                         {item.name}
                     </Text>

@@ -262,6 +262,9 @@ const handleMessage = (type, data) => {
                 else if(data.window == "main"){
                     shared.get("MAIN_WINDOW").minimize()
                 }
+                else if(data.window == "update"){
+                    shared.get("UPDATE_WINDOW").minimize()
+                }
 
                 return resolve(true)
             }
@@ -321,6 +324,9 @@ const handleMessage = (type, data) => {
                 }
                 else if(data.window == "main"){
                     shared.get("MAIN_WINDOW").minimize()
+                }
+                else if(data.window == "update"){
+                    shared.get("UPDATE_WINDOW").close()
                 }
 
                 return resolve(true)
@@ -583,6 +589,7 @@ const handleMessage = (type, data) => {
         }
         else if(type == "installUpdate"){
             try{
+                autoUpdater.autoInstallOnAppQuit = false
                 autoUpdater.quitAndInstall(false, true)
 
                 return resolve(true)
@@ -657,6 +664,10 @@ const emitGlobal = (channel = "global-message", data) => {
     
         if(typeof shared.get("AUTH_WINDOW") !== "undefined"){
             shared.get("AUTH_WINDOW").webContents.send(channel, data)
+        }
+
+        if(typeof shared.get("UPDATE_WINDOW") !== "undefined"){
+            shared.get("UPDATE_WINDOW").webContents.send(channel, data)
         }
     
         const settingsWindows = shared.get("SETTINGS_WINDOWS")

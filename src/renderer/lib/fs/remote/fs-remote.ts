@@ -130,7 +130,7 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
 
                     const name = await decryptFolderName(metadata, masterKeys)
 
-                    if(name.length > 0){
+                    if(name.length > 0 && name.length < 250){
                         if(!isFileOrFolderNameIgnoredByDefault(name) && !addedFolders[parent + ":" + name]){
                             addedFolders[parent + ":" + name] = true
 
@@ -171,7 +171,7 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
 
                     decrypted.lastModified = convertTimestampToMs(decrypted.lastModified)
 
-                    if(decrypted.name.length > 0){
+                    if(decrypted.name.length > 0 && decrypted.name.length < 250){
                         if(!isFileOrFolderNameIgnoredByDefault(decrypted.name) && !addedFiles[parent + ":" + decrypted.name]){
                             addedFiles[parent + ":" + decrypted.name] = true
 

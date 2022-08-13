@@ -419,6 +419,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number, email: 
                                                             flexDirection="row" 
                                                             justifyContent="flex-start" 
                                                             alignItems="center"
+                                                            width="100%" 
                                                         >
                                                             <BsFillFolderFill
                                                                 size={18}
@@ -427,7 +428,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number, email: 
                                                             <Text 
                                                                 noOfLines={1}
                                                                 color={colors(platform, darkMode, "textPrimary")} 
-                                                                maxWidth="85%" 
+                                                                width="540px" 
                                                                 marginLeft="10px"
                                                             >
                                                                 {item.name}
@@ -461,7 +462,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number, email: 
                                                         <Text 
                                                             noOfLines={1} 
                                                             color={colors(platform, darkMode, "textPrimary")} 
-                                                            maxWidth="85%"
+                                                            width="540px" 
                                                         >
                                                             {item.metadata.name}
                                                         </Text>
@@ -511,6 +512,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number, email: 
                             _placeholder={{
                                 color: "gray"
                             }}
+                            autoFocus={true}
                             disabled={isCreatingFolder}
                         />
                     </ModalBody>
@@ -524,14 +526,6 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number, email: 
                                 />
                             ) : (
                                 <>
-                                    <Link 
-                                        color="gray" 
-                                        textDecoration="none" 
-                                        _hover={{ textDecoration: "none" }} 
-                                        onClick={() => setCreateFolderModalOpen(false)}
-                                    >
-                                        {i18n(lang, "close")}
-                                    </Link>
                                     <Link 
                                         color={colors(platform, darkMode, "link")} 
                                         textDecoration="none" 
