@@ -396,6 +396,8 @@ export const findOrCreateParentDirectory = (path: string, baseFolderUUID: string
 
         if(absolutePathLocal){
             if(!(await doesExistLocally(absolutePathLocal))){
+                findOrCreateParentDirectorySemaphore.release()
+
                 return reject("deletedLocally")
             }
         }
@@ -455,16 +457,18 @@ export const findOrCreateParentDirectory = (path: string, baseFolderUUID: string
 
         findOrCreateParentDirectorySemaphore.release()
 
+        if(absolutePathLocal){
+            if(!(await doesExistLocally(absolutePathLocal))){
+                return reject("deletedLocally")
+            }
+        }
+
         return resolve(foundParentUUID)
     })
 }
 
 export const mkdir = (path: string, remoteTreeNow: any, location: any, task: any, uuid: string): Promise<{ parent: string, uuid: string }> => {
     return new Promise(async (resolve, reject) => {
-        if(!(await doesExistLocally(normalizePath(location.local + "/" + path)))){
-            return reject("deletedLocally")
-        }
-
         const name = pathModule.basename(path)
 
         if(typeof uuid !== "string"){
@@ -477,6 +481,10 @@ export const mkdir = (path: string, remoteTreeNow: any, location: any, task: any
         
         if(name.length <= 0){
             return reject(new Error("Could not create remote folder: Name invalid: " + name))
+        }
+
+        if(!(await doesExistLocally(normalizePath(location.local + "/" + path)))){
+            return reject("deletedLocally")
         }
 
         try{
@@ -704,9 +712,27 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
                                 lastModified
                             }
                         })
-                    }).catch(reject)
-                }).catch(reject)
-            }).catch(reject)
+                    }).catch(async (err) => {
+                        if(!(await doesExistLocally(absolutePath))){
+                            return reject("deletedLocally")
+                        }
+
+                        return reject(err)
+                    })
+                }).catch(async (err) => {
+                    if(!(await doesExistLocally(absolutePath))){
+                        return reject("deletedLocally")
+                    }
+
+                    return reject(err)
+                })
+            }).catch(async (err) => {
+                if(!(await doesExistLocally(absolutePath))){
+                    return reject("deletedLocally")
+                }
+
+                return reject(err)
+            })
         }).catch(reject)
     })
 }

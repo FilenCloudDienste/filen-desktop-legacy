@@ -96,15 +96,27 @@ module.exports = {
 
             const keyHash = hashKey(key)
 
-            fs.unlink(pathModule.join(DB_PATH, keyHash + ".json")).then(() => {
-                if(USE_MEMORY_CACHE){
-                    if(memoryCache.has(MEMORY_CACHE_KEY + key)){
-                        memoryCache.delete(MEMORY_CACHE_KEY + key)
+            fs.access(pathModule.join(DB_PATH, keyHash + ".json"), fs.F_OK, (err) => {
+                if(err){
+                    if(USE_MEMORY_CACHE){
+                        if(memoryCache.has(MEMORY_CACHE_KEY + key)){
+                            memoryCache.delete(MEMORY_CACHE_KEY + key)
+                        }
                     }
+    
+                    return resolve(true)
                 }
 
-                return resolve(true)
-            }).catch(reject)
+                fs.unlink(pathModule.join(DB_PATH, keyHash + ".json")).then(() => {
+                    if(USE_MEMORY_CACHE){
+                        if(memoryCache.has(MEMORY_CACHE_KEY + key)){
+                            memoryCache.delete(MEMORY_CACHE_KEY + key)
+                        }
+                    }
+    
+                    return resolve(true)
+                }).catch(reject)
+            })
         })
     },
     clear: () => {

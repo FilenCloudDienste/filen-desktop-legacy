@@ -9,8 +9,6 @@ const ipc = require("./lib/ipc")
 const db = require("./lib/db")
 const { v4: uuidv4 } = require("uuid")
 
-Object.assign(console, log.functions)
-
 let CHECK_UPDATE_INTERVAL = undefined
 let POWER_SAVE_BLOCKER = null
 let UPDATE_WINDOW_SHOWN = false

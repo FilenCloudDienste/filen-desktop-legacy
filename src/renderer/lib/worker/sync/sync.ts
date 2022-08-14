@@ -5,7 +5,7 @@ import ipc from "../../ipc"
 import { sendToAllPorts } from "../ipc"
 import { v4 as uuidv4 } from "uuid"
 import { maxRetrySyncTask, retrySyncTaskTimeout, maxConcurrentDownloads as maxConcurrentDownloadsPreset, maxConcurrentUploads as maxConcurrentUploadsPreset, maxConcurrentSyncTasks } from "../../constants"
-import { Semaphore } from "../../helpers"
+import { Semaphore, isSubdir } from "../../helpers"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
@@ -710,29 +710,6 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
             return reject(e)
         }
 
-
-
-
-
-        /*releaseSyncLock("sync")
-
-        return console.log({
-            renameInLocalTasks,
-            renameInRemoteTasks,
-            moveInLocalTasks,
-            moveInRemoteTasks,
-            deleteInLocalTasks,
-            deleteInRemoteTasks,
-            uploadToRemoteTasks,
-            downloadFromRemoteTasks
-        })*/
-
-
-
-
-
-        
-
         log.info("renameInRemote", renameInRemoteTasks.length)
         log.info("renameInLocal", renameInLocalTasks.length)
         log.info("moveInRemote", moveInRemoteTasks.length)
@@ -802,9 +779,17 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     location
                                 })
 
-                                maxSyncTasksSemaphore.release()
+                                db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
+                                    maxSyncTasksSemaphore.release()
         
-                                return resolve(done)
+                                    return resolve(done)
+                                }).catch((err) => {
+                                    log.error(err)
+
+                                    maxSyncTasksSemaphore.release()
+        
+                                    return resolve(done)
+                                })
                             }).catch((err) => {
                                 log.error(err)
     
@@ -878,9 +863,17 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     location
                                 })
 
-                                maxSyncTasksSemaphore.release()
+                                db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
+                                    maxSyncTasksSemaphore.release()
         
-                                return resolve(done)
+                                    return resolve(done)
+                                }).catch((err) => {
+                                    log.error(err)
+
+                                    maxSyncTasksSemaphore.release()
+        
+                                    return resolve(done)
+                                })
                             }).catch((err) => {
                                 log.error(err)
     
@@ -954,9 +947,17 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     location
                                 })
 
-                                maxSyncTasksSemaphore.release()
+                                db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
+                                    maxSyncTasksSemaphore.release()
         
-                                return resolve(done)
+                                    return resolve(done)
+                                }).catch((err) => {
+                                    log.error(err)
+
+                                    maxSyncTasksSemaphore.release()
+        
+                                    return resolve(done)
+                                })
                             }).catch((err) => {
                                 log.error(err)
     
@@ -1030,9 +1031,17 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     location
                                 })
 
-                                maxSyncTasksSemaphore.release()
+                                db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
+                                    maxSyncTasksSemaphore.release()
         
-                                return resolve(done)
+                                    return resolve(done)
+                                }).catch((err) => {
+                                    log.error(err)
+
+                                    maxSyncTasksSemaphore.release()
+        
+                                    return resolve(done)
+                                })
                             }).catch((err) => {
                                 log.error(err)
     
@@ -1106,9 +1115,17 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     location
                                 })
 
-                                maxSyncTasksSemaphore.release()
+                                db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
+                                    maxSyncTasksSemaphore.release()
         
-                                return resolve(done)
+                                    return resolve(done)
+                                }).catch((err) => {
+                                    log.error(err)
+
+                                    maxSyncTasksSemaphore.release()
+        
+                                    return resolve(done)
+                                })
                             }).catch((err) => {
                                 log.error(err)
     
@@ -1178,9 +1195,17 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     location
                                 })
 
-                                maxSyncTasksSemaphore.release()
+                                db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
+                                    maxSyncTasksSemaphore.release()
         
-                                return resolve(done)
+                                    return resolve(done)
+                                }).catch((err) => {
+                                    log.error(err)
+
+                                    maxSyncTasksSemaphore.release()
+        
+                                    return resolve(done)
+                                })
                             }).catch((err) => {
                                 log.error(err)
     
@@ -1267,20 +1292,25 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                         },
                                         location
                                     })
-
-                                    maxConcurrentUploadsSemaphore.release()
-                                    maxSyncTasksSemaphore.release()
     
-                                    return resolve(result)
+                                    db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
+                                        maxConcurrentUploadsSemaphore.release()
+                                        maxSyncTasksSemaphore.release()
+            
+                                        return resolve(result)
+                                    }).catch((err) => {
+                                        log.error(err)
+    
+                                        maxConcurrentUploadsSemaphore.release()
+                                        maxSyncTasksSemaphore.release()
+            
+                                        return resolve(result)
+                                    })
                                 }).catch((err) => {
-                                    maxConcurrentUploadsSemaphore.release()
-    
-                                    log.error(err)
-
                                     if(
                                         err.toString().toLowerCase().indexOf("invalid upload key") !== -1
                                         || err.toString().toLowerCase().indexOf("chunks are not matching") !== -1
-                                        || err.toString() == "deletedLocally"    
+                                        || err == "deletedLocally"
                                     ){
                                         emitSyncTask("uploadToRemote", {
                                             status: "err",
@@ -1289,8 +1319,16 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                             err
                                         })
 
-                                        return reject(err)
+                                        maxConcurrentUploadsSemaphore.release()
+                                        maxSyncTasksSemaphore.release()
+
+                                        return resolve(true)
                                     }
+                                    
+                                    log.error(err)
+
+                                    maxConcurrentUploadsSemaphore.release()
+                                    maxSyncTasksSemaphore.release()
     
                                     return setTimeout(() => {
                                         doTask(err)
@@ -1372,11 +1410,20 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                         },
                                         location
                                     })
-
-                                    maxConcurrentDownloadsSemaphore.release()
-                                    maxSyncTasksSemaphore.release()
     
-                                    return resolve(result)
+                                    db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
+                                        maxConcurrentDownloadsSemaphore.release()
+                                        maxSyncTasksSemaphore.release()
+            
+                                        return resolve(result)
+                                    }).catch((err) => {
+                                        log.error(err)
+    
+                                        maxConcurrentDownloadsSemaphore.release()
+                                        maxSyncTasksSemaphore.release()
+            
+                                        return resolve(result)
+                                    })
                                 }).catch((err) => {
                                     maxConcurrentDownloadsSemaphore.release()
     
@@ -1395,9 +1442,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
             ])
         }
 
-        return resolve({
-            doneTasks
-        })
+        return resolve({ doneTasks })
     })
 }
 
@@ -2386,10 +2431,22 @@ const syncLocation = async (location: any): Promise<any> => {
     }
 
     try{
-        var [lastLocalTree, lastRemoteTree] = await Promise.all([
+        var [lastLocalTree, lastRemoteTree, applyDoneTasksPast] = await Promise.all([
             db.get("lastLocalTree:" + location.uuid),
-            db.get("lastRemoteTree:" + location.uuid)
+            db.get("lastRemoteTree:" + location.uuid),
+            db.get("applyDoneTasks:" + location.uuid)
         ])
+
+        if(applyDoneTasksPast && Array.isArray(applyDoneTasksPast)){
+            if(applyDoneTasksPast.length > 0){
+                log.info("Applying " + applyDoneTasksPast.length + " done tasks (past) to saved state for location " + location.uuid)
+
+                const { localTreeNowApplied, remoteTreeNowApplied } = await applyDoneTasksToSavedState({ doneTasks: applyDoneTasksPast, localTreeNow: lastLocalTree, remoteTreeNow: lastRemoteTree })
+
+                lastLocalTree = localTreeNowApplied
+                lastRemoteTree = remoteTreeNowApplied
+            }
+        }
     }
     catch(e: any){
         log.error("Could not get last local/remote tree for location " + location.uuid)
@@ -2542,6 +2599,8 @@ const syncLocation = async (location: any): Promise<any> => {
         return false
     }
 
+    log.info("Tasks for location " + location.uuid + " consumed")
+
     emitSyncStatusLocation("consumeTasks", {
         status: "done",
         location
@@ -2606,6 +2665,8 @@ const syncLocation = async (location: any): Promise<any> => {
         location
     })
 
+    log.info("Cleaning up " + location.uuid)
+
     try{
         await Promise.all([
             db.set("lastLocalTree:" + location.uuid, doneTasks.length > 0 ? localTreeNowApplied : localTreeNow),
@@ -2613,6 +2674,8 @@ const syncLocation = async (location: any): Promise<any> => {
             db.set("localDataChanged:" + location.uuid, false),
             db.set("remoteDataChanged:" + location.uuid, false)
         ])
+
+        await db.remove("applyDoneTasks:" + location.uuid)
     }
     catch(e: any){
         log.error("Could not save lastLocalTree to DB for location " + location.uuid)
@@ -2630,6 +2693,8 @@ const syncLocation = async (location: any): Promise<any> => {
 
         return false
     }
+
+    log.info("Cleanup done " + location.uuid)
 
     await updateLocationBusyStatus(location.uuid, false)
 
