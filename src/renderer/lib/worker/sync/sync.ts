@@ -1306,7 +1306,21 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
             
                                         return resolve(result)
                                     })
-                                }).catch((err) => {
+                                }).catch(async (err) => {
+                                    if(!(await fsRemote.doesExistLocally(pathModule.normalize(pathModule.join(location.local, task.path))))){
+                                        emitSyncTask("uploadToRemote", {
+                                            status: "err",
+                                            task,
+                                            location,
+                                            err
+                                        })
+
+                                        maxConcurrentUploadsSemaphore.release()
+                                        maxSyncTasksSemaphore.release()
+
+                                        return resolve(true)
+                                    }
+
                                     if(
                                         err.toString().toLowerCase().indexOf("invalid upload key") !== -1
                                         || err.toString().toLowerCase().indexOf("chunks are not matching") !== -1
