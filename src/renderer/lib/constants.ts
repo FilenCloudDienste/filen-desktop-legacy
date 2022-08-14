@@ -44,7 +44,8 @@ export const defaultIgnored: {
     ],
     extensions: [
         "tmp",
-        "temp"
+        "temp",
+        "lnk"
     ],
     folders: [
         ".filen.trash.local",
