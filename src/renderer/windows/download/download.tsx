@@ -192,8 +192,6 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }: 
             db.get("masterKeys"),
             db.set("downloadPaused", false)
         ]).then(async ([apiKey, privateKey, masterKeys]) => {
-            console.log(args)
-
             apiRequest({
                 method: "POST",
                 endpoint: args.shared ? "/v1/download/dir/shared" : args.linked ? "/v1/download/dir/link" : "/v1/download/dir",

@@ -24,7 +24,7 @@ const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, timeout = 5
             request({
                 method: method.toUpperCase(),
                 url: "https://api.filen.io" + endpoint,
-                timeout: 86400000,
+                timeout,
                 headers: {
                     "Content-Type": "application/json",
                     "User-Agent": "filen-desktop"
@@ -74,6 +74,7 @@ const acquireLock = ({ apiKey, id }) => {
         apiRequest({
             method: "POST",
             endpoint: "/v1/lock/acquire",
+            timeout: 10000,
             data: {
                 apiKey,
                 id
@@ -93,6 +94,7 @@ const releaseLock = ({ apiKey, id }) => {
         apiRequest({
             method: "POST",
             endpoint: "/v1/lock/release",
+            timeout: 15000,
             data: {
                 apiKey,
                 id
@@ -112,6 +114,7 @@ const holdLock = ({ apiKey, id }) => {
         apiRequest({
             method: "POST",
             endpoint: "/v1/lock/hold",
+            timeout: 10000,
             data: {
                 apiKey,
                 id
