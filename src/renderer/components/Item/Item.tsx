@@ -93,7 +93,7 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
             onMouseLeave={() => setHovering(false)}
         >
             <Flex
-                width="75%"
+                width={typeof task.realtime == "undefined" ? "270px" : "250px"}
                 height="100%"
                 justifyContent="flex-start"
                 alignItems="center"
@@ -149,7 +149,7 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
                 >
                     <Text
                         noOfLines={1}
-                        wordBreak="break-word"
+                        wordBreak="break-all"
                         color={colors(platform, darkMode, "textPrimary")}
                         fontSize={12}
                         fontWeight="bold"
@@ -218,7 +218,7 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
                                         hovering && typeof task.task.path == "string" && typeof task.realtime == "undefined" ? (
                                             <Text
                                                 noOfLines={1}
-                                                wordBreak="break-word"
+                                                wordBreak="break-all"
                                                 color={colors(platform, darkMode, "textPrimary")}
                                                 marginTop="1px"
                                                 fontSize={11}
@@ -230,7 +230,7 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
                                         ) : (
                                             <Text
                                                 noOfLines={1}
-                                                wordBreak="break-word"
+                                                wordBreak="break-all"
                                                 color={colors(platform, darkMode, "textPrimary")}
                                                 marginTop="1px"
                                                 fontSize={11}
@@ -275,7 +275,7 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
                 </Flex>
             </Flex>
             <Flex
-                width={typeof task.realtime == "undefined" ? "5%" : "25%"}
+                width={typeof task.realtime == "undefined" ? "65px" : "65px"}
                 justifyContent="flex-end" 
                 flexDirection="row"
             >
@@ -296,6 +296,7 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
                                             noOfLines={1}
                                             color={colors(platform, darkMode, "textPrimary")}
                                             fontSize={12}
+                                            wordBreak="break-all"
                                         >
                                             {
                                                 paused || !isOnline ? (

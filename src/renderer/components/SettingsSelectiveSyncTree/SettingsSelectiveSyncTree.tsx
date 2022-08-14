@@ -186,6 +186,7 @@ const TreeItem = memo(({ darkMode, lang, platform, item, location, excluded }: T
                     <Text
                         color={getColor(platform, darkMode, "textPrimary")}
                         noOfLines={1}
+                        wordBreak="break-all"
                     >
                         {item.name}
                     </Text>

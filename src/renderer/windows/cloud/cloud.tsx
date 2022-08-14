@@ -13,7 +13,7 @@ import ipc from "../../lib/ipc"
 import colors from "../../styles/colors"
 import Container from "../../components/Container"
 import IsOnlineBottomToast from "../../components/IsOnlineBottomToast"
-import { BsFillFolderFill } from "react-icons/bs"
+import { BsFillFolderFill, BsFillFileFill } from "react-icons/bs"
 // @ts-ignore
 import { List } from "react-virtualized"
 import { showToast } from "../../components/Toast"
@@ -23,6 +23,102 @@ import { updateKeys } from "../../lib/user"
 
 const log = window.require("electron-log")
 const { ipcRenderer } = window.require("electron")
+
+const CloudItem = memo(({ style, item, platform, darkMode, index, navigateToFolder }: { style: any, item: any, platform: string, darkMode: boolean, index: number, navigateToFolder: (uuid: string) => void }) => {
+    const [icon, setIcon] = useState<string>("")
+
+    useEffect(() => {
+        if(item.type == "file"){
+            ipc.getFileIconName(item.metadata.name).then((gotIcon) => {
+                setIcon(gotIcon)
+            }).catch(log.error)
+        }
+    }, [])
+
+    return (
+        <Flex
+            style={style} 
+            width="100%" 
+            flexDirection="row" 
+            justifyContent={item.type == "folder" ? "space-between" : "flex-start"} 
+            alignItems="center" 
+            _hover={item.type == "folder" ? {
+                backgroundColor: "gray"
+            } : {}} 
+            borderRadius="15px" 
+            paddingLeft="10px" 
+            paddingRight="10px" 
+            cursor={item.type == "folder" ? "pointer" : "auto"}
+            pointerEvents="all" 
+            onClick={() => navigateToFolder(item.uuid)}
+        >
+            {
+                item.type == "folder" ? (
+                    <>
+                        <Flex 
+                            flexDirection="row" 
+                            justifyContent="flex-start" 
+                            alignItems="center"
+                            width="100%" 
+                        >
+                            <BsFillFolderFill
+                                size={18}
+                                color={platform == "mac" ? "#3ea0d5" : "#ffd04c"}
+                            />
+                            <Text 
+                                noOfLines={1}
+                                color={colors(platform, darkMode, "textPrimary")} 
+                                width="540px" 
+                                marginLeft="10px"
+                                wordBreak="break-all"
+                            >
+                                {item.name}
+                            </Text>
+                        </Flex>
+                        <IoChevronForwardOutline 
+                            color={colors(platform, darkMode, "textPrimary")}
+                            size={18}
+                        />
+                    </>
+                ) : (
+                    <Flex 
+                        key={index} 
+                        width="100%" 
+                        height="35px" 
+                        flexDirection="row" 
+                        justifyContent="flex-start" 
+                        alignItems="center" 
+                        borderRadius="15px"
+                    >
+                        {
+                            typeof icon == "string" && icon.length > 0 ? (
+                                <Image
+                                    src={icon} 
+                                    height="18px" 
+                                    width="18px" 
+                                    marginRight="10px" 
+                                />
+                            ) : (
+                                <BsFillFileFill
+                                    size={18}
+                                    color={colors(platform, darkMode, "textPrimary")}
+                                />
+                            )
+                        }
+                        <Text 
+                            noOfLines={1} 
+                            color={colors(platform, darkMode, "textPrimary")} 
+                            width="540px" 
+                            wordBreak="break-all"
+                        >
+                            {item.metadata.name}
+                        </Text>
+                    </Flex>
+                )
+            }
+        </Flex>
+    )
+})
 
 const CloudWindow = memo(({ userId, email, windowId }: { userId: number, email: string, windowId: string }) => {
     const darkMode: boolean = useDarkMode()
@@ -82,7 +178,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number, email: 
                     files.push({
                         ...file,
                         metadata,
-                        icon: await ipc.getFileIconName(metadata.name),
+                        icon: undefined,
                         type: "file"
                     })
                 }
@@ -251,6 +347,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number, email: 
                                             noOfLines={1} 
                                             color={colors(platform, darkMode, "textPrimary")} 
                                             width="100%"
+                                            wordBreak="break-all"
                                         >
                                             {path.current.split("/").length > 1 ? "/" + path.current.split("/").slice(1).join("/") : "/"}
                                         </Text>
@@ -269,6 +366,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number, email: 
                                             onClick={() => setCreateFolderModalOpen(true)}
                                             marginRight="10px"
                                             noOfLines={1}
+                                            wordBreak="break-all"
                                         >
                                             {i18n(lang, "createFolder")}
                                         </Link>
@@ -395,81 +493,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number, email: 
                                     const item = currentItems[index]
 
                                     return (
-                                        <Flex 
-                                            key={key} 
-                                            style={style} 
-                                            width="100%" 
-                                            flexDirection="row" 
-                                            justifyContent={item.type == "folder" ? "space-between" : "flex-start"} 
-                                            alignItems="center" 
-                                            _hover={item.type == "folder" ? {
-                                                backgroundColor: "gray"
-                                            } : {}} 
-                                            borderRadius="15px" 
-                                            paddingLeft="10px" 
-                                            paddingRight="10px" 
-                                            cursor={item.type == "folder" ? "pointer" : "auto"}
-                                            pointerEvents="all" 
-                                            onClick={() => navigateToFolder(item.uuid)}
-                                        >
-                                            {
-                                                item.type == "folder" ? (
-                                                    <>
-                                                        <Flex 
-                                                            flexDirection="row" 
-                                                            justifyContent="flex-start" 
-                                                            alignItems="center"
-                                                            width="100%" 
-                                                        >
-                                                            <BsFillFolderFill
-                                                                size={18}
-                                                                color={platform == "mac" ? "#3ea0d5" : "#ffd04c"}
-                                                            />
-                                                            <Text 
-                                                                noOfLines={1}
-                                                                color={colors(platform, darkMode, "textPrimary")} 
-                                                                width="540px" 
-                                                                marginLeft="10px"
-                                                            >
-                                                                {item.name}
-                                                            </Text>
-                                                        </Flex>
-                                                        <IoChevronForwardOutline 
-                                                            color={colors(platform, darkMode, "textPrimary")}
-                                                            size={18}
-                                                        />
-                                                    </>
-                                                ) : (
-                                                    <Flex 
-                                                        key={index} 
-                                                        width="100%" 
-                                                        height="35px" 
-                                                        flexDirection="row" 
-                                                        justifyContent="flex-start" 
-                                                        alignItems="center" 
-                                                        borderRadius="15px"
-                                                    >
-                                                        {
-                                                            typeof item.icon == "string" && (
-                                                                <Image
-                                                                    src={item.icon} 
-                                                                    height="18px" 
-                                                                    width="18px" 
-                                                                    marginRight="10px" 
-                                                                />
-                                                            )
-                                                        }
-                                                        <Text 
-                                                            noOfLines={1} 
-                                                            color={colors(platform, darkMode, "textPrimary")} 
-                                                            width="540px" 
-                                                        >
-                                                            {item.metadata.name}
-                                                        </Text>
-                                                    </Flex>
-                                                )
-                                            }
-                                        </Flex>
+                                        <CloudItem item={item} key={key} style={style} index={index} darkMode={darkMode} platform={platform} navigateToFolder={navigateToFolder} />
                                     )
                                 }}
                             />
