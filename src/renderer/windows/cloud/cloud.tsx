@@ -50,7 +50,13 @@ const CloudItem = memo(({ style, item, platform, darkMode, index, navigateToFold
             paddingRight="10px" 
             cursor={item.type == "folder" ? "pointer" : "auto"}
             pointerEvents="all" 
-            onClick={() => navigateToFolder(item.uuid)}
+            onClick={() => {
+                if(item.type !== "folder"){
+                    return
+                }
+
+                navigateToFolder(item.uuid)
+            }}
         >
             {
                 item.type == "folder" ? (
