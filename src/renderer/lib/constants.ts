@@ -44,15 +44,7 @@ export const defaultIgnored: {
     ],
     extensions: [
         "tmp",
-        "temp",
-        "backupdb",
-        "cache",
-        "lnk",
-        "_",
-        "scriv",
-        "BridgeCache",
-        "download",
-        "fcpcache"
+        "temp"
     ],
     folders: [
         ".filen.trash.local",
