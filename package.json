@@ -21,7 +21,7 @@
 		"crypto-js": "^4.1.1",
 		"electron-disable-file-drop": "^1.0.2",
 		"electron-is": "^3.0.0",
-		"electron-log": "^4.4.6",
+		"electron-log": "^4.4.8",
 		"electron-traywindow-positioner": "^1.1.1",
 		"electron-updater": "^5.2.1",
 		"framer-motion": "^3.10.6",
