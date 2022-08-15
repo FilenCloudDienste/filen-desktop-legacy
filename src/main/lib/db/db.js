@@ -4,6 +4,7 @@ const memoryCache = require("../memoryCache")
 const fs = require("fs-extra")
 const writeFileAtomic = require("write-file-atomic")
 const crypto = require("crypto")
+const log = require("electron-log")
 
 const DB_VERSION = 1
 const DB_PATH = pathModule.join(app.getPath("userData"), "db_v" + DB_VERSION)
@@ -13,6 +14,24 @@ const MEMORY_CACHE_KEY = "db:"
 const hashKey = (key) => {
     return crypto.createHash("sha256").update(key).digest("hex")
 }
+
+// Clear leftover temp files etc
+const dirCheck = async () => {
+    try{
+        const dir = await fs.readdir(DB_PATH)
+
+        for(let i = 0; i < dir.length; i++){
+            if(dir[i].length !== 69 || dir[i].split(".").length !== 2 || dir[i].indexOf(".json") == -1){
+                await fs.unlink(pathModule.join(DB_PATH, dir[i]))
+            }
+        }
+    }
+    catch(e){
+        log.error(e)
+    }
+}
+
+dirCheck()
 
 module.exports = {
     get: (key) => {

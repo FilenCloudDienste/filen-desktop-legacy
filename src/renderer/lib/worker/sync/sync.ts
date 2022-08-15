@@ -5,7 +5,7 @@ import ipc from "../../ipc"
 import { sendToAllPorts } from "../ipc"
 import { v4 as uuidv4 } from "uuid"
 import { maxRetrySyncTask, retrySyncTaskTimeout, maxConcurrentDownloads as maxConcurrentDownloadsPreset, maxConcurrentUploads as maxConcurrentUploadsPreset, maxConcurrentSyncTasks } from "../../constants"
-import { Semaphore, isSubdir } from "../../helpers"
+import { Semaphore, SemaphoreInterface } from "../../helpers"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
@@ -14,11 +14,11 @@ const fs = window.require("fs-extra")
 
 let SYNC_RUNNING: boolean = false
 const SYNC_TIMEOUT: number = 5000
-let IS_FIRST_REQUEST: any = {}
-const WATCHERS: any = {}
-const maxConcurrentUploadsSemaphore = new Semaphore(maxConcurrentUploadsPreset)
-const maxConcurrentDownloadsSemaphore = new Semaphore(maxConcurrentDownloadsPreset)
-const maxSyncTasksSemaphore = new Semaphore(maxConcurrentSyncTasks)
+let IS_FIRST_REQUEST: { [key: string]: boolean } = {}
+const WATCHERS: { [key: string]: boolean } = {}
+const maxConcurrentUploadsSemaphore: SemaphoreInterface = new Semaphore(maxConcurrentUploadsPreset)
+const maxConcurrentDownloadsSemaphore: SemaphoreInterface = new Semaphore(maxConcurrentDownloadsPreset)
+const maxSyncTasksSemaphore: SemaphoreInterface = new Semaphore(maxConcurrentSyncTasks)
 
 const isSuspended = (): Promise<boolean> => {
     return new Promise((resolve) => {
@@ -2405,6 +2405,11 @@ const syncLocation = async (location: any): Promise<any> => {
             fsLocal.directoryTree(pathModule.normalize(location.local), typeof IS_FIRST_REQUEST[location.uuid] == "undefined", location),
             fsRemote.directoryTree(location.remoteUUID, typeof IS_FIRST_REQUEST[location.uuid] == "undefined", location)
         ])
+
+        await Promise.all([
+            db.set("localDataChanged:" + location.uuid, false),
+            db.set("remoteDataChanged:" + location.uuid, false)
+        ])
     }
     catch(e: any){
         if((await isSuspended())){
@@ -2684,9 +2689,7 @@ const syncLocation = async (location: any): Promise<any> => {
     try{
         await Promise.all([
             db.set("lastLocalTree:" + location.uuid, doneTasks.length > 0 ? localTreeNowApplied : localTreeNow),
-            db.set("lastRemoteTree:" + location.uuid, doneTasks.length > 0 ? remoteTreeNowApplied : remoteTreeNow),
-            db.set("localDataChanged:" + location.uuid, false),
-            db.set("remoteDataChanged:" + location.uuid, false)
+            db.set("lastRemoteTree:" + location.uuid, doneTasks.length > 0 ? remoteTreeNowApplied : remoteTreeNow)
         ])
 
         await db.remove("applyDoneTasks:" + location.uuid)
