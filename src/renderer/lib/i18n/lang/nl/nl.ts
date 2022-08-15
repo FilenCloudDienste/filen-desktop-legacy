@@ -24,7 +24,7 @@ const nl: {
 	syncingItemsFooterSingular: "__COUNT__ items synchroniseren",
 	syncingItemsFooterPlural: "__COUNT__ items synchroniseren",
 	syncingFooterEverythingSynced: "Alles is gesynchroniseerd",
-	aboutRemaining: "Ongeveer __COUNT__ over",
+	aboutRemaining: "Ongeveer __TIME__ over",
 	noSyncActivityYet: "Nog geen activiteit",
 	createOne: "Maak aan",
 	noSyncLocationsSetupYet: "Nog geen synchronisatie locaties ingesteld",
