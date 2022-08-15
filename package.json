@@ -189,7 +189,7 @@
 			"category": "public.app-category.productivity",
 			"darkModeSupport": true,
 			"target": {
-				"target": "dmg",
+				"target": "default",
 				"arch": [
 					"x64",
 					"arm64"
