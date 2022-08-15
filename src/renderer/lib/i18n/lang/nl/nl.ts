@@ -57,7 +57,7 @@ const nl: {
 	saveLogs: "Logs opslaan",
 	cannotCreateSyncLocation: "Kan synchronisatie locatie niet maken",
 	cannotCreateSyncLocationSubdir: "U moet ten minste één subfolder selecteren",
-	cannotCreateSyncLocationLoop: "Het lokale pad dat u hebt geselecteerd is al een geconfigureerde synchronisatielocatie. Dit kan leiden tot eindeloze synchronisatie lussen",
+	cannotCreateSyncLocationLoop: "Het lokale pad dat u hebt geselecteerd is al een geconfigureerde synchronisatie locatie. Dit kan leiden tot eindeloze synchronisatie lussen",
 	cannotCreateSyncLocationAccess: "Kon geen toegang krijgen tot de lokale folder. Misschien heeft u geen rechten?",
 	selectRemoteLocation: "Selecteer cloud locatie",
 	syncMode: "Synchronisatie modus",
@@ -85,7 +85,7 @@ const nl: {
 	resumeSyncing: "Synchronisatie hervatten",
 	noSyncIssues: "Geen synchronisatie problemen",
 	clearSyncIssues: "Wis synchronisatie problemen",
-	clearSyncIssuesInfo: "Na het wissen van de getoonde problemen zal de client opnieuw proberen te synchroniseren. Zorg ervoor dat u alle problemen oplost voordat u ze wist.",
+	clearSyncIssuesInfo: "Na het wissen van de getoonde problemen zal de client opnieuw proberen te synchroniseren. Zorg ervoor dat u alle problemen oplost voordat u deze wist.",
 	clear: "Wis",
 	uploadBandwidthThrottling: "Upload bandbreedte beperking",
 	unlimited: "Onbeperkt",
@@ -93,7 +93,7 @@ const nl: {
 	networkThrottling: "Netwerk beperking",
 	maximumUploadBandwidth: "Maximale upload bandbreedte (in Kbps)",
 	maximumDownloadBandwidth: "Maximale download bandbreedte (in Kbps)",
-	disableThrottlingInfo: "Een waarde van 0 schakelt throttling uit",
+	disableThrottlingInfo: "Een waarde van 0 schakelt de beperking uit",
 	resetToDefaults: "Reset naar standaardwaarden",
 	changeKeybind: "Wijzig keybind",
 	pressKeyOrCombo: "Druk op een toets of combinatie",
@@ -129,15 +129,15 @@ const nl: {
 	syncTaskDeleteInLocal: "Verwijderd in de lokale map",
 	queued: "In wachtrij",
 	acquiringSyncLock: "Synchronisatie lock aan het verkrijgen..",
-	syncLocationCreated: "Synchronisatie locatie aangemaakt. Om de synchronisatie te starten, moet je deze hervatten.",
+	syncLocationCreated: "Synchronisatie locatie aangemaakt. Om de synchronisatie te starten, moet u deze hervatten.",
 	checkingChanges: "Controleren op wijzigingen..",
 	syncModeTwoWayInfo: "Spiegel elke actie in beide richtingen",
-	syncModeLocalToCloudInfo: "Spiegel elke actie lokaal naar de cloud, maar negeer wijzigingen in de cloud",
-	syncModeCloudToLocalInfo: "Spiegel elke actie cloud naar lokaal, negeer wijzigingen in de lokale map",
-	syncModeLocalBackupInfo: "Upload alleen bestanden naar de cloud, verwijder nooit iets en ga niet in op wijzigingen in de cloud",
-	syncModeCloudBackupInfo: "Download alleen bestanden van de cloud, verwijder nooit iets en ga niet in op wijzigingen in de lokale map",
+	syncModeLocalToCloudInfo: "Spiegel elke actie lokaal naar de cloud & negeer wijzigingen in de cloud",
+	syncModeCloudToLocalInfo: "Spiegel elke actie cloud naar lokaal & negeer wijzigingen in de lokale map",
+	syncModeLocalBackupInfo: "Upload alleen bestanden naar de clou, verwijder nooit iets & negeer wijzigingen in de cloud",
+	syncModeCloudBackupInfo: "Download alleen bestanden van de cloud, verwijder nooit iets & negeer wijzigingen in de lokale map",
 	cancel: "Annuleer",
-	cannotCreateSyncLocationLoop2: "De cloud locatie die u hebt geselecteerd is al een geconfigureerde synchronisatielocatie. Dit kan leiden tot eindeloze synchronisatie lussen"
+	cannotCreateSyncLocationLoop2: "De cloud locatie die u hebt geselecteerd is al een geconfigureerde synchronisatie locatie. Dit kan leiden tot eindeloze synchronisatie lussen."
 }
 
 export default nl
