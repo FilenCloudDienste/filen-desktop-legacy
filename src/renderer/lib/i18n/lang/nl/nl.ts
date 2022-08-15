@@ -134,7 +134,7 @@ const nl: {
 	syncModeTwoWayInfo: "Spiegel elke actie in beide richtingen",
 	syncModeLocalToCloudInfo: "Spiegel elke actie lokaal naar de cloud & negeer wijzigingen in de cloud",
 	syncModeCloudToLocalInfo: "Spiegel elke actie cloud naar lokaal & negeer wijzigingen in de lokale map",
-	syncModeLocalBackupInfo: "Upload alleen bestanden naar de clou, verwijder nooit iets & negeer wijzigingen in de cloud",
+	syncModeLocalBackupInfo: "Upload alleen bestanden naar de cloud, verwijder nooit iets & negeer wijzigingen in de cloud",
 	syncModeCloudBackupInfo: "Download alleen bestanden van de cloud, verwijder nooit iets & negeer wijzigingen in de lokale map",
 	cancel: "Annuleer",
 	cannotCreateSyncLocationLoop2: "De cloud locatie die u hebt geselecteerd is al een geconfigureerde synchronisatie locatie. Dit kan leiden tot eindeloze synchronisatie lussen."
