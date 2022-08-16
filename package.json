@@ -1,6 +1,6 @@
 {
 	"name": "filen-desktop",
-	"author": "Filen Cloud Dienste UG (haftungsbeschränkt)",
+	"author": "Filen Cloud Dienste UG (haftungsbeschränkt) <support@filen.io>",
 	"description": "Filen Desktop Client",
 	"version": "2.0.4",
 	"private": true,
@@ -56,11 +56,11 @@
 		"build": "react-scripts build",
 		"test": "react-scripts test",
 		"eject": "react-scripts eject",
-		"dist": "rm -rf dist/ && react-scripts build && electron-builder -wlm",
-		"build-linux": "rm -rf dist/ && react-scripts build && electron-builder -l",
-		"build-mac": "rm -rf dist/ && react-scripts build && electron-builder -m",
-		"build-win": "rm -rf dist/ && react-scripts build && electron-builder -w",
-		"build-win-win": "react-scripts build && electron-builder -w",
+		"dist": "rm -rf dist/ && react-scripts build && electron-builder -wlm --publish never",
+		"build-linux": "rm -rf dist/ && react-scripts build && electron-builder -l --publish never",
+		"build-mac": "rm -rf dist/ && react-scripts build && electron-builder -m --publish never",
+		"build-win": "rm -rf dist/ && react-scripts build && electron-builder -w --publish never",
+		"build-win-win": "react-scripts build && electron-builder -w --publish never",
 		"react-start": "react-scripts start",
 		"rebuild": "electron-rebuild",
 		"rebuild:arm64": "electron-rebuild --arch arm64",
@@ -136,7 +136,9 @@
 			}
 		],
 		"win": {
-			"publisherName": "Filen Cloud Dienste UG (haftungsbeschränkt)",
+			"publisherName": [
+				"Filen Cloud Dienste UG (haftungsbeschränkt)"
+			],
 			"verifyUpdateCodeSignature": false,
 			"icon": "./assets/icons/win/icon.ico",
 			"target": {
@@ -155,12 +157,15 @@
 		},
 		"nsis": {
 			"oneClick": false,
-			"perMachine": false,
-			"allowElevation": true,
 			"createDesktopShortcut": true,
 			"createStartMenuShortcut": true,
 			"deleteAppDataOnUninstall": true,
-			"allowToChangeInstallationDirectory": false
+			"allowToChangeInstallationDirectory": false,
+			"customNsisBinary": {
+                "url": "https://github.com/electron-userland/electron-builder-binaries/releases/download",
+                "checksum": "cTeQgtymnETCMGZa89l5A790zw4otqFThfQbm52AbhUtPUD2yp2lmmu/T9Hd6fG/rDej0o6X6OTupxZB3n8HbA==",
+                "version": "3.0.5.0"
+            }
 		},
 		"linux": {
 			"maintainer": "Filen Cloud Dienste UG (haftungsbeschränkt)",
