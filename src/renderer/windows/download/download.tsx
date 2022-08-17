@@ -149,8 +149,12 @@ const downloadFile = (absolutePath: string, file: any) => {
                     return reject(e)
                 }
 
+                const now = new Date().getTime()
+                const lastModified = convertTimestampToMs(file.metadata.lastModified)
+                const utimesLastModified = typeof lastModified == "number" && lastModified > 0 && now > lastModified ? lastModified : (now - 60000)
+
                 fsLocal.move(fileTmpPath, absolutePath).then(() => {
-                    fs.utimes(absolutePath, new Date(convertTimestampToMs(file.metadata.lastModified)), new Date(convertTimestampToMs(file.metadata.lastModified))).then(() => {
+                    fs.utimes(absolutePath, new Date(utimesLastModified), new Date(utimesLastModified)).then(() => {
                         fsLocal.checkLastModified(absolutePath).then(() => {
                             fsLocal.gracefulLStat(absolutePath).then((stat: any) => {
                                 if(stat.size <= 0){

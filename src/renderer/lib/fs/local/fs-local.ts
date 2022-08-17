@@ -34,7 +34,7 @@ export const checkLastModified = (path: string): Promise<{ changed: boolean, mti
                     })
                 }
 
-                const lastModified = new Date()
+                const lastModified = new Date(new Date().getTime() - 60000)
                 const mtimeMs = lastModified.getTime()
                 
                 fs.utimes(path, lastModified, lastModified).then(() => {
@@ -513,8 +513,12 @@ export const download = (path: string, location: any, task: any): Promise<any> =
                     return reject(e)
                 }
 
+                const now = new Date().getTime()
+                const lastModified = convertTimestampToMs(file.metadata.lastModified)
+                const utimesLastModified = typeof lastModified == "number" && lastModified > 0 && now > lastModified ? lastModified : (now - 60000)
+
                 move(fileTmpPath, absolutePath).then(() => {
-                    fs.utimes(absolutePath, new Date(convertTimestampToMs(file.metadata.lastModified)), new Date(convertTimestampToMs(file.metadata.lastModified))).then(() => {
+                    fs.utimes(absolutePath, new Date(utimesLastModified), new Date(utimesLastModified)).then(() => {
                         checkLastModified(absolutePath).then(() => {
                             gracefulLStat(absolutePath).then((stat: any) => {
                                 if(stat.size <= 0){
