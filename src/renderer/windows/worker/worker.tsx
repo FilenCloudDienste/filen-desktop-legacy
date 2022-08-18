@@ -13,7 +13,6 @@ import { maxConcurrentSyncTasks } from "../../lib/constants"
 
 const log = window.require("electron-log")
 const https = window.require("https")
-const request = window.require("request")
 
 const checkInternet = (): any => {
     if(!window.navigator.onLine){
@@ -22,39 +21,60 @@ const checkInternet = (): any => {
         return setTimeout(checkInternet, 3000)
     }
 
-    request({
+    const req = https.request({
         method: "GET",
-        url: "https://" + getAPIServer(),
-        timeout: 15000,
+        hostname: "api.filen.io",
+        path: "/",
+        timeout: 10000,
         headers: {
             "User-Agent": "filen-desktop"
         },
         agent: new https.Agent({
-            timeout: 15000
+            timeout: 10000
         })
-    }, (err: any, response: any, body: any) => {
-        if(err){
-            db.set("isOnline", false).catch(log.error)
-
-            return setTimeout(checkInternet, 3000)
-        }
-
+    }, (response: any) => {
         if(response.statusCode !== 200){
             db.set("isOnline", false).catch(log.error)
 
             return setTimeout(checkInternet, 3000)
         }
 
-        if(body.indexOf("Invalid endpoint") == -1){
+        let res: any = ""
+
+        response.on("error", () => {
             db.set("isOnline", false).catch(log.error)
 
-            return setTimeout(checkInternet, 3000)
-        }
+            res = ""
 
-        db.set("isOnline", true).catch(log.error)
+            return setTimeout(checkInternet, 3000)
+        })
+
+        response.on("data", (chunk: any) => {
+            res += chunk
+        })
+
+        response.on("end", () => {
+            if(res.indexOf("Invalid endpoint") == -1){
+                db.set("isOnline", false).catch(log.error)
+    
+                return setTimeout(checkInternet, 3000)
+            }
+
+            res = ""
+    
+            db.set("isOnline", true).catch(log.error)
+    
+            return setTimeout(checkInternet, 3000)
+        })
+    })
+
+    req.on("error", () => {
+        db.set("isOnline", false).catch(log.error)
 
         return setTimeout(checkInternet, 3000)
     })
+
+    req.end()
 }
 
 const WorkerWindow = memo(() => {

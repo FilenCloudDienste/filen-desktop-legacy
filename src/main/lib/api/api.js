@@ -1,5 +1,5 @@
 const { app } = require("electron")
-const request = require("request")
+const https = require("https")
 const log = require("electron-log")
 
 const retryAPIRequestTimeout = 1000
@@ -21,7 +21,76 @@ const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, timeout = 5
 
             currentTries += 1
 
-            request({
+            const req = https.request({
+                method: method.toUpperCase(),
+                hostname: "api.filen.io",
+                path: endpoint,
+                port: 443,
+                agent: new https.Agent({
+                    keepAlive: true
+                }),
+                timeout: 86400000,
+                headers: {
+                    "Content-Type": "application/json",
+                    "User-Agent": "filen-desktop"
+                }
+            }, (response) => {
+                if(response.statusCode !== 200){
+                    log.error(new Error("API response " + response.statusCode + ", method: " + method.toUpperCase() + ", endpoint: " + endpoint + ", data: " + JSON.stringify(data)))
+
+                    return setTimeout(doRequest, retryAPIRequestTimeout) 
+                }
+
+                let res = ""
+
+                response.on("error", (err) => {
+                    log.error(err)
+
+                    res = ""
+
+                    return setTimeout(doRequest, retryAPIRequestTimeout)
+                })
+
+                response.on("data", (chunk) => {
+                    res += chunk
+                })
+
+                response.on("end", () => {
+                    try{
+                        const obj = JSON.parse(res)
+
+                        res = ""
+
+                        if(typeof obj.message == "string"){
+                            if(obj.message.toLowerCase().indexOf("invalid api key") !== -1){
+                                app.quit()
+
+                                return
+                            }
+                        }
+
+                        return resolve(obj)
+                    }
+                    catch(e){
+                        log.error(e)
+
+                        res = ""
+    
+                        return reject(e)
+                    }
+                })
+            })
+
+            req.on("error", (err) => {
+                log.error(err)
+
+                return setTimeout(doRequest, retryAPIRequestTimeout)
+            })
+
+            req.write(JSON.stringify(data))
+            req.end()
+
+            /*request({
                 method: method.toUpperCase(),
                 url: "https://api.filen.io" + endpoint,
                 timeout,
@@ -62,7 +131,7 @@ const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, timeout = 5
 
                     return setTimeout(doRequest, retryAPIRequestTimeout)
                 }
-            })
+            })*/
         }
 
         return doRequest()

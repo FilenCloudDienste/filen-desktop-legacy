@@ -10,7 +10,6 @@ const https = window.require("https")
 const log = window.require("electron-log")
 const { ThrottleGroup } = window.require("speed-limiter")
 const { Readable } = window.require("stream")
-const request = window.require("request")
 
 export const createFolderSemaphore = new Semaphore(1)
 export const apiRequestSemaphore = new Semaphore(maxConcurrentAPIRequest)
@@ -70,7 +69,76 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
             currentTries += 1
 
             apiRequestSemaphore.acquire().then(() => {
-                request({
+                const req = https.request({
+                    method: method.toUpperCase(),
+                    hostname: "api.filen.io",
+                    path: endpoint,
+                    port: 443,
+                    agent: new https.Agent({
+                        keepAlive: true
+                    }),
+                    timeout: 86400000,
+                    headers: {
+                        "Content-Type": "application/json",
+                        "User-Agent": "filen-desktop"
+                    }
+                }, (response: any) => {
+                    if(response.statusCode !== 200){
+                        log.error(new Error("API response " + response.statusCode + ", method: " + method.toUpperCase() + ", endpoint: " + endpoint + ", data: " + JSON.stringify(data)))
+    
+                        return setTimeout(doRequest, retryAPIRequestTimeout) 
+                    }
+
+                    let res: any = ""
+
+                    response.on("error", (err: any) => {
+                        log.error(err)
+
+                        res = ""
+    
+                        return setTimeout(doRequest, retryAPIRequestTimeout)
+                    })
+
+                    response.on("data", (chunk: any) => {
+                        res += chunk
+                    })
+
+                    response.on("end", () => {
+                        try{
+                            const obj = JSON.parse(res)
+
+                            res = ""
+    
+                            if(typeof obj.message == "string"){
+                                if(obj.message.toLowerCase().indexOf("invalid api key") !== -1){
+                                    logout().catch(log.error)
+    
+                                    return reject(new Error(obj.message))
+                                }
+                            }
+    
+                            return resolve(obj)
+                        }
+                        catch(e){
+                            log.error(e)
+
+                            res = ""
+        
+                            return reject(e)
+                        }
+                    })
+                })
+
+                req.on("error", (err: any) => {
+                    log.error(err)
+    
+                    return setTimeout(doRequest, retryAPIRequestTimeout)
+                })
+
+                req.write(JSON.stringify(data))
+                req.end()
+
+                /*request({
                     method: method.toUpperCase(),
                     url: "https://" + getAPIServer() + endpoint,
                     timeout: 86400000,
@@ -113,7 +181,7 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
     
                         return setTimeout(doRequest, retryAPIRequestTimeout)
                     }
-                })
+                })*/
             })
         }
 
@@ -1400,7 +1468,136 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
                     })
                 }
 
-                const req = request({
+                const req = https.request({
+                    method: "POST",
+                    hostname: "up.filen.io",
+                    path: "/v2/upload?" + queryParams,
+                    port: 443,
+                    agent: new https.Agent({
+                        keepAlive: true
+                    }),
+                    timeout: 86400000,
+                    headers: {
+                        "User-Agent": "filen-desktop"
+                    }
+                }, (response: any) => {
+                    if(response.statusCode !== 200){
+                        log.error(new Error("Upload failed, status code: " + response.statusCode))
+
+                        if((-totalBytes) < 0){
+                            sendToAllPorts({
+                                type: from == "sync" ? "uploadProgress" : "uploadProgressSeperate",
+                                data: {
+                                    uuid,
+                                    bytes: -totalBytes,
+                                    from
+                                }
+                            })
+                        }
+
+                        totalBytes = 0
+
+                        throttle.destroy()
+
+                        return setTimeout(doRequest, retryUploadTimeout)
+                    }
+
+                    calcProgress(req.socket.bytesWritten)
+
+                    let res: any = ""
+
+                    response.on("data", (chunk: any) => {
+                        res += chunk
+                    })
+
+                    response.on("error", (err: any) => {
+                        log.error(err)
+
+                        if((-totalBytes) < 0){
+                            sendToAllPorts({
+                                type: from == "sync" ? "uploadProgress" : "uploadProgressSeperate",
+                                data: {
+                                    uuid,
+                                    bytes: -totalBytes,
+                                    from
+                                }
+                            })
+                        }
+
+                        totalBytes = 0
+                        res = ""
+
+                        throttle.destroy()
+
+                        return setTimeout(doRequest, retryUploadTimeout)
+                    })
+
+                    response.on("end", () => {
+                        try{
+                            const obj = JSON.parse(res)
+
+                            res = ""
+
+                            if(!obj.status){
+                                if(obj.message.toLowerCase().indexOf("storage") !== -1){
+                                    db.set("paused", true)
+                                    db.set("maxStorageReached", true)
+                                }
+    
+                                if((-totalBytes) < 0){
+                                    sendToAllPorts({
+                                        type: from == "sync" ? "uploadProgress" : "uploadProgressSeperate",
+                                        data: {
+                                            uuid,
+                                            bytes: -totalBytes,
+                                            from
+                                        }
+                                    })
+                                }
+        
+                                totalBytes = 0
+        
+                                throttle.destroy()
+        
+                                return reject(obj.message)
+                            }
+        
+                            return resolve(obj)
+                        }
+                        catch(e){
+                            return reject(e)
+                        }
+                    })
+                })
+
+                req.on("error", (err: any) => {
+                    log.error(err)
+
+                    if((-totalBytes) < 0){
+                        sendToAllPorts({
+                            type: from == "sync" ? "uploadProgress" : "uploadProgressSeperate",
+                            data: {
+                                uuid,
+                                bytes: -totalBytes,
+                                from
+                            }
+                        })
+                    }
+
+                    totalBytes = 0
+
+                    throttle.destroy()
+
+                    return setTimeout(doRequest, retryUploadTimeout)
+                })
+
+                req.on("drain", () => calcProgress(req.socket.bytesWritten))
+
+                Readable.from([data]).pipe(throttle.on("end", () => throttle.destroy())).on("data", (chunk: any) => {
+                    req.write(chunk)
+                }).on("end", () => req.end())
+
+                /*const req = request({
                     url: "https://" + getUploadServer() + "/v2/upload?" + queryParams,
                     method: "POST",
                     family: 4,
@@ -1468,7 +1665,7 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
                     return resolve(res)
                 }).on("drain", () => calcProgress(req.req.connection.bytesWritten))
 
-                Readable.from([data]).pipe(throttle.on("end", () => throttle.destroy())).pipe(req)
+                Readable.from([data]).pipe(throttle.on("end", () => throttle.destroy())).pipe(req)*/
             }
 
             return doRequest()
@@ -1543,12 +1740,14 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }: { 
                 currentTries += 1
 
                 const request = https.request({
-                    host: getDownloadServer(),
+                    host: "down.filen.io",
                     port: 443,
                     path: "/" + region + "/" + bucket + "/" + uuid + "/" + index,
                     method: "GET",
                     timeout: 86400000,
-                    family: 4,
+                    agent: new https.Agent({
+                        keepAlive: true
+                    }),
                     headers: {
                         "User-Agent": "filen-desktop"
                     }
@@ -1558,7 +1757,6 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }: { 
                     if(response.statusCode !== 200){
                         log.error("Invalid http statuscode: " + response.statusCode)
 
-                        request.destroy()
                         throttle.destroy()
 
                         return setTimeout(doRequest, retryDownloadTimeout)
@@ -1583,7 +1781,6 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }: { 
                         totalBytes = 0
                         res = null
 
-                        request.destroy()
                         throttle.destroy()
 
                         return setTimeout(doRequest, retryDownloadTimeout)
@@ -1636,7 +1833,6 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }: { 
                         totalBytes = 0
                         res = null
 
-                        request.destroy()
                         throttle.destroy()
 
                         return setTimeout(doRequest, retryDownloadTimeout)
@@ -1659,7 +1855,6 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }: { 
 
                     totalBytes = 0
 
-                    request.destroy()
                     throttle.destroy()
 
                     return setTimeout(doRequest, retryDownloadTimeout)
@@ -1681,7 +1876,6 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }: { 
 
                     totalBytes = 0
 
-                    request.destroy()
                     throttle.destroy()
 
                     return setTimeout(doRequest, retryDownloadTimeout)
