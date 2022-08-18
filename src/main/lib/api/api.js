@@ -26,9 +26,6 @@ const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, timeout = 5
                 hostname: "api.filen.io",
                 path: endpoint,
                 port: 443,
-                agent: new https.Agent({
-                    keepAlive: true
-                }),
                 timeout: 86400000,
                 headers: {
                     "Content-Type": "application/json",
@@ -41,25 +38,15 @@ const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, timeout = 5
                     return setTimeout(doRequest, retryAPIRequestTimeout) 
                 }
 
-                let res = ""
-
-                response.on("error", (err) => {
-                    log.error(err)
-
-                    res = ""
-
-                    return setTimeout(doRequest, retryAPIRequestTimeout)
-                })
+                const res = []
 
                 response.on("data", (chunk) => {
-                    res += chunk
+                    res.push(chunk)
                 })
 
                 response.on("end", () => {
                     try{
-                        const obj = JSON.parse(res)
-
-                        res = ""
+                        const obj = JSON.parse(Buffer.concat(res).toString())
 
                         if(typeof obj.message == "string"){
                             if(obj.message.toLowerCase().indexOf("invalid api key") !== -1){
@@ -73,8 +60,6 @@ const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, timeout = 5
                     }
                     catch(e){
                         log.error(e)
-
-                        res = ""
     
                         return reject(e)
                     }

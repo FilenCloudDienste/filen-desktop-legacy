@@ -48,6 +48,8 @@ export const getDownloadServer = () => {
     return downloadServers[getRandomArbitrary(0, (downloadServers.length - 1))]
 }
 
+const request = window.require("request")
+
 export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, timeout = 500000 }): Promise<any> => {
     return new Promise((resolve, reject) => {
         let currentTries = 0
@@ -74,9 +76,6 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
                     hostname: "api.filen.io",
                     path: endpoint,
                     port: 443,
-                    agent: new https.Agent({
-                        keepAlive: true
-                    }),
                     timeout: 86400000,
                     headers: {
                         "Content-Type": "application/json",
@@ -89,25 +88,15 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
                         return setTimeout(doRequest, retryAPIRequestTimeout) 
                     }
 
-                    let res: any = ""
+                    const res: Buffer[] = []
 
-                    response.on("error", (err: any) => {
-                        log.error(err)
-
-                        res = ""
-    
-                        return setTimeout(doRequest, retryAPIRequestTimeout)
-                    })
-
-                    response.on("data", (chunk: any) => {
-                        res += chunk
+                    response.on("data", (chunk: Buffer) => {
+                        res.push(chunk)
                     })
 
                     response.on("end", () => {
                         try{
-                            const obj = JSON.parse(res)
-
-                            res = ""
+                            const obj = JSON.parse(Buffer.concat(res).toString())
     
                             if(typeof obj.message == "string"){
                                 if(obj.message.toLowerCase().indexOf("invalid api key") !== -1){
@@ -116,13 +105,11 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
                                     return reject(new Error(obj.message))
                                 }
                             }
-    
+
                             return resolve(obj)
                         }
                         catch(e){
                             log.error(e)
-
-                            res = ""
         
                             return reject(e)
                         }
@@ -1504,39 +1491,15 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
 
                     calcProgress(req.socket.bytesWritten)
 
-                    let res: any = ""
+                    const res: Buffer[] = []
 
-                    response.on("data", (chunk: any) => {
-                        res += chunk
-                    })
-
-                    response.on("error", (err: any) => {
-                        log.error(err)
-
-                        if((-totalBytes) < 0){
-                            sendToAllPorts({
-                                type: from == "sync" ? "uploadProgress" : "uploadProgressSeperate",
-                                data: {
-                                    uuid,
-                                    bytes: -totalBytes,
-                                    from
-                                }
-                            })
-                        }
-
-                        totalBytes = 0
-                        res = ""
-
-                        throttle.destroy()
-
-                        return setTimeout(doRequest, retryUploadTimeout)
+                    response.on("data", (chunk: Buffer) => {
+                        res.push(chunk)
                     })
 
                     response.on("end", () => {
                         try{
-                            const obj = JSON.parse(res)
-
-                            res = ""
+                            const obj = JSON.parse(Buffer.concat(res).toString())
 
                             if(!obj.status){
                                 if(obj.message.toLowerCase().indexOf("storage") !== -1){
@@ -1762,35 +1725,9 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }: { 
                         return setTimeout(doRequest, retryDownloadTimeout)
                     }
 
-                    let res: any = []
-
-                    response.on("error", (err: any) => {
-                        log.error(err)
-
-                        if((-totalBytes) < 0){
-                            sendToAllPorts({
-                                type: from == "sync" ? "downloadProgress" : "downloadProgressSeperate",
-                                data: {
-                                    uuid,
-                                    bytes: -totalBytes,
-                                    from
-                                }
-                            })
-                        }
-
-                        totalBytes = 0
-                        res = null
-
-                        throttle.destroy()
-
-                        return setTimeout(doRequest, retryDownloadTimeout)
-                    })
+                    const res: Buffer[] = []
 
                     response.pipe(throttle).on("data", (chunk: Buffer) => {
-                        if(res == null){
-                            return false
-                        }
-
                         res.push(chunk)
 
                         totalBytes += chunk.length
@@ -1811,53 +1748,10 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }: { 
                             reject(e)
                         }
 
-                        res = null
-
                         throttle.destroy()
 
                         return true
-                    }).on("error", (err: any) => {
-                        log.error(err)
-
-                        if((-totalBytes) < 0){
-                            sendToAllPorts({
-                                type: from == "sync" ? "downloadProgress" : "downloadProgressSeperate",
-                                data: {
-                                    uuid,
-                                    bytes: -totalBytes,
-                                    from
-                                }
-                            })
-                        }
-
-                        totalBytes = 0
-                        res = null
-
-                        throttle.destroy()
-
-                        return setTimeout(doRequest, retryDownloadTimeout)
                     })
-                })
-
-                request.on("timeout", () => {
-                    log.error("Request timed out")
-
-                    if((-totalBytes) < 0){
-                        sendToAllPorts({
-                            type: from == "sync" ? "downloadProgress" : "downloadProgressSeperate",
-                            data: {
-                                uuid,
-                                bytes: -totalBytes,
-                                from
-                            }
-                        })
-                    }
-
-                    totalBytes = 0
-
-                    throttle.destroy()
-
-                    return setTimeout(doRequest, retryDownloadTimeout)
                 })
         
                 request.on("error", (err: any) => {
