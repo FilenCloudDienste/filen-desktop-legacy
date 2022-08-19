@@ -4,7 +4,6 @@ import sync from "../../lib/worker/sync"
 import { updateKeys } from "../../lib/user"
 import db from "../../lib/db"
 import useIsOnline from "../../lib/hooks/useIsOnline"
-import { getAPIServer } from "../../lib/api"
 import ipc from "../../lib/ipc"
 import useDb from "../../lib/hooks/useDb"
 import eventListener from "../../lib/eventListener"
@@ -32,44 +31,62 @@ const checkInternet = (): any => {
         agent: new https.Agent({
             timeout: 10000
         })
-    }, (response: any) => {
+    }, async (response: any) => {
         if(response.statusCode !== 200){
-            db.set("isOnline", false).catch(log.error)
+            try{
+                await db.set("isOnline", false)
+            }
+            catch(e){
+                log.error(e)
+            }
 
             return setTimeout(checkInternet, 3000)
         }
 
-        let res: any = ""
+        const res: Buffer[] = []
 
-        response.on("error", () => {
-            db.set("isOnline", false).catch(log.error)
-
-            res = ""
+        response.on("error", async () => {
+            try{
+                await db.set("isOnline", false)
+            }
+            catch(e){
+                log.error(e)
+            }
 
             return setTimeout(checkInternet, 3000)
         })
 
-        response.on("data", (chunk: any) => {
-            res += chunk
+        response.on("data", (chunk: Buffer) => {
+            res.push(chunk)
         })
 
-        response.on("end", () => {
-            if(res.indexOf("Invalid endpoint") == -1){
-                db.set("isOnline", false).catch(log.error)
-    
-                return setTimeout(checkInternet, 3000)
+        response.on("end", async () => {
+            try{
+                const str = Buffer.concat(res).toString()
+            
+                if(str.indexOf("Invalid endpoint") == -1){
+                    await db.set("isOnline", false)
+        
+                    return setTimeout(checkInternet, 3000)
+                }
+        
+                await db.set("isOnline", true)
+            }
+            catch(e){
+                log.error(e)
             }
 
-            res = ""
-    
-            db.set("isOnline", true).catch(log.error)
-    
             return setTimeout(checkInternet, 3000)
         })
     })
 
-    req.on("error", () => {
-        db.set("isOnline", false).catch(log.error)
+    req.on("error", async () => {
+        try{
+            await db.set("isOnline", false)
+        }
+        catch(e){
+            log.error(e)
+        }
 
         return setTimeout(checkInternet, 3000)
     })

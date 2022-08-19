@@ -1,4 +1,4 @@
-import { apiServers, uploadServers, downloadServers, maxRetryAPIRequest, retryAPIRequestTimeout, maxRetryUpload, maxRetryDownload, retryUploadTimeout, retryDownloadTimeout, maxConcurrentAPIRequest } from "../constants"
+import { apiServers, uploadServers, downloadServers, maxRetryAPIRequest, retryAPIRequestTimeout, maxRetryUpload, maxRetryDownload, retryUploadTimeout, retryDownloadTimeout, maxConcurrentAPIRequest, maxConcurrentUploads, maxConcurrentDownloads } from "../constants"
 import { getRandomArbitrary, Semaphore, nodeBufferToArrayBuffer } from "../helpers"
 import { hashFn, encryptMetadata, encryptMetadataPublicKey, decryptFolderLinkKey, decryptFileMetadata, decryptFolderName } from "../crypto"
 import db from "../db"
@@ -15,6 +15,24 @@ export const createFolderSemaphore = new Semaphore(1)
 export const apiRequestSemaphore = new Semaphore(maxConcurrentAPIRequest)
 export const throttleGroupUpload = new ThrottleGroup({ rate: 1024 * 1024 * 1024 })
 export const throttleGroupDownload = new ThrottleGroup({ rate: 1024 * 1024 * 1024 })
+
+const httpsAPIAgent = new https.Agent({
+    keepAlive: true,
+    maxSockets: maxConcurrentAPIRequest * 4,
+    timeout: 86400000
+})
+
+const httpsUploadAgent = new https.Agent({
+    keepAlive: true,
+    maxSockets: maxConcurrentUploads * 4,
+    timeout: 86400000
+})
+
+const httpsDownloadAgent = new https.Agent({
+    keepAlive: true,
+    maxSockets: maxConcurrentDownloads * 4,
+    timeout: 86400000
+})
 
 export const isOnline = () => {
     return new Promise((resolve) => {
@@ -48,8 +66,6 @@ export const getDownloadServer = () => {
     return downloadServers[getRandomArbitrary(0, (downloadServers.length - 1))]
 }
 
-const request = window.require("request")
-
 export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, timeout = 500000 }): Promise<any> => {
     return new Promise((resolve, reject) => {
         let currentTries = 0
@@ -77,6 +93,7 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
                     path: endpoint,
                     port: 443,
                     timeout: 86400000,
+                    agent: httpsAPIAgent,
                     headers: {
                         "Content-Type": "application/json",
                         "User-Agent": "filen-desktop"
@@ -84,6 +101,8 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
                 }, (response: any) => {
                     if(response.statusCode !== 200){
                         log.error(new Error("API response " + response.statusCode + ", method: " + method.toUpperCase() + ", endpoint: " + endpoint + ", data: " + JSON.stringify(data)))
+
+                        apiRequestSemaphore.release()
     
                         return setTimeout(doRequest, retryAPIRequestTimeout) 
                     }
@@ -106,10 +125,14 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
                                 }
                             }
 
+                            apiRequestSemaphore.release()
+
                             return resolve(obj)
                         }
                         catch(e){
                             log.error(e)
+
+                            apiRequestSemaphore.release()
         
                             return reject(e)
                         }
@@ -118,57 +141,14 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
 
                 req.on("error", (err: any) => {
                     log.error(err)
+
+                    apiRequestSemaphore.release()
     
                     return setTimeout(doRequest, retryAPIRequestTimeout)
                 })
 
                 req.write(JSON.stringify(data))
                 req.end()
-
-                /*request({
-                    method: method.toUpperCase(),
-                    url: "https://" + getAPIServer() + endpoint,
-                    timeout: 86400000,
-                    headers: {
-                        "Content-Type": "application/json",
-                        "User-Agent": "filen-desktop"
-                    },
-                    family: 4,
-                    body: JSON.stringify(data)
-                }, (err: any, response: any, body: any) => {
-                    apiRequestSemaphore.release()
-
-                    if(err){
-                        log.error(err)
-    
-                        return setTimeout(doRequest, retryAPIRequestTimeout)
-                    }
-    
-                    if(response.statusCode !== 200){
-                        log.error(new Error("API response " + response.statusCode + ", method: " + method.toUpperCase() + ", endpoint: " + endpoint + ", data: " + JSON.stringify(data)))
-    
-                        return setTimeout(doRequest, retryAPIRequestTimeout) 
-                    }
-    
-                    try{
-                        const obj = JSON.parse(body)
-
-                        if(typeof obj.message == "string"){
-                            if(obj.message.toLowerCase().indexOf("invalid api key") !== -1){
-                                logout().catch(log.error)
-
-                                return reject(new Error(obj.message))
-                            }
-                        }
-
-                        return resolve(obj)
-                    }
-                    catch(e){
-                        log.error(e)
-    
-                        return setTimeout(doRequest, retryAPIRequestTimeout)
-                    }
-                })*/
             })
         }
 
@@ -1460,10 +1440,8 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
                     hostname: "up.filen.io",
                     path: "/v2/upload?" + queryParams,
                     port: 443,
-                    agent: new https.Agent({
-                        keepAlive: true
-                    }),
                     timeout: 86400000,
+                    agent: httpsUploadAgent,
                     headers: {
                         "User-Agent": "filen-desktop"
                     }
@@ -1559,76 +1537,6 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
                 Readable.from([data]).pipe(throttle.on("end", () => throttle.destroy())).on("data", (chunk: any) => {
                     req.write(chunk)
                 }).on("end", () => req.end())
-
-                /*const req = request({
-                    url: "https://" + getUploadServer() + "/v2/upload?" + queryParams,
-                    method: "POST",
-                    family: 4,
-                    timeout: 86400000,
-                    headers: {
-                        "User-Agent": "filen-desktop"
-                    }
-                }, (err: any, response: any, body: any) => {
-                    if(err){
-                        log.error(err)
-
-                        if((-totalBytes) < 0){
-                            sendToAllPorts({
-                                type: from == "sync" ? "uploadProgress" : "uploadProgressSeperate",
-                                data: {
-                                    uuid,
-                                    bytes: -totalBytes,
-                                    from
-                                }
-                            })
-                        }
-
-                        totalBytes = 0
-
-                        return setTimeout(doRequest, retryUploadTimeout)
-                    }
-
-                    calcProgress(req.req.connection.bytesWritten)
-
-                    if(response.statusCode !== 200){
-                        log.error(new Error("Upload failed, status code: " + response.statusCode))
-
-                        if((-totalBytes) < 0){
-                            sendToAllPorts({
-                                type: from == "sync" ? "uploadProgress" : "uploadProgressSeperate",
-                                data: {
-                                    uuid,
-                                    bytes: -totalBytes,
-                                    from
-                                }
-                            })
-                        }
-
-                        totalBytes = 0
-                        
-                        return setTimeout(doRequest, retryUploadTimeout)
-                    }
-
-                    try{
-                        var res = JSON.parse(body)
-                    }
-                    catch(e){
-                        return reject(e)
-                    }
-
-                    if(!res.status){
-                        if(res.message.toLowerCase().indexOf("storage") !== -1){
-                            db.set("paused", true)
-                            db.set("maxStorageReached", true)
-                        }
-
-                        return reject(res.message)
-                    }
-
-                    return resolve(res)
-                }).on("drain", () => calcProgress(req.req.connection.bytesWritten))
-
-                Readable.from([data]).pipe(throttle.on("end", () => throttle.destroy())).pipe(req)*/
             }
 
             return doRequest()
@@ -1707,10 +1615,8 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }: { 
                     port: 443,
                     path: "/" + region + "/" + bucket + "/" + uuid + "/" + index,
                     method: "GET",
+                    agent: httpsDownloadAgent,
                     timeout: 86400000,
-                    agent: new https.Agent({
-                        keepAlive: true
-                    }),
                     headers: {
                         "User-Agent": "filen-desktop"
                     }

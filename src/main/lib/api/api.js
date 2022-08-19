@@ -1,9 +1,14 @@
-const { app } = require("electron")
 const https = require("https")
 const log = require("electron-log")
 
 const retryAPIRequestTimeout = 1000
 const maxRetryAPIRequest = 1024
+
+const httpsAPIAgent = new https.Agent({
+    keepAlive: true,
+    maxSockets: 128,
+    timeout: 86400000
+})
 
 const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, timeout = 500000 }) => {
     return new Promise((resolve, reject) => {
@@ -26,6 +31,7 @@ const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, timeout = 5
                 hostname: "api.filen.io",
                 path: endpoint,
                 port: 443,
+                agent: httpsAPIAgent,
                 timeout: 86400000,
                 headers: {
                     "Content-Type": "application/json",
@@ -48,11 +54,11 @@ const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, timeout = 5
                     try{
                         const obj = JSON.parse(Buffer.concat(res).toString())
 
-                        if(typeof obj.message == "string"){
-                            if(obj.message.toLowerCase().indexOf("invalid api key") !== -1){
-                                app.quit()
-
-                                return
+                        if(typeof obj.message == "string" && typeof obj.status == "boolean"){
+                            if(!obj.status){
+                                log.error(obj.message)
+    
+                                return reject(obj.message)
                             }
                         }
 
@@ -74,49 +80,6 @@ const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, timeout = 5
 
             req.write(JSON.stringify(data))
             req.end()
-
-            /*request({
-                method: method.toUpperCase(),
-                url: "https://api.filen.io" + endpoint,
-                timeout,
-                headers: {
-                    "Content-Type": "application/json",
-                    "User-Agent": "filen-desktop"
-                },
-                family: 4,
-                body: JSON.stringify(data)
-            }, (err, response, body) => {
-                if(err){
-                    log.error(err)
-
-                    return setTimeout(doRequest, retryAPIRequestTimeout)
-                }
-
-                if(response.statusCode !== 200){
-                    log.error(new Error("API response " + response.statusCode + ", method: " + method.toUpperCase() + ", endpoint: " + endpoint + ", data: " + JSON.stringify(data)))
-
-                    return setTimeout(doRequest, retryAPIRequestTimeout) 
-                }
-
-                try{
-                    const obj = JSON.parse(body)
-
-                    if(typeof obj.message == "string"){
-                        if(obj.message.toLowerCase().indexOf("invalid api key") !== -1){
-                            app.quit()
-
-                            return
-                        }
-                    }
-
-                    return resolve(obj)
-                }
-                catch(e){
-                    log.error(e)
-
-                    return setTimeout(doRequest, retryAPIRequestTimeout)
-                }
-            })*/
         }
 
         return doRequest()
