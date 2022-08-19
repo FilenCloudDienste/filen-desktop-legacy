@@ -6,7 +6,7 @@ const maxRetryAPIRequest = 1024
 
 const httpsAPIAgent = new https.Agent({
     keepAlive: true,
-    maxSockets: 128,
+    maxSockets: 8,
     timeout: 86400000
 })
 

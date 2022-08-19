@@ -18,19 +18,19 @@ export const throttleGroupDownload = new ThrottleGroup({ rate: 1024 * 1024 * 102
 
 const httpsAPIAgent = new https.Agent({
     keepAlive: true,
-    maxSockets: maxConcurrentAPIRequest * 4,
+    maxSockets: maxConcurrentAPIRequest,
     timeout: 86400000
 })
 
 const httpsUploadAgent = new https.Agent({
     keepAlive: true,
-    maxSockets: maxConcurrentUploads * 4,
+    maxSockets: maxConcurrentUploads,
     timeout: 86400000
 })
 
 const httpsDownloadAgent = new https.Agent({
     keepAlive: true,
-    maxSockets: maxConcurrentDownloads * 4,
+    maxSockets: maxConcurrentDownloads,
     timeout: 86400000
 })
 

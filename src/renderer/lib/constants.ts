@@ -58,14 +58,14 @@ export const defaultIgnored: {
 }
 
 export const chunkSize: number = (1024 * 1024)
-export const maxConcurrentUploads: number = 5
-export const maxConcurrentDownloads: number = 5
+export const maxConcurrentUploads: number = 8
+export const maxConcurrentDownloads: number = 8
 export const maxDownloadThreads: number = 64
 export const maxUploadThreads: number = 8
-export const maxConcurrentTransfers: number = 10
+export const maxConcurrentTransfers: number = 16
 export const maxRetryAPIRequest: number = 512
 export const retryAPIRequestTimeout: number = 1000
-export const maxRetrySyncTask: number = 16
+export const maxRetrySyncTask: number = 32
 export const retrySyncTaskTimeout: number = 1000
 export const maxRetryUpload: number = 512
 export const retryUploadTimeout: number = 1000
@@ -73,5 +73,5 @@ export const maxRetryDownload: number = 512
 export const retryDownloadTimeout: number = 1000
 export const sizeOverheadMultiplier: number = 1
 export const speedMultiplier: number = 1
-export const maxConcurrentSyncTasks: number = 512
+export const maxConcurrentSyncTasks: number = 1024
 export const maxConcurrentAPIRequest: number = 64
