@@ -137,7 +137,12 @@ const pl: {
     syncModeLocalBackupInfo: "Przesyłaj dane tylko do chmury, nigdy niczego nie usuwaj ani nie działaj na podstawie zdalnych zmian",
     syncModeCloudBackupInfo: "Pobieraj dane tylko z chmury, nigdy niczego nie usuwaj ani nie działaj na podstawie lokalnych zmian",
     cancel: "Anuluj",
-    cannotCreateSyncLocationLoop2: "Wybrana ścieżka zdalna jest już skonfigurowaną lokalizacją synchronizacji. Może to prowadzić do niekończących się pętli synchronizacji"
+    cannotCreateSyncLocationLoop2: "Wybrana ścieżka zdalna jest już skonfigurowaną lokalizacją synchronizacji. Może to prowadzić do niekończących się pętli synchronizacji",
+    titlebarUpdateAvailable: "Dostępna aktualizacja",
+    updateWindowInfo: "Nowa wersja została pobrana i jest gotowa do zainstalowania. Proszę zainstalować ją jak najszybciej, aby skorzystać z poprawek błędów i nowych funkcji.",
+    updateWindowButton: "Zainstaluj",
+    updateWindowInfo2: "Aplikacja zostanie zamknięta i rozpocznie przepływ aktualizacji. Prosimy nie przerywać tego procesu.",
+    titlebarUpdateInstalled: "Aktualizacja zainstalowana"
 }
 
 export default pl
