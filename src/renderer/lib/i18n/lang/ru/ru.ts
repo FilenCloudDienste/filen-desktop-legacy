@@ -116,7 +116,7 @@ const ru: {
     keybinds_pauseSync: "Приостановить синхронизацию",
     keybinds_resumeSync: "Продолжить синхронизацию",
     keybinds_openWebsite: "Открыть сайт",
-    keybindNotBound: "Не привязывать",
+    keybindNotBound: "Не привязано",
     syncing: "Синхронизация..",
     maxStorageReached: "Вы достигли максимального объема хранилища вашей учетной записи. Чтобы продолжить синхронизацию, мы рекомендуем вам улучшить план.",
     syncTaskDownloadFromRemote: "Скачано из облака",
