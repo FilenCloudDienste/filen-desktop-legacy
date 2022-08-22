@@ -116,7 +116,7 @@ const uk: {
     keybinds_pauseSync: "Призупинити синхронізацію",
     keybinds_resumeSync: "Продовжити синхронізацію",
     keybinds_openWebsite: "Відкрити сайт",
-    keybindNotBound: "Не прив'язувати",
+    keybindNotBound: "Не прив'язано",
     syncing: "Синхронізація..",
     maxStorageReached: "Ви досягли максимального обсягу пам’яті свого облікового запису. Щоб мати можливість продовжити синхронізацію, рекомендуємо покращити план.",
     syncTaskDownloadFromRemote: "Скачано з хмари",
