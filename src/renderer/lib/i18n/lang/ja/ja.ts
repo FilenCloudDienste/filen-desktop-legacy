@@ -28,7 +28,7 @@ const ja: {
     noSyncActivityYet: "表示するものはありません",
     createOne: "新規作成",
     noSyncLocationsSetupYet: "同期するフォルダは設定されていません",
-    storageUsed: "__MAX__のうち__USED__を使用中",
+    storageUsed: "__MAX__中__USED__を使用中",
     quitFilen: "閉じる",
     openWebsite: "Filen公式サイトを開く",
     settings: "設定",
