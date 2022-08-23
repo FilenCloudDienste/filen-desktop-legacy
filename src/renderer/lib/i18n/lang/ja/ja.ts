@@ -116,7 +116,7 @@ const ja: {
     keybinds_pauseSync: "一時停止",
     keybinds_resumeSync: "再開",
     keybinds_openWebsite: "Filen公式サイトを開く",
-    keybindNotBound: "設定無し",
+    keybindNotBound: "設定なし",
     syncing: "同期中",
     maxStorageReached: "クラウド上の空き容量がありません。不要なファイルを消すか、アップグレードをしてください。",
     syncTaskDownloadFromRemote: "クラウドからのダウンロード",
