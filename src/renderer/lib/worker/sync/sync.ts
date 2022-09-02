@@ -876,6 +876,16 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                 })
                             }).catch((err) => {
                                 log.error(err)
+
+                                if(typeof err.code !== "undefined"){
+                                    if(err.code == "ENOENT"){
+                                        return resolve(true)
+                                    }
+                                }
+
+                                if(err.toString().indexOf("ENOENT:") !== -1){
+                                    return resolve(true)
+                                }
     
                                 return setTimeout(() => {
                                     doTask(err)
@@ -1044,6 +1054,16 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                 })
                             }).catch((err) => {
                                 log.error(err)
+
+                                if(typeof err.code !== "undefined"){
+                                    if(err.code == "ENOENT"){
+                                        return resolve(true)
+                                    }
+                                }
+
+                                if(err.toString().indexOf("ENOENT:") !== -1){
+                                    return resolve(true)
+                                }
     
                                 return setTimeout(() => {
                                     doTask(err)

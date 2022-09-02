@@ -123,6 +123,12 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
     
                                     return reject(new Error(obj.message))
                                 }
+
+                                if(obj.message.toLowerCase().indexOf("api key not found") !== -1){
+                                    logout().catch(log.error)
+    
+                                    return reject(new Error(obj.message))
+                                }
                             }
 
                             apiRequestSemaphore.release()
