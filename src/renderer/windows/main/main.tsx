@@ -20,6 +20,11 @@ import useIsOnline from "../../lib/hooks/useIsOnline"
 const log = window.require("electron-log")
 const { ipcRenderer } = window.require("electron")
 
+export interface TransferProgress {
+    uuid: string,
+    bytes: number
+}
+
 const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: string, windowId: string }) => {
     const darkMode: boolean = useDarkMode()
     const lang: string = useLang()
@@ -292,7 +297,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
             }
         })
 
-        const uploadProgressListener = eventListener.on("uploadProgress", (data: any) => {
+        const uploadProgressListener = eventListener.on("uploadProgress", (data: TransferProgress) => {
             const now: number = new Date().getTime()
 
             setCurrentUploads((prev: any) => Object.keys(prev).filter(key => key == data.uuid).length > 0 ? ({
@@ -310,7 +315,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
             bytesSent.current += data.bytes
         })
 
-        const downloadProgressListener = eventListener.on("downloadProgress", (data: any) => {
+        const downloadProgressListener = eventListener.on("downloadProgress", (data: TransferProgress) => {
             const now: number = new Date().getTime()
 
             setCurrentDownloads((prev: any) => Object.keys(prev).filter(key => key == data.uuid).length > 0 ? ({

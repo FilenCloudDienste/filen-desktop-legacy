@@ -28,7 +28,7 @@ const pathModule = window.require("path")
 const log = window.require("electron-log")
 
 let IS_SYNCING: boolean = false
-let DEBOUNCE_WATCHER_EVENT: any = null
+let DEBOUNCE_WATCHER_EVENT: any = {}
 
 const handleMessage = (type: string, request: any) => {
     return new Promise((resolve, reject) => {
@@ -209,9 +209,9 @@ export const listen = () => {
             return log.error(data.err)
         }
 
-        clearTimeout(DEBOUNCE_WATCHER_EVENT)
+        clearTimeout(DEBOUNCE_WATCHER_EVENT[data.locationUUID])
 
-        DEBOUNCE_WATCHER_EVENT = setTimeout(() => {
+        DEBOUNCE_WATCHER_EVENT[data.locationUUID] = setTimeout(() => {
             const watchPath: string = data.watchPath
             const locationUUID: string = data.locationUUID
             const event: string = data.event

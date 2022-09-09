@@ -487,6 +487,8 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
             return false
         }
 
+        console.log({ uploadToRemote, downloadFromRemote, renameInLocal, renameInRemote, moveInLocal, moveInRemote, deleteInLocal, deleteInRemote, location })
+
         const ignored = []
 
         try{
