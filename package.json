@@ -2,7 +2,7 @@
 	"name": "filen-desktop",
 	"author": "Filen Cloud Dienste UG (haftungsbeschränkt) <support@filen.io>",
 	"description": "Filen Desktop Client",
-	"version": "2.0.4",
+	"version": "2.0.5",
 	"private": true,
 	"engines": {
 		"node": "14.x"
