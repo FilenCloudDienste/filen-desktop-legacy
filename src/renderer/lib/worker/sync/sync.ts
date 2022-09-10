@@ -327,7 +327,7 @@ onlyGetBaseParent<Move/Delete>(tasks) will return
 */
 const onlyGetBaseParentMove = (tasks: any): any => {
     const sorted = tasks.sort((a: any, b: any) => {
-        return a.path.length - b.path.length
+        return a.path.split("/").length - b.path.split("/").length
     })
 
     const newTasks: any[] = []
@@ -361,7 +361,7 @@ const onlyGetBaseParentMove = (tasks: any): any => {
 
 const onlyGetBaseParentDelete = (tasks: any): any => {
     const sorted = tasks.sort((a: any, b: any) => {
-        return a.path.length - b.path.length
+        return a.path.split("/").length - b.path.split("/").length
     })
 
     const newTasks: any[] = []
@@ -486,8 +486,6 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
         
             return false
         }
-
-        console.log({ uploadToRemote, downloadFromRemote, renameInLocal, renameInRemote, moveInLocal, moveInRemote, deleteInLocal, deleteInRemote, location })
 
         const ignored = []
 
