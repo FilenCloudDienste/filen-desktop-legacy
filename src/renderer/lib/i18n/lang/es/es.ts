@@ -133,7 +133,7 @@ const es: {
     checkingChanges: "Comprobando cambios..",
     syncModeTwoWayInfo: "Replica cada acción en ambas direcciones",
     syncModeLocalToCloudInfo: "Replica cada acción local a la nube sin actuar ante cambios remotos",
-    syncModeCloudToLocalInfo: "Replica cada acción de la nube sin actuar ante cambios",
+    syncModeCloudToLocalInfo: "Replica cada acción de la nube sin actuar ante cambios locales",
     syncModeLocalBackupInfo: "Solo sube datos a la nube, nunca elimina nada ni actúa ante cambios remotos",
     syncModeCloudBackupInfo: "Solo descarga datos de la nube, nunca elimina nada ni actúa ante cambios locales",
     cancel: "Cancelar",
