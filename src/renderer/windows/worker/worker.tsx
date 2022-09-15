@@ -24,12 +24,12 @@ const checkInternet = (): any => {
         method: "GET",
         hostname: "api.filen.io",
         path: "/",
-        timeout: 10000,
+        timeout: 30000,
         headers: {
             "User-Agent": "filen-desktop"
         },
         agent: new https.Agent({
-            timeout: 10000
+            timeout: 30000
         })
     }, async (response: any) => {
         if(response.statusCode !== 200){
