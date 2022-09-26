@@ -1,3 +1,4 @@
+const { app } = require("electron")
 const log = require("electron-log")
 const db = require("../db")
 const api = require("../api")
@@ -7,6 +8,21 @@ let SYNC_LOCK_INTERVAL = undefined
 let TRYING_TO_HOLD_SYNC_LOCK = false
 let SYNC_LOCK_ACQUIRED = false
 const semaphore = new helpers.Semaphore(1)
+
+app.on("before-quit", async (e) => {
+    if(SYNC_LOCK_ACQUIRED){
+        e.preventDefault()
+
+        try{
+            await releaseSyncLock("sync")
+        }
+        catch(e){
+            log.error(e)
+        }
+
+        app.exit()
+    }
+})
 
 const acquireSyncLock = (id = "sync") => {
     return new Promise((resolve) => {
