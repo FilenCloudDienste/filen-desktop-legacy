@@ -29,7 +29,7 @@ const pl: {
     createOne: "Stwórz",
     noSyncLocationsSetupYet: "Nie ma jeszcze ustawionej lokalizacji synchronizacji",
     storageUsed: "Wykorzystano __USED__ z __MAX__",
-    quitFilen: "Wyłącz Filen'a",
+    quitFilen: "Wyłącz Filena",
     openWebsite: "Otwórz stronę",
     settings: "Ustawienia",
     actions: "Działania",
