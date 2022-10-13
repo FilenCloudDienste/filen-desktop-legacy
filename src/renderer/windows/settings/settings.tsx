@@ -422,6 +422,26 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
                         >
                             Italiano
                         </option>
+                        <option 
+                            value="tr" 
+                            style={{
+                                backgroundColor: colors(platform, darkMode, "backgroundSecondary"),
+                                height: "30px",
+                                borderRadius: "10px"
+                            }}
+                        >
+                            Türk
+                        </option>
+                        <option 
+                            value="sv" 
+                            style={{
+                                backgroundColor: colors(platform, darkMode, "backgroundSecondary"),
+                                height: "30px",
+                                borderRadius: "10px"
+                            }}
+                        >
+                            Svenska
+                        </option>
                     </Select>
                     </Flex>
                 </Flex>
