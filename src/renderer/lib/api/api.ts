@@ -10,6 +10,7 @@ const https = window.require("https")
 const log = window.require("electron-log")
 const { ThrottleGroup } = window.require("speed-limiter")
 const { Readable } = window.require("stream")
+const progress = window.require("progress-stream")
 
 export const createFolderSemaphore = new Semaphore(1)
 export const apiRequestSemaphore = new Semaphore(maxConcurrentAPIRequest)
@@ -1391,7 +1392,7 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
             const urlParams = new URLSearchParams(queryParams)
             const uuid = urlParams.get("uuid") || ""
 
-            let bps = 999999999999999
+            let bps = (122070 * 1024)
 
             if(networkingSettings !== null && typeof networkingSettings == "object" && from == "sync"){
                 if(typeof networkingSettings.uploadKbps !== "undefined" && networkingSettings.uploadKbps > 0){
@@ -1473,8 +1474,6 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
                         return setTimeout(doRequest, retryUploadTimeout)
                     }
 
-                    calcProgress(req.socket.bytesWritten)
-
                     const res: Buffer[] = []
 
                     response.on("data", (chunk: Buffer) => {
@@ -1538,11 +1537,14 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
                     return setTimeout(doRequest, retryUploadTimeout)
                 })
 
-                req.on("drain", () => calcProgress(req.socket.bytesWritten))
+                const str = progress({
+                    length: data.byteLength,
+                    time: 100
+                })
+                 
+                str.on("progress", (info: any) => calcProgress(info.transferred))
 
-                Readable.from([data]).pipe(throttle.on("end", () => throttle.destroy())).on("data", (chunk: any) => {
-                    req.write(chunk)
-                }).on("end", () => req.end())
+                Readable.from([data]).pipe(str.on("end", () => str.destroy())).pipe(throttle.on("end", () => throttle.destroy())).pipe(req)
             }
 
             return doRequest()
@@ -1608,7 +1610,7 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }: { 
                 return getPausedStatus()
             })
 
-            let bps = 999999999999999
+            let bps = (122070 * 1024)
 
             if(networkingSettings !== null && typeof networkingSettings == "object" && from == "sync"){
                 if(typeof networkingSettings.downloadKbps !== "undefined" && networkingSettings.downloadKbps > 0){

@@ -2,7 +2,7 @@ import { folderPresent, dirTree, createFolder, folderExists, uploadChunk, markUp
 import db from "../../db"
 import { decryptFolderName, decryptFileMetadata, hashFn, encryptMetadata, encryptData } from "../../crypto"
 import memoryCache from "../../memoryCache"
-import { convertTimestampToMs, isFileOrFolderNameIgnoredByDefault, generateRandomString, Semaphore, isFolderPathExcluded } from "../../helpers"
+import { convertTimestampToMs, isFileOrFolderNameIgnoredByDefault, generateRandomString, Semaphore, isFolderPathExcluded, fileAndFolderNameValidation } from "../../helpers"
 import { normalizePath, smokeTest as smokeTestLocal, readChunk, checkLastModified } from "../local"
 import { chunkSize, maxUploadThreads } from "../../constants"
 import { v4 as uuidv4 } from "uuid"
@@ -131,7 +131,7 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                     const name = await decryptFolderName(metadata, masterKeys)
 
                     if(name.length > 0 && name.length < 250){
-                        if(!isFileOrFolderNameIgnoredByDefault(name) && !addedFolders[parent + ":" + name]){
+                        if(!isFileOrFolderNameIgnoredByDefault(name) && fileAndFolderNameValidation(name) && !addedFolders[parent + ":" + name]){
                             addedFolders[parent + ":" + name] = true
 
                             if(excludeDot){
@@ -172,7 +172,7 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                     decrypted.lastModified = convertTimestampToMs(decrypted.lastModified)
 
                     if(decrypted.name.length > 0 && decrypted.name.length < 250){
-                        if(!isFileOrFolderNameIgnoredByDefault(decrypted.name) && !addedFiles[parent + ":" + decrypted.name]){
+                        if(!isFileOrFolderNameIgnoredByDefault(decrypted.name) && fileAndFolderNameValidation(decrypted.name) && !addedFiles[parent + ":" + decrypted.name]){
                             addedFiles[parent + ":" + decrypted.name] = true
 
                             if(excludeDot){

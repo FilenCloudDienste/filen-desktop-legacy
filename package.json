@@ -36,6 +36,7 @@
 		"lodash": "^4.17.21",
 		"mime-types": "^2.1.35",
 		"node-watch": "github:FilenCloudDienste/node-watch-fs-extra",
+		"progress-stream": "^2.0.0",
 		"react": "^18.0.0",
 		"react-dom": "^18.0.0",
 		"react-fast-compare": "^3.2.0",
@@ -146,7 +147,8 @@
 				"arch": [
 					"x64",
 					"arm64"
-				]
+				],
+				"certificateSubjectName": "Filen Cloud Dienste UG (haftungsbeschränkt)"
 			},
 			"publish": [
 				{
