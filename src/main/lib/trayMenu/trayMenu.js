@@ -115,7 +115,7 @@ const buildMenu = (type = "default") => {
                                 return false
                             }
 
-                            app.quit()
+                            app.exit()
                         }).catch(log.error)
                     }
                 }

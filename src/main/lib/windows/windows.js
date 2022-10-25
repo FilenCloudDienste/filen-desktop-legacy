@@ -95,9 +95,13 @@ const createMain = (show = false) => {
                 window.webContents.openDevTools({ mode: "detach" })
             }
 
-			window.once("closed", () => {
-				shared.remove("MAIN_WINDOW")
+            window.on("close", (e) => {
+                e.preventDefault()
+                window.hide()
+            })
 
+            window.once("closed", () => {
+				shared.remove("MAIN_WINDOW")
                 activeWindows = activeWindows.filter(window => window.id !== windowId)
 			})
 
@@ -106,10 +110,6 @@ const createMain = (show = false) => {
                 
                 setTimeout(() => {
                     window.on("blur", () => {
-                        if(is.linux()){
-                            return false
-                        }
-        
                         try{
                             window.hide()
                         }
