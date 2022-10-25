@@ -8,6 +8,7 @@ const { autoUpdater } = require("electron-updater")
 const ipc = require("./lib/ipc")
 const db = require("./lib/db")
 const { v4: uuidv4 } = require("uuid")
+const { toggleMainWindow, positionWindow } = require("./lib/tray")
 
 let CHECK_UPDATE_INTERVAL = undefined
 let POWER_SAVE_BLOCKER = null
@@ -98,6 +99,11 @@ app.on("activate", () => {
   	if(BrowserWindow.getAllWindows().length == 0){
     	initWindows()
   	}
+})
+
+app.on("second-instance", () => {
+	positionWindow()
+	toggleMainWindow()
 })
 
 powerMonitor.on("shutdown", () => {

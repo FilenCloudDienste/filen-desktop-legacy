@@ -156,6 +156,8 @@ const updateTrayTooltip = (text = "Filen") => {
 
 module.exports = {
     createTray,
+    toggleMainWindow,
+    positionWindow,
     positionWindowAtTray,
     TRAY_ICON_NORMAL,
     TRAY_ICON_SYNC,
@@ -164,5 +166,4 @@ module.exports = {
     updateTrayIcon,
     updateTrayMenu,
     updateTrayTooltip,
-    positionWindow
 }
