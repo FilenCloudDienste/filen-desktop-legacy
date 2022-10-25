@@ -2260,7 +2260,7 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }: { darkMode:
                                                 type="number" 
                                                 value={uploadKbps} 
                                                 onChange={(event: any) => setUploadKbps(event.target.value)} 
-                                                placeholder="0 Kbps" 
+                                                placeholder="0 KiB/s" 
                                                 userSelect="none" 
                                                 style={{
                                                     border: "none",
@@ -2300,7 +2300,7 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }: { darkMode:
                                                 type="number" 
                                                 value={downloadKbps} 
                                                 onChange={(event: any) => setDownloadKbps(event.target.value)} 
-                                                placeholder="0 Kbps" 
+                                                placeholder="0 KiB/s" 
                                                 userSelect="none" 
                                                 style={{
                                                     border: "none",
