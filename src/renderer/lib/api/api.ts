@@ -1403,7 +1403,6 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
             throttleGroupUpload.setRate(bps)
 
             let currentTries = 0
-            let totalBytes = 0
 
             const doRequest = async (): Promise<any> => {
                 if(!(await isOnline())){
@@ -1430,8 +1429,6 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
                         lastBytes = written
                     }
 
-                    totalBytes += bytes
-
                     sendToAllPorts({
                         type: from == "sync" ? "uploadProgress" : "uploadProgressSeperate",
                         data: {
@@ -1456,19 +1453,6 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
                     if(response.statusCode !== 200){
                         log.error(new Error("Upload failed, status code: " + response.statusCode))
 
-                        if((-totalBytes) < 0){
-                            sendToAllPorts({
-                                type: from == "sync" ? "uploadProgress" : "uploadProgressSeperate",
-                                data: {
-                                    uuid,
-                                    bytes: -totalBytes,
-                                    from
-                                }
-                            })
-                        }
-
-                        totalBytes = 0
-
                         throttle.destroy()
 
                         return setTimeout(doRequest, retryUploadTimeout)
@@ -1489,19 +1473,6 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
                                     db.set("paused", true)
                                     db.set("maxStorageReached", true)
                                 }
-    
-                                if((-totalBytes) < 0){
-                                    sendToAllPorts({
-                                        type: from == "sync" ? "uploadProgress" : "uploadProgressSeperate",
-                                        data: {
-                                            uuid,
-                                            bytes: -totalBytes,
-                                            from
-                                        }
-                                    })
-                                }
-        
-                                totalBytes = 0
         
                                 throttle.destroy()
         
@@ -1519,22 +1490,9 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
                 req.on("error", (err: any) => {
                     log.error(err)
 
-                    if((-totalBytes) < 0){
-                        sendToAllPorts({
-                            type: from == "sync" ? "uploadProgress" : "uploadProgressSeperate",
-                            data: {
-                                uuid,
-                                bytes: -totalBytes,
-                                from
-                            }
-                        })
-                    }
-
-                    totalBytes = 0
-
                     throttle.destroy()
 
-                    return setTimeout(doRequest, retryUploadTimeout)
+                    return reject(err)
                 })
 
                 const str = progress({
@@ -1621,7 +1579,6 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }: { 
             throttleGroupDownload.setRate(bps)
 
             let currentTries = 0
-            let totalBytes = 0
 
             const doRequest = async (): Promise<any> => {
                 if(!(await isOnline())){
@@ -1661,8 +1618,6 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }: { 
 
                     response.pipe(throttle).on("data", (chunk: Buffer) => {
                         res.push(chunk)
-
-                        totalBytes += chunk.length
         
                         sendToAllPorts({
                             type: from == "sync" ? "downloadProgress" : "downloadProgressSeperate",
@@ -1686,25 +1641,12 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }: { 
                     })
                 })
         
-                request.on("error", (err: any) => {
+                request.on("error", (err: Error) => {
                     log.error(err)
-
-                    if((-totalBytes) < 0){
-                        sendToAllPorts({
-                            type: from == "sync" ? "downloadProgress" : "downloadProgressSeperate",
-                            data: {
-                                uuid,
-                                bytes: -totalBytes,
-                                from
-                            }
-                        })
-                    }
-
-                    totalBytes = 0
 
                     throttle.destroy()
 
-                    return setTimeout(doRequest, retryDownloadTimeout)
+                    return reject(err)
                 })
         
                 request.end()

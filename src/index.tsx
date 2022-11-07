@@ -2,6 +2,14 @@ import React from "react"
 import "./renderer/styles/index.css"
 import App from "./renderer/App"
 import { createRoot } from "react-dom/client"
+import * as Sentry from "@sentry/react"
+import { BrowserTracing } from "@sentry/tracing"
+
+Sentry.init({
+    dsn: "https://0aa7266bc9364f0b9bb7445331e82959@o4504039703314432.ingest.sentry.io/4504057873498112",
+    integrations: [new BrowserTracing()],
+    tracesSampleRate: 1.0
+})
 
 const log = window.require("electron-log")
 

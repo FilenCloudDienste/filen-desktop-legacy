@@ -2,7 +2,7 @@
 	"name": "filen-desktop",
 	"author": "Filen Cloud Dienste UG (haftungsbeschränkt) <support@filen.io>",
 	"description": "Filen Desktop Client",
-	"version": "2.0.5",
+	"version": "2.0.6",
 	"private": true,
 	"engines": {
 		"node": "14.x"
@@ -16,6 +16,8 @@
 		"@emotion/react": "^11.8.2",
 		"@emotion/styled": "^11.8.1",
 		"@gerhobbelt/gitignore-parser": "^0.2.0-9",
+		"@sentry/react": "^7.17.4",
+		"@sentry/tracing": "^7.17.4",
 		"@uiw/react-codemirror": "^4.7.0",
 		"auto-launch": "^5.0.5",
 		"crypto-js": "^4.1.1",
@@ -140,6 +142,7 @@
 			"publisherName": [
 				"Filen Cloud Dienste UG (haftungsbeschränkt)"
 			],
+			"certificateSubjectName": "Filen Cloud Dienste UG (haftungsbeschränkt)",
 			"verifyUpdateCodeSignature": false,
 			"icon": "./assets/icons/win/icon.ico",
 			"target": {
@@ -147,15 +150,15 @@
 				"arch": [
 					"x64",
 					"arm64"
-				],
-				"certificateSubjectName": "Filen Cloud Dienste UG (haftungsbeschränkt)"
+				]
 			},
 			"publish": [
 				{
 					"provider": "generic",
 					"url": "https://cdn.filen.io/desktop/release/"
 				}
-			]
+			],
+			"sign": "./scripts/sign.js"
 		},
 		"nsis": {
 			"oneClick": false,
