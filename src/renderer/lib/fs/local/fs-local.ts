@@ -1,6 +1,6 @@
 import ipc from "../../ipc"
 import memoryCache from "../../memoryCache"
-import { isFileOrFolderNameIgnoredByDefault, convertTimestampToMs, Semaphore, isFolderPathExcluded, fileAndFolderNameValidation } from "../../helpers"
+import { convertTimestampToMs, Semaphore, isFolderPathExcluded, pathIsFileOrFolderNameIgnoredByDefault, pathValidation } from "../../helpers"
 import { downloadChunk } from "../../api"
 import { decryptData } from "../../crypto"
 import { v4 as uuidv4 } from "uuid"
@@ -167,44 +167,42 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
                 statting += 1
 
                 try{
-                    if(fileAndFolderNameValidation(item.basename)){
-                        if(windows){
-                            item.path = item.path.split("\\").join("/") // Convert windows \ style path seperators to / for internal database, we only use UNIX style path seperators internally
-                        }
-        
-                        let include = true
-        
-                        if(excludeDot && (item.basename.startsWith(".") || item.path.indexOf("/.") !== -1 || item.path.startsWith("."))){
-                            include = false
-                        }
-        
-                        if(include && !isFileOrFolderNameIgnoredByDefault(item.basename) && !isFolderPathExcluded(item.path)){
-                            item.stats = await gracefulLStat(item.fullPath)
+                    if(windows){
+                        item.path = item.path.split("\\").join("/") // Convert windows \ style path seperators to / for internal database, we only use UNIX style path seperators internally
+                    }
     
-                            if(!item.stats.isSymbolicLink()){
-                                if(item.stats.isDirectory()){
-                                    folders[item.path] = {
+                    let include = true
+    
+                    if(excludeDot && (item.basename.startsWith(".") || item.path.indexOf("/.") !== -1 || item.path.startsWith("."))){
+                        include = false
+                    }
+    
+                    if(include && !isFolderPathExcluded(item.path) && pathValidation(item.path) && !pathIsFileOrFolderNameIgnoredByDefault(item.path)){
+                        item.stats = await gracefulLStat(item.fullPath)
+
+                        if(!item.stats.isSymbolicLink()){
+                            if(item.stats.isDirectory()){
+                                folders[item.path] = {
+                                    name: item.basename,
+                                    lastModified: convertTimestampToMs(parseInt(item.stats.mtimeMs.toString())) //.toString() because of BigInt
+                                }
+        
+                                ino[item.stats.ino] = {
+                                    type: "folder",
+                                    path: item.path
+                                }
+                            }
+                            else{
+                                if(item.stats.size > 0){
+                                    files[item.path] = {
                                         name: item.basename,
+                                        size: parseInt(item.stats.size.toString()), //.toString() because of BigInt
                                         lastModified: convertTimestampToMs(parseInt(item.stats.mtimeMs.toString())) //.toString() because of BigInt
                                     }
-            
+        
                                     ino[item.stats.ino] = {
-                                        type: "folder",
+                                        type: "file",
                                         path: item.path
-                                    }
-                                }
-                                else{
-                                    if(item.stats.size > 0){
-                                        files[item.path] = {
-                                            name: item.basename,
-                                            size: parseInt(item.stats.size.toString()), //.toString() because of BigInt
-                                            lastModified: convertTimestampToMs(parseInt(item.stats.mtimeMs.toString())) //.toString() because of BigInt
-                                        }
-            
-                                        ino[item.stats.ino] = {
-                                            type: "file",
-                                            path: item.path
-                                        }
                                     }
                                 }
                             }

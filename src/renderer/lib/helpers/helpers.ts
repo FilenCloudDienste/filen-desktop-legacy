@@ -39,6 +39,22 @@ export const fileAndFolderNameValidation = (name: string) => {
   return true
 }
 
+export const pathValidation = (path: string) => {
+    if(path.indexOf("/") == -1){
+        return fileAndFolderNameValidation(path)
+    }
+    
+    const ex = path.split("/")
+
+    for(let i = 0; i < ex.length; i++){
+      if(!fileAndFolderNameValidation(ex[i].trim())){
+        return false
+      }
+    }
+
+    return true
+}
+
 export function compareVersions(current: string, got: string){
 	function compare(a: string, b: string) {
 		if (a === b) {
@@ -392,6 +408,22 @@ export const isFileOrFolderNameIgnoredByDefault = (name: string): boolean => {
   }
 
 	return false
+}
+
+export const pathIsFileOrFolderNameIgnoredByDefault = (path: string) => {
+  if(path.indexOf("/") == -1){
+      return isFileOrFolderNameIgnoredByDefault(path)
+  }
+  
+  const ex = path.split("/")
+
+  for(let i = 0; i < ex.length; i++){
+    if(isFileOrFolderNameIgnoredByDefault(ex[i].trim())){
+      return true
+    }
+  }
+
+  return false
 }
 
 export const pathToLowerCaseExtFileName = (path: string) => {
