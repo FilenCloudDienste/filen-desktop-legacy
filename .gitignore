@@ -10,6 +10,12 @@ dist/
 .pnp.js
 package-lock.json
 
+scripts/*.cer
+scripts/*.pem
+scripts/*.cfg
+scripts/*.jar
+scripts/sign.js
+
 # testing
 /coverage
 
