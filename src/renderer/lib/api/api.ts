@@ -1532,7 +1532,11 @@ export const markUploadAsDone = ({ uuid, uploadKey }: { uuid: string, uploadKey:
                 }
             }).then((response) => {
                 if(!response.status){
-                    if(response.message.toString().toLowerCase().indexOf("chunks are not matching") !== -1){
+                    if(
+                        response.message.toString().toLowerCase().indexOf("chunks are not matching") !== -1
+                        || response.message.toString().toLowerCase().indexOf("done yet") !== -1
+                        || response.message.toString().toLowerCase().indexOf("finished yet") !== -1
+                    ){
                         return setTimeout(req, timeout)
                     }
 
