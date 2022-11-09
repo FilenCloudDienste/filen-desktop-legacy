@@ -2,6 +2,7 @@ const { Menu, app, ipcMain, dialog, BrowserWindow } = require("electron")
 const shared = require("../shared")
 const log = require("electron-log")
 const { v4: uuidv4 } = require("uuid")
+const ipc = require("../ipc")
 
 const upload = (type = "folders") => {
     let selectWindow = BrowserWindow.getFocusedWindow()
@@ -68,6 +69,14 @@ const buildMenu = (type = "default") => {
                 {
                     label: "Separator",
                     type: "separator"
+                },
+                {
+                    label: "Force sync",
+                    click: () => {
+                        ipc.emitGlobal("global-message", {
+                            type: "forceSync"
+                        })
+                    }
                 },
                 {
                     label: "Upload folders",

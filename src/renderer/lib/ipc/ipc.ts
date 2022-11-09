@@ -1,5 +1,6 @@
 import eventListener from "../eventListener"
 import { v4 as uuidv4 } from "uuid"
+import db from "../db"
 
 const { ipcRenderer } = window.require("electron")
 
@@ -104,6 +105,27 @@ const handleGlobalMessage = (data: any) => {
         data.type == "uploadProgressSeperate"
     ){
         eventListener.emit(data.type, data.data)
+    }
+    else if(type == "forceSync"){
+        db.get("userId").then((userId) => {
+            db.get("syncLocations:" + userId).then((syncLocations) => {
+                if(Array.isArray(syncLocations)){
+                    for(let i = 0; i < syncLocations.length; i++){
+                        Promise.all([
+                            db.set("localDataChanged:" + syncLocations[i].uuid, true),
+                            db.set("remoteDataChanged:" + syncLocations[i].uuid, true)
+                        ]).catch(console.error)
+
+                        setTimeout(() => {
+                            Promise.all([
+                                db.set("localDataChanged:" + syncLocations[i].uuid, true),
+                                db.set("remoteDataChanged:" + syncLocations[i].uuid, true)
+                            ]).catch(console.error)
+                        }, 3000)
+                    }
+                }
+            }).catch(console.error)
+        }).catch(console.error)
     }
 
     return true

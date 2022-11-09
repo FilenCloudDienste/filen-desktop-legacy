@@ -1,111 +1,345 @@
 import React, { memo, useState, useEffect, useRef } from "react"
-import { Flex, Spinner, Text } from "@chakra-ui/react"
+import { Flex, Spinner, Text, Box, Checkbox, Image } from "@chakra-ui/react"
 import useDarkMode from "../../lib/hooks/useDarkMode"
 import useLang from "../../lib/hooks/useLang"
 import usePlatform from "../../lib/hooks/usePlatform"
 import Titlebar from "../../components/Titlebar"
 import { i18n } from "../../lib/i18n"
-import ipc from "../../lib/ipc"
 import Container from "../../components/Container"
 import IsOnlineBottomToast from "../../components/IsOnlineBottomToast"
 import { Base64 } from "js-base64"
-import SettingsSelectiveSyncTree from "../../components/SettingsSelectiveSyncTree"
 import colors from "../../styles/colors"
 import { BsFileEarmark } from "react-icons/bs"
 import { updateKeys } from "../../lib/user"
+import { showToast } from "../../components/Toast"
+import { folderContent } from "../../lib/api"
+import db from "../../lib/db"
+import useDb from "../../lib/hooks/useDb"
+import ipc from "../../lib/ipc"
+import { IoFolder, IoFolderOpen } from "react-icons/io5"
+import { BsFileEarmarkFill } from "react-icons/bs"
+import { AiOutlineCaretRight, AiOutlineCaretDown } from "react-icons/ai"
 
 const log = window.require("electron-log")
 const { ipcRenderer } = window.require("electron")
+
+const TreeItem = memo(({ darkMode, lang, platform, item, location, excluded }: { darkMode: boolean, lang: string, platform: string, item: any, location: any, excluded: any }) => {
+    const [isOpen, setIsOpen] = useState<boolean>(false)
+    const [itemIcon, setItemIcon] = useState<string | undefined>(undefined)
+
+    const isItemExcluded = (): boolean => {
+        if(typeof excluded[item.path] !== "undefined"){
+            return true
+        }
+
+        for(const path in excluded){
+            if(item.path.indexOf(item.type == "folder" ? path + "/" : path) !== -1){
+                return true
+            }
+        }
+
+        return false
+    }
+
+    const isParentExcluded = (): boolean => {
+        for(const path in excluded){
+            if(item.path.indexOf(item.type == "folder" ? path + "/" : path) !== -1 && item.path !== path){
+                return true
+            }
+        }
+
+        return false
+    }
+
+    const onToggleExcluded = async () => {
+        if(isParentExcluded()){
+            return false
+        }
+
+        const isExcluded = typeof excluded[item.path] !== "undefined"
+
+        try{
+            let currentExcluded = await db.get("selectiveSync:remote:" + location.uuid)
+
+            if(currentExcluded == null){
+                currentExcluded = {}
+            }
+
+            if(isExcluded){
+                delete currentExcluded[item.path]
+            }
+            else{
+                currentExcluded[item.path] = true
+            }
+
+            await db.set("selectiveSync:remote:" + location.uuid, currentExcluded)
+        }
+        catch(e){
+            log.error(e)
+        }
+    }
+
+    const onToggleOpen = () => {
+        if(item.type !== "folder"){
+            return false
+        }
+
+        setIsOpen(!isOpen)
+    }
+
+    useEffect(() => {
+        ipc.getFileIconName(item.name).then((icon) => {
+            if(typeof icon == "string" && icon.indexOf("data:") !== -1){
+                setItemIcon(icon)
+            }
+        }).catch(log.error)
+    }, [])
+
+    return (
+        <Box 
+            width="100%"
+            height="auto" 
+            key={item.path} 
+            cursor="default"
+            marginBottom="5px"
+        >
+            <Flex 
+                flexDirection="row" 
+                alignItems="center"
+            >
+                <Flex 
+                    flexDirection="row" 
+                    alignItems="center" 
+                    width="auto"
+                >
+                    <Checkbox 
+                        isChecked={!isItemExcluded()} 
+                        _focus={{ outline: "none" }} 
+                        outline="none" 
+                        _active={{ outline: "none" }} 
+                        onChange={onToggleExcluded} 
+                    />
+                </Flex>
+                <Flex 
+                    flexDirection="row" 
+                    alignItems="center" 
+                    width="auto" 
+                    cursor={item.type == "folder" ? "pointer" : "default"} 
+                    onClick={onToggleOpen} 
+                    marginLeft={item.type == "folder" ? "6px" : "10px"}
+                >
+                    {
+                        item.type == "folder" ? (
+                            isOpen ? (
+                                <>
+                                    <AiOutlineCaretDown
+                                        color="gray"
+                                    />
+                                    <IoFolderOpen 
+                                        color={platform == "mac" ? "#3ea0d5" : "#ffd04c"} 
+                                        style={{
+                                            marginLeft: 4
+                                        }} 
+                                    />
+                                </>
+                            ) : (
+                                <>
+                                    <AiOutlineCaretRight
+                                        color="gray"
+                                    />
+                                    <IoFolder 
+                                        color={platform == "mac" ? "#3ea0d5" : "#ffd04c"} 
+                                        style={{
+                                            marginLeft: 4
+                                        }} 
+                                    />
+                                </>
+                            )
+                        ) : (
+                            <>
+                                {
+                                    typeof itemIcon == "string" ? (
+                                        <Image 
+                                            src={itemIcon}
+                                            width="16px"
+                                            height="16px" 
+                                        />
+                                    ) : (
+                                        <BsFileEarmarkFill
+                                            color={colors(platform, darkMode, "textPrimary")}
+                                        />
+                                    )
+                                }
+                            </>
+                        )
+                    }
+                </Flex>
+                <Flex 
+                    flexDirection="row" 
+                    alignItems="center" 
+                    width="90%" 
+                    cursor={item.type == "folder" ? "pointer" : "default"} 
+                    onClick={onToggleOpen} 
+                    marginLeft="10px"
+                >
+                    <Text
+                        color={colors(platform, darkMode, "textPrimary")}
+                        noOfLines={1}
+                        wordBreak="break-all"
+                        fontSize={14}
+                    >
+                        {item.name}
+                    </Text>
+                </Flex>
+            </Flex>
+            <Box 
+                width="100%" 
+                height="auto" 
+                display={isOpen ? "block" : "none"} 
+                paddingLeft="30px"
+            >
+                {
+                    isOpen && item.type == "folder" && (
+                        <Tree 
+                            darkMode={darkMode} 
+                            lang={lang} 
+                            platform={platform} 
+                            parent={item.uuid} 
+                            location={location}
+                            excluded={excluded}
+                            currentPath={item.path}
+                        />
+                    )
+                }
+            </Box>
+        </Box>
+    )
+})
+
+const Tree = memo(({ darkMode, lang, platform, parent, location, excluded, currentPath }: { darkMode: boolean, lang: string, platform: string, parent: string, location: any, excluded: any, currentPath: string }) => {
+    const [loading, setLoading] = useState<boolean>(true)
+    const [items, setItems] = useState<any>([])
+
+    useEffect(() => {
+        setLoading(true)
+
+        Promise.all([
+            db.get("apiKey"),
+            db.get("masterKeys")
+        ]).then(([apiKey, masterKeys]) => {
+            folderContent({
+                apiKey,
+                uuid: parent
+            }).then(async (response) => {
+                const folders: any[] = []
+                const files: any[] = []
+
+                for(let i = 0; i < response.folders.length; i++){
+                    const folder: any = response.folders[i]
+                    const folderName: string = await ipc.decryptFolderName(folder.name)
+
+                    if(folderName.length > 0){
+                        folders.push({
+                            ...folder,
+                            name: folderName,
+                            type: "folder",
+                            path: currentPath.length == 0 ? folderName : currentPath + "/" + folderName
+                        })
+                    }
+                }
+
+                for(let i = 0; i < response.uploads.length; i++){
+                    const file: any = response.uploads[i]
+                    const metadata: any = await ipc.decryptFileMetadata(file.metadata, masterKeys)
+                    
+                    if(metadata.name.length > 0){
+                        files.push({
+                            ...file,
+                            ...metadata,
+                            type: "file",
+                            path: currentPath.length == 0 ? metadata.name : currentPath + "/" + metadata.name
+                        })
+                    }
+                }
+
+                setItems([...folders.sort((a, b) => a.name.localeCompare(b.name)), ...files.sort((a, b) => a.name.localeCompare(b.name))])
+                setLoading(false)
+            }).catch((err) => {
+                showToast({ message: err.toString(), status: "error" })
+
+                log.error(err)
+            })
+        }).catch((err) => {
+            showToast({ message: err.toString(), status: "error" })
+
+            log.error(err)
+        })
+    }, [])
+
+    if(loading && currentPath.length > 0){
+        return (
+            <Spinner 
+                width="16px" 
+                height="16px" 
+                color={colors(platform, darkMode, "textPrimary")} 
+            />
+        )
+    }
+
+    return (
+        <Flex
+            marginTop="5px"
+            width="100%"
+            flexDirection="column"
+        >
+            {
+                items.map((item: any) => {
+                    return (
+                        <TreeItem 
+                            darkMode={darkMode} 
+                            lang={lang} 
+                            platform={platform} 
+                            key={item.uuid} 
+                            item={item} 
+                            location={location} 
+                            excluded={excluded} 
+                        />
+                    )
+                })
+            }
+        </Flex>
+    )
+})
 
 const SelectiveSyncWindow = memo(({ userId, email, windowId }: { userId: number, email: string, windowId: string }) => {
     const darkMode: boolean = useDarkMode()
     const lang: string = useLang()
     const platform: string = usePlatform()
-
     const args: any = useRef(JSON.parse(Base64.decode(decodeURIComponent(new URLSearchParams(window.location.search).get("args") as string)))).current
-
-    const [selectiveSyncRemoteTree, setSelectiveSyncRemoteTree] = useState<any>({})
-    const [isLoadingSelectiveSyncTrees, setIsLoadingSelectiveSyncTrees] = useState<boolean>(true)
-
-    const convertTree = (tree: any): any => {
-        const getPath = (ex: string[], position: number): string => {
-            if(position <= 0){
-                return ex[0]
-            }
-
-            const path = []
-
-            for(let i = 0; i < (position + 1); i++){
-                path.push(ex[i])
-            }
-
-            return path.join("/")
-        }
-
-        let paths: string[] = []
-        const result: any = []
-        const level: any = { result }
-        let files: any = []
-        let folders: any = []
-
-        for(const path in tree.files){
-            if(!files.includes(path)){
-                files.push(path)
-            }
-        }
-
-        for(const path in tree.folders){
-            if(!folders.includes(path)){
-                folders.push(path)
-            }
-        }
-
-        files = files.sort((a: string, b: string) => a.localeCompare(b))
-        folders = folders.sort((a: string, b: string) => a.localeCompare(b))
-        paths = folders.concat(files)
-
-        paths.forEach((path: string) => {
-            path.split("/").reduce((r: any, name: string, i: number, a: string[]) => {
-                if(!r[name]){
-                    const thisPath = getPath(a, i)
-
-                    r[name] = { result: [] }
-                    r.result.push({
-                        name, path: thisPath,
-                        i,
-                        a,
-                        children: r[name].result,
-                        type: typeof tree.folders[thisPath] !== "undefined" ? "folder" : "file"
-                    })
-                }
-                else if(i === a.length - 1){
-                    r.result.push({
-                        name,
-                        children: []
-                    })
-                }
-              
-                return r[name]
-            }, level)
-        })
-
-        return result
-    }
+    const [ready, setReady] = useState<boolean>(false)
+    const [rootItemsLength, setRootItemsLength] = useState<number>(0)
+    const excluded: any = useDb("selectiveSync:remote:" + (args.currentSyncLocation.uuid || ""), {})
 
     useEffect(() => {
         if(typeof args.currentSyncLocation !== "undefined"){
-            setIsLoadingSelectiveSyncTrees(true)
-
-            updateKeys().then(() => {
-                ipc.remoteTree(args.currentSyncLocation).then((remoteTree: any) => {
-                    const convertedRemoteTree = convertTree(remoteTree.data)
-    
-                    setSelectiveSyncRemoteTree(convertedRemoteTree)
-                    setIsLoadingSelectiveSyncTrees(false)
+            Promise.all([
+                updateKeys(),
+                db.get("apiKey")
+            ]).then(([_, apiKey]) => {
+                folderContent({
+                    apiKey,
+                    uuid: args.currentSyncLocation.remoteUUID
+                }).then((response) => {
+                    setRootItemsLength(response.folders.length + response.uploads.length)
+                    setReady(true)
                 }).catch((err) => {
+                    showToast({ message: err.toString(), status: "error" })
+
                     log.error(err)
                 })
             }).catch((err) => {
+                showToast({ message: err.toString(), status: "error" })
+
                 log.error(err)
             })
         }
@@ -134,7 +368,7 @@ const SelectiveSyncWindow = memo(({ userId, email, windowId }: { userId: number,
                         marginTop="28px"
                     >
                         {
-                            isLoadingSelectiveSyncTrees ? (
+                            !ready ? (
                                 <Flex
                                     width="100%"
                                     height="100%"
@@ -147,7 +381,7 @@ const SelectiveSyncWindow = memo(({ userId, email, windowId }: { userId: number,
                                         color={colors(platform, darkMode, "textPrimary")} 
                                     />
                                 </Flex>
-                            ) : typeof selectiveSyncRemoteTree == "object" && Object.keys(selectiveSyncRemoteTree).length > 0 ? (
+                            ) : rootItemsLength > 0 ? (
                                 <Flex
                                     flexDirection="column" 
                                     width="100%" 
@@ -158,12 +392,14 @@ const SelectiveSyncWindow = memo(({ userId, email, windowId }: { userId: number,
                                     paddingBottom="10px"
                                     overflowY="scroll"
                                 >
-                                    <SettingsSelectiveSyncTree
+                                    <Tree 
                                         darkMode={darkMode} 
                                         lang={lang} 
                                         platform={platform} 
-                                        data={selectiveSyncRemoteTree} 
-                                        location={args.currentSyncLocation} 
+                                        parent={args.currentSyncLocation.remoteUUID} 
+                                        location={args.currentSyncLocation}
+                                        excluded={excluded}
+                                        currentPath=""
                                     />
                                 </Flex>
                             ) : (
@@ -180,10 +416,12 @@ const SelectiveSyncWindow = memo(({ userId, email, windowId }: { userId: number,
                                             color={darkMode ? "gray" : "gray"} 
                                         />
                                     </Flex>
-                                    <Flex marginTop="10px">
+                                    <Flex
+                                        marginTop="15px"
+                                    >
                                         <Text
                                             color={darkMode ? "gray" : "gray"}
-                                            fontSize={13}
+                                            fontSize={14}
                                         >
                                             {i18n(lang, "noFilesOrFoldersUploadedYet")}
                                         </Text>

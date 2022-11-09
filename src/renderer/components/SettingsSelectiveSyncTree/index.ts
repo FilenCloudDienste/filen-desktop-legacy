@@ -1,3 +1,0 @@
-import SettingsSelectiveSyncTree from "./SettingsSelectiveSyncTree"
-
-export default SettingsSelectiveSyncTree

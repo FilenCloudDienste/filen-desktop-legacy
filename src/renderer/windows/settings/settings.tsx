@@ -1719,7 +1719,10 @@ const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }: { darkM
                                         justifyContent="center" 
                                         alignItems="center"
                                     >
-                                        <Avatar name={email} />
+                                        <Avatar
+                                            name={email}
+                                            src={typeof userInfo.avatarURL == "string" && userInfo.avatarURL.indexOf("https://") !== -1 ? userInfo.avatarURL : undefined}
+                                        />
                                         <Flex flexDirection="column">
                                             <Text 
                                                 color={colors(platform, darkMode, "textPrimary")} 

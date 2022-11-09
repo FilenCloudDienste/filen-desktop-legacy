@@ -506,6 +506,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
             if(filenIgnore.denies(renameInLocal[i].path) || selectiveSyncRemoteIgnore.denies(renameInLocal[i].path)){
                 ignored.push(renameInLocal[i].path)
                 renameInLocal.splice(i, 1)
+
                 i -= 1
             }
         }
@@ -514,6 +515,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
             if(filenIgnore.denies(renameInRemote[i].path) || selectiveSyncRemoteIgnore.denies(renameInRemote[i].path)){
                 ignored.push(renameInRemote[i].path)
                 renameInRemote.splice(i, 1)
+
                 i -= 1
             }
         }
@@ -522,6 +524,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
             if(filenIgnore.denies(moveInLocal[i].path) || selectiveSyncRemoteIgnore.denies(moveInLocal[i].path)){
                 ignored.push(moveInLocal[i].path)
                 moveInLocal.splice(i, 1)
+
                 i -= 1
             }
         }
@@ -530,6 +533,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
             if(filenIgnore.denies(moveInRemote[i].path) || selectiveSyncRemoteIgnore.denies(moveInRemote[i].path)){
                 ignored.push(moveInRemote[i].path)
                 moveInRemote.splice(i, 1)
+
                 i -= 1
             }
         }
@@ -538,6 +542,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
             if(filenIgnore.denies(deleteInLocal[i].path) || selectiveSyncRemoteIgnore.denies(deleteInLocal[i].path)){
                 ignored.push(deleteInLocal[i].path)
                 deleteInLocal.splice(i, 1)
+
                 i -= 1
             }
         }
@@ -546,6 +551,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
             if(filenIgnore.denies(deleteInRemote[i].path) || selectiveSyncRemoteIgnore.denies(deleteInRemote[i].path)){
                 ignored.push(deleteInRemote[i].path)
                 deleteInRemote.splice(i, 1)
+
                 i -= 1
             }
         }
@@ -554,6 +560,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
             if(filenIgnore.denies(uploadToRemote[i].path) || selectiveSyncRemoteIgnore.denies(uploadToRemote[i].path)){
                 ignored.push(uploadToRemote[i].path)
                 uploadToRemote.splice(i, 1)
+
                 i -= 1
             }
         }
@@ -562,6 +569,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
             if(filenIgnore.denies(downloadFromRemote[i].path) || selectiveSyncRemoteIgnore.denies(downloadFromRemote[i].path)){
                 ignored.push(downloadFromRemote[i].path)
                 downloadFromRemote.splice(i, 1)
+                
                 i -= 1
             }
         }
