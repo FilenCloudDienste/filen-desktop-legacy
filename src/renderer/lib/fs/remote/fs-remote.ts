@@ -7,6 +7,7 @@ import { normalizePath, smokeTest as smokeTestLocal, readChunk, checkLastModifie
 import { chunkSize, maxUploadThreads } from "../../constants"
 import { v4 as uuidv4 } from "uuid"
 import { sendToAllPorts } from "../../worker/ipc"
+import { remoteStorageLeft } from "../../user/info"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
@@ -562,12 +563,18 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
 
         Promise.all([
             db.get("apiKey"),
-            db.get("masterKeys")
-        ]).then(([apiKey, masterKeys]) => {
+            db.get("masterKeys"),
+            remoteStorageLeft()
+        ]).then(([apiKey, masterKeys, remoteStorageFree]) => {
             smokeTestLocal(absolutePath).then(() => {
                 checkLastModified(absolutePath).then((checkLastModifiedRes) => {
+                    const size = parseInt(task.item.size.toString())
+
+                    if(size > remoteStorageFree){
+                        return reject("Not enough remote storage left to upload " + absolutePath)
+                    }
+
                     findOrCreateParentDirectory(path, location.remoteUUID, remoteTreeNow, absolutePath).then(async (parent) => {
-                        const size = parseInt(task.item.size.toString())
                         const lastModified = checkLastModifiedRes.changed ? Math.floor(checkLastModifiedRes.mtimeMs as number) : Math.floor(task.item.lastModified)
                         const mime = mimeTypes.lookup(name) || ""
                         const expire = "never"

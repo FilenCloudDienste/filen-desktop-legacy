@@ -5,7 +5,8 @@ import ipc from "../../ipc"
 import { sendToAllPorts } from "../ipc"
 import { v4 as uuidv4 } from "uuid"
 import { maxRetrySyncTask, retrySyncTaskTimeout, maxConcurrentDownloads as maxConcurrentDownloadsPreset, maxConcurrentUploads as maxConcurrentUploadsPreset, maxConcurrentSyncTasks } from "../../constants"
-import { Semaphore, SemaphoreInterface } from "../../helpers"
+import { Semaphore, SemaphoreInterface, isSubdir, localDiskSpace } from "../../helpers"
+import { remoteStorageLeft } from "../../user/info"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
@@ -442,14 +443,8 @@ const getIgnored = (location: any): Promise<any> => {
                 fIgnore = ""
             }
 
-            let selectiveSyncList = ""
-
-            for(const path in selectiveSyncRemote){
-                selectiveSyncList += "\n" + path
-            }
-
             return resolve({
-                selectiveSyncRemoteIgnore: gitignoreParser.compile(selectiveSyncList),
+                selectiveSyncRemoteIgnore: selectiveSyncRemote,
                 filenIgnore: gitignoreParser.compile(fIgnore),
                 selectiveSyncRemoteIgnoreRaw: selectiveSyncRemote,
                 filenIgnoreRaw: fIgnore
@@ -500,10 +495,24 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
             return reject(e)
         }
 
+        const isIgnoredBySelectiveSync = (path: string): boolean => {
+            path = path.trim()
+
+            for(let prop in selectiveSyncRemoteIgnore){
+                prop = prop.trim()
+
+                if(prop == path || isSubdir(prop, path) || isSubdir(path, prop)){
+                    return true
+                }
+            }
+
+            return false
+        }
+
         // Filter by ignored
 
         for(let i = 0; i < renameInLocal.length; i++){
-            if(filenIgnore.denies(renameInLocal[i].path) || selectiveSyncRemoteIgnore.denies(renameInLocal[i].path)){
+            if(filenIgnore.denies(renameInLocal[i].path) || isIgnoredBySelectiveSync(renameInLocal[i].path)){
                 ignored.push(renameInLocal[i].path)
                 renameInLocal.splice(i, 1)
 
@@ -512,7 +521,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
         }
 
         for(let i = 0; i < renameInRemote.length; i++){
-            if(filenIgnore.denies(renameInRemote[i].path) || selectiveSyncRemoteIgnore.denies(renameInRemote[i].path)){
+            if(filenIgnore.denies(renameInRemote[i].path) || isIgnoredBySelectiveSync(renameInRemote[i].path)){
                 ignored.push(renameInRemote[i].path)
                 renameInRemote.splice(i, 1)
 
@@ -521,7 +530,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
         }
 
         for(let i = 0; i < moveInLocal.length; i++){
-            if(filenIgnore.denies(moveInLocal[i].path) || selectiveSyncRemoteIgnore.denies(moveInLocal[i].path)){
+            if(filenIgnore.denies(moveInLocal[i].path) || isIgnoredBySelectiveSync(moveInLocal[i].path)){
                 ignored.push(moveInLocal[i].path)
                 moveInLocal.splice(i, 1)
 
@@ -530,7 +539,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
         }
 
         for(let i = 0; i < moveInRemote.length; i++){
-            if(filenIgnore.denies(moveInRemote[i].path) || selectiveSyncRemoteIgnore.denies(moveInRemote[i].path)){
+            if(filenIgnore.denies(moveInRemote[i].path) || isIgnoredBySelectiveSync(moveInRemote[i].path)){
                 ignored.push(moveInRemote[i].path)
                 moveInRemote.splice(i, 1)
 
@@ -539,7 +548,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
         }
 
         for(let i = 0; i < deleteInLocal.length; i++){
-            if(filenIgnore.denies(deleteInLocal[i].path) || selectiveSyncRemoteIgnore.denies(deleteInLocal[i].path)){
+            if(filenIgnore.denies(deleteInLocal[i].path) || isIgnoredBySelectiveSync(deleteInLocal[i].path)){
                 ignored.push(deleteInLocal[i].path)
                 deleteInLocal.splice(i, 1)
 
@@ -548,7 +557,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
         }
 
         for(let i = 0; i < deleteInRemote.length; i++){
-            if(filenIgnore.denies(deleteInRemote[i].path) || selectiveSyncRemoteIgnore.denies(deleteInRemote[i].path)){
+            if(filenIgnore.denies(deleteInRemote[i].path) || isIgnoredBySelectiveSync(deleteInRemote[i].path)){
                 ignored.push(deleteInRemote[i].path)
                 deleteInRemote.splice(i, 1)
 
@@ -557,7 +566,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
         }
 
         for(let i = 0; i < uploadToRemote.length; i++){
-            if(filenIgnore.denies(uploadToRemote[i].path) || selectiveSyncRemoteIgnore.denies(uploadToRemote[i].path)){
+            if(filenIgnore.denies(uploadToRemote[i].path) || isIgnoredBySelectiveSync(uploadToRemote[i].path)){
                 ignored.push(uploadToRemote[i].path)
                 uploadToRemote.splice(i, 1)
 
@@ -566,7 +575,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
         }
 
         for(let i = 0; i < downloadFromRemote.length; i++){
-            if(filenIgnore.denies(downloadFromRemote[i].path) || selectiveSyncRemoteIgnore.denies(downloadFromRemote[i].path)){
+            if(filenIgnore.denies(downloadFromRemote[i].path) || isIgnoredBySelectiveSync(downloadFromRemote[i].path)){
                 ignored.push(downloadFromRemote[i].path)
                 downloadFromRemote.splice(i, 1)
                 
@@ -1514,6 +1523,7 @@ const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTre
 
             if(localDelta == "RENAMED" && !addedToList[path]){
                 addedToList[path] = true
+
                 renameInRemote.push({
                     uuid: uuidv4(),
                     path,
@@ -1526,6 +1536,7 @@ const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTre
 
             if(localDelta == "MOVED" && !addedToList[path]){
                 addedToList[path] = true
+
                 moveInRemote.push({
                     uuid: uuidv4(),
                     path,
@@ -1538,6 +1549,7 @@ const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTre
 
             if(localDelta == "DELETED" && !addedToList[path]){
                 addedToList[path] = true
+
                 deleteInRemote.push({
                     uuid: uuidv4(),
                     path,
@@ -1548,6 +1560,7 @@ const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTre
 
             if(!existsInRemote && !addedToList[path]){
                 addedToList[path] = true
+
                 uploadToRemote.push({
                     uuid: uuidv4(),
                     path,
@@ -1567,6 +1580,7 @@ const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTre
 
             if(remoteDelta == "RENAMED" && localDelta !== "RENAMED" && !addedToList[path]){
                 addedToList[path] = true
+
                 renameInLocal.push({
                     uuid: uuidv4(),
                     path,
@@ -1579,6 +1593,7 @@ const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTre
 
             if(remoteDelta == "MOVED" && localDelta !== "MOVED" && !addedToList[path]){
                 addedToList[path] = true
+
                 moveInLocal.push({
                     uuid: uuidv4(),
                     path,
@@ -1591,6 +1606,7 @@ const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTre
 
             if(remoteDelta == "DELETED" && localDelta !== "DELETED" && !addedToList[path]){
                 addedToList[path] = true
+
                 deleteInLocal.push({
                     uuid: uuidv4(),
                     path,
@@ -1601,6 +1617,7 @@ const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTre
 
             if(!existsInLocal && !addedToList[path]){
                 addedToList[path] = true
+
                 downloadFromRemote.push({
                     uuid: uuidv4(),
                     path,
@@ -1620,6 +1637,7 @@ const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTre
 
             if(localDelta == "RENAMED" && !addedToList[path]){
                 addedToList[path] = true
+
                 renameInRemote.push({
                     uuid: uuidv4(),
                     path,
@@ -1632,6 +1650,7 @@ const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTre
 
             if(localDelta == "MOVED" && !addedToList[path]){
                 addedToList[path] = true
+
                 moveInRemote.push({
                     uuid: uuidv4(),
                     path,
@@ -1644,6 +1663,7 @@ const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTre
 
             if(localDelta == "DELETED" && !addedToList[path]){
                 addedToList[path] = true
+
                 deleteInRemote.push({
                     uuid: uuidv4(),
                     path,
@@ -1702,6 +1722,7 @@ const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTre
 
             if(localDelta == "NEWER" && !addedToList[path]){
                 addedToList[path] = true
+
                 uploadToRemote.push({
                     uuid: uuidv4(),
                     path,
@@ -1715,6 +1736,7 @@ const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTre
 
             if(!existsInRemote && !addedToList[path]){
                 addedToList[path] = true
+
                 uploadToRemote.push({
                     uuid: uuidv4(),
                     path,
@@ -1734,6 +1756,7 @@ const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTre
 
             if(remoteDelta == "RENAMED" && localDelta !== "RENAMED" && !addedToList[path]){
                 addedToList[path] = true
+
                 renameInLocal.push({
                     uuid: uuidv4(),
                     path,
@@ -1746,6 +1769,7 @@ const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTre
 
             if(remoteDelta == "MOVED" && localDelta !== "MOVED" && !addedToList[path]){
                 addedToList[path] = true
+
                 moveInLocal.push({
                     uuid: uuidv4(),
                     path,
@@ -1768,6 +1792,7 @@ const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTre
 
             if(remoteDelta == "NEWER" && localDelta !== "NEWER" && !addedToList[path]){
                 addedToList[path] = true
+
                 downloadFromRemote.push({
                     uuid: uuidv4(),
                     path,
@@ -1778,6 +1803,7 @@ const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTre
 
             if(!existsInLocal && !addedToList[path]){
                 addedToList[path] = true
+
                 downloadFromRemote.push({
                     uuid: uuidv4(),
                     path,
@@ -2330,6 +2356,55 @@ const syncLocation = async (location: any): Promise<any> => {
         status: "start",
         location
     })
+
+    const [localSpaceFree, remoteSpaceFree] = await Promise.all([
+        localDiskSpace(pathModule.normalize(location.local)),
+        remoteStorageLeft()
+    ])
+
+    if(localSpaceFree < (1024 * 1024 * 1024)){
+        if((await isSuspended())){
+            updateLocationBusyStatus(location.uuid, false)
+
+            return false
+        }
+
+        log.error("Not enough local disk storage left to perform sync operation at path " + location.local + " (" + localSpaceFree + ")")
+
+        addToSyncIssues("localDiskStorage", "Not enough local disk storage left to perform sync operation at path " + location.local)
+
+        emitSyncStatusLocation("localDiskStorage", {
+            status: "err",
+            location,
+            err: "Not enough local disk storage left to perform sync operation at path " + location.local + " (" + localSpaceFree + ")"
+        })
+
+        updateLocationBusyStatus(location.uuid, false)
+
+        return false
+    }
+
+    if(remoteSpaceFree < (1024 * 1024 * 32)){
+        if((await isSuspended())){
+            updateLocationBusyStatus(location.uuid, false)
+
+            return false
+        }
+
+        log.error("Not enough remote disk storage left to perform sync operation (" + remoteSpaceFree + ")")
+
+        addToSyncIssues("remoteDiskStorage", "Not enough remote storage left to perform sync operation")
+
+        emitSyncStatusLocation("remoteDiskStorage", {
+            status: "err",
+            location,
+            err: "Not enough remote disk storage left to perform sync operation (" + remoteSpaceFree + ")"
+        })
+
+        updateLocationBusyStatus(location.uuid, false)
+
+        return false
+    }
 
     try{
         await Promise.all([

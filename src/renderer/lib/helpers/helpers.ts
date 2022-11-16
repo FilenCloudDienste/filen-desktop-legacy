@@ -1,4 +1,5 @@
 import { defaultIgnored } from "../constants"
+import checkDiskSpace from "check-disk-space"
 
 const pathModule = window.require("path")
 
@@ -549,4 +550,17 @@ export function timeSince(ts: number, lang: string = "en") {
       return Math.floor(interval) + " minutes ago";
     }
     return Math.floor(seconds) + " seconds ago";
+}
+
+export const localDiskSpace = async (path: string): Promise<number> => {
+	try{
+		const space = await checkDiskSpace(pathModule.normalize(path))
+
+		return space.free
+	}
+	catch(e){
+		console.error(e)
+
+		return Number.MAX_SAFE_INTEGER
+	}
 }
