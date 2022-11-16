@@ -1,6 +1,7 @@
 import { userInfo } from "../api"
 import memoryCache from "../memoryCache"
 import db from "../db"
+import { Semaphore } from "../helpers"
 
 export interface UserInfoV1 {
     id: number,
@@ -11,20 +12,33 @@ export interface UserInfoV1 {
     avatarURL: string
 }
 
+const fetchUserInfoSemaphore = new Semaphore(1)
+
 export const fetchUserInfo = async (): Promise<UserInfoV1> => {
-    if(memoryCache.has("fetchUserInfo") && memoryCache.has("fetchUserInfoTimeout")){
-        if(memoryCache.get("fetchUserInfoTimeout") > new Date().getTime()){
-            return memoryCache.get("fetchUserInfo") as UserInfoV1
+    await fetchUserInfoSemaphore.acquire()
+    
+    try{
+        if(memoryCache.has("fetchUserInfo") && memoryCache.has("fetchUserInfoTimeout")){
+            if(memoryCache.get("fetchUserInfoTimeout") > new Date().getTime()){
+                return memoryCache.get("fetchUserInfo") as UserInfoV1
+            }
         }
+    
+        const apiKey: string = await db.get("apiKey")
+        const info: UserInfoV1 = await userInfo({ apiKey })
+    
+        memoryCache.set("fetchUserInfo", info)
+        memoryCache.set("fetchUserInfoTimeout", (new Date().getTime() + 60000))
+
+        fetchUserInfoSemaphore.release()
+    
+        return info
     }
+    catch(e){
+        fetchUserInfoSemaphore.release()
 
-    const apiKey: string = await db.get("apiKey")
-    const info: UserInfoV1 = await userInfo({ apiKey })
-
-    memoryCache.set("fetchUserInfo", info)
-    memoryCache.set("fetchUserInfoTimeout", (new Date().getTime() + 60000))
-
-    return info
+        throw e
+    }
 }
 
 export const fetchUserInfoCached = (): UserInfoV1 | undefined => {
