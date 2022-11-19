@@ -12,6 +12,7 @@ const pathModule = window.require("path")
 const log = window.require("electron-log")
 const gitignoreParser = window.require("@gerhobbelt/gitignore-parser")
 const fs = window.require("fs-extra")
+const os = window.require("os")
 
 let SYNC_RUNNING: boolean = false
 const SYNC_TIMEOUT: number = 5000
@@ -2357,12 +2358,13 @@ const syncLocation = async (location: any): Promise<any> => {
         location
     })
 
-    const [localSpaceFree, remoteSpaceFree] = await Promise.all([
+    const [localSpaceFree, tmpSpaceFree, remoteSpaceFree] = await Promise.all([
         localDiskSpace(pathModule.normalize(location.local)),
+        localDiskSpace(pathModule.normalize(os.tmpdir())),
         remoteStorageLeft()
     ])
 
-    if(localSpaceFree < (1024 * 1024 * 1024)){
+    if(localSpaceFree < (1024 * 1024 * 1024) || tmpSpaceFree < (1024 * 1024 * 1024)){
         if((await isSuspended())){
             updateLocationBusyStatus(location.uuid, false)
 
