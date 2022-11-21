@@ -128,6 +128,7 @@ const createMain = (show = false) => {
             })
 
             require("../shared").set("MAIN_WINDOW", window)
+            
             activeWindows.push({ id: windowId, type: "MAIN_WINDOW" })
 
             require("../tray").positionWindowAtTray(window, windowTray)
