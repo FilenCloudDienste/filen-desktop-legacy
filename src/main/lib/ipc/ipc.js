@@ -1,17 +1,12 @@
 const { ipcMain, dialog, app, systemPreferences, globalShortcut, BrowserWindow } = require("electron")
 const db = require("../db")
 const shared = require("../shared")
-const windows = require("../windows")
 const log = require("electron-log")
-const watcher = require("../watcher")
 const fs = require("fs-extra")
 const pathModule = require("path")
-const tray = require("../tray")
 const memoryCache = require("../memoryCache")
-const trayMenu = require("../trayMenu")
 const { v4: uuidv4 } = require("uuid")
 const AutoLaunch = require("auto-launch")
-const syncLock = require("../syncLock")
 const { autoUpdater } = require("electron-updater")
 
 const autoLauncher = new AutoLaunch({
@@ -106,7 +101,7 @@ const handleMessage = (type, data) => {
                 return resolve(true)
             }
 
-            windows.createMain(true).then(() => {
+            require("../windows").createMain(true).then(() => {
                 return resolve(true)
             }).catch(reject)
         }
@@ -120,7 +115,7 @@ const handleMessage = (type, data) => {
                 }
             }
 
-            windows.createMain(true).then(() => {
+            require("../windows").createMain(true).then(() => {
                 if(typeof shared.get("AUTH_WINDOW") !== "undefined"){
                     try{
                         shared.get("AUTH_WINDOW").close()
@@ -143,7 +138,7 @@ const handleMessage = (type, data) => {
                 }
             }
 
-            windows.createSettings(data.page).then(() => {
+            require("../windows").createSettings(data.page).then(() => {
                 return resolve(true)
             }).catch(reject)
         }
@@ -165,14 +160,14 @@ const handleMessage = (type, data) => {
         else if(type == "openSelectFolderRemoteWindow"){
             const { windowId } = data
 
-            windows.createCloud(windowId, "selectFolder").then((window) => {
+            require("../windows").createCloud(windowId, "selectFolder").then((window) => {
                 return resolve(true)
             }).catch(reject)
         }
         else if(type == "selectRemoteFolder"){
             const { windowId } = data
 
-            windows.createCloud(windowId, "selectFolder").then((window) => {
+            require("../windows").createCloud(windowId, "selectFolder").then((window) => {
                 ipcMain.once("remoteFolderSelected", (_, data) => {
                     if(data.windowId !== windowId){
                         return false
@@ -203,7 +198,7 @@ const handleMessage = (type, data) => {
         else if(type == "watchDirectory"){
             const { path, locationUUID } = data
 
-            watcher(path, locationUUID).then(() => {
+            require("../watcher")(path, locationUUID).then(() => {
                 return resolve(true)
             }).catch((err) => {
                 return reject(err)
@@ -410,7 +405,7 @@ const handleMessage = (type, data) => {
             const { type } = data
 
             try{
-                tray.updateTrayIcon(type)
+                require("../tray").updateTrayIcon(type)
 
                 return resolve(true)
             }
@@ -422,7 +417,7 @@ const handleMessage = (type, data) => {
             const { type } = data
 
             try{
-                tray.updateTrayMenu(type)
+                require("../tray").updateTrayMenu(type)
 
                 return resolve(true)
             }
@@ -434,7 +429,7 @@ const handleMessage = (type, data) => {
             const { text } = data
 
             try{
-                tray.updateTrayTooltip(text)
+                require("../tray").updateTrayTooltip(text)
 
                 return resolve(true)
             }
@@ -537,12 +532,12 @@ const handleMessage = (type, data) => {
             app.quit()
         }
         else if(type == "openDownloadWindow"){
-            windows.createDownload(data.args).then(() => {
+            require("../windows").createDownload(data.args).then(() => {
                 return resolve(true)
             }).catch(reject)
         }
         else if(type == "openSelectiveSyncWindow"){
-            windows.createSelectiveSync(uuidv4(), data.args).then(() => {
+            require("../windows").createSelectiveSync(uuidv4(), data.args).then(() => {
                 return resolve(true)
             }).catch(reject)
         }
@@ -568,22 +563,22 @@ const handleMessage = (type, data) => {
             }
         }
         else if(type == "openUploadWindow"){
-            trayMenu.upload(data.type)
+            require("../trayMenu").upload(data.type)
 
             return resolve(true)
         }
         else if(type == "acquireSyncLock"){
-            syncLock.acquireSyncLock("sync").then(() => {
+            require("../syncLock").acquireSyncLock("sync").then(() => {
                 return resolve(true)
             }).catch(reject)
         }
         else if(type == "releaseSyncLock"){
-            syncLock.releaseSyncLock("sync").then(() => {
+            require("../syncLock").releaseSyncLock("sync").then(() => {
                 return resolve(true)
             }).catch(reject)
         }
         else if(type == "openUpdateWindow"){
-            windows.createUpdate().then(() => {
+            require("../windows").createUpdate().then(() => {
                 return resolve(true)
             }).catch(reject)
         }
@@ -623,16 +618,16 @@ const updateKeybinds = () => {
 
                     globalShortcut.register(keybinds[i].keybind, () => {
                         if(keybinds[i].type == "uploadFolders"){
-                            trayMenu.upload("folders")
+                            require("../trayMenu").upload("folders")
                         }
                         else if(keybinds[i].type == "uploadFiles"){
-                            trayMenu.upload("files")
+                            require("../trayMenu").upload("files")
                         }
                         else if(keybinds[i].type == "download"){
-                            trayMenu.download()
+                            require("../trayMenu").download()
                         }
                         else if(keybinds[i].type == "openSettings"){
-                            windows.createSettings().catch(log.error)
+                            require("../windows").createSettings().catch(log.error)
                         }
                         else if(keybinds[i].type == "pauseSync"){
                             db.set("paused", true).catch(log.error)

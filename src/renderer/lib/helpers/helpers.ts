@@ -1,7 +1,7 @@
 import { defaultIgnored } from "../constants"
-import checkDiskSpace from "check-disk-space"
 
 const pathModule = window.require("path")
+const checkDiskSpace = window.require("check-disk-space")
 
 export const isSubdir = (parent: string, path: string) => {
   const relative = pathModule.relative(parent, path)
@@ -554,7 +554,7 @@ export function timeSince(ts: number, lang: string = "en") {
 
 export const localDiskSpace = async (path: string): Promise<number> => {
 	try{
-		const space = await checkDiskSpace(pathModule.normalize(path))
+		const space = await (typeof checkDiskSpace == "function" ? checkDiskSpace : checkDiskSpace['default'])(pathModule.normalize(path))
 
 		return space.free
 	}

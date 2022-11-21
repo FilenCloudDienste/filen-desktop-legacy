@@ -2,7 +2,6 @@ const { BrowserWindow, app, nativeImage, ipcMain } = require("electron")
 const path = require("path")
 const is = require("electron-is")
 const db = require("../db")
-const tray = require("../tray")
 const shared = require("../shared")
 const log = require("electron-log")
 const { v4: uuidv4 } = require("uuid")
@@ -87,7 +86,7 @@ const createMain = (show = false) => {
                 window.setMenuBarVisibility(false)
             }
 
-            const windowTray = tray.createTray()
+            const windowTray = require("../tray").createTray()
 
             window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "#main")
 
@@ -102,7 +101,7 @@ const createMain = (show = false) => {
 			})
 
 			window.once("show", () => {
-                tray.positionWindowAtTray(window, windowTray)
+                require("../tray").positionWindowAtTray(window, windowTray)
                 
                 setTimeout(() => {
                     window.on("blur", () => {
@@ -123,7 +122,7 @@ const createMain = (show = false) => {
             })
 
             ipcMain.once("window-ready", (_, id) => {
-                tray.positionWindowAtTray(window, windowTray)
+                require("../tray").positionWindowAtTray(window, windowTray)
 
                 if(id == windowId && show){
                     window.show()
@@ -133,7 +132,7 @@ const createMain = (show = false) => {
             shared.set("MAIN_WINDOW", window)
             activeWindows.push({ id: windowId, type: "MAIN_WINDOW" })
 
-            tray.positionWindowAtTray(window, windowTray)
+            require("../tray").positionWindowAtTray(window, windowTray)
 
             return resolve(window)
         }

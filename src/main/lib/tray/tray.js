@@ -3,7 +3,6 @@ const path = require("path")
 const log = require("electron-log")
 const trayWindowPositioner = require("electron-traywindow-positioner")
 const shared = require("../shared")
-const trayMenu = require("../trayMenu")
 const is = require("electron-is")
 
 const TRAY_ICON_NORMAL = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/normal@2x.png")).resize({ width: 16, height: 16 })
@@ -65,7 +64,7 @@ const createTray = () => {
         tray.on("click", onClick)
         tray.on("right-click", onRightClick)
 
-        tray.setContextMenu(trayMenu.createMenu())
+        tray.setContextMenu(require("../trayMenu").createMenu())
     
         shared.set("TRAY", tray)
 
@@ -130,7 +129,7 @@ const updateTrayMenu = (type = "default") => {
 
         if(typeof tray !== "undefined"){
             if(typeof tray.setContextMenu == "function" && typeof text == "string"){
-                tray.setContextMenu(trayMenu.buildMenu(type))
+                tray.setContextMenu(require("../trayMenu").buildMenu(type))
             }
         }
     }

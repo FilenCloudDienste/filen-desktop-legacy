@@ -2,7 +2,6 @@ const io = require("socket.io-client")
 const log = require("electron-log")
 const shared = require("../shared")
 const db = require("../db")
-const ipc = require("../ipc")
 
 let HEARTBEAT_INTERVAL = undefined
 
@@ -71,14 +70,14 @@ const listen = () => {
         })
 
         socket.on("fm-to-sync-client-message", (data) => {
-            ipc.emitGlobal("socket-event", {
+            require("../ipc").emitGlobal("socket-event", {
                 type: "fm-to-sync-client-message",
                 data
             })
         })
 
         socket.on("new-event", (data) => {
-            ipc.emitGlobal("socket-event", {
+            require("../ipc").emitGlobal("socket-event", {
                 type: "new-event",
                 data
             })

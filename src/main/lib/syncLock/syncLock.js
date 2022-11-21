@@ -26,6 +26,8 @@ app.on("before-quit", async (e) => {
 
 const acquireSyncLock = (id = "sync") => {
     return new Promise((resolve) => {
+        return resolve(true)
+
         semaphore.acquire().then(() => {
             if(SYNC_LOCK_ACQUIRED){
                 semaphore.release()
@@ -68,6 +70,8 @@ const acquireSyncLock = (id = "sync") => {
 
 const releaseSyncLock = (id = "sync") => {
     return new Promise((resolve, reject) => {
+        return resolve(true)
+
         semaphore.acquire().then(async () => {
             if(!SYNC_LOCK_ACQUIRED){
                 semaphore.release()
@@ -102,6 +106,8 @@ const releaseSyncLock = (id = "sync") => {
 }
 
 const holdSyncLock = (id = "sync") => {
+    return false
+    
     clearInterval(SYNC_LOCK_INTERVAL)
 
     TRYING_TO_HOLD_SYNC_LOCK = false

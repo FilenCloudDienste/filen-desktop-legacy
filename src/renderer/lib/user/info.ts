@@ -20,6 +20,8 @@ export const fetchUserInfo = async (): Promise<UserInfoV1> => {
     try{
         if(memoryCache.has("fetchUserInfo") && memoryCache.has("fetchUserInfoTimeout")){
             if(memoryCache.get("fetchUserInfoTimeout") > new Date().getTime()){
+                fetchUserInfoSemaphore.release()
+                
                 return memoryCache.get("fetchUserInfo") as UserInfoV1
             }
         }

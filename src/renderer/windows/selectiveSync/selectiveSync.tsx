@@ -72,7 +72,11 @@ const TreeItem = memo(({ darkMode, lang, platform, item, location, excluded }: {
                 currentExcluded[item.path] = true
             }
 
-            await db.set("selectiveSync:remote:" + location.uuid, currentExcluded)
+            await Promise.all([
+                db.set("selectiveSync:remote:" + location.uuid, currentExcluded),
+                db.set("localDataChanged:" + location.uuid, true),
+                db.set("remoteDataChanged:" + location.uuid, true)
+            ])
         }
         catch(e){
             log.error(e)
