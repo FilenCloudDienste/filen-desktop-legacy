@@ -1,14 +1,13 @@
 const pathModule = require("path")
 const log = require("electron-log")
-const shared = require("../shared")
 const nodeWatch = require("node-watch")
 
 const SUBS = {}
 
 const emitToWorker = (data) => {
     try{
-        if(typeof shared.get("WORKER_WINDOW") !== "undefined"){
-            shared.get("WORKER_WINDOW").webContents.send("watcher-event", data)
+        if(typeof require("../shared").get("WORKER_WINDOW") !== "undefined"){
+            require("../shared").get("WORKER_WINDOW").webContents.send("watcher-event", data)
         }
     }
     catch(e){

@@ -1,12 +1,9 @@
 process.noAsar = true
 
 const { app, BrowserWindow, powerMonitor, powerSaveBlocker, Menu } = require("electron")
-const { createWindows, createUpdate } = require("./lib/windows")
 const log = require("electron-log")
 const is = require("electron-is")
 const { autoUpdater } = require("electron-updater")
-const ipc = require("./lib/ipc")
-const db = require("./lib/db")
 const { v4: uuidv4 } = require("uuid")
 
 let CHECK_UPDATE_INTERVAL = undefined
@@ -21,7 +18,7 @@ autoUpdater.autoInstallOnAppQuit = false
 const initWindows = () => {
 	log.info("Initializing startup windows")
 
-	createWindows().then(() => {
+	require("./lib/windows").createWindows().then(() => {
 		log.info("Init startup windows done")
 	}).catch((err) => {
 		log.error("Startup windows error")
@@ -42,44 +39,45 @@ if(is.dev()){
 autoUpdater.on("checking-for-update", () => {
 	log.info("Checking if an update is available")
 
-	ipc.emitGlobal("checkingForUpdate")
+	require("./lib/ipc").emitGlobal("checkingForUpdate")
 })
 
 autoUpdater.on("update-available", (info) => {
 	log.info("Update available:", info)
 
-	ipc.emitGlobal("updateAvailable", info)
+	require("./lib/ipc").emitGlobal("updateAvailable", info)
 })
 
 autoUpdater.on("update-not-available", (info) => {
 	log.info("No update available:", info)
 
-	ipc.emitGlobal("updateNotAvailable", info)
+	require("./lib/ipc").emitGlobal("updateNotAvailable", info)
 })
 
 autoUpdater.on("error", (err) => {
 	log.info(err)
 
-	ipc.emitGlobal("updateError", err)
+	require("./lib/ipc").emitGlobal("updateError", err)
 })
 
 autoUpdater.on("download-progress", (progress) => {
 	log.info("Downloading update:", progress)
 
-	ipc.emitGlobal("updateDownloadProgress", progress)
+	require("./lib/ipc").emitGlobal("updateDownloadProgress", progress)
 })
 
 autoUpdater.on("update-downloaded", (info) => {
 	log.info("Update downloaded:", info)
 
-	ipc.emitGlobal("updateDownloaded", info)
+	require("./lib/ipc").emitGlobal("updateDownloaded", info)
 
 	if(!UPDATE_WINDOW_SHOWN){
 		UPDATE_WINDOW_SHOWN = true
+
 		autoUpdater.autoInstallOnAppQuit = false
 
 		setTimeout(() => {
-			createUpdate(uuidv4(), info.version).catch((err) => {
+			require("./lib/windows").createUpdate(uuidv4(), info.version).catch((err) => {
 				log.error(err)
 	
 				UPDATE_WINDOW_SHOWN = false
@@ -107,19 +105,19 @@ powerMonitor.on("shutdown", () => {
 })
 
 powerMonitor.on("lock-screen", () => {
-	db.set("suspend", true).catch(log.error)
+	require("./lib/db").set("suspend", true).catch(log.error)
 })
 
 powerMonitor.on("suspend", () => {
-	db.set("suspend", true).catch(log.error)
+	require("./lib/db").set("suspend", true).catch(log.error)
 })
 
 powerMonitor.on("resume", () => {
-	setTimeout(() => db.set("suspend", false).catch(log.error), 5000)
+	setTimeout(() => require("./lib/db").set("suspend", false).catch(log.error), 5000)
 })
 
 powerMonitor.on("unlock-screen", () => {
-	setTimeout(() => db.set("suspend", false).catch(log.error), 5000)
+	setTimeout(() => require("./lib/db").set("suspend", false).catch(log.error), 5000)
 })
 
 if(!app.requestSingleInstanceLock()){
@@ -199,6 +197,6 @@ else{
 	
 		initWindows()
 		
-		ipc.updateKeybinds().catch(log.error)
+		require("./lib/ipc").updateKeybinds().catch(log.error)
 	})
 }

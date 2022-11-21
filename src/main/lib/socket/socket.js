@@ -1,16 +1,15 @@
 const io = require("socket.io-client")
 const log = require("electron-log")
-const shared = require("../shared")
-const db = require("../db")
 
 let HEARTBEAT_INTERVAL = undefined
+let SOCKET = undefined
 
-const auth = async (socket) => {
+const auth = async () => {
     const apiKey = await new Promise((resolve) => {
         const waitForLoggedInInterval = setInterval(() => {
             Promise.all([
-                db.get("isLoggedIn"),
-                db.get("apiKey")
+                require("../db").get("isLoggedIn"),
+                require("../db").get("apiKey")
             ]).then(([isLoggedIn, apiKey]) => {
                 if(isLoggedIn && typeof apiKey == "string" && apiKey.length >= 32){
                     clearInterval(waitForLoggedInInterval)
@@ -23,18 +22,20 @@ const auth = async (socket) => {
 
     log.info("Sending socket auth")
 
-    socket.emit("auth", {
-        apiKey
-    })
+    if(typeof SOCKET !== "undefined" && typeof SOCKET.emit == "function" && SOCKET.connected){
+        SOCKET.emit("auth", {
+            apiKey
+        })
+    }
 
     return true
 }
 
 const listen = () => {
     return new Promise((resolve) => {
-        shared.remove("SOCKET")
+        require("../shared").remove("SOCKET")
 
-        const socket = io("https://socket.filen.io", {
+        SOCKET = io("https://socket.filen.io", {
             path: "",
             timeout: 15000,
             reconnection: true,
@@ -45,40 +46,35 @@ const listen = () => {
             ]
         })
 
-        socket.on("connect", () => {
+        SOCKET.on("connect", () => {
             log.info("Socket connected")
 
-            shared.set("SOCKET", socket)
+            require("../shared").set("SOCKET", SOCKET)
 
-            auth(socket)
+            auth()
 
             HEARTBEAT_INTERVAL = setInterval(() => {
-                if(typeof shared.get("SOCKET") == "undefined"){
+                if(typeof require("../shared").get("SOCKET") == "undefined"){
                     return clearInterval(HEARTBEAT_INTERVAL)
                 }
 
-                socket.emit("heartbeat")
+                if(typeof SOCKET !== "undefined" && typeof SOCKET.emit == "function" && SOCKET.connected){
+                    SOCKET.emit("heartbeat")
+                }
             }, 5000)
         })
 
-        socket.on("disconnect", () => {
+        SOCKET.on("disconnect", () => {
             log.warn("Socket disconnected")
 
             clearInterval(HEARTBEAT_INTERVAL)
 
-            shared.remove("SOCKET")
+            require("../shared").remove("SOCKET")
         })
 
-        socket.on("fm-to-sync-client-message", (data) => {
+        SOCKET.on("fm-to-sync-client-message", (data) => {
             require("../ipc").emitGlobal("socket-event", {
                 type: "fm-to-sync-client-message",
-                data
-            })
-        })
-
-        socket.on("new-event", (data) => {
-            require("../ipc").emitGlobal("socket-event", {
-                type: "new-event",
                 data
             })
         })

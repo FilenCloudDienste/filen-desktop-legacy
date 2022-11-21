@@ -1,5 +1,4 @@
 const { Menu, app, ipcMain, dialog, BrowserWindow } = require("electron")
-const shared = require("../shared")
 const log = require("electron-log")
 const { v4: uuidv4 } = require("uuid")
 
@@ -7,10 +6,10 @@ const upload = (type = "folders") => {
     let selectWindow = BrowserWindow.getFocusedWindow()
 
     if(selectWindow == null){
-        selectWindow = shared.get("WORKER_WINDOW")
+        selectWindow = require("../shared").get("WORKER_WINDOW")
 
         if(typeof selectWindow == "undefined"){
-            selectWindow = shared.get("MAIN_WINDOW")
+            selectWindow = require("../shared").get("MAIN_WINDOW")
         }
     }
 
@@ -60,8 +59,8 @@ const buildMenu = (type = "default") => {
                 {
                     label: "Show",
                     click: () => {
-                        if(typeof shared.get("MAIN_WINDOW") !== "undefined"){
-                            shared.get("MAIN_WINDOW").show()
+                        if(typeof require("../shared").get("MAIN_WINDOW") !== "undefined"){
+                            require("../shared").get("MAIN_WINDOW").show()
                         }
                     }
                 },
@@ -136,7 +135,7 @@ const createMenu = (type = "default") => {
     try{
         const menu = Menu.buildFromTemplate(buildMenu(type))
     
-        shared.set("TRAY_MENU", menu)
+        require("../shared").set("TRAY_MENU", menu)
     
         return menu
     }

@@ -1,6 +1,5 @@
 const pathModule = require("path")
 const { app } = require("electron")
-const memoryCache = require("../memoryCache")
 const fs = require("fs-extra")
 const writeFileAtomic = require("write-file-atomic")
 const crypto = require("crypto")
@@ -37,8 +36,8 @@ module.exports = {
     get: (key) => {
         return new Promise((resolve, reject) => {
             if(USE_MEMORY_CACHE){
-                if(memoryCache.has(MEMORY_CACHE_KEY + key)){
-                    return resolve(memoryCache.get(MEMORY_CACHE_KEY + key))
+                if(require("../memoryCache").has(MEMORY_CACHE_KEY + key)){
+                    return resolve(require("../memoryCache").get(MEMORY_CACHE_KEY + key))
                 }
             }
 
@@ -65,7 +64,7 @@ module.exports = {
                     }
 
                     if(USE_MEMORY_CACHE){
-                        memoryCache.set(MEMORY_CACHE_KEY + key, val.value)
+                        require("../memoryCache").set(MEMORY_CACHE_KEY + key, val.value)
                     }
 
                     return resolve(val.value)
@@ -99,7 +98,7 @@ module.exports = {
             fs.ensureFile(pathModule.join(DB_PATH, keyHash + ".json")).then(() => {
                 writeFileAtomic(pathModule.join(DB_PATH, keyHash + ".json"), val).then(() => {
                     if(USE_MEMORY_CACHE){
-                        memoryCache.set(MEMORY_CACHE_KEY + key, value)
+                        require("../memoryCache").set(MEMORY_CACHE_KEY + key, value)
                     }
 
                     return resolve(true)
@@ -118,8 +117,8 @@ module.exports = {
             fs.access(pathModule.join(DB_PATH, keyHash + ".json"), fs.F_OK, (err) => {
                 if(err){
                     if(USE_MEMORY_CACHE){
-                        if(memoryCache.has(MEMORY_CACHE_KEY + key)){
-                            memoryCache.delete(MEMORY_CACHE_KEY + key)
+                        if(require("../memoryCache").has(MEMORY_CACHE_KEY + key)){
+                            require("../memoryCache").delete(MEMORY_CACHE_KEY + key)
                         }
                     }
     
@@ -128,8 +127,8 @@ module.exports = {
 
                 fs.unlink(pathModule.join(DB_PATH, keyHash + ".json")).then(() => {
                     if(USE_MEMORY_CACHE){
-                        if(memoryCache.has(MEMORY_CACHE_KEY + key)){
-                            memoryCache.delete(MEMORY_CACHE_KEY + key)
+                        if(require("../memoryCache").has(MEMORY_CACHE_KEY + key)){
+                            require("../memoryCache").delete(MEMORY_CACHE_KEY + key)
                         }
                     }
     
@@ -151,9 +150,9 @@ module.exports = {
                 }
 
                 if(USE_MEMORY_CACHE){
-                    memoryCache.cache.forEach((_, key) => {
+                    require("../memoryCache").cache.forEach((_, key) => {
                         if(key.startsWith(MEMORY_CACHE_KEY)){
-                            memoryCache.delete(key)
+                            require("../memoryCache").delete(key)
                         }
                     })
                 }

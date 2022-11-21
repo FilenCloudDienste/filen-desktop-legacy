@@ -1,10 +1,7 @@
 const { ipcMain, dialog, app, systemPreferences, globalShortcut, BrowserWindow } = require("electron")
-const db = require("../db")
-const shared = require("../shared")
 const log = require("electron-log")
 const fs = require("fs-extra")
 const pathModule = require("path")
-const memoryCache = require("../memoryCache")
 const { v4: uuidv4 } = require("uuid")
 const AutoLaunch = require("auto-launch")
 const { autoUpdater } = require("electron-updater")
@@ -33,10 +30,10 @@ const handleMessage = (type, data) => {
             const { action, key, value } = data
 
             if(action == "get"){
-                db.get(key).then(resolve).catch(reject)
+                require("../db").get(key).then(resolve).catch(reject)
             }
             else if(action == "set"){
-                db.set(key, value).then(() => {
+                require("../db").set(key, value).then(() => {
                     resolve(true)
 
                     emitGlobal("global-message", {
@@ -51,7 +48,7 @@ const handleMessage = (type, data) => {
                 }).catch(reject)
             }
             else if(action == "remove"){
-                db.remove(key).then(() => {
+                require("../db").remove(key).then(() => {
                     resolve(true)
 
                     emitGlobal("global-message", {
@@ -65,7 +62,7 @@ const handleMessage = (type, data) => {
                 }).catch(reject)
             }
             else if(action == "clear"){
-                db.clear().then(() => {
+                require("../db").clear().then(() => {
                     resolve(true)
 
                     emitGlobal("global-message", {
@@ -76,19 +73,19 @@ const handleMessage = (type, data) => {
                 }).catch(reject)
             }
             else if(action == "keys"){
-                db.keys().then(resolve).catch(reject)
+                require("../db").keys().then(resolve).catch(reject)
             }
             else{
                 return reject("Invalid db action: " + action.toString())
             }
         }
         else if(type == "closeAuthWindow"){
-            if(typeof shared.get("AUTH_WINDOW") == "undefined"){
+            if(typeof require("../shared").get("AUTH_WINDOW") == "undefined"){
                 return resolve(true)
             }
 
             try{
-                shared.get("AUTH_WINDOW").close()
+                require("../shared").get("AUTH_WINDOW").close()
             }
             catch(e){
                 return reject(e)
@@ -97,7 +94,7 @@ const handleMessage = (type, data) => {
             return resolve(true)
         }
         else if(type == "createMainWindow"){
-            if(typeof shared.get("MAIN_WINDOW") !== "undefined"){
+            if(typeof require("../shared").get("MAIN_WINDOW") !== "undefined"){
                 return resolve(true)
             }
 
@@ -106,9 +103,9 @@ const handleMessage = (type, data) => {
             }).catch(reject)
         }
         else if(type == "loginDone"){
-            if(typeof shared.get("MAIN_WINDOW") !== "undefined"){
+            if(typeof require("../shared").get("MAIN_WINDOW") !== "undefined"){
                 try{
-                    shared.get("MAIN_WINDOW").close()
+                    require("../shared").get("MAIN_WINDOW").close()
                 }
                 catch(e){
                    log.error(e)
@@ -116,9 +113,9 @@ const handleMessage = (type, data) => {
             }
 
             require("../windows").createMain(true).then(() => {
-                if(typeof shared.get("AUTH_WINDOW") !== "undefined"){
+                if(typeof require("../shared").get("AUTH_WINDOW") !== "undefined"){
                     try{
-                        shared.get("AUTH_WINDOW").close()
+                        require("../shared").get("AUTH_WINDOW").close()
                     }
                     catch(e){
                        log.error(e)
@@ -129,9 +126,9 @@ const handleMessage = (type, data) => {
             }).catch(reject)
         }
         else if(type == "openSettingsWindow"){
-            if(typeof shared.get("SETTINGS_WINDOW") !== "undefined"){
+            if(typeof require("../shared").get("SETTINGS_WINDOW") !== "undefined"){
                 try{
-                    shared.get("SETTINGS_WINDOW").close()
+                    require("../shared").get("SETTINGS_WINDOW").close()
                 }
                 catch(e){
                     return reject(e)
@@ -146,10 +143,10 @@ const handleMessage = (type, data) => {
             let selectWindow = BrowserWindow.getFocusedWindow()
 
             if(selectWindow == null){
-                selectWindow = shared.get("WORKER_WINDOW")
+                selectWindow = require("../shared").get("WORKER_WINDOW")
 
                 if(typeof selectWindow == "undefined"){
-                    selectWindow = shared.get("MAIN_WINDOW")
+                    selectWindow = require("../shared").get("MAIN_WINDOW")
                 }
             }
 
@@ -207,7 +204,7 @@ const handleMessage = (type, data) => {
         else if(type == "minimizeWindow"){
             try{
                 if(data.window == "settings"){
-                    const windows = shared.get("SETTINGS_WINDOWS")
+                    const windows = require("../shared").get("SETTINGS_WINDOWS")
 
                     for(const prop in windows){
                         if(data.windowId == windows[prop].windowId){
@@ -216,10 +213,10 @@ const handleMessage = (type, data) => {
                     }
                 }
                 else if(data.window == "auth"){
-                    shared.get("AUTH_WINDOW").minimize()
+                    require("../shared").get("AUTH_WINDOW").minimize()
                 }
                 else if(data.window == "cloud"){
-                    const windows = shared.get("CLOUD_WINDOWS")
+                    const windows = require("../shared").get("CLOUD_WINDOWS")
 
                     for(const prop in windows){
                         if(data.windowId == windows[prop].windowId){
@@ -228,7 +225,7 @@ const handleMessage = (type, data) => {
                     }
                 }
                 else if(data.window == "download"){
-                    const windows = shared.get("DOWNLOAD_WINDOWS")
+                    const windows = require("../shared").get("DOWNLOAD_WINDOWS")
 
                     for(const prop in windows){
                         if(data.windowId == windows[prop].windowId){
@@ -237,7 +234,7 @@ const handleMessage = (type, data) => {
                     }
                 }
                 else if(data.window == "upload"){
-                    const windows = shared.get("UPLOAD_WINDOWS")
+                    const windows = require("../shared").get("UPLOAD_WINDOWS")
 
                     for(const prop in windows){
                         if(data.windowId == windows[prop].windowId){
@@ -246,7 +243,7 @@ const handleMessage = (type, data) => {
                     }
                 }
                 else if(data.window == "selectiveSync"){
-                    const windows = shared.get("SELECTIVE_SYNC_WINDOWS")
+                    const windows = require("../shared").get("SELECTIVE_SYNC_WINDOWS")
 
                     for(const prop in windows){
                         if(data.windowId == windows[prop].windowId){
@@ -255,10 +252,10 @@ const handleMessage = (type, data) => {
                     }
                 }
                 else if(data.window == "main"){
-                    shared.get("MAIN_WINDOW").minimize()
+                    require("../shared").get("MAIN_WINDOW").minimize()
                 }
                 else if(data.window == "update"){
-                    shared.get("UPDATE_WINDOW").minimize()
+                    require("../shared").get("UPDATE_WINDOW").minimize()
                 }
 
                 return resolve(true)
@@ -270,7 +267,7 @@ const handleMessage = (type, data) => {
         else if(type == "closeWindow"){
             try{
                 if(data.window == "settings"){
-                    const windows = shared.get("SETTINGS_WINDOWS")
+                    const windows = require("../shared").get("SETTINGS_WINDOWS")
 
                     for(const prop in windows){
                         if(data.windowId == windows[prop].windowId){
@@ -282,7 +279,7 @@ const handleMessage = (type, data) => {
                     app.quit()
                 }
                 else if(data.window == "cloud"){
-                    const windows = shared.get("CLOUD_WINDOWS")
+                    const windows = require("../shared").get("CLOUD_WINDOWS")
 
                     for(const prop in windows){
                         if(data.windowId == windows[prop].windowId){
@@ -291,7 +288,7 @@ const handleMessage = (type, data) => {
                     }
                 }
                 else if(data.window == "download"){
-                    const windows = shared.get("DOWNLOAD_WINDOWS")
+                    const windows = require("../shared").get("DOWNLOAD_WINDOWS")
 
                     for(const prop in windows){
                         if(data.windowId == windows[prop].windowId){
@@ -300,7 +297,7 @@ const handleMessage = (type, data) => {
                     }
                 }
                 else if(data.window == "upload"){
-                    const windows = shared.get("UPLOAD_WINDOWS")
+                    const windows = require("../shared").get("UPLOAD_WINDOWS")
 
                     for(const prop in windows){
                         if(data.windowId == windows[prop].windowId){
@@ -309,7 +306,7 @@ const handleMessage = (type, data) => {
                     }
                 }
                 else if(data.window == "selectiveSync"){
-                    const windows = shared.get("SELECTIVE_SYNC_WINDOWS")
+                    const windows = require("../shared").get("SELECTIVE_SYNC_WINDOWS")
 
                     for(const prop in windows){
                         if(data.windowId == windows[prop].windowId){
@@ -318,10 +315,10 @@ const handleMessage = (type, data) => {
                     }
                 }
                 else if(data.window == "main"){
-                    shared.get("MAIN_WINDOW").minimize()
+                    require("../shared").get("MAIN_WINDOW").minimize()
                 }
                 else if(data.window == "update"){
-                    shared.get("UPDATE_WINDOW").close()
+                    require("../shared").get("UPDATE_WINDOW").close()
                 }
 
                 return resolve(true)
@@ -359,10 +356,10 @@ const handleMessage = (type, data) => {
             let selectWindow = BrowserWindow.getFocusedWindow()
 
             if(selectWindow == null){
-                selectWindow = shared.get("WORKER_WINDOW")
+                selectWindow = require("../shared").get("WORKER_WINDOW")
 
                 if(typeof selectWindow == "undefined"){
-                    selectWindow = shared.get("MAIN_WINDOW")
+                    selectWindow = require("../shared").get("MAIN_WINDOW")
                 }
             }
 
@@ -440,15 +437,15 @@ const handleMessage = (type, data) => {
         else if(type == "getFileIcon"){
             const { path } = data
 
-            if(memoryCache.has("fileIcon:" + path)){
-                return resolve(memoryCache.get("fileIcon:" + path))
+            if(require("../memoryCache").has("fileIcon:" + path)){
+                return resolve(require("../memoryCache").get("fileIcon:" + path))
             }
 
             app.getFileIcon(pathModule.normalize(path)).then((image) => {
                 try{
                     const dataURL = image.toDataURL()
 
-                    memoryCache.set("fileIcon:" + path, dataURL)
+                    require("../memoryCache").set("fileIcon:" + path, dataURL)
 
                     return resolve(dataURL)
                 }
@@ -460,8 +457,8 @@ const handleMessage = (type, data) => {
         else if(type == "getFileIconExt"){
             const { ext } = data
 
-            if(memoryCache.has("fileIconExt:" + ext)){
-                return resolve(memoryCache.get("fileIconExt:" + ext))
+            if(require("../memoryCache").has("fileIconExt:" + ext)){
+                return resolve(require("../memoryCache").get("fileIconExt:" + ext))
             }
 
             const tempPath = pathModule.normalize(pathModule.join(app.getPath("temp"), uuidv4() + (typeof ext == "string" && ext.length > 0 ? (ext.indexOf(".") == -1 ? "" : "." + ext) : "")))
@@ -476,7 +473,7 @@ const handleMessage = (type, data) => {
                     }
 
                     fs.unlink(tempPath).then(() => {
-                        memoryCache.set("fileIconExt:" + ext, dataURL)
+                        require("../memoryCache").set("fileIconExt:" + ext, dataURL)
     
                         return resolve(dataURL)
                     }).catch(reject)
@@ -486,8 +483,8 @@ const handleMessage = (type, data) => {
         else if(type == "getFileIconName"){
             const { name } = data
 
-            if(memoryCache.has("getFileIconName:" + name)){
-                return resolve(memoryCache.get("getFileIconName:" + name))
+            if(require("../memoryCache").has("getFileIconName:" + name)){
+                return resolve(require("../memoryCache").get("getFileIconName:" + name))
             }
 
             const tempPath = pathModule.normalize(pathModule.join(app.getPath("temp"), uuidv4() + "_" + name))
@@ -502,7 +499,7 @@ const handleMessage = (type, data) => {
                     }
 
                     fs.unlink(tempPath).then(() => {
-                        memoryCache.set("getFileIconName:" + name, dataURL)
+                        require("../memoryCache").set("getFileIconName:" + name, dataURL)
     
                         return resolve(dataURL)
                     }).catch(reject)
@@ -603,7 +600,7 @@ const handleMessage = (type, data) => {
 
 const updateKeybinds = () => {
     return new Promise((resolve, reject) => {
-        db.get("keybinds").then((keybinds) => {
+        require("../db").get("keybinds").then((keybinds) => {
             if(!Array.isArray(keybinds)){
                 keybinds = []
             }
@@ -630,10 +627,10 @@ const updateKeybinds = () => {
                             require("../windows").createSettings().catch(log.error)
                         }
                         else if(keybinds[i].type == "pauseSync"){
-                            db.set("paused", true).catch(log.error)
+                            require("../db").set("paused", true).catch(log.error)
                         }
                         else if(keybinds[i].type == "resumeSync"){
-                            db.set("paused", false).catch(log.error)
+                            require("../db").set("paused", false).catch(log.error)
                         }
                     })
                 }
@@ -649,23 +646,23 @@ const updateKeybinds = () => {
 
 const emitGlobal = (channel = "global-message", data) => {
     try{
-        if(typeof shared.get("MAIN_WINDOW") !== "undefined"){
-            shared.get("MAIN_WINDOW").webContents.send(channel, data)
+        if(typeof require("../shared").get("MAIN_WINDOW") !== "undefined"){
+            require("../shared").get("MAIN_WINDOW").webContents.send(channel, data)
         }
     
-        if(typeof shared.get("WORKER_WINDOW") !== "undefined"){
-            shared.get("WORKER_WINDOW").webContents.send(channel, data)
+        if(typeof require("../shared").get("WORKER_WINDOW") !== "undefined"){
+            require("../shared").get("WORKER_WINDOW").webContents.send(channel, data)
         }
     
-        if(typeof shared.get("AUTH_WINDOW") !== "undefined"){
-            shared.get("AUTH_WINDOW").webContents.send(channel, data)
+        if(typeof require("../shared").get("AUTH_WINDOW") !== "undefined"){
+            require("../shared").get("AUTH_WINDOW").webContents.send(channel, data)
         }
 
-        if(typeof shared.get("UPDATE_WINDOW") !== "undefined"){
-            shared.get("UPDATE_WINDOW").webContents.send(channel, data)
+        if(typeof require("../shared").get("UPDATE_WINDOW") !== "undefined"){
+            require("../shared").get("UPDATE_WINDOW").webContents.send(channel, data)
         }
     
-        const settingsWindows = shared.get("SETTINGS_WINDOWS")
+        const settingsWindows = require("../shared").get("SETTINGS_WINDOWS")
 
         if(typeof settingsWindows == "object"){
             for(const id in settingsWindows){
@@ -673,7 +670,7 @@ const emitGlobal = (channel = "global-message", data) => {
             }
         }
 
-        const downloadWindows = shared.get("DOWNLOAD_WINDOWS")
+        const downloadWindows = require("../shared").get("DOWNLOAD_WINDOWS")
 
         if(typeof downloadWindows == "object"){
             for(const id in downloadWindows){
@@ -681,7 +678,7 @@ const emitGlobal = (channel = "global-message", data) => {
             }
         }
 
-        const cloudWindows = shared.get("CLOUD_WINDOWS")
+        const cloudWindows = require("../shared").get("CLOUD_WINDOWS")
 
         if(typeof cloudWindows == "object"){
             for(const id in cloudWindows){
@@ -689,7 +686,7 @@ const emitGlobal = (channel = "global-message", data) => {
             }
         }
 
-        const uploadWindows = shared.get("UPLOAD_WINDOWS")
+        const uploadWindows = require("../shared").get("UPLOAD_WINDOWS")
 
         if(typeof uploadWindows == "object"){
             for(const id in uploadWindows){
@@ -697,7 +694,7 @@ const emitGlobal = (channel = "global-message", data) => {
             }
         }
 
-        const selectiveSyncWindows = shared.get("SELECTIVE_SYNC_WINDOWS")
+        const selectiveSyncWindows = require("../shared").get("SELECTIVE_SYNC_WINDOWS")
 
         if(typeof selectiveSyncWindows == "object"){
             for(const id in selectiveSyncWindows){
@@ -722,26 +719,46 @@ const listen = () => {
             }
     
             handleMessage(type, data).then((response) => {
-                try{
-                    event.sender.send("message", {
-                        messageId,
-                        messageSender,
-                        response
-                    })
+                if(typeof event !== "undefined" && typeof event.sender !== "undefined"){
+                    if(!event.sender.isDestroyed()){
+                        try{
+                            event.sender.send("message", {
+                                messageId,
+                                messageSender,
+                                response
+                            })
+                        }
+                        catch(e){
+                            log.error(e)
+                        }
+                    }
+                    else{
+                        log.info("Could not handle message, sender destroyed")
+                    }
                 }
-                catch(e){
-                    log.error(e)
+                else{
+                    log.info("Could not handle message, sender destroyed")
                 }
             }).catch((err) => {
-                try{
-                    event.sender.send("message", {
-                        messageId,
-                        messageSender,
-                        err
-                    })
+                if(typeof event !== "undefined" && typeof event.sender !== "undefined"){
+                    if(!event.sender.isDestroyed()){
+                        try{
+                            event.sender.send("message", {
+                                messageId,
+                                messageSender,
+                                err
+                            })
+                        }
+                        catch(e){
+                            log.error(e)
+                        }
+                    }
+                    else{
+                        log.info("Could not handle message, sender destroyed")
+                    }
                 }
-                catch(e){
-                    log.error(e)
+                else{
+                    log.info("Could not handle message, sender destroyed")
                 }
             })
         })

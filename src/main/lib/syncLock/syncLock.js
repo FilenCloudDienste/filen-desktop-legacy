@@ -1,13 +1,10 @@
 const { app } = require("electron")
 const log = require("electron-log")
-const db = require("../db")
-const api = require("../api")
-const helpers = require("../helpers")
 
 let SYNC_LOCK_INTERVAL = undefined
 let TRYING_TO_HOLD_SYNC_LOCK = false
 let SYNC_LOCK_ACQUIRED = false
-const semaphore = new helpers.Semaphore(1)
+const semaphore = new require("../helpers").Semaphore(1)
 
 app.on("before-quit", async (e) => {
     if(SYNC_LOCK_ACQUIRED){
@@ -38,7 +35,7 @@ const acquireSyncLock = (id = "sync") => {
             log.info("Acquiring sync lock")
 
             const acquire = async () => {
-                api.acquireLock({ apiKey: await db.get("apiKey"), id }).then(() => {
+                require("../api").acquireLock({ apiKey: await require("../db").get("apiKey"), id }).then(() => {
                     log.info("Sync lock acquired")
 
                     SYNC_LOCK_ACQUIRED = true
@@ -85,7 +82,7 @@ const releaseSyncLock = (id = "sync") => {
     
             clearInterval(SYNC_LOCK_INTERVAL)
     
-            api.releaseLock({ apiKey: await db.get("apiKey"), id }).then(() => {
+            require("../api").releaseLock({ apiKey: await require("../db").get("apiKey"), id }).then(() => {
                 log.info("Sync lock released")
     
                 SYNC_LOCK_ACQUIRED = false
@@ -120,7 +117,7 @@ const holdSyncLock = (id = "sync") => {
                 log.info("Holding sync lock")
     
                 try{
-                    await api.holdLock({ apiKey: await db.get("apiKey"), id })
+                    await require("../api").holdLock({ apiKey: await require("../db").get("apiKey"), id })
                 }
                 catch(e){
                     log.error("Could not hold sync lock from API")

@@ -33,12 +33,7 @@ const checkInternet = (): any => {
         })
     }, async (response: any) => {
         if(response.statusCode !== 200){
-            try{
-                await db.set("isOnline", false)
-            }
-            catch(e){
-                log.error(e)
-            }
+            db.set("isOnline", false).catch(log.error)
 
             return setTimeout(checkInternet, 3000)
         }
@@ -46,12 +41,13 @@ const checkInternet = (): any => {
         const res: Buffer[] = []
 
         response.on("error", async () => {
-            try{
-                await db.set("isOnline", false)
-            }
-            catch(e){
-                log.error(e)
-            }
+            db.set("isOnline", false).catch(log.error)
+
+            return setTimeout(checkInternet, 3000)
+        })
+
+        response.on("timeout", async () => {
+            db.set("isOnline", false).catch(log.error)
 
             return setTimeout(checkInternet, 3000)
         })
@@ -65,12 +61,12 @@ const checkInternet = (): any => {
                 const str = Buffer.concat(res).toString()
             
                 if(str.indexOf("Invalid endpoint") == -1){
-                    await db.set("isOnline", false)
+                    db.set("isOnline", false).catch(log.error)
         
                     return setTimeout(checkInternet, 3000)
                 }
         
-                await db.set("isOnline", true)
+                db.set("isOnline", true).catch(log.error)
             }
             catch(e){
                 log.error(e)
@@ -81,12 +77,13 @@ const checkInternet = (): any => {
     })
 
     req.on("error", async () => {
-        try{
-            await db.set("isOnline", false)
-        }
-        catch(e){
-            log.error(e)
-        }
+        db.set("isOnline", false).catch(log.error)
+
+        return setTimeout(checkInternet, 3000)
+    })
+
+    req.on("timeout", async () => {
+        db.set("isOnline", false).catch(log.error)
 
         return setTimeout(checkInternet, 3000)
     })

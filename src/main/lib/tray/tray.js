@@ -2,7 +2,6 @@ const { Tray, nativeImage } = require("electron")
 const path = require("path")
 const log = require("electron-log")
 const trayWindowPositioner = require("electron-traywindow-positioner")
-const shared = require("../shared")
 const is = require("electron-is")
 
 const TRAY_ICON_NORMAL = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/normal@2x.png")).resize({ width: 16, height: 16 })
@@ -16,7 +15,7 @@ const positionWindow = () => {
     }
 
     try{
-        positionWindowAtTray(shared.get("MAIN_WINDOW"), shared.get("TRAY"))
+        positionWindowAtTray(require("../shared").get("MAIN_WINDOW"), require("../shared").get("TRAY"))
     }
     catch(e){
         log.error(e)
@@ -27,8 +26,8 @@ const positionWindow = () => {
 
 const toggleMainWindow = () => {
     try{
-        if(typeof shared.get("MAIN_WINDOW") !== "undefined"){
-            shared.get("MAIN_WINDOW").show()
+        if(typeof require("../shared").get("MAIN_WINDOW") !== "undefined"){
+            require("../shared").get("MAIN_WINDOW").show()
         }
     }
     catch(e){
@@ -52,8 +51,8 @@ const onRightClick = () => {
 
 const createTray = () => {
     try{
-        if(typeof shared.get("TRAY") !== "undefined"){
-            return shared.get("TRAY")
+        if(typeof require("../shared").get("TRAY") !== "undefined"){
+            return require("../shared").get("TRAY")
         }
     
         const tray = new Tray(TRAY_ICON_NORMAL)
@@ -66,7 +65,7 @@ const createTray = () => {
 
         tray.setContextMenu(require("../trayMenu").createMenu())
     
-        shared.set("TRAY", tray)
+        require("../shared").set("TRAY", tray)
 
         positionWindow()
     
@@ -97,7 +96,7 @@ const positionWindowAtTray = (window, tray) => {
 
 const updateTrayIcon = (type) => {
     try{
-        const tray = shared.get("TRAY")
+        const tray = require("../shared").get("TRAY")
 
         if(typeof tray !== "undefined"){
             if(typeof tray.setImage == "function"){
@@ -125,7 +124,7 @@ const updateTrayIcon = (type) => {
 
 const updateTrayMenu = (type = "default") => {
     try{
-        const tray = shared.get("TRAY")
+        const tray = require("../shared").get("TRAY")
 
         if(typeof tray !== "undefined"){
             if(typeof tray.setContextMenu == "function" && typeof text == "string"){
@@ -140,7 +139,7 @@ const updateTrayMenu = (type = "default") => {
 
 const updateTrayTooltip = (text = "Filen") => {
     try{
-        const tray = shared.get("TRAY")
+        const tray = require("../shared").get("TRAY")
 
         if(typeof tray !== "undefined"){
             if(typeof tray.setToolTip == "function" && typeof text == "string"){

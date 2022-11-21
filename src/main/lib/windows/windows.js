@@ -1,8 +1,6 @@
 const { BrowserWindow, app, nativeImage, ipcMain } = require("electron")
 const path = require("path")
 const is = require("electron-is")
-const db = require("../db")
-const shared = require("../shared")
 const log = require("electron-log")
 const { v4: uuidv4 } = require("uuid")
 const { Base64 } = require("js-base64")
@@ -39,9 +37,9 @@ const createMain = (show = false) => {
                 show = false
             }
 
-            if(typeof shared.get("MAIN_WINDOW") !== "undefined"){
+            if(typeof require("../shared").get("MAIN_WINDOW") !== "undefined"){
                 try{
-                    shared.get("MAIN_WINDOW").close()
+                    require("../shared").get("MAIN_WINDOW").close()
                 }
                 catch(e){
                     log.error(e)
@@ -95,7 +93,7 @@ const createMain = (show = false) => {
             }
 
 			window.once("closed", () => {
-				shared.remove("MAIN_WINDOW")
+				require("../shared").remove("MAIN_WINDOW")
 
                 activeWindows = activeWindows.filter(window => window.id !== windowId)
 			})
@@ -129,7 +127,7 @@ const createMain = (show = false) => {
                 }
             })
 
-            shared.set("MAIN_WINDOW", window)
+            require("../shared").set("MAIN_WINDOW", window)
             activeWindows.push({ id: windowId, type: "MAIN_WINDOW" })
 
             require("../tray").positionWindowAtTray(window, windowTray)
@@ -145,7 +143,7 @@ const createMain = (show = false) => {
 const createSettings = (page = "general", windowId = uuidv4()) => {
     return new Promise(async (resolve, reject) => {
         try{
-            const currentSettingsWindows = shared.get("SETTINGS_WINDOWS")
+            const currentSettingsWindows = require("../shared").get("SETTINGS_WINDOWS")
 
             for(const id in currentSettingsWindows){
                 if(id !== windowId){
@@ -190,7 +188,7 @@ const createSettings = (page = "general", windowId = uuidv4()) => {
             }
 
 			window.once("closed", () => {
-				const settingsWindows = shared.get("SETTINGS_WINDOWS")
+				const settingsWindows = require("../shared").get("SETTINGS_WINDOWS")
 
                 if(typeof settingsWindows == "object"){
                     for(const id in settingsWindows){
@@ -199,7 +197,7 @@ const createSettings = (page = "general", windowId = uuidv4()) => {
                         }
                     }
 
-                    shared.set("SETTINGS_WINDOWS", settingsWindows)
+                    require("../shared").set("SETTINGS_WINDOWS", settingsWindows)
                 }
 
                 activeWindows = activeWindows.filter(window => window.id !== windowId)
@@ -232,7 +230,7 @@ const createSettings = (page = "general", windowId = uuidv4()) => {
                 })
             }
 
-            let settingsWindows = shared.get("SETTINGS_WINDOWS")
+            let settingsWindows = require("../shared").get("SETTINGS_WINDOWS")
 
             if(typeof settingsWindows == "object"){
                 settingsWindows[windowId] = window
@@ -242,7 +240,7 @@ const createSettings = (page = "general", windowId = uuidv4()) => {
                 settingsWindows[windowId] = window
             }
 
-            shared.set("SETTINGS_WINDOWS", settingsWindows)
+            require("../shared").set("SETTINGS_WINDOWS", settingsWindows)
             activeWindows.push({ id: windowId, type: "SETTINGS_WINDOWS" })
 
             return resolve(window)
@@ -293,7 +291,7 @@ const createUpload = (args = {}, windowId = uuidv4()) => {
             }
 
             window.once("closed", () => {
-				const currentUploadWindows = shared.get("UPLOAD_WINDOWS")
+				const currentUploadWindows = require("../shared").get("UPLOAD_WINDOWS")
 
                 if(typeof currentUploadWindows == "object"){
                     for(const id in currentUploadWindows){
@@ -302,7 +300,7 @@ const createUpload = (args = {}, windowId = uuidv4()) => {
                         }
                     }
 
-                    shared.set("UPLOAD_WINDOWS", currentUploadWindows)
+                    require("../shared").set("UPLOAD_WINDOWS", currentUploadWindows)
                 }
 
                 activeWindows = activeWindows.filter(window => window.id !== windowId)
@@ -335,7 +333,7 @@ const createUpload = (args = {}, windowId = uuidv4()) => {
                 })
             }
 
-            let uploadWindows = shared.get("UPLOAD_WINDOWS")
+            let uploadWindows = require("../shared").get("UPLOAD_WINDOWS")
 
             if(typeof uploadWindows == "object"){
                 uploadWindows[windowId] = window
@@ -345,7 +343,7 @@ const createUpload = (args = {}, windowId = uuidv4()) => {
                 uploadWindows[windowId] = window
             }
 
-            shared.set("UPLOAD_WINDOWS", uploadWindows)
+            require("../shared").set("UPLOAD_WINDOWS", uploadWindows)
             activeWindows.push({ id: windowId, type: "UPLOAD_WINDOWS" })
 
             return resolve(window)
@@ -396,7 +394,7 @@ const createDownload = (args = {}, windowId = uuidv4()) => {
             }
 
             window.once("closed", () => {
-				const currentDownloadWindows = shared.get("DOWNLOAD_WINDOWS")
+				const currentDownloadWindows = require("../shared").get("DOWNLOAD_WINDOWS")
 
                 if(typeof currentDownloadWindows == "object"){
                     for(const id in currentDownloadWindows){
@@ -405,7 +403,7 @@ const createDownload = (args = {}, windowId = uuidv4()) => {
                         }
                     }
 
-                    shared.set("DOWNLOAD_WINDOWS", currentDownloadWindows)
+                    require("../shared").set("DOWNLOAD_WINDOWS", currentDownloadWindows)
                 }
 
                 activeWindows = activeWindows.filter(window => window.id !== windowId)
@@ -438,7 +436,7 @@ const createDownload = (args = {}, windowId = uuidv4()) => {
                 })
             }
 
-            let downloadWindows = shared.get("DOWNLOAD_WINDOWS")
+            let downloadWindows = require("../shared").get("DOWNLOAD_WINDOWS")
 
             if(typeof downloadWindows == "object"){
                 downloadWindows[windowId] = window
@@ -448,7 +446,7 @@ const createDownload = (args = {}, windowId = uuidv4()) => {
                 downloadWindows[windowId] = window
             }
 
-            shared.set("DOWNLOAD_WINDOWS", downloadWindows)
+            require("../shared").set("DOWNLOAD_WINDOWS", downloadWindows)
             activeWindows.push({ id: windowId, type: "DOWNLOAD_WINDOWS" })
 
             return resolve(window)
@@ -498,7 +496,7 @@ const createCloud = (windowId = uuidv4(), mode = "selectFolder") => {
             }
 
 			window.once("closed", () => {
-				const cloudWindows = shared.get("CLOUD_WINDOWS")
+				const cloudWindows = require("../shared").get("CLOUD_WINDOWS")
 
                 if(typeof cloudWindows == "object"){
                     for(const id in cloudWindows){
@@ -507,7 +505,7 @@ const createCloud = (windowId = uuidv4(), mode = "selectFolder") => {
                         }
                     }
 
-                    shared.set("CLOUD_WINDOWS", cloudWindows)
+                    require("../shared").set("CLOUD_WINDOWS", cloudWindows)
                 }
 
                 activeWindows = activeWindows.filter(window => window.id !== windowId)
@@ -540,7 +538,7 @@ const createCloud = (windowId = uuidv4(), mode = "selectFolder") => {
                 })
             }
 
-            let cloudWindows = shared.get("CLOUD_WINDOWS")
+            let cloudWindows = require("../shared").get("CLOUD_WINDOWS")
 
             if(typeof cloudWindows == "object"){
                 cloudWindows[windowId] = window
@@ -550,7 +548,7 @@ const createCloud = (windowId = uuidv4(), mode = "selectFolder") => {
                 cloudWindows[windowId] = window
             }
 
-            shared.set("CLOUD_WINDOWS", cloudWindows)
+            require("../shared").set("CLOUD_WINDOWS", cloudWindows)
             activeWindows.push({ id: windowId, type: "CLOUD_WINDOWS" })
 
             return resolve(window)
@@ -600,7 +598,7 @@ const createSelectiveSync = (windowId = uuidv4(), args = {}) => {
             }
 
 			window.once("closed", () => {
-				const selectiveSyncWindows = shared.get("SELECTIVE_SYNC_WINDOWS")
+				const selectiveSyncWindows = require("../shared").get("SELECTIVE_SYNC_WINDOWS")
 
                 if(typeof selectiveSyncWindows == "object"){
                     for(const id in selectiveSyncWindows){
@@ -609,7 +607,7 @@ const createSelectiveSync = (windowId = uuidv4(), args = {}) => {
                         }
                     }
 
-                    shared.set("SELECTIVE_SYNC_WINDOWS", selectiveSyncWindows)
+                    require("../shared").set("SELECTIVE_SYNC_WINDOWS", selectiveSyncWindows)
                 }
 
                 activeWindows = activeWindows.filter(window => window.id !== windowId)
@@ -642,7 +640,7 @@ const createSelectiveSync = (windowId = uuidv4(), args = {}) => {
                 })
             }
 
-            let selectiveSyncWindows = shared.get("SELECTIVE_SYNC_WINDOWS")
+            let selectiveSyncWindows = require("../shared").get("SELECTIVE_SYNC_WINDOWS")
 
             if(typeof selectiveSyncWindows == "object"){
                 selectiveSyncWindows[windowId] = window
@@ -652,7 +650,7 @@ const createSelectiveSync = (windowId = uuidv4(), args = {}) => {
                 selectiveSyncWindows[windowId] = window
             }
 
-            shared.set("SELECTIVE_SYNC_WINDOWS", selectiveSyncWindows)
+            require("../shared").set("SELECTIVE_SYNC_WINDOWS", selectiveSyncWindows)
             activeWindows.push({ id: windowId, type: "SELECTIVE_SYNC_WINDOWS" })
 
             return resolve(window)
@@ -666,9 +664,9 @@ const createSelectiveSync = (windowId = uuidv4(), args = {}) => {
 const createAuth = () => {
     return new Promise(async (resolve, reject) => {
         try{
-            if(typeof shared.get("AUTH_WINDOW") !== "undefined"){
+            if(typeof require("../shared").get("AUTH_WINDOW") !== "undefined"){
                 try{
-                    shared.get("AUTH_WINDOW").close()
+                    require("../shared").get("AUTH_WINDOW").close()
                 }
                 catch(e){
                     log.error(e)
@@ -713,10 +711,10 @@ const createAuth = () => {
             }
 
 			window.once("closed", () => {
-				shared.remove("AUTH_WINDOW")
+				require("../shared").remove("AUTH_WINDOW")
 
                 setTimeout(() => {
-                    if(typeof shared.get("MAIN_WINDOW") == "undefined"){
+                    if(typeof require("../shared").get("MAIN_WINDOW") == "undefined"){
                         app.quit()
                     }
                 }, 3000)
@@ -751,7 +749,7 @@ const createAuth = () => {
                 })
             }
 
-            shared.set("AUTH_WINDOW", window)
+            require("../shared").set("AUTH_WINDOW", window)
             activeWindows.push({ id: windowId, type: "AUTH_WINDOW" })
 
             return resolve(window)
@@ -765,8 +763,8 @@ const createAuth = () => {
 const createUpdate = (windowId = uuidv4(), toVersion = "1") => {
     return new Promise(async (resolve, reject) => {
         try{
-            if(typeof shared.get("UPDATE_WINDOW") !== "undefined"){
-                shared.get("UPDATE_WINDOW").close()
+            if(typeof require("../shared").get("UPDATE_WINDOW") !== "undefined"){
+                require("../shared").get("UPDATE_WINDOW").close()
             }
 
             const window = new BrowserWindow({
@@ -806,7 +804,7 @@ const createUpdate = (windowId = uuidv4(), toVersion = "1") => {
             }
 
             window.once("closed", () => {
-                shared.remove("UPDATE_WINDOW")
+                require("../shared").remove("UPDATE_WINDOW")
 
                 activeWindows = activeWindows.filter(window => window.id !== windowId)
 
@@ -838,7 +836,7 @@ const createUpdate = (windowId = uuidv4(), toVersion = "1") => {
                 })
             }
 
-            shared.set("UPDATE_WINDOW", window)
+            require("../shared").set("UPDATE_WINDOW", window)
 
             return resolve(window)
         }
@@ -851,9 +849,9 @@ const createUpdate = (windowId = uuidv4(), toVersion = "1") => {
 const createWorker = () => {
     return new Promise(async (resolve, reject) => {
         try{
-            if(typeof shared.get("WORKER_WINDOW") !== "undefined"){
+            if(typeof require("../shared").get("WORKER_WINDOW") !== "undefined"){
                 try{
-                    shared.get("WORKER_WINDOW").close()
+                    require("../shared").get("WORKER_WINDOW").close()
                 }
                 catch(e){
                     log.error(e)
@@ -891,13 +889,13 @@ const createWorker = () => {
             })
 
 			window.once("closed", () => {
-				shared.remove("WORKER_WINDOW")
-                shared.remove("WORKER_WINDOW_DEBUGGER")
+				require("../shared").remove("WORKER_WINDOW")
+                require("../shared").remove("WORKER_WINDOW_DEBUGGER")
 
                 activeWindows = activeWindows.filter(window => window.id !== windowId)
 			})
 
-            shared.set("WORKER_WINDOW", window)
+            require("../shared").set("WORKER_WINDOW", window)
             activeWindows.push({ id: windowId, type: "WORKER_WINDOW" })
     
             return resolve(window)
@@ -914,19 +912,19 @@ const createWindows = () => {
             await require("../ipc").listen()
             await require("../socket").listen()
 
-            const langSetManually = await db.get("langSetManually")
+            const langSetManually = await require("../db").get("langSetManually")
 
             if(!langSetManually){
                 const locale = app.getLocale()
             
                 if(["en", "de"].includes(locale)){
-                    await db.set("lang", locale)
+                    await require("../db").set("lang", locale)
                 }
             }
 
             var [isLoggedIn, deviceId, _] = await Promise.all([
-                db.get("isLoggedIn"),
-                db.get("deviceId")
+                require("../db").get("isLoggedIn"),
+                require("../db").get("deviceId")
             ])
 
             await createWorker()
@@ -937,7 +935,7 @@ const createWindows = () => {
             }
 
             if(!deviceId){
-				await db.set("deviceId", uuidv4())
+				await require("../db").set("deviceId", uuidv4())
 			}
 
             if(isLoggedIn){
