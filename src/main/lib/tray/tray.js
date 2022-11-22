@@ -50,6 +50,10 @@ const onRightClick = () => {
 }
 
 const createTray = () => {
+    if(is.linux()){
+        return undefined
+    }
+
     try{
         if(typeof require("../shared").get("TRAY") !== "undefined"){
             return require("../shared").get("TRAY")
@@ -95,6 +99,10 @@ const positionWindowAtTray = (window, tray) => {
 }
 
 const updateTrayIcon = (type) => {
+    if(is.linux()){
+        return false
+    }
+
     try{
         const tray = require("../shared").get("TRAY")
 
@@ -123,6 +131,10 @@ const updateTrayIcon = (type) => {
 }
 
 const updateTrayMenu = (type = "default") => {
+    if(is.linux()){
+        return false
+    }
+
     try{
         const tray = require("../shared").get("TRAY")
 
@@ -138,6 +150,10 @@ const updateTrayMenu = (type = "default") => {
 }
 
 const updateTrayTooltip = (text = "Filen") => {
+    if(is.linux()){
+        return false
+    }
+
     try{
         const tray = require("../shared").get("TRAY")
 
