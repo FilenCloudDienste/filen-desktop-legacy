@@ -5,7 +5,7 @@ import ipc from "../../ipc"
 import { sendToAllPorts } from "../ipc"
 import { v4 as uuidv4 } from "uuid"
 import { maxRetrySyncTask, retrySyncTaskTimeout, maxConcurrentDownloads as maxConcurrentDownloadsPreset, maxConcurrentUploads as maxConcurrentUploadsPreset, maxConcurrentSyncTasks } from "../../constants"
-import { Semaphore, SemaphoreInterface, isSubdir, localDiskSpace } from "../../helpers"
+import { Semaphore, SemaphoreInterface, isSubdir } from "../../helpers"
 import { remoteStorageLeft } from "../../user/info"
 
 const pathModule = window.require("path")
@@ -2489,56 +2489,6 @@ const syncLocation = async (location: any): Promise<any> => {
         status: "start",
         location
     })
-
-    const [localSpaceFree, tmpSpaceFree, remoteSpaceFree] = await Promise.all([
-        localDiskSpace(pathModule.normalize(location.local)),
-        localDiskSpace(pathModule.normalize(os.tmpdir())),
-        remoteStorageLeft()
-    ])
-
-    if(localSpaceFree < (1024 * 1024 * 1024) || tmpSpaceFree < (1024 * 1024 * 1024)){
-        if((await isSuspended())){
-            updateLocationBusyStatus(location.uuid, false)
-
-            return false
-        }
-
-        log.error("Not enough local disk storage left to perform sync operation at path " + location.local + " (" + localSpaceFree + ")")
-
-        addToSyncIssues("localDiskStorage", "Not enough local disk storage left to perform sync operation at path " + location.local)
-
-        emitSyncStatusLocation("localDiskStorage", {
-            status: "err",
-            location,
-            err: "Not enough local disk storage left to perform sync operation at path " + location.local + " (" + localSpaceFree + ")"
-        })
-
-        updateLocationBusyStatus(location.uuid, false)
-
-        return false
-    }
-
-    if(remoteSpaceFree < (1024 * 1024 * 32)){
-        if((await isSuspended())){
-            updateLocationBusyStatus(location.uuid, false)
-
-            return false
-        }
-
-        log.error("Not enough remote disk storage left to perform sync operation (" + remoteSpaceFree + ")")
-
-        addToSyncIssues("remoteDiskStorage", "Not enough remote storage left to perform sync operation")
-
-        emitSyncStatusLocation("remoteDiskStorage", {
-            status: "err",
-            location,
-            err: "Not enough remote disk storage left to perform sync operation (" + remoteSpaceFree + ")"
-        })
-
-        updateLocationBusyStatus(location.uuid, false)
-
-        return false
-    }
 
     try{
         await Promise.all([
