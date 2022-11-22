@@ -26,7 +26,9 @@ const initWindows = () => {
 	})
 }
 
-//app.commandLine.appendSwitch("wm-window-animations-disabled")
+app.disableHardwareAcceleration()
+
+app.commandLine.appendSwitch("wm-window-animations-disabled")
 app.commandLine.appendSwitch("disable-renderer-backgrounding")
 app.commandLine.appendSwitch("disable-pinch")
 app.commandLine.appendSwitch("js-flags", "--max-old-space-size=8192")
