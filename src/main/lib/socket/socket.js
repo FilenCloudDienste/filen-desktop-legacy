@@ -53,11 +53,9 @@ const listen = () => {
 
             auth()
 
-            HEARTBEAT_INTERVAL = setInterval(() => {
-                if(typeof require("../shared").get("SOCKET") == "undefined"){
-                    return clearInterval(HEARTBEAT_INTERVAL)
-                }
+            clearInterval(HEARTBEAT_INTERVAL)
 
+            HEARTBEAT_INTERVAL = setInterval(() => {
                 if(typeof SOCKET !== "undefined" && typeof SOCKET.emit == "function" && SOCKET.connected){
                     SOCKET.emit("heartbeat")
                 }
