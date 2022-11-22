@@ -414,7 +414,7 @@ const sortMoveRenameTasks = (tasks: any): any => {
     const added: any = {}
     const newTasks: any[] = []
 
-    tasks = tasks.filter((task: any) => typeof task.from == "string" && typeof task.to == "string" && task.from !== task.to)
+    tasks = tasks.filter((task: any) => typeof task.from == "string" && typeof task.to == "string" && typeof task.from == "string" && task.from !== task.to)
 
     for(let i = 0; i < tasks.length; i++){
         const task = tasks[i]
@@ -605,6 +605,21 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
 
         for(let i = 0; i < renameInRemoteTasksSorted.length; i++){
             if(
+                typeof renameInRemoteTasksSorted[i] == "undefined"
+                || renameInRemoteTasksSorted[i] == null
+            ){
+                continue
+            }
+
+            if(
+                typeof renameInRemoteTasksSorted[i].from !== "string"
+                || typeof renameInRemoteTasksSorted[i].to !== "string"
+                || typeof renameInRemoteTasksSorted[i].path !== "string"
+            ){
+                continue
+            }
+            
+            if(
                 !isPathIncluded(renamedInRemote, renameInRemoteTasksSorted[i].path) &&
                 !isPathIncluded(movedInRemote, renameInRemoteTasksSorted[i].path)
             ){
@@ -615,6 +630,21 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
         }
 
         for(let i = 0; i < renameInLocalTasksSorted.length; i++){
+            if(
+                typeof renameInLocalTasksSorted[i] == "undefined"
+                || renameInLocalTasksSorted[i] == null
+            ){
+                continue
+            }
+
+            if(
+                typeof renameInLocalTasksSorted[i].from !== "string"
+                || typeof renameInLocalTasksSorted[i].to !== "string"
+                || typeof renameInLocalTasksSorted[i].path !== "string"
+            ){
+                continue
+            }
+
             if(
                 !isPathIncluded(renamedInLocal, renameInLocalTasksSorted[i].path) &&
                 !isPathIncluded(movedInLocal, renameInLocalTasksSorted[i].path)
@@ -627,6 +657,21 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
 
         for(let i = 0; i < moveInRemoteTasksSorted.length; i++){
             if(
+                typeof moveInRemoteTasksSorted[i] == "undefined"
+                || moveInRemoteTasksSorted[i] == null
+            ){
+                continue
+            }
+
+            if(
+                typeof moveInRemoteTasksSorted[i].from !== "string"
+                || typeof moveInRemoteTasksSorted[i].to !== "string"
+                || typeof moveInRemoteTasksSorted[i].path !== "string"
+            ){
+                continue
+            }
+
+            if(
                 !isPathIncluded(renamedInRemote, moveInRemoteTasksSorted[i].path) &&
                 !isPathIncluded(movedInRemote, moveInRemoteTasksSorted[i].path)
             ){
@@ -637,6 +682,21 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
         }
 
         for(let i = 0; i < moveInLocalTasksSorted.length; i++){
+            if(
+                typeof moveInLocalTasksSorted[i] == "undefined"
+                || moveInLocalTasksSorted[i] == null
+            ){
+                continue
+            }
+
+            if(
+                typeof moveInLocalTasksSorted[i].from !== "string"
+                || typeof moveInLocalTasksSorted[i].to !== "string"
+                || typeof moveInLocalTasksSorted[i].path !== "string"
+            ){
+                continue
+            }
+
             if(
                 !isPathIncluded(renamedInLocal, moveInLocalTasksSorted[i].path) &&
                 !isPathIncluded(movedInLocal, moveInLocalTasksSorted[i].path)
@@ -649,6 +709,19 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
 
         for(let i = 0; i < deleteInRemote.length; i++){
             if(
+                typeof deleteInRemote[i] == "undefined"
+                || deleteInRemote[i] == null
+            ){
+                continue
+            }
+
+            if(
+                typeof deleteInRemote[i].path !== "string"
+            ){
+                continue
+            }
+
+            if(
                 !isPathIncluded(renamedInLocal, deleteInRemote[i].path) &&
                 !isPathIncluded(movedInLocal, deleteInRemote[i].path)
             ){
@@ -657,6 +730,19 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
         }
 
         for(let i = 0; i < deleteInLocal.length; i++){
+            if(
+                typeof deleteInLocal[i] == "undefined"
+                || deleteInLocal[i] == null
+            ){
+                continue
+            }
+
+            if(
+                typeof deleteInLocal[i].path !== "string"
+            ){
+                continue
+            }
+
             if(
                 !isPathIncluded(renamedInRemote, deleteInLocal[i].path) &&
                 !isPathIncluded(movedInRemote, deleteInLocal[i].path)
@@ -667,6 +753,19 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
     
         for(let i = 0; i < uploadToRemote.length; i++){
             if(
+                typeof uploadToRemote[i] == "undefined"
+                || uploadToRemote[i] == null
+            ){
+                continue
+            }
+
+            if(
+                typeof uploadToRemote[i].path !== "string"
+            ){
+                continue
+            }
+
+            if(
                 !isPathIncluded(renamedInLocal, uploadToRemote[i].path) &&
                 !isPathIncluded(movedInLocal, uploadToRemote[i].path)
             ){
@@ -675,6 +774,19 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
         }
     
         for(let i = 0; i < downloadFromRemote.length; i++){
+            if(
+                typeof downloadFromRemote[i] == "undefined"
+                || downloadFromRemote[i] == null
+            ){
+                continue
+            }
+
+            if(
+                typeof downloadFromRemote[i].path !== "string"
+            ){
+                continue
+            }
+
             if(
                 !isPathIncluded(renamedInRemote, downloadFromRemote[i].path) &&
                 !isPathIncluded(movedInRemote, downloadFromRemote[i].path)
@@ -1832,7 +1944,15 @@ const applyDoneTasksToSavedState = ({ doneTasks, localTreeNow, remoteTreeNow }: 
         for(let i = 0; i < doneTasks.length; i++){
             const { type, task } = doneTasks[i]
 
+            if(typeof task == "undefined" || task == null){
+                continue
+            }
+
             if(type == "renameInRemote"){
+                if(typeof task.from !== "string" || typeof task.to !== "string"){
+                    continue
+                }
+
                 if(task.type == "folder"){
                     const oldParentPath = task.from + "/"
                     const newParentPath = task.to + "/"
@@ -1894,6 +2014,10 @@ const applyDoneTasksToSavedState = ({ doneTasks, localTreeNow, remoteTreeNow }: 
                 }
             }
             else if(type == "renameInLocal"){
+                if(typeof task.from !== "string" || typeof task.to !== "string"){
+                    continue
+                }
+
                 if(task.type == "folder"){
                     const oldParentPath = task.from + "/"
                     const newParentPath = task.to + "/"
@@ -1955,6 +2079,10 @@ const applyDoneTasksToSavedState = ({ doneTasks, localTreeNow, remoteTreeNow }: 
                 }
             }
             else if(type == "moveInRemote"){
+                if(typeof task.from !== "string" || typeof task.to !== "string"){
+                    continue
+                }
+
                 if(task.type == "folder"){
                     const oldParentPath = task.from + "/"
                     const newParentPath = task.to + "/"
@@ -2016,6 +2144,10 @@ const applyDoneTasksToSavedState = ({ doneTasks, localTreeNow, remoteTreeNow }: 
                 }
             }
             else if(type == "moveInLocal"){
+                if(typeof task.from !== "string" || typeof task.to !== "string"){
+                    continue
+                }
+                
                 if(task.type == "folder"){
                     const oldParentPath = task.from + "/"
                     const newParentPath = task.to + "/"
