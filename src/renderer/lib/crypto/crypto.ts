@@ -555,7 +555,7 @@ export const decryptFileMetadataPrivateKey = (metadata: string, privateKey: any)
         let fileLastModified = 0
 
         try{
-            let decrypted = await window.crypto.subtle.decrypt({
+            let decrypted: any = await window.crypto.subtle.decrypt({
                 name: "RSA-OAEP"
             }, privateKey, base64ToArrayBuffer(metadata))
 

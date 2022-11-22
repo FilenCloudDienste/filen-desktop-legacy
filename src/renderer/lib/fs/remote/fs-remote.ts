@@ -62,13 +62,6 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                 const cacheKey: string = "directoryTree:" + uuid + ":" + deviceId
 
                 if(response.folders.length == 0 && response.files.length == 0){ // Data did not change
-                    if(memoryCache.has(cacheKey)){
-                        return resolve({
-                            changed: false,
-                            data: memoryCache.get(cacheKey)
-                        })
-                    }
-
                     try{
                         var dbCache = await db.get(cacheKey)
 
@@ -340,8 +333,6 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                     }
                     
                     try{
-                        memoryCache.set(cacheKey, obj)
-
                         await db.set(cacheKey, obj)
                     }
                     catch(e){

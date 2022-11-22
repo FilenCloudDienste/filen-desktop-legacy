@@ -250,8 +250,6 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
                 }
 
                 try{
-                    memoryCache.set(cacheKey, obj)
-
                     await db.set(cacheKey, obj)
                     await db.set("localDataChanged:" + location.uuid, false)
                 }
