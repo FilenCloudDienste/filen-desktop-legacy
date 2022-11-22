@@ -2,16 +2,13 @@ import React from "react"
 import "./renderer/styles/index.css"
 import App from "./renderer/App"
 import { createRoot } from "react-dom/client"
-import * as Sentry from "@sentry/react"
-import { BrowserTracing } from "@sentry/tracing"
+import * as Sentry from "@sentry/electron/renderer"
 
 const is = window.require("electron-is")
 
 if(!is.dev()){
     Sentry.init({
-        dsn: "https://0aa7266bc9364f0b9bb7445331e82959@o4504039703314432.ingest.sentry.io/4504057873498112",
-        integrations: [new BrowserTracing()],
-        tracesSampleRate: 1.0
+        dsn: "https://765df844a3364aff92ec3648f1815ff8@o4504039703314432.ingest.sentry.io/4504205266321408"
     })
 }
 
