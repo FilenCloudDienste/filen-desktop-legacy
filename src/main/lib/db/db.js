@@ -7,7 +7,7 @@ const log = require("electron-log")
 
 const DB_VERSION = 1
 const DB_PATH = pathModule.join(app.getPath("userData"), "db_v" + DB_VERSION)
-const USE_MEMORY_CACHE = true
+const USE_MEMORY_CACHE = false
 const MEMORY_CACHE_KEY = "db:"
 
 const hashKey = (key) => {
