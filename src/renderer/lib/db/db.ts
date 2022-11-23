@@ -28,7 +28,15 @@ const getDbPath = async (): Promise<string> => {
 }
 
 const hashKey = (key: string) => {
-    return CryptoJS.SHA256(key).toString()
+    if(memoryCache.has("dbKeyHash:" + key)){
+        return memoryCache.get("dbKeyHash:" + key)
+    }
+
+    const hash: string = CryptoJS.SHA256(key).toString()
+
+    memoryCache.set("dbKeyHash:" + key, hash)
+
+    return hash
 }
 
 const db = {

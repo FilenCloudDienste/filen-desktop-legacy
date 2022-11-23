@@ -13,7 +13,15 @@ const MAX_RETRIES = 32
 const RETRY_TIMEOUT = 250
 
 const hashKey = (key) => {
-    return crypto.createHash("sha256").update(key).digest("hex")
+    if(require("../memoryCache").has("dbKeyHash:" + key)){
+        return require("../memoryCache").get("dbKeyHash:" + key)
+    }
+
+    const hash = crypto.createHash("sha256").update(key).digest("hex")
+
+    require("../memoryCache").set("dbKeyHash:" + key, hash)
+
+    return hash
 }
 
 // Clear leftover temp files etc
