@@ -8,6 +8,19 @@ const { v4: uuidv4 } = require("uuid")
 const Sentry = require("@sentry/electron/main")
 const { formatBytes } = require("./lib/helpers")
 
+app.disableHardwareAcceleration()
+app.commandLine.appendSwitch("wm-window-animations-disabled")
+app.commandLine.appendSwitch("disable-renderer-backgrounding")
+app.commandLine.appendSwitch("disable-pinch")
+app.commandLine.appendSwitch("js-flags", "--max-old-space-size=8192")
+app.commandLine.appendSwitch("no-sandbox")
+app.commandLine.appendSwitch("no-proxy-server")
+
+if(is.dev()){
+	app.commandLine.appendSwitch("ignore-certificate-errors")
+	app.commandLine.appendSwitch("allow-insecure-localhost", "true")
+}
+
 if(!is.dev()){
 	Sentry.init({
 		dsn: "https://765df844a3364aff92ec3648f1815ff8@o4504039703314432.ingest.sentry.io/4504205266321408"
@@ -18,7 +31,7 @@ setInterval(() => {
 	const memInfo = process.memoryUsage()
 
     log.info("mainProcess memoryUsage", "heap =", formatBytes(memInfo.heapUsed), "totalHeap =", formatBytes(memInfo.heapTotal), "external =", formatBytes(memInfo.external), "rss =", formatBytes(memInfo.rss), "arrayBuffers =", formatBytes(memInfo.arrayBuffers))
-}, is.dev() ? 5000 : 30000)
+}, is.dev() ? 2500 : 15000)
 
 let CHECK_UPDATE_INTERVAL = undefined
 let POWER_SAVE_BLOCKER = null
@@ -40,18 +53,6 @@ const initWindows = () => {
 	})
 }
 
-app.disableHardwareAcceleration()
-
-app.commandLine.appendSwitch("wm-window-animations-disabled")
-app.commandLine.appendSwitch("disable-renderer-backgrounding")
-app.commandLine.appendSwitch("disable-pinch")
-app.commandLine.appendSwitch("js-flags", "--max-old-space-size=8192")
-
-if(is.dev()){
-	app.commandLine.appendSwitch("ignore-certificate-errors")
-	app.commandLine.appendSwitch("allow-insecure-localhost", "true")
-}
-
 autoUpdater.on("checking-for-update", () => {
 	log.info("Checking if an update is available")
 
@@ -65,7 +66,7 @@ autoUpdater.on("update-available", (info) => {
 })
 
 autoUpdater.on("update-not-available", (info) => {
-	log.info("No update available:", info)
+	//log.info("No update available:", info)
 
 	require("./lib/ipc").emitGlobal("updateNotAvailable", info)
 })
@@ -141,6 +142,8 @@ if(!app.requestSingleInstanceLock()){
 }
 else{
 	app.whenReady().then(() => {
+		app.setAccessibilitySupportEnabled(false)
+
 		Menu.setApplicationMenu(Menu.buildFromTemplate([
 			{
 				label: "Application",

@@ -9,6 +9,8 @@ const DB_VERSION = 1
 const DB_PATH = pathModule.join(app.getPath("userData"), "db_v" + DB_VERSION)
 const USE_MEMORY_CACHE = false
 const MEMORY_CACHE_KEY = "db:"
+const MAX_RETRIES = 32
+const RETRY_TIMEOUT = 250
 
 const hashKey = (key) => {
     return crypto.createHash("sha256").update(key).digest("hex")
@@ -95,15 +97,36 @@ module.exports = {
 
             const keyHash = hashKey(key)
 
-            fs.ensureFile(pathModule.join(DB_PATH, keyHash + ".json")).then(() => {
-                writeFileAtomic(pathModule.join(DB_PATH, keyHash + ".json"), val).then(() => {
-                    if(USE_MEMORY_CACHE){
-                        require("../memoryCache").set(MEMORY_CACHE_KEY + key, value)
-                    }
+            let tries = 0
+            let lastErr = ""
 
-                    return resolve(true)
-                }).catch(reject)
-            }).catch(reject)
+            const write = () => {
+                if(tries > MAX_RETRIES){
+                    return reject(new Error(lastErr))
+                }
+
+                tries += 1
+
+                fs.ensureFile(pathModule.join(DB_PATH, keyHash + ".json")).then(() => {
+                    writeFileAtomic(pathModule.join(DB_PATH, keyHash + ".json"), val).then(() => {
+                        if(USE_MEMORY_CACHE){
+                            require("../memoryCache").set(MEMORY_CACHE_KEY + key, value)
+                        }
+    
+                        return resolve(true)
+                    }).catch((err) => {
+                        lastErr = err
+
+                        return setTimeout(write, RETRY_TIMEOUT)
+                    })
+                }).catch((err) => {
+                    lastErr = err
+
+                    return setTimeout(write, RETRY_TIMEOUT)
+                })
+            }
+
+            return write()
         })
     },
     remove: (key) => {
@@ -114,27 +137,44 @@ module.exports = {
 
             const keyHash = hashKey(key)
 
-            fs.access(pathModule.join(DB_PATH, keyHash + ".json"), fs.F_OK, (err) => {
-                if(err){
-                    if(USE_MEMORY_CACHE){
-                        if(require("../memoryCache").has(MEMORY_CACHE_KEY + key)){
-                            require("../memoryCache").delete(MEMORY_CACHE_KEY + key)
-                        }
-                    }
-    
-                    return resolve(true)
+            let tries = 0
+            let lastErr = ""
+
+            const write = () => {
+                if(tries > MAX_RETRIES){
+                    return reject(new Error(lastErr))
                 }
 
-                fs.unlink(pathModule.join(DB_PATH, keyHash + ".json")).then(() => {
-                    if(USE_MEMORY_CACHE){
-                        if(require("../memoryCache").has(MEMORY_CACHE_KEY + key)){
-                            require("../memoryCache").delete(MEMORY_CACHE_KEY + key)
+                tries += 1
+
+                fs.access(pathModule.join(DB_PATH, keyHash + ".json"), fs.F_OK, (err) => {
+                    if(err){
+                        if(USE_MEMORY_CACHE){
+                            if(require("../memoryCache").has(MEMORY_CACHE_KEY + key)){
+                                require("../memoryCache").delete(MEMORY_CACHE_KEY + key)
+                            }
                         }
+        
+                        return resolve(true)
                     }
     
-                    return resolve(true)
-                }).catch(reject)
-            })
+                    fs.unlink(pathModule.join(DB_PATH, keyHash + ".json")).then(() => {
+                        if(USE_MEMORY_CACHE){
+                            if(require("../memoryCache").has(MEMORY_CACHE_KEY + key)){
+                                require("../memoryCache").delete(MEMORY_CACHE_KEY + key)
+                            }
+                        }
+        
+                        return resolve(true)
+                    }).catch((err) => {
+                        lastErr = err
+    
+                        return setTimeout(write, RETRY_TIMEOUT)
+                    })
+                })
+            }
+
+            return write()
         })
     },
     clear: () => {
