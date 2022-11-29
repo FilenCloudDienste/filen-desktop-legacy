@@ -9,7 +9,7 @@ const log = window.require("electron-log")
 
 const DB_VERSION = 1
 let DB_PATH = ""
-const USE_MEMORY_CACHE: boolean = false
+const USE_MEMORY_CACHE: boolean = true
 const MEMORY_CACHE_KEY: string = "db:"
 const MAX_RETRIES = 32
 const RETRY_TIMEOUT = 250

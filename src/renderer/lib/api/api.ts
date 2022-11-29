@@ -5,6 +5,7 @@ import db from "../db"
 import { sendToAllPorts } from "../worker/ipc"
 import { logout } from "../../windows/settings/settings"
 import striptags from "striptags"
+import { isSyncLocationPaused } from "../worker/sync/sync.utils"
 
 const https = window.require("https")
 const log = window.require("electron-log")
@@ -1361,7 +1362,7 @@ export const checkIfItemIsSharedForRename = ({ type, uuid, metaData }: { type: s
     })
 }
 
-export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "sync" }: { queryParams: any, data: any, timeout: number, from: string }): Promise<any> => {
+export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "sync", location = undefined }: { queryParams: any, data: any, timeout: number, from: string, location?: any }): Promise<any> => {
     return new Promise((resolve, reject) => {
         Promise.all([
             db.get("networkingSettings"),
@@ -1373,17 +1374,50 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
 
             await new Promise((resolve) => {
                 const getPausedStatus = () => {
-                    db.get(from == "sync" ? "paused" : from.indexOf("download") !== -1 ? "downloadPaused" : from.indexOf("upload") !== -1 ? "uploadPaused" : "paused").then((paused) => {
-                        if(paused){
-                            return setTimeout(getPausedStatus, 1000)
+                    if(from == "sync"){
+                        if(typeof location !== "undefined" && typeof location.uuid == "string"){
+                            Promise.all([
+                                db.get("paused"),
+                                isSyncLocationPaused(location.uuid)
+                            ]).then(([paused, locationPaused]) => {
+                                if(paused || locationPaused){
+                                    return setTimeout(getPausedStatus, 1000)
+                                }
+        
+                                return resolve(true)
+                            }).catch((err) => {
+                                log.error(err)
+        
+                                return setTimeout(getPausedStatus, 1000)
+                            })
                         }
-
-                        return resolve(true)
-                    }).catch((err) => {
-                        log.error(err)
-
-                        return setTimeout(getPausedStatus, 1000)
-                    })
+                        else{
+                            db.get("paused").then((paused) => {
+                                if(paused){
+                                    return setTimeout(getPausedStatus, 1000)
+                                }
+        
+                                return resolve(true)
+                            }).catch((err) => {
+                                log.error(err)
+        
+                                return setTimeout(getPausedStatus, 1000)
+                            })
+                        }
+                    }
+                    else{
+                        db.get(from.indexOf("download") !== -1 ? "downloadPaused" : from.indexOf("upload") !== -1 ? "uploadPaused" : "paused").then((paused) => {
+                            if(paused){
+                                return setTimeout(getPausedStatus, 1000)
+                            }
+    
+                            return resolve(true)
+                        }).catch((err) => {
+                            log.error(err)
+    
+                            return setTimeout(getPausedStatus, 1000)
+                        })
+                    }
                 }
 
                 return getPausedStatus()
@@ -1552,22 +1586,55 @@ export const markUploadAsDone = ({ uuid, uploadKey }: { uuid: string, uploadKey:
     })
 }
 
-export const downloadChunk = ({ region, bucket, uuid, index, from = "sync" }: { region: string, bucket: string, uuid: string, index: number, from: string }): Promise<any> => {
+export const downloadChunk = ({ region, bucket, uuid, index, from = "sync", location = undefined }: { region: string, bucket: string, uuid: string, index: number, from: string, location?: any }): Promise<any> => {
     return new Promise((resolve, reject) => {
         db.get("networkingSettings").then(async (networkingSettings) => {
             await new Promise((resolve) => {
                 const getPausedStatus = () => {
-                    db.get(from == "sync" ? "paused" : from.indexOf("download") !== -1 ? "downloadPaused" : from.indexOf("upload") !== -1 ? "uploadPaused" : "paused").then((paused) => {
-                        if(paused){
-                            return setTimeout(getPausedStatus, 1000)
+                    if(from == "sync"){
+                        if(typeof location !== "undefined" && typeof location.uuid == "string"){
+                            Promise.all([
+                                db.get("paused"),
+                                isSyncLocationPaused(location.uuid)
+                            ]).then(([paused, locationPaused]) => {
+                                if(paused || locationPaused){
+                                    return setTimeout(getPausedStatus, 1000)
+                                }
+        
+                                return resolve(true)
+                            }).catch((err) => {
+                                log.error(err)
+        
+                                return setTimeout(getPausedStatus, 1000)
+                            })
                         }
-
-                        return resolve(true)
-                    }).catch((err) => {
-                        log.error(err)
-
-                        return setTimeout(getPausedStatus, 1000)
-                    })
+                        else{
+                            db.get("paused").then((paused) => {
+                                if(paused){
+                                    return setTimeout(getPausedStatus, 1000)
+                                }
+        
+                                return resolve(true)
+                            }).catch((err) => {
+                                log.error(err)
+        
+                                return setTimeout(getPausedStatus, 1000)
+                            })
+                        }
+                    }
+                    else{
+                        db.get(from.indexOf("download") !== -1 ? "downloadPaused" : from.indexOf("upload") !== -1 ? "uploadPaused" : "paused").then((paused) => {
+                            if(paused){
+                                return setTimeout(getPausedStatus, 1000)
+                            }
+    
+                            return resolve(true)
+                        }).catch((err) => {
+                            log.error(err)
+    
+                            return setTimeout(getPausedStatus, 1000)
+                        })
+                    }
                 }
 
                 return getPausedStatus()

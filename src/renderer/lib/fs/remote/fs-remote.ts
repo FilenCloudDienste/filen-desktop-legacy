@@ -1,13 +1,13 @@
 import { folderPresent, dirTree, createFolder, folderExists, uploadChunk, markUploadAsDone, checkIfItemParentIsShared, trashItem, moveFile, moveFolder, renameFile, renameFolder } from "../../api"
 import db from "../../db"
 import { decryptFolderName, decryptFileMetadata, hashFn, encryptMetadata, encryptData } from "../../crypto"
-import memoryCache from "../../memoryCache"
 import { convertTimestampToMs, pathIsFileOrFolderNameIgnoredByDefault, generateRandomString, Semaphore, isFolderPathExcluded, pathValidation } from "../../helpers"
 import { normalizePath, smokeTest as smokeTestLocal, readChunk, checkLastModified } from "../local"
 import { chunkSize, maxUploadThreads } from "../../constants"
 import { v4 as uuidv4 } from "uuid"
 import { sendToAllPorts } from "../../worker/ipc"
 import { remoteStorageLeft } from "../../user/info"
+import { isSyncLocationPaused } from "../../worker/sync/sync.utils"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
@@ -511,8 +511,11 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
     return new Promise(async (resolve, reject) => {
         await new Promise((resolve) => {
             const getPausedStatus = () => {
-                db.get("paused").then((paused) => {
-                    if(paused){
+                Promise.all([
+                    db.get("paused"),
+                    isSyncLocationPaused(location.uuid)
+                ]).then(([paused, locationPaused]) => {
+                    if(paused || locationPaused){
                         return setTimeout(getPausedStatus, 1000)
                     }
 
@@ -635,7 +638,8 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
                                             queryParams,
                                             data: encrypted,
                                             timeout: 86400000,
-                                            from: "sync"
+                                            from: "sync",
+                                            location
                                         }).then((response) => {
                                             if(!response.status){
                                                 return reject(new Error(response.message))

@@ -6,6 +6,7 @@ import { decryptData } from "../../crypto"
 import { v4 as uuidv4 } from "uuid"
 import db from "../../db"
 import * as constants from "../../constants"
+import { isSyncLocationPaused } from "../../worker/sync/sync.utils"
 
 const fs = window.require("fs-extra")
 const pathModule = window.require("path")
@@ -250,8 +251,10 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
                 }
 
                 try{
-                    await db.set(cacheKey, obj)
-                    await db.set("localDataChanged:" + location.uuid, false)
+                    await Promise.all([
+                        db.set(cacheKey, obj),
+                        db.set("localDataChanged:" + location.uuid, false)
+                    ])
                 }
                 catch(e){
                     return reject(e)
@@ -373,8 +376,11 @@ export const download = (path: string, location: any, task: any): Promise<any> =
     return new Promise(async (resolve, reject) => {
         await new Promise((resolve) => {
             const getPausedStatus = () => {
-                db.get("paused").then((paused) => {
-                    if(paused){
+                Promise.all([
+                    db.get("paused"),
+                    isSyncLocationPaused(location.uuid)
+                ]).then(([paused, locationPaused]) => {
+                    if(paused || locationPaused){
                         return setTimeout(getPausedStatus, 1000)
                     }
 
@@ -426,7 +432,8 @@ export const download = (path: string, location: any, task: any): Promise<any> =
                             bucket: file.bucket,
                             uuid: file.uuid,
                             index,
-                            from: "sync"
+                            from: "sync",
+                            location
                         }).then((data) => {
                             decryptData(data, file.metadata.key, file.version).then((decrypted) => {
                                 return resolve({

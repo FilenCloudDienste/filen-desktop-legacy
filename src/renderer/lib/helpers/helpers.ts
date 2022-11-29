@@ -1,14 +1,15 @@
 import { defaultIgnored } from "../constants"
+import { memoize } from "lodash"
 
 const pathModule = window.require("path")
 const checkDiskSpace = window.require("check-disk-space")
 
-export const isSubdir = (parent: string, path: string) => {
+export const isSubdir = memoize((parent: string, path: string) => {
   const relative = pathModule.relative(parent, path)
   const isSubdir = relative && !relative.startsWith("..") && !pathModule.isAbsolute(relative)
 
   return isSubdir
-}
+}, (parent: string, path: string) => parent + ":" + path)
 
 export const normalizePlatform = (platform: string) => {
     if(platform == "darwin"){
@@ -30,7 +31,7 @@ export const sleep = (ms: number = 1000) => {
     return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-export const fileAndFolderNameValidation = (name: string) => {
+export const fileAndFolderNameValidation = memoize((name: string) => {
   const regex = /[<>:"\/\\|?*\x00-\x1F]|^(?:aux|con|clock\$|nul|prn|com[1-9]|lpt[1-9])$/i
 
   if(regex.test(name)){
@@ -38,23 +39,23 @@ export const fileAndFolderNameValidation = (name: string) => {
   }
 
   return true
-}
+})
 
-export const pathValidation = (path: string) => {
-    if(path.indexOf("/") == -1){
-        return fileAndFolderNameValidation(path)
+export const pathValidation = memoize((path: string) => {
+  if(path.indexOf("/") == -1){
+      return fileAndFolderNameValidation(path)
+  }
+  
+  const ex = path.split("/")
+
+  for(let i = 0; i < ex.length; i++){
+    if(!fileAndFolderNameValidation(ex[i].trim())){
+      return false
     }
-    
-    const ex = path.split("/")
+  }
 
-    for(let i = 0; i < ex.length; i++){
-      if(!fileAndFolderNameValidation(ex[i].trim())){
-        return false
-      }
-    }
-
-    return true
-}
+  return true
+})
 
 export function compareVersions(current: string, got: string){
 	function compare(a: string, b: string) {
@@ -313,18 +314,18 @@ export const Semaphore = function(this: SemaphoreInterface, max: number) {
     }
 } as any as { new (max: number): SemaphoreInterface; };
 
-export const convertTimestampToMs = (timestamp: number): number => {
-    const date = new Date(timestamp * 1000)
+export const convertTimestampToMs = memoize((timestamp: number): number => {
+  const date = new Date(timestamp * 1000)
 
-    if(date.getFullYear() > 2100){
-        return Math.floor(timestamp)
-    }
-    else{
-        return Math.floor(timestamp * 1000)
-    }
-}
+  if(date.getFullYear() > 2100){
+      return Math.floor(timestamp)
+  }
+  else{
+      return Math.floor(timestamp * 1000)
+  }
+})
 
-export const isFolderPathExcluded = (path: string): boolean => {
+export const isFolderPathExcluded = memoize((path: string): boolean => {
 	const real = path
 
 	path = path.toLowerCase()
@@ -339,79 +340,79 @@ export const isFolderPathExcluded = (path: string): boolean => {
 	}
 
   	return false
+})
+
+export const isFileOrFolderNameIgnoredByDefault = memoize((name: string): boolean => {
+  if(typeof name !== "string"){
+  return true
 }
 
-export const isFileOrFolderNameIgnoredByDefault = (name: string): boolean => {
-    if(typeof name !== "string"){
-		return true
-	}
+  name = name.toLowerCase().trim()
 
-    name = name.toLowerCase().trim()
+if(name.length <= 0){
+  return true
+}
 
-	if(name.length <= 0){
-		return true
-	}
+if(name.length >= 256){
+  return true
+}
 
-	if(name.length >= 256){
-		return true
-	}
+if(name.substring(0, 1) == " "){
+  return true
+}
 
-	if(name.substring(0, 1) == " "){
-		return true
-	}
+if(name.slice(-1) == " "){
+  return true
+}
 
-	if(name.slice(-1) == " "){
-		return true
-	}
+if(name.indexOf("\n") !== -1){
+  return true
+}
 
-	if(name.indexOf("\n") !== -1){
-		return true
-	}
+if(name.indexOf("\r") !== -1){
+  return true
+}
 
-	if(name.indexOf("\r") !== -1){
-		return true
-	}
+if(defaultIgnored.names.includes(name)){
+  return true
+}
 
-	if(defaultIgnored.names.includes(name)){
-		return true
-	}
+if(name.substring(0, 7) == ".~lock."){
+  return true
+}
 
-	if(name.substring(0, 7) == ".~lock."){
-		return true
-	}
+if(name.substring(0, 2) == "~$"){
+  return true
+}
 
-	if(name.substring(0, 2) == "~$"){
-		return true
-	}
+if(name.substring(name.length - 4) == ".tmp"){
+  return true
+}
 
-	if(name.substring(name.length - 4) == ".tmp"){
-		return true
-	}
+if(name.substring(name.length - 5) == ".temp"){
+  return true
+}
 
-	if(name.substring(name.length - 5) == ".temp"){
-		return true
-	}
+let ext: any = name.split(".")
 
-	let ext: any = name.split(".")
+if(ext.length >= 2){
+  ext = ext[ext.length - 1]
 
-	if(ext.length >= 2){
-    ext = ext[ext.length - 1]
+  if(typeof ext == "string"){
+    ext = ext.trim()
 
-    if(typeof ext == "string"){
-      ext = ext.trim()
-
-      if(ext.length > 0){
-        if(defaultIgnored.extensions.includes(ext)){
-          return true
-        }
+    if(ext.length > 0){
+      if(defaultIgnored.extensions.includes(ext)){
+        return true
       }
     }
   }
-
-	return false
 }
 
-export const pathIsFileOrFolderNameIgnoredByDefault = (path: string) => {
+return false
+})
+
+export const pathIsFileOrFolderNameIgnoredByDefault = memoize((path: string) => {
   if(path.indexOf("/") == -1){
       return isFileOrFolderNameIgnoredByDefault(path)
   }
@@ -425,7 +426,7 @@ export const pathIsFileOrFolderNameIgnoredByDefault = (path: string) => {
   }
 
   return false
-}
+})
 
 export const pathToLowerCaseExtFileName = (path: string) => {
 	if(path.indexOf(".") == -1){
