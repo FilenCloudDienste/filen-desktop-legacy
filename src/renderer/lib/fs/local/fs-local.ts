@@ -139,6 +139,9 @@ export const canReadAtPath = (fullPath: string): Promise<boolean> => {
                 localFSSemaphore.release()
 
                 if(err){
+                    if(err.code == "EBUSY"){
+                        return resolve(true)
+                    }
 
                     return reject(err)
                 }
@@ -156,6 +159,9 @@ export const canWriteAtPath = (fullPath: string): Promise<boolean> => {
                 localFSSemaphore.release()
 
                 if(err){
+                    if(err.code == "EBUSY"){
+                        return resolve(true)
+                    }
 
                     return reject(err)
                 }
@@ -173,7 +179,10 @@ export const canReadWriteAtPath = (fullPath: string): Promise<boolean> => {
                 localFSSemaphore.release()
 
                 if(err){
-
+                    if(err.code == "EBUSY"){
+                        return resolve(true)
+                    }
+                    
                     return reject(err)
                 }
     

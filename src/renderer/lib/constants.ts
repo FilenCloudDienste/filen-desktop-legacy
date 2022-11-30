@@ -47,7 +47,14 @@ export const defaultIgnored: {
     extensions: [
         "tmp",
         "temp",
-        "lnk"
+        "lnk",
+        "ffs_tmp",
+        "temporary",
+        "crdownload",
+        "~cr",
+        "thumbdata",
+        "imgcache",
+        "db-shm"
     ],
     folders: [
         ".filen.trash.local",
