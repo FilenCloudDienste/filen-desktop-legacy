@@ -178,5 +178,6 @@ module.exports = {
     updateTrayIcon,
     updateTrayMenu,
     updateTrayTooltip,
-    positionWindow
+    positionWindow,
+    toggleMainWindow
 }

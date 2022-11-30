@@ -115,6 +115,11 @@ app.on("activate", () => {
   	}
 })
 
+app.on("second-instance", () => {
+	require("./lib/tray").positionWindow()
+	require("./lib/tray").toggleMainWindow()
+})
+
 powerMonitor.on("shutdown", () => {
 	powerSaveBlocker.stop(POWER_SAVE_BLOCKER)
 

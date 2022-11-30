@@ -92,6 +92,12 @@ const createMain = (show = false) => {
                 window.webContents.openDevTools({ mode: "detach" })
             }
 
+            window.on("close", (e) => {
+                e.preventDefault()
+                
+                window.hide()
+            })
+
 			window.once("closed", () => {
 				require("../shared").remove("MAIN_WINDOW")
 
