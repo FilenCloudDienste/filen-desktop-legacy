@@ -23,7 +23,20 @@ if(is.dev()){
 
 if(!is.dev()){
 	Sentry.init({
-		dsn: "https://765df844a3364aff92ec3648f1815ff8@o4504039703314432.ingest.sentry.io/4504205266321408"
+		dsn: "https://765df844a3364aff92ec3648f1815ff8@o4504039703314432.ingest.sentry.io/4504205266321408",
+		onFatalError: (err) => {
+			log.error(err)
+		},
+		beforeSend: (event) =>{
+            try{
+                log.error(event.exception?.values)
+            }
+            catch(e){
+                console.error(e)
+            }
+
+            return event
+        }
 	})
 }
 
