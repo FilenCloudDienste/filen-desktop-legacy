@@ -13,7 +13,6 @@ import { canReadWriteAtPath } from "../local"
 const pathModule = window.require("path")
 const log = window.require("electron-log")
 const mimeTypes = window.require("mime-types")
-const fs = window.require("fs-extra")
 
 const findOrCreateParentDirectorySemaphore = new Semaphore(1)
 const createDirectorySemaphore = new Semaphore(1)
