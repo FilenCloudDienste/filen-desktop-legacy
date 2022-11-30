@@ -27,9 +27,10 @@ if(!is.dev()){
 		onFatalError: (err) => {
 			log.error(err)
 		},
-		beforeSend: (event) =>{
+		beforeSend: (event, hint) =>{
             try{
-                log.error(event.exception?.values)
+                log.error(hint?.originalException)
+				log.error(event?.exception?.values)
             }
             catch(e){
                 console.error(e)
