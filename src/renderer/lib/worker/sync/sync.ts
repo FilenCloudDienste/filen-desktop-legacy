@@ -19,7 +19,6 @@ const WATCHERS: { [key: string]: boolean } = {}
 const maxConcurrentUploadsSemaphore: SemaphoreInterface = new Semaphore(maxConcurrentUploadsPreset)
 const maxConcurrentDownloadsSemaphore: SemaphoreInterface = new Semaphore(maxConcurrentDownloadsPreset)
 const maxSyncTasksSemaphore: SemaphoreInterface = new Semaphore(maxConcurrentSyncTasks)
-let linuxWatchUpdateTimeout: { [key: string]: number } = {}
 
 const getDeltas = (type: string, before: any, now: any): Promise<any> => {
     return new Promise((resolve, _) => {
@@ -2309,26 +2308,6 @@ const syncLocation = async (location: any): Promise<any> => {
     })
 
     try{
-        if(process.platform == "linux"){
-            if(typeof linuxWatchUpdateTimeout[location.uuid] == "number"){
-                if(new Date().getTime() > linuxWatchUpdateTimeout[location.uuid]){
-                    await db.set("localDataChanged:" + location.uuid, true)
-
-                    sendToAllPorts({
-                        type: "syncStatus",
-                        data: {
-                            type: "dataChanged",
-                            data: {
-                                locationUUID: location.uuid
-                            }
-                        }
-                    })
-                }
-            }
-    
-            linuxWatchUpdateTimeout[location.uuid] = (new Date().getTime() + 60000)
-        }
-
         var [{
                 data: localTreeNow,
                 changed: localDataChanged

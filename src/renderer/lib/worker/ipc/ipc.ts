@@ -212,16 +212,7 @@ export const listen = () => {
         clearTimeout(DEBOUNCE_WATCHER_EVENT[data.locationUUID])
 
         DEBOUNCE_WATCHER_EVENT[data.locationUUID] = setTimeout(() => {
-            const watchPath: string = data.watchPath
             const locationUUID: string = data.locationUUID
-            const event: string = data.event
-            const name: string = data.name
-            const basename: string = pathModule.basename(name)
-            const path: string = name.slice(watchPath.length + 1)
-
-            //if(isFileOrFolderNameIgnoredByDefault(basename)){
-            //    return false
-            //}
 
             new Promise((resolve) => {
                 const check = (): any => {
