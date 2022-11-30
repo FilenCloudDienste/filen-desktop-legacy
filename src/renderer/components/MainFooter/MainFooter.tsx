@@ -51,7 +51,7 @@ export default class MainFooter extends React.Component<Props> {
             <Flex
                 flexDirection="row" 
                 justifyContent="space-between" 
-                paddingTop="8px" 
+                paddingTop="9px" 
                 paddingLeft="12px" 
                 paddingRight="12px" 
                 overflow="hidden" 
