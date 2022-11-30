@@ -28,6 +28,7 @@ import { BsKeyboard, BsFillFolderFill } from "react-icons/bs"
 // @ts-ignore
 import List from "react-virtualized/dist/commonjs/List"
 import { debounce } from "lodash"
+import { sendToAllPorts } from "../../lib/worker/ipc"
 
 const log = window.require("electron-log")
 const { shell, ipcRenderer } = window.require("electron")
@@ -63,6 +64,7 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
     const [openAtStartup, setOpenAtStartup] = useState<boolean>(true)
     const [appVersion, setAppVersion] = useState<string>("1")
     const [excludeDot, setExcludeDot] = useState<boolean>(true)
+    const [clearLocalEventLogModalOpen, setClearLocalEventLogModalOpen] = useState<boolean>(false)
 
     const getOpenAtStartup = () => {
         ipc.getOpenOnStartup().then((open) => {
@@ -446,6 +448,38 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
                     </Flex>
                 </Flex>
                 <Flex 
+                    flexDirection="row" 
+                    justifyContent="space-between" 
+                    alignItems="center" 
+                    width="80%" 
+                    margin="0px auto" 
+                    marginTop="10px" 
+                    paddingBottom="5px" 
+                    borderBottom={"1px solid " + colors(platform, darkMode, "borderPrimary")}
+                >
+                    <Flex>
+                        <Text 
+                            color={colors(platform, darkMode, "textPrimary")} 
+                            fontSize={15}
+                        >
+                            {i18n(lang, "clearLocalEventLog")}
+                        </Text>
+                    </Flex>
+                    <Flex>
+                        <Link 
+                            color={colors(platform, darkMode, "link")} 
+                            fontSize={13} 
+                            textDecoration="none" 
+                            _hover={{
+                                textDecoration: "underline"
+                            }}
+                            onClick={() => setClearLocalEventLogModalOpen(true)}
+                        >
+                            {i18n(lang, "clear")}
+                        </Link>
+                    </Flex>
+                </Flex>
+                <Flex 
                     width="100%" 
                     height="auto" 
                     bottom="50px" 
@@ -475,7 +509,7 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
                                 fontSize={13} 
                                 textDecoration="none" 
                                 _hover={{
-                                    textDecoration: "none"
+                                    textDecoration: "underline"
                                 }}
                                 onClick={() => ipc.saveLogs().then(log.info).catch(log.error)}
                             >
@@ -485,6 +519,70 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
                     </Flex>
                 </Flex>
             </Flex>
+            <Modal 
+                onClose={() => setClearLocalEventLogModalOpen(false)} 
+                isOpen={clearLocalEventLogModalOpen} 
+                isCentered={true}
+            >
+                <ModalOverlay borderRadius="10px" />
+                <ModalContent 
+                    backgroundColor={colors(platform, darkMode, "backgroundPrimary")} 
+                    borderRadius="15px"
+                >
+                    <ModalCloseButton 
+                        color={colors(platform, darkMode, "textPrimary")}
+                        _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }}
+                    />
+                    <ModalHeader color={colors(platform, darkMode, "textPrimary")}>
+                        {i18n(lang, "clearLocalEventLog")}
+                    </ModalHeader>
+                    <ModalBody>
+                        <Flex
+                            width="100%"
+                            height="100px"
+                            justifyContent="center"
+                            alignItems="center"
+                        >
+                            <Text
+                                color={colors(platform, darkMode, "textPrimary")}
+                                fontSize={15}
+                            >
+                                {i18n(lang, "clearLocalEventLogInfo")}
+                            </Text>
+                        </Flex>
+                    </ModalBody>
+                    <ModalFooter>
+                        <Link 
+                            color="gray" 
+                            textDecoration="none" 
+                            _hover={{ textDecoration: "none" }} 
+                            onClick={() => setClearLocalEventLogModalOpen(false)}
+                        >
+                            {i18n(lang, "close")}
+                        </Link>
+                        <Link 
+                            color="red.500"
+                            textDecoration="none" 
+                            _hover={{ textDecoration: "none" }} 
+                            marginLeft="10px" 
+                            onClick={() => {
+                                db.get("userId").then((userId) => {
+                                    db.set("doneTasks:" + userId, []).then(() => {
+                                        setClearLocalEventLogModalOpen(false)
+
+                                        sendToAllPorts({
+                                            type: "doneTasksCleared",
+                                            data: {}
+                                        })
+                                    }).catch(log.error)
+                                }).catch(log.error)
+                            }}
+                        >
+                            {i18n(lang, "clear")}
+                        </Link>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
         </>
     )
 })
@@ -535,26 +633,6 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                         }
                     })
                 }
-
-                /*const parsedPath = pathModule.parse(localPath)
-
-                if(parsedPath.root == parsedPath.dir){
-                    return toast({
-                        title: i18n(lang, "cannotCreateSyncLocation"),
-                        description: i18n(lang, "cannotCreateSyncLocationSubdir"),
-                        status: "error",
-                        duration: 10000,
-                        isClosable: true,
-                        position: "bottom",
-                        containerStyle: {
-                            backgroundColor: "rgba(255, 69, 58, 1)",
-                            maxWidth: "85%",
-                            height: "auto",
-                            fontSize: 14,
-                            borderRadius: "15px"
-                        }
-                    })
-                }*/
 
                 if(Array.isArray(currentSyncLocations) && currentSyncLocations.length > 0){
                     let found = false

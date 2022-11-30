@@ -142,7 +142,9 @@ const en: {
     updateWindowInfo: "A new version has been downloaded and is ready to be installed. Please install it as soon as possible to benefit from bug fixes and new features.",
     updateWindowButton: "Install",
     updateWindowInfo2: "The app will exit and start the update flow. Please do not interrupt this process.",
-    titlebarUpdateInstalled: "Update installed"
+    titlebarUpdateInstalled: "Update installed",
+    clearLocalEventLog: "Clear local event log",
+    clearLocalEventLogInfo: "This will clear the local event log shown. Are you sure? This action cannot be undone!"
 }
 
 export default en

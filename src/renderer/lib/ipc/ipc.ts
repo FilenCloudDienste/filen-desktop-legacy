@@ -127,6 +127,9 @@ const handleGlobalMessage = (data: any) => {
             }).catch(console.error)
         }).catch(console.error)
     }
+    else if(type == "doneTasksCleared"){
+        eventListener.emit("doneTasksCleared")
+    }
 
     return true
 }

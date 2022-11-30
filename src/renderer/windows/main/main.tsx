@@ -365,6 +365,8 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
             }
         })
 
+        const doneTasksClearedListener = eventListener.on("doneTasksCleared", () => setDoneTasks([]))
+
         ipcRenderer.send("window-ready", windowId)
 
         return () => {
@@ -372,6 +374,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
             uploadProgressListener.remove()
             downloadProgressListener.remove()
             syncStatusListener.remove()
+            doneTasksClearedListener.remove()
         }
     }, [])
 

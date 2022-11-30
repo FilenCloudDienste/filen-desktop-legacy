@@ -142,7 +142,9 @@ const de: {
     updateWindowInfo: "Eine neue Version wurde heruntergeladen und steht zur Installation bereit. Bitte installieren Sie sie sobald möglich um von Fehlerbehebungen und neuen Features zu profitieren.",
     updateWindowButton: "Installieren",
     updateWindowInfo2: "Die App wird beendet und der Update Vorgang gestartet. Bitte unterbrechen Sie diesen Vorgang nicht.",
-    titlebarUpdateInstalled: "Update installiert"
+    titlebarUpdateInstalled: "Update installiert",
+    clearLocalEventLog: "Lokalen Event Log leeren",
+    clearLocalEventLogInfo: "Hiermit wird der lokale Event Log geleert. Sind Sie sicher? Diese Aktion kann nicht rückgängig gemacht werden!"
 }
 
 export default de
