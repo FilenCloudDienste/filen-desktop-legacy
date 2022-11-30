@@ -191,10 +191,12 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
                                     {
                                         paused || task.task.percent <= 0 || !isOnline ? (
                                             <Progress
-                                                isIndeterminate={true}
+                                                value={0}
                                                 height="5px"
                                                 borderRadius="10px"
                                                 colorScheme="blue"
+                                                min={0}
+                                                max={100}
                                                 marginTop="5px"
                                                 width="100%"
                                             />

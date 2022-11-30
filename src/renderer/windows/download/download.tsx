@@ -385,10 +385,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }: 
 
                     const baseDownloadPath: string = pathModule.normalize(downloadPath)
 
-                    Promise.all([
-                        fs.access(pathModule.normalize(pathModule.join(baseDownloadPath, "..")), fs.constants.R_OK | fs.constants.W_OK),
-                        fsLocal.smokeTest(pathModule.normalize(pathModule.join(baseDownloadPath, "..")))
-                    ]).then(() => {
+                    fsLocal.smokeTest(pathModule.normalize(pathModule.join(baseDownloadPath, ".."))).then(() => {
                         fsLocal.rm(baseDownloadPath).then(() => {
                             fs.mkdir(baseDownloadPath, {
                                 recursive: true,
@@ -639,7 +636,6 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }: 
                                                 }
 
                                                 Promise.all([
-                                                    fs.access(localPath, fs.constants.R_OK | fs.constants.W_OK),
                                                     fsLocal.smokeTest(localPath)
                                                 ]).then(() => {
                                                     setDownloadPath(pathModule.normalize(pathModule.join(localPath, args.name)))
@@ -815,10 +811,7 @@ const DownloadFile = memo(({ userId, email, platform, darkMode, lang, args }: { 
     const startDownloading = () => {
         setIsDownloading(true)
 
-        Promise.all([
-            fs.access(downloadPath, fs.constants.R_OK | fs.constants.W_OK),
-            fsLocal.smokeTest(downloadPath)
-        ]).then(() => {
+        fsLocal.smokeTest(downloadPath).then(() => {
             fs.remove(downloadPath).then(() => {
                 downloadFile(downloadPath, args.file).then(() => {
                     setIsDownloading(false)
@@ -919,7 +912,6 @@ const DownloadFile = memo(({ userId, email, platform, darkMode, lang, args }: { 
                                     }
 
                                     Promise.all([
-                                        fs.access(localPath, fs.constants.R_OK | fs.constants.W_OK),
                                         fsLocal.smokeTest(localPath)
                                     ]).then(() => {
                                         setDownloadPath(pathModule.normalize(pathModule.join(localPath, args.name)))
