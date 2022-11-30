@@ -2,7 +2,6 @@ import * as fsLocal from "../../fs/local"
 import * as fsRemote from "../../fs/remote"
 import db from "../../db"
 import ipc from "../../ipc"
-import { sendToAllPorts } from "../ipc"
 import { v4 as uuidv4 } from "uuid"
 import { maxRetrySyncTask, retrySyncTaskTimeout, maxConcurrentDownloads as maxConcurrentDownloadsPreset, maxConcurrentUploads as maxConcurrentUploadsPreset, maxConcurrentSyncTasks } from "../../constants"
 import { Semaphore, SemaphoreInterface, isSubdir } from "../../helpers"
@@ -2219,7 +2218,7 @@ const syncLocation = async (location: any): Promise<any> => {
     try{
         await Promise.all([
             fsLocal.smokeTest(pathModule.normalize(location.local)),
-            fs.access(pathModule.normalize(location.local), fs.constants.R_OK | fs.constants.W_OK),
+            fsLocal.canReadWriteAtPath(pathModule.normalize(location.local)),
             fsRemote.smokeTest(location.remoteUUID)
         ])
     }

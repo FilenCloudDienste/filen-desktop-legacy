@@ -155,7 +155,7 @@ module.exports = {
 
                 tries += 1
 
-                fs.access(pathModule.join(DB_PATH, keyHash + ".json"), fs.F_OK, (err) => {
+                fs.access(pathModule.join(DB_PATH, keyHash + ".json"), fs.constants.F_OK, (err) => {
                     if(err){
                         if(USE_MEMORY_CACHE){
                             if(require("../memoryCache").has(MEMORY_CACHE_KEY + key)){

@@ -8,6 +8,7 @@ import { v4 as uuidv4 } from "uuid"
 import { sendToAllPorts } from "../../worker/ipc"
 import { remoteStorageLeft } from "../../user/info"
 import { isSyncLocationPaused } from "../../worker/sync/sync.utils"
+import { canReadWriteAtPath } from "../local"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
@@ -379,7 +380,7 @@ export const createDirectory = (uuid: string, name: string, parent: string): Pro
 
 export const doesExistLocally = (path: string): Promise<boolean> => {
     return new Promise((resolve) => {
-        fs.access(pathModule.normalize(path)).then(() => {
+        canReadWriteAtPath(pathModule.normalize(path)).then(() => {
             return resolve(true)
         }).catch(() => {
             return resolve(false)

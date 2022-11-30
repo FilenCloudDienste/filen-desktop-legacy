@@ -668,10 +668,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                     }
                 }
     
-                Promise.all([
-                    fs.access(localPath, fs.constants.R_OK | fs.constants.W_OK),
-                    fsLocal.smokeTest(localPath)
-                ]).then(async () => {
+                fsLocal.smokeTest(localPath).then(async () => {
                     const uuid: string = uuidv4()
                     let created: boolean = false
     
