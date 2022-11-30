@@ -252,7 +252,7 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
                     width="80%" 
                     margin="0px auto" 
                     marginTop="10px" 
-                    paddingBottom="5px" 
+                    paddingBottom="8px" 
                     borderBottom={"1px solid " + colors(platform, darkMode, "borderPrimary")}
                 >
                     <Flex>
@@ -468,7 +468,7 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
                     <Flex>
                         <Link 
                             color={colors(platform, darkMode, "link")} 
-                            fontSize={13} 
+                            fontSize={14} 
                             textDecoration="none" 
                             _hover={{
                                 textDecoration: "underline"
