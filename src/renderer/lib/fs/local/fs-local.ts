@@ -15,7 +15,7 @@ const log = window.require("electron-log")
 const is = window.require("electron-is")
 
 const downloadThreadsSemaphore = new Semaphore(constants.maxDownloadThreads)
-const localFSSemaphore = new Semaphore(1)
+const localFSSemaphore = new Semaphore(128)
 
 export const normalizePath = (path: string): string => {
     return pathModule.normalize(path)
@@ -85,6 +85,11 @@ export const smokeTest = (path: string): Promise<boolean> => {
             const tmpDir = await getTempDir()
 
             await Promise.all([
+                canReadWriteAtPath(path),
+                canReadWriteAtPath(tmpDir)
+            ])
+
+            await Promise.all([
                 gracefulLStat(path),
                 gracefulLStat(tmpDir)
             ])
@@ -105,7 +110,7 @@ export const gracefulLStat = (path: string): Promise<any> => {
     return new Promise((resolve, reject) => {
         path = pathModule.normalize(path)
 
-        const max = 32
+        const max = 16
         const timeout = 1000
         let current = 0
 
@@ -124,6 +129,57 @@ export const gracefulLStat = (path: string): Promise<any> => {
         }
 
         return stat()
+    })
+}
+
+export const canReadAtPath = (fullPath: string): Promise<boolean> => {
+    return new Promise((resolve, reject) => {
+        localFSSemaphore.acquire().then(() => {
+            fs.access(pathModule.normalize(fullPath), fs.constants.R_OK, (err: any) => {
+                localFSSemaphore.release()
+
+                if(err){
+
+                    return reject(err)
+                }
+    
+                return resolve(true)
+            })
+        })
+    })
+}
+
+export const canWriteAtPath = (fullPath: string): Promise<boolean> => {
+    return new Promise((resolve, reject) => {
+        localFSSemaphore.acquire().then(() => {
+            fs.access(pathModule.normalize(fullPath), fs.constants.W_OK, (err: any) => {
+                localFSSemaphore.release()
+
+                if(err){
+
+                    return reject(err)
+                }
+    
+                return resolve(true)
+            })
+        })
+    })
+}
+
+export const canReadWriteAtPath = (fullPath: string): Promise<boolean> => {
+    return new Promise((resolve, reject) => {
+        localFSSemaphore.acquire().then(() => {
+            fs.access(pathModule.normalize(fullPath), fs.constants.R_OK | fs.constants.W_OK, (err: any) => {
+                localFSSemaphore.release()
+
+                if(err){
+
+                    return reject(err)
+                }
+    
+                return resolve(true)
+            })
+        })
     })
 }
 
@@ -177,13 +233,17 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
                     if(excludeDot && (item.basename.startsWith(".") || item.path.indexOf("/.") !== -1 || item.path.startsWith("."))){
                         include = false
                     }
+
+                    if(!(await canReadWriteAtPath(item.fullPath))){
+                        include = false
+                    }
     
                     if(
                         include
                         && !isFolderPathExcluded(item.path)
                         && pathValidation(item.path)
                         && !pathIsFileOrFolderNameIgnoredByDefault(item.path)
-                        && !isSystemPathExcluded(item.fullPath)
+                        && !isSystemPathExcluded("//" + item.fullPath)
                     ){
                         item.stats = await gracefulLStat(item.fullPath)
 

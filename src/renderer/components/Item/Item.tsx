@@ -304,7 +304,13 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
                                                         color={colors(platform, darkMode, "textPrimary")}
                                                         fontSize={18} 
                                                     />
-                                                ) : task.task.percent <= 0 ? i18n(lang, "queued") : bpsToReadable(task.task.lastBps)
+                                                ) : task.task.percent <= 0 ? i18n(lang, "queued") : task.task.percent >= 99 ? (
+                                                    <Spinner 
+                                                        width="16px"
+                                                        height="16px"
+                                                        color={colors(platform, darkMode, "textPrimary")}
+                                                    />
+                                                ) : bpsToReadable(task.task.lastBps)
                                             }
                                         </Text>
                                     ) : (
