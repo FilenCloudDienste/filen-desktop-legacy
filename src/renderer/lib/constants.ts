@@ -13,7 +13,8 @@ export const downloadServers: string[] = [
 export const defaultIgnored: {
     names: string[],
     extensions: string[],
-    folders: string[]
+    folders: string[],
+    system: string[]
 } = {
     names: [
         ".ds_store",
@@ -53,7 +54,16 @@ export const defaultIgnored: {
         ".Trash",
         ".local/share/Trash",
         "/share/Trash",
-        "local/share/Trash"
+        "local/share/Trash",
+    ],
+    system: [
+        "C:\\$WINDOWS.~BT",
+        "C:\\$Windows.~WS",
+        "C:\\$WinREAgent",
+        "C:\\Windows",
+        "C:\\OneDriveTemp",
+        "C:\\PerfLogs",
+        "C:\\ProgramData"
     ]
 }
 
@@ -63,13 +73,13 @@ export const maxConcurrentDownloads: number = 16
 export const maxDownloadThreads: number = 64
 export const maxUploadThreads: number = 10
 export const maxConcurrentTransfers: number = 64
-export const maxRetryAPIRequest: number = 128
+export const maxRetryAPIRequest: number = 32
 export const retryAPIRequestTimeout: number = 1000
-export const maxRetrySyncTask: number = 32
+export const maxRetrySyncTask: number = 16
 export const retrySyncTaskTimeout: number = 1000
-export const maxRetryUpload: number = 128
+export const maxRetryUpload: number = 16
 export const retryUploadTimeout: number = 1000
-export const maxRetryDownload: number = 128
+export const maxRetryDownload: number = 32
 export const retryDownloadTimeout: number = 1000
 export const sizeOverheadMultiplier: number = 1
 export const speedMultiplier: number = 1

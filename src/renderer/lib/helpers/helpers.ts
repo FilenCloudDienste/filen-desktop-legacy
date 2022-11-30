@@ -325,6 +325,23 @@ export const convertTimestampToMs = memoize((timestamp: number): number => {
   }
 })
 
+export const isSystemPathExcluded = memoize((path: string): boolean => {
+	const real = path
+
+	path = path.toLowerCase()
+
+	for(let i = 0; i < defaultIgnored.system.length; i++){
+		if(
+			path.indexOf(defaultIgnored.system[i].toLowerCase()) !== -1
+			|| real.indexOf(defaultIgnored.system[i]) !== -1
+		){
+			return true
+		}
+	}
+
+  	return false
+})
+
 export const isFolderPathExcluded = memoize((path: string): boolean => {
 	const real = path
 

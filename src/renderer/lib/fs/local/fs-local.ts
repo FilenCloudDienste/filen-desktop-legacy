@@ -1,6 +1,6 @@
 import ipc from "../../ipc"
 import memoryCache from "../../memoryCache"
-import { convertTimestampToMs, Semaphore, isFolderPathExcluded, pathIsFileOrFolderNameIgnoredByDefault, pathValidation } from "../../helpers"
+import { convertTimestampToMs, Semaphore, isFolderPathExcluded, isSystemPathExcluded, pathIsFileOrFolderNameIgnoredByDefault, pathValidation } from "../../helpers"
 import { downloadChunk } from "../../api"
 import { decryptData } from "../../crypto"
 import { v4 as uuidv4 } from "uuid"
@@ -178,7 +178,13 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
                         include = false
                     }
     
-                    if(include && !isFolderPathExcluded(item.path) && pathValidation(item.path) && !pathIsFileOrFolderNameIgnoredByDefault(item.path)){
+                    if(
+                        include
+                        && !isFolderPathExcluded(item.path)
+                        && pathValidation(item.path)
+                        && !pathIsFileOrFolderNameIgnoredByDefault(item.path)
+                        && !isSystemPathExcluded(item.fullPath)
+                    ){
                         item.stats = await gracefulLStat(item.fullPath)
 
                         if(!item.stats.isSymbolicLink()){
