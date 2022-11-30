@@ -294,27 +294,42 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
                             >
                                 {
                                     typeof task.realtime !== "undefined" ? (
-                                        <Text 
-                                            noOfLines={1}
-                                            color={colors(platform, darkMode, "textPrimary")}
-                                            fontSize={12}
-                                            wordBreak="break-all"
-                                        >
+                                        <>
                                             {
-                                                paused || !isOnline ? (
+                                                (paused || !isOnline) ? (
                                                     <AiOutlinePauseCircle
                                                         color={colors(platform, darkMode, "textPrimary")}
                                                         fontSize={18} 
                                                     />
-                                                ) : task.task.percent <= 0 ? i18n(lang, "queued") : task.task.percent >= 99 ? (
-                                                    <Spinner 
-                                                        width="16px"
-                                                        height="16px"
-                                                        color={colors(platform, darkMode, "textPrimary")}
-                                                    />
-                                                ) : bpsToReadable(task.task.lastBps)
+                                                ) : (
+                                                    task.task.percent <= 0 ? (
+                                                        <Text 
+                                                            noOfLines={1}
+                                                            color={colors(platform, darkMode, "textPrimary")}
+                                                            fontSize={12}
+                                                            wordBreak="break-all"
+                                                        >
+                                                            {i18n(lang, "queued")}
+                                                        </Text>
+                                                    ) : task.task.percent >= 99 ? (
+                                                        <Spinner 
+                                                            width="16px"
+                                                            height="16px"
+                                                            color={colors(platform, darkMode, "textPrimary")}
+                                                        />
+                                                    ) : (
+                                                        <Text 
+                                                            noOfLines={1}
+                                                            color={colors(platform, darkMode, "textPrimary")}
+                                                            fontSize={12}
+                                                            wordBreak="break-all"
+                                                        >
+                                                            {bpsToReadable(task.task.lastBps)}
+                                                        </Text>
+                                                    )
+                                                )
                                             }
-                                        </Text>
+                                        </>
                                     ) : (
                                         <Spinner 
                                             width="16px"
