@@ -59,9 +59,8 @@ export const checkLastModified = (path: string): Promise<{ changed: boolean, mti
                     if(FS_RETRY_CODES.includes(err.code)){
                         return setTimeout(req, FS_RETRY_TIMEOUT)
                     }
-                    else{
-                        return reject(err)
-                    }
+                    
+                    return reject(err)
                 })
             }
 
@@ -131,9 +130,8 @@ export const gracefulLStat = (path: string): Promise<any> => {
                 if(FS_RETRY_CODES.includes(err.code)){
                     return setTimeout(req, FS_RETRY_TIMEOUT)
                 }
-                else{
-                    return reject(err)
-                }
+
+                return reject(err)
             })
         }
 
@@ -160,9 +158,8 @@ export const canReadAtPath = (fullPath: string): Promise<boolean> => {
                     if(FS_RETRY_CODES.includes(err.code)){
                         return setTimeout(req, FS_RETRY_TIMEOUT)
                     }
-                    else{
-                        return reject(err)
-                    }
+                    
+                    return reject(err)
                 }
     
                 return resolve(true)
@@ -192,9 +189,8 @@ export const canWriteAtPath = (fullPath: string): Promise<boolean> => {
                     if(FS_RETRY_CODES.includes(err.code)){
                         return setTimeout(req, FS_RETRY_TIMEOUT)
                     }
-                    else{
-                        return reject(err)
-                    }
+
+                    return reject(err)
                 }
     
                 return resolve(true)
@@ -224,9 +220,8 @@ export const canReadWriteAtPath = (fullPath: string): Promise<boolean> => {
                     if(FS_RETRY_CODES.includes(err.code)){
                         return setTimeout(req, FS_RETRY_TIMEOUT)
                     }
-                    else{
-                        return reject(err)
-                    }
+                    
+                    return reject(err)
                 }
     
                 return resolve(true)
@@ -410,9 +405,8 @@ export const readChunk = (path: string, offset: number, length: number): Promise
                     if(FS_RETRY_CODES.includes(err.code)){
                         return setTimeout(req, FS_RETRY_TIMEOUT)
                     }
-                    else{
-                        return reject(err)
-                    }
+                    
+                    return reject(err)
                 }
     
                 const buffer = Buffer.alloc(length)
@@ -424,9 +418,8 @@ export const readChunk = (path: string, offset: number, length: number): Promise
                         if(FS_RETRY_CODES.includes(err.code)){
                             return setTimeout(req, FS_RETRY_TIMEOUT)
                         }
-                        else{
-                            return reject(err)
-                        }
+                        
+                        return reject(err)
                     }
     
                     let data: any = undefined
@@ -445,9 +438,8 @@ export const readChunk = (path: string, offset: number, length: number): Promise
                             if(FS_RETRY_CODES.includes(err.code)){
                                 return setTimeout(req, FS_RETRY_TIMEOUT)
                             }
-                            else{
-                                return reject(err)
-                            }
+                            
+                            return reject(err)
                         }
     
                         return resolve(data)
@@ -499,9 +491,8 @@ export const rm = (path: string): Promise<boolean> => {
                     if(FS_RETRY_CODES.includes(e.code)){
                         return setTimeout(req, FS_RETRY_TIMEOUT)
                     }
-                    else{
-                        return reject(e)
-                    }
+                    
+                    return reject(e)
                 }
             }
             else{
@@ -518,9 +509,8 @@ export const rm = (path: string): Promise<boolean> => {
                     if(FS_RETRY_CODES.includes(e.code)){
                         return setTimeout(req, FS_RETRY_TIMEOUT)
                     }
-                    else{
-                        return reject(e)
-                    }
+                    
+                    return reject(e)
                 }
             }
     
@@ -551,9 +541,8 @@ export const mkdir = (path: string, location: any, task: any): Promise<any> => {
                     if(FS_RETRY_CODES.includes(err.code)){
                         return setTimeout(req, FS_RETRY_TIMEOUT)
                     }
-                    else{
-                        return reject(err)
-                    }
+
+                    return reject(err)
                 })
             }).catch((err: any) => {
                 lastErr = err
@@ -561,9 +550,8 @@ export const mkdir = (path: string, location: any, task: any): Promise<any> => {
                 if(FS_RETRY_CODES.includes(err.code)){
                     return setTimeout(req, FS_RETRY_TIMEOUT)
                 }
-                else{
-                    return reject(err)
-                }
+                
+                return reject(err)
             })
         }
 
@@ -769,9 +757,8 @@ export const move = (before: string, after: string, overwrite: boolean = true): 
                 if(FS_RETRY_CODES.includes(err.code)){
                     return setTimeout(req, FS_RETRY_TIMEOUT)
                 }
-                else{
-                    return reject(err)
-                }
+                
+                return reject(err)
             })
         }
 
@@ -805,9 +792,8 @@ export const rename = (before: string, after: string): Promise<any> => {
                 if(FS_RETRY_CODES.includes(err.code)){
                     return setTimeout(req, FS_RETRY_TIMEOUT)
                 }
-                else{
-                    return reject(err)
-                }
+
+                return reject(err)
             })
         }
 
