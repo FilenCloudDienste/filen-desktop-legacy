@@ -445,7 +445,7 @@ export const pathIsFileOrFolderNameIgnoredByDefault = memoize((path: string) => 
   return false
 })
 
-export const pathToLowerCaseExtFileName = (path: string) => {
+export const pathToLowerCaseExtFileName = memoize((path: string) => {
 	if(path.indexOf(".") == -1){
 		return path
 	}
@@ -470,22 +470,22 @@ export const pathToLowerCaseExtFileName = (path: string) => {
 	const fileNameWithLowerCaseEnding = pathEx.join("/") + "/" + fileNameEx.join(".") + "." + lowerCaseFileEnding
 
 	return fileNameWithLowerCaseEnding
-}
+})
 
-export const fileNameToLowerCaseExt = (name: string) => {
-    if(name.indexOf(".") == -1){
-		return name
-	}
-    
-    const fileNameEx = name.split(".")
-    const lowerCaseFileEnding = fileNameEx[fileNameEx.length - 1].toLowerCase()
+export const fileNameToLowerCaseExt = memoize((name: string) => {
+  if(name.indexOf(".") == -1){
+    return name
+  }
+  
+  const fileNameEx = name.split(".")
+  const lowerCaseFileEnding = fileNameEx[fileNameEx.length - 1].toLowerCase()
 
-    fileNameEx.pop()
+  fileNameEx.pop()
 
-    const fileNameWithLowerCaseEnding = fileNameEx.join(".") + "." + lowerCaseFileEnding
+  const fileNameWithLowerCaseEnding = fileNameEx.join(".") + "." + lowerCaseFileEnding
 
-    return fileNameWithLowerCaseEnding
-}
+  return fileNameWithLowerCaseEnding
+})
 
 export const bpsToReadable = (bps: number) => {
     if(!(bps > 0 && bps < (1024 * 1024 * 1024 * 1024))){

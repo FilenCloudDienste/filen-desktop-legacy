@@ -4,16 +4,15 @@ import db from "../../db"
 import ipc from "../../ipc"
 import { v4 as uuidv4 } from "uuid"
 import { maxRetrySyncTask, retrySyncTaskTimeout, maxConcurrentDownloads as maxConcurrentDownloadsPreset, maxConcurrentUploads as maxConcurrentUploadsPreset, maxConcurrentSyncTasks } from "../../constants"
-import { Semaphore, SemaphoreInterface, isSubdir } from "../../helpers"
-import { isSyncLocationPaused, isSuspended, getIgnored, getSyncMode, onlyGetBaseParentMove, onlyGetBaseParentDelete, sortMoveRenameTasks, addToSyncIssues, updateLocationBusyStatus, emitSyncTask, emitSyncStatus, emitSyncStatusLocation, removeRemoteLocation } from "./sync.utils"
+import { Semaphore, SemaphoreInterface } from "../../helpers"
+import { isSyncLocationPaused, isSuspended, getIgnored, getSyncMode, onlyGetBaseParentMove, onlyGetBaseParentDelete, sortMoveRenameTasks, addToSyncIssues, updateLocationBusyStatus, emitSyncTask, emitSyncStatus, emitSyncStatusLocation, removeRemoteLocation, isPathIncluded, isIgnoredBySelectiveSync } from "./sync.utils"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
-const fs = window.require("fs-extra")
 
 let SYNC_RUNNING: boolean = false
 const SYNC_TIMEOUT: number = 5000
-let IS_FIRST_REQUEST: { [key: string]: boolean } = {}
+const IS_FIRST_REQUEST: { [key: string]: boolean } = {}
 const WATCHERS: { [key: string]: boolean } = {}
 const maxConcurrentUploadsSemaphore: SemaphoreInterface = new Semaphore(maxConcurrentUploadsPreset)
 const maxConcurrentDownloadsSemaphore: SemaphoreInterface = new Semaphore(maxConcurrentDownloadsPreset)
@@ -294,18 +293,9 @@ const getDeltas = (type: string, before: any, now: any): Promise<any> => {
 
 // Sorting the tasks so we don't have duplicates or for example delete something that has been renamed or move something that has been renamed etc.
 // We also filter for ignored files/folders here + the sync mode
+
 const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameInRemote, moveInLocal, moveInRemote, deleteInLocal, deleteInRemote, location }: { uploadToRemote: any, downloadFromRemote: any, renameInLocal: any, renameInRemote: any, moveInLocal: any, moveInRemote: any, deleteInLocal: any, deleteInRemote: any, location: any }): Promise<any> => {
     return new Promise(async (resolve, reject) => {
-        const isPathIncluded = (tasks: any, path: string) => {
-            for(let i = 0; i < tasks.length; i++){
-                if(path.indexOf(tasks[i]) !== -1){
-                    return true
-                }
-            }
-        
-            return false
-        }
-
         const ignored = []
 
         try{
@@ -318,24 +308,10 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
             return reject(e)
         }
 
-        const isIgnoredBySelectiveSync = (path: string): boolean => {
-            path = path.trim()
-
-            for(let prop in selectiveSyncRemoteIgnore){
-                prop = prop.trim()
-
-                if(prop == path || isSubdir(prop, path) || isSubdir(path, prop)){
-                    return true
-                }
-            }
-
-            return false
-        }
-
         // Filter by ignored
 
         for(let i = 0; i < renameInLocal.length; i++){
-            if(filenIgnore.denies(renameInLocal[i].path) || isIgnoredBySelectiveSync(renameInLocal[i].path)){
+            if(filenIgnore.denies(renameInLocal[i].path) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, renameInLocal[i].path)){
                 ignored.push(renameInLocal[i].path)
                 renameInLocal.splice(i, 1)
 
@@ -344,7 +320,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
         }
 
         for(let i = 0; i < renameInRemote.length; i++){
-            if(filenIgnore.denies(renameInRemote[i].path) || isIgnoredBySelectiveSync(renameInRemote[i].path)){
+            if(filenIgnore.denies(renameInRemote[i].path) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, renameInRemote[i].path)){
                 ignored.push(renameInRemote[i].path)
                 renameInRemote.splice(i, 1)
 
@@ -353,7 +329,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
         }
 
         for(let i = 0; i < moveInLocal.length; i++){
-            if(filenIgnore.denies(moveInLocal[i].path) || isIgnoredBySelectiveSync(moveInLocal[i].path)){
+            if(filenIgnore.denies(moveInLocal[i].path) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, moveInLocal[i].path)){
                 ignored.push(moveInLocal[i].path)
                 moveInLocal.splice(i, 1)
 
@@ -362,7 +338,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
         }
 
         for(let i = 0; i < moveInRemote.length; i++){
-            if(filenIgnore.denies(moveInRemote[i].path) || isIgnoredBySelectiveSync(moveInRemote[i].path)){
+            if(filenIgnore.denies(moveInRemote[i].path) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, moveInRemote[i].path)){
                 ignored.push(moveInRemote[i].path)
                 moveInRemote.splice(i, 1)
 
@@ -371,7 +347,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
         }
 
         for(let i = 0; i < deleteInLocal.length; i++){
-            if(filenIgnore.denies(deleteInLocal[i].path) || isIgnoredBySelectiveSync(deleteInLocal[i].path)){
+            if(filenIgnore.denies(deleteInLocal[i].path) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, deleteInLocal[i].path)){
                 ignored.push(deleteInLocal[i].path)
                 deleteInLocal.splice(i, 1)
 
@@ -380,7 +356,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
         }
 
         for(let i = 0; i < deleteInRemote.length; i++){
-            if(filenIgnore.denies(deleteInRemote[i].path) || isIgnoredBySelectiveSync(deleteInRemote[i].path)){
+            if(filenIgnore.denies(deleteInRemote[i].path) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, deleteInRemote[i].path)){
                 ignored.push(deleteInRemote[i].path)
                 deleteInRemote.splice(i, 1)
 
@@ -389,7 +365,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
         }
 
         for(let i = 0; i < uploadToRemote.length; i++){
-            if(filenIgnore.denies(uploadToRemote[i].path) || isIgnoredBySelectiveSync(uploadToRemote[i].path)){
+            if(filenIgnore.denies(uploadToRemote[i].path) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, uploadToRemote[i].path)){
                 ignored.push(uploadToRemote[i].path)
                 uploadToRemote.splice(i, 1)
 
@@ -398,7 +374,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
         }
 
         for(let i = 0; i < downloadFromRemote.length; i++){
-            if(filenIgnore.denies(downloadFromRemote[i].path) || isIgnoredBySelectiveSync(downloadFromRemote[i].path)){
+            if(filenIgnore.denies(downloadFromRemote[i].path) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, downloadFromRemote[i].path)){
                 ignored.push(downloadFromRemote[i].path)
                 downloadFromRemote.splice(i, 1)
                 

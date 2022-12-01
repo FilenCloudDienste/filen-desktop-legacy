@@ -1,5 +1,7 @@
 import db from "../../db"
 import { sendToAllPorts } from "../ipc"
+import { memoize } from "lodash"
+import { isSubdir } from "../../helpers"
 
 const log = window.require("electron-log")
 const gitignoreParser = window.require("@gerhobbelt/gitignore-parser")
@@ -38,6 +40,10 @@ export const isSuspended = (): Promise<boolean> => {
     })
 }
 
+export const compileGitIgnore = memoize((ignore: string) => {
+    return gitignoreParser.compile(ignore)
+})
+
 // Parse lists into .gitignore like compatible format
 export const getIgnored = (location: any): Promise<any> => {
     return new Promise((resolve, reject) => {
@@ -51,7 +57,7 @@ export const getIgnored = (location: any): Promise<any> => {
 
             return resolve({
                 selectiveSyncRemoteIgnore: selectiveSyncRemote,
-                filenIgnore: gitignoreParser.compile(fIgnore),
+                filenIgnore: compileGitIgnore(fIgnore),
                 selectiveSyncRemoteIgnoreRaw: selectiveSyncRemote,
                 filenIgnoreRaw: fIgnore
             })
@@ -92,7 +98,7 @@ onlyGetBaseParent<Move/Delete>(tasks) will return
 }
 */
 
-export const onlyGetBaseParentMove = (tasks: any): any => {
+export const onlyGetBaseParentMove = memoize((tasks: any): any => {
     const sorted = tasks.sort((a: any, b: any) => {
         return a.path.split("/").length - b.path.split("/").length
     })
@@ -124,9 +130,9 @@ export const onlyGetBaseParentMove = (tasks: any): any => {
     }
 
     return newTasks
-}
+}, (tasks: any) => JSON.stringify(tasks))
 
-export const onlyGetBaseParentDelete = (tasks: any): any => {
+export const onlyGetBaseParentDelete = memoize((tasks: any): any => {
     const sorted = tasks.sort((a: any, b: any) => {
         return a.path.split("/").length - b.path.split("/").length
     })
@@ -158,7 +164,7 @@ export const onlyGetBaseParentDelete = (tasks: any): any => {
     }
 
     return newTasks
-}
+}, (tasks: any) => JSON.stringify(tasks))
 
 /*
 Move tasks usually come twice, like so:
@@ -175,7 +181,7 @@ Move tasks usually come twice, like so:
 Since we only need one of them we sort them and return only one task for each task
 */
 
-export const sortMoveRenameTasks = (tasks: any): any => {
+export const sortMoveRenameTasks = memoize((tasks: any): any => {
     const added: any = {}
     const newTasks: any[] = []
 
@@ -196,7 +202,7 @@ export const sortMoveRenameTasks = (tasks: any): any => {
     }
 
     return newTasks
-}
+}, (tasks: any) => JSON.stringify(tasks))
 
 export const addToSyncIssues = (type: string, message: any): Promise<boolean> => {
     return new Promise((resolve, reject) => {
@@ -294,3 +300,31 @@ export const removeRemoteLocation = (location: any): Promise<boolean> => {
         return resolve(true)
     })
 }
+
+export const isPathIncluded = memoize((tasks: string[], path: string) => {
+    for(let i = 0; i < tasks.length; i++){
+        if(path.indexOf(tasks[i]) !== -1){
+            return true
+        }
+    }
+
+    return false
+}, (tasks: string[], path: string) => tasks.map(task => task) + ":" + path)
+
+export const isIgnoredBySelectiveSync = memoize((selectiveSyncRemoteIgnore: { [key: string]: boolean }, path: string): boolean => {
+    if(Object.keys(selectiveSyncRemoteIgnore).length <= 0){
+        return false
+    }
+
+    path = path.trim()
+
+    for(let prop in selectiveSyncRemoteIgnore){
+        prop = prop.trim()
+
+        if(prop == path || isSubdir(prop, path) || isSubdir(path, prop)){
+            return true
+        }
+    }
+
+    return false
+}, (selectiveSyncRemoteIgnore: { [key: string]: boolean }, path: string) => Object.keys(selectiveSyncRemoteIgnore) + ":" + path)

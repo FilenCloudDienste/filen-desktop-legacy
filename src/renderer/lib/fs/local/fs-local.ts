@@ -15,7 +15,6 @@ const log = window.require("electron-log")
 const is = window.require("electron-is")
 
 const downloadThreadsSemaphore = new Semaphore(constants.maxDownloadThreads)
-const localFSSemaphore = new Semaphore(128)
 const FS_RETRIES = 64
 const FS_RETRY_TIMEOUT = 500
 
@@ -25,54 +24,42 @@ export const normalizePath = (path: string): string => {
 
 export const checkLastModified = (path: string): Promise<{ changed: boolean, mtimeMs?: number }> => {
     return new Promise((resolve, reject) => {
-        localFSSemaphore.acquire().then(() => {
-            path = normalizePath(path)
+        path = normalizePath(path)
 
-            gracefulLStat(path).then((stat: any) => {
-                if(stat.mtimeMs > 0){
-                    localFSSemaphore.release()
+        gracefulLStat(path).then((stat: any) => {
+            if(stat.mtimeMs > 0){
+                return resolve({
+                    changed: false
+                })
+            }
 
+            const lastModified = new Date(new Date().getTime() - 60000)
+            const mtimeMs = lastModified.getTime()
+            
+            let currentTries = 0
+            let lastErr: any = undefined
+
+            const req = () => {
+                if(currentTries > FS_RETRIES){
+                    return reject(lastErr)
+                }
+
+                currentTries += 1
+
+                fs.utimes(path, lastModified, lastModified).then(() => {
                     return resolve({
-                        changed: false
+                        changed: true,
+                        mtimeMs 
                     })
-                }
+                }).catch((err: any) => {
+                    lastErr = err
 
-                const lastModified = new Date(new Date().getTime() - 60000)
-                const mtimeMs = lastModified.getTime()
-                
-                let currentTries = 0
-                let lastErr: any = undefined
+                    return setTimeout(req, FS_RETRY_TIMEOUT)
+                })
+            }
 
-                const req = () => {
-                    if(currentTries > FS_RETRIES){
-                        return reject(lastErr)
-                    }
-
-                    currentTries += 1
-
-                    fs.utimes(path, lastModified, lastModified).then(() => {
-                        localFSSemaphore.release()
-    
-                        return resolve({
-                            changed: true,
-                            mtimeMs 
-                        })
-                    }).catch((err: any) => {
-                        localFSSemaphore.release()
-    
-                        lastErr = err
-
-                        return setTimeout(req, FS_RETRY_TIMEOUT)
-                    })
-                }
-
-                req()
-            }).catch((err: any) => {
-                localFSSemaphore.release()
-
-                return reject(err)
-            })
-        })
+            req()
+        }).catch(reject)
     })
 }
 
@@ -97,8 +84,6 @@ export const smokeTest = (path: string): Promise<boolean> => {
         path = normalizePath(path)
 
         try{
-            await localFSSemaphore.acquire()
-
             const tmpDir = await getTempDir()
 
             await Promise.all([
@@ -112,12 +97,8 @@ export const smokeTest = (path: string): Promise<boolean> => {
             ])
         }
         catch(e){
-            localFSSemaphore.release()
-
             return reject(e)
         }
-
-        localFSSemaphore.release()
 
         return resolve(true)
     })
@@ -150,94 +131,82 @@ export const gracefulLStat = (path: string): Promise<any> => {
 
 export const canReadAtPath = (fullPath: string): Promise<boolean> => {
     return new Promise((resolve, reject) => {
-        localFSSemaphore.acquire().then(() => {
-            let currentTries = 0
-            let lastErr: any = undefined
+        let currentTries = 0
+        let lastErr: any = undefined
 
-            const req = () => {
-                if(currentTries > FS_RETRIES){
-                    return reject(lastErr)
-                }
-
-                currentTries += 1
-
-                fs.access(pathModule.normalize(fullPath), fs.constants.F_OK | fs.constants.R_OK, (err: any) => {
-                    localFSSemaphore.release()
-    
-                    if(err){
-                        lastErr = err
-
-                        return setTimeout(req, FS_RETRY_TIMEOUT)
-                    }
-        
-                    return resolve(true)
-                })
+        const req = () => {
+            if(currentTries > FS_RETRIES){
+                return reject(lastErr)
             }
 
-            req()
-        })
+            currentTries += 1
+
+            fs.access(pathModule.normalize(fullPath), fs.constants.F_OK | fs.constants.R_OK, (err: any) => {
+                if(err){
+                    lastErr = err
+
+                    return setTimeout(req, FS_RETRY_TIMEOUT)
+                }
+    
+                return resolve(true)
+            })
+        }
+
+        req()
     })
 }
 
 export const canWriteAtPath = (fullPath: string): Promise<boolean> => {
     return new Promise((resolve, reject) => {
-        localFSSemaphore.acquire().then(() => {
-            let currentTries = 0
-            let lastErr: any = undefined
+        let currentTries = 0
+        let lastErr: any = undefined
 
-            const req = () => {
-                if(currentTries > FS_RETRIES){
-                    return reject(lastErr)
-                }
-
-                currentTries += 1
-
-                fs.access(pathModule.normalize(fullPath), fs.constants.F_OK | fs.constants.W_OK, (err: any) => {
-                    localFSSemaphore.release()
-    
-                    if(err){
-                        lastErr = err
-
-                        return setTimeout(req, FS_RETRY_TIMEOUT)
-                    }
-        
-                    return resolve(true)
-                })
+        const req = () => {
+            if(currentTries > FS_RETRIES){
+                return reject(lastErr)
             }
 
-            req()
-        })
+            currentTries += 1
+
+            fs.access(pathModule.normalize(fullPath), fs.constants.F_OK | fs.constants.W_OK, (err: any) => {
+                if(err){
+                    lastErr = err
+
+                    return setTimeout(req, FS_RETRY_TIMEOUT)
+                }
+    
+                return resolve(true)
+            })
+        }
+
+        req()
     })
 }
 
 export const canReadWriteAtPath = (fullPath: string): Promise<boolean> => {
     return new Promise((resolve, reject) => {
-        localFSSemaphore.acquire().then(() => {
-            let currentTries = 0
-            let lastErr: any = undefined
+        let currentTries = 0
+        let lastErr: any = undefined
 
-            const req = () => {
-                if(currentTries > FS_RETRIES){
-                    return reject(lastErr)
-                }
-
-                currentTries += 1
-
-                fs.access(pathModule.normalize(fullPath), fs.constants.F_OK | fs.constants.R_OK | fs.constants.W_OK, (err: any) => {
-                    localFSSemaphore.release()
-    
-                    if(err){
-                        lastErr = err
-
-                        return setTimeout(req, FS_RETRY_TIMEOUT)
-                    }
-        
-                    return resolve(true)
-                })
+        const req = () => {
+            if(currentTries > FS_RETRIES){
+                return reject(lastErr)
             }
 
-            req()
-        })
+            currentTries += 1
+
+            fs.access(pathModule.normalize(fullPath), fs.constants.F_OK | fs.constants.R_OK | fs.constants.W_OK, (err: any) => {
+                if(err){
+                    lastErr = err
+
+                    return setTimeout(req, FS_RETRY_TIMEOUT)
+                }
+    
+                return resolve(true)
+            })
+        }
+
+        req()
     })
 }
 
@@ -453,14 +422,10 @@ export const rm = (path: string): Promise<boolean> => {
     return new Promise(async (resolve, reject) => {
         path = normalizePath(path)
 
-        await localFSSemaphore.acquire()
-
         try{
             var stats = await gracefulLStat(path)
         }
         catch(e){
-            localFSSemaphore.release()
-
             return reject(e)
         }
 
@@ -481,8 +446,6 @@ export const rm = (path: string): Promise<boolean> => {
                 catch(e){
                     lastErr = e
 
-                    localFSSemaphore.release()
-
                     return setTimeout(req, FS_RETRY_TIMEOUT)
                 }
             }
@@ -493,13 +456,9 @@ export const rm = (path: string): Promise<boolean> => {
                 catch(e){
                     lastErr = e
 
-                    localFSSemaphore.release()
-
                     return setTimeout(req, FS_RETRY_TIMEOUT)
                 }
             }
-    
-            localFSSemaphore.release()
     
             return resolve(true)
         }
@@ -510,42 +469,31 @@ export const rm = (path: string): Promise<boolean> => {
 
 export const mkdir = (path: string, location: any, task: any): Promise<any> => {
     return new Promise((resolve, reject) => {
-        localFSSemaphore.acquire().then(() => {
-            const absolutePath = normalizePath(location.local + "/" + path)
+        const absolutePath = normalizePath(location.local + "/" + path)
+        let currentTries = 0
+        let lastErr: any = undefined
 
-            let currentTries = 0
-            let lastErr: any = undefined
-    
-            const req = () => {
-                if(currentTries > FS_RETRIES){
-                    return reject(lastErr)
-                }
+        const req = () => {
+            if(currentTries > FS_RETRIES){
+                return reject(lastErr)
+            }
 
-                currentTries += 1
+            currentTries += 1
 
-                fs.ensureDir(absolutePath).then(() => {
-                    gracefulLStat(absolutePath).then((stat: any)  => {
-                        localFSSemaphore.release()
-    
-                        return resolve(stat)
-                    }).catch((err: any) => {
-                        lastErr = err
-
-                        localFSSemaphore.release()
-        
-                        return setTimeout(req, FS_RETRY_TIMEOUT)
-                    })
-                }).catch((err: any) => {
+            fs.ensureDir(absolutePath).then(() => {
+                gracefulLStat(absolutePath).then(resolve).catch((err: any) => {
                     lastErr = err
-
-                    localFSSemaphore.release()
     
                     return setTimeout(req, FS_RETRY_TIMEOUT)
                 })
-            }
+            }).catch((err: any) => {
+                lastErr = err
 
-            req()
-        })
+                return setTimeout(req, FS_RETRY_TIMEOUT)
+            })
+        }
+
+        req()
     })
 }
 
@@ -721,84 +669,64 @@ export const download = (path: string, location: any, task: any): Promise<any> =
 
 export const move = (before: string, after: string, overwrite: boolean = true): Promise<any> => {
     return new Promise((resolve, reject) => {
-        localFSSemaphore.acquire().then(() => {
-            try{
-                before = normalizePath(before)
-                after = normalizePath(after)
-            }
-            catch(e){
-                localFSSemaphore.release()
+        try{
+            before = normalizePath(before)
+            after = normalizePath(after)
+        }
+        catch(e){
+            return reject(e)
+        }
 
-                return reject(e)
-            }
+        let currentTries = 0
+        let lastErr: any = undefined
 
-            let currentTries = 0
-            let lastErr: any = undefined
-    
-            const req = () => {
-                if(currentTries > FS_RETRIES){
-                    return reject(lastErr)
-                }
-
-                currentTries += 1
-
-                fs.move(before, after, {
-                    overwrite
-                }).then((res: any) => {
-                    localFSSemaphore.release()
-    
-                    return resolve(res)
-                }).catch((err: any) => {
-                    lastErr = err
-
-                    localFSSemaphore.release()
-    
-                    return setTimeout(req, FS_RETRY_TIMEOUT)
-                })
+        const req = () => {
+            if(currentTries > FS_RETRIES){
+                return reject(lastErr)
             }
 
-            req()
-        })
+            currentTries += 1
+
+            fs.move(before, after, {
+                overwrite
+            }).then(resolve).catch((err: any) => {
+                lastErr = err
+
+                return setTimeout(req, FS_RETRY_TIMEOUT)
+            })
+        }
+
+        req()
     })
 }
 
 export const rename = (before: string, after: string): Promise<any> => {
     return new Promise((resolve, reject) => {
-        localFSSemaphore.acquire().then(() => {
-            try{
-                before = normalizePath(before)
-                after = normalizePath(after)
-            }
-            catch(e){
-                localFSSemaphore.release()
+        try{
+            before = normalizePath(before)
+            after = normalizePath(after)
+        }
+        catch(e){
+            return reject(e)
+        }
 
-                return reject(e)
-            }
+        let currentTries = 0
+        let lastErr: any = undefined
 
-            let currentTries = 0
-            let lastErr: any = undefined
-    
-            const req = () => {
-                if(currentTries > FS_RETRIES){
-                    return reject(lastErr)
-                }
-
-                currentTries += 1
-
-                fs.rename(before, after).then((res: any) => {
-                    localFSSemaphore.release()
-    
-                    return resolve(res)
-                }).catch((err: any) => {
-                    lastErr = err
-
-                    localFSSemaphore.release()
-    
-                    return setTimeout(req, FS_RETRY_TIMEOUT)
-                })
+        const req = () => {
+            if(currentTries > FS_RETRIES){
+                return reject(lastErr)
             }
 
-            req()
-        })
+            currentTries += 1
+
+            fs.rename(before, after).then(resolve).catch((err: any) => {
+                lastErr = err
+
+                return setTimeout(req, FS_RETRY_TIMEOUT)
+            })
+        }
+
+        req()
     })
 }

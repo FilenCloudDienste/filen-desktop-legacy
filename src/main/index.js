@@ -12,7 +12,7 @@ app.disableHardwareAcceleration()
 app.commandLine.appendSwitch("wm-window-animations-disabled")
 app.commandLine.appendSwitch("disable-renderer-backgrounding")
 app.commandLine.appendSwitch("disable-pinch")
-app.commandLine.appendSwitch("js-flags", "--max-old-space-size=16384 --no-sandbox")
+app.commandLine.appendSwitch("js-flags", "--max-old-space-size=16384")
 app.commandLine.appendSwitch("no-sandbox")
 app.commandLine.appendSwitch("no-proxy-server")
 
@@ -135,7 +135,7 @@ app.on("second-instance", () => {
 })
 
 powerMonitor.on("shutdown", () => {
-	powerSaveBlocker.stop(POWER_SAVE_BLOCKER)
+	//powerSaveBlocker.stop(POWER_SAVE_BLOCKER)
 
 	app.exit(0)
 })
@@ -223,7 +223,7 @@ else{
 			}
 		]))
 
-		POWER_SAVE_BLOCKER = powerSaveBlocker.start("prevent-app-suspension")
+		//POWER_SAVE_BLOCKER = powerSaveBlocker.start("prevent-app-suspension")
 
 		autoUpdater.checkForUpdates().catch(log.error)
 	
