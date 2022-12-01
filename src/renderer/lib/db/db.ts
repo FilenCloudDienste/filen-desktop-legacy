@@ -2,6 +2,7 @@ import ipc from "../ipc"
 import memoryCache from "../memoryCache"
 import eventListener from "../eventListener"
 import { sendToAllPorts } from "../worker/ipc"
+import { memoize } from "lodash"
 
 const fs = window.require("fs-extra")
 const writeFileAtomic = window.require("write-file-atomic")
@@ -29,9 +30,9 @@ const getDbPath = async (): Promise<string> => {
     return dbPath
 }
 
-const hashKey = (key: string) => {
+const hashKey = memoize((key: string) => {
     return CryptoJS.SHA256(key).toString()
-}
+})
 
 if(USE_MEMORY_CACHE){
     eventListener.on("dbSet", ({ key, value }: { key: string, value: any }) => {
