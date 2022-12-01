@@ -17,6 +17,8 @@ const is = window.require("electron-is")
 const downloadThreadsSemaphore = new Semaphore(constants.maxDownloadThreads)
 const FS_RETRIES = 64
 const FS_RETRY_TIMEOUT = 500
+const FS_RETRY_CODES = ["EAGAIN", "EBUSY", "ECANCELED", "EBADF", "EINTR", "EIO", "EMFILE", "ENFILE", "ENOMEM", "EPIPE", "ETXTBSY", "ESPIPE", "EAI_SYSTEM", "EAI_CANCELED"]
+const FS_NORETRY_CODES = ["ENOENT", "ENODEV", "EACCES", "EPERM", "EINVAL", "ENAMETOOLONG", "ENOBUFS", "ENOSPC", "EROFS"]
 
 export const normalizePath = (path: string): string => {
     return pathModule.normalize(path)
@@ -54,7 +56,12 @@ export const checkLastModified = (path: string): Promise<{ changed: boolean, mti
                 }).catch((err: any) => {
                     lastErr = err
 
-                    return setTimeout(req, FS_RETRY_TIMEOUT)
+                    if(FS_RETRY_CODES.includes(err.code)){
+                        return setTimeout(req, FS_RETRY_TIMEOUT)
+                    }
+                    else{
+                        return reject(err)
+                    }
                 })
             }
 
@@ -111,7 +118,7 @@ export const gracefulLStat = (path: string): Promise<any> => {
         let currentTries = 0
         let lastErr: any = undefined
 
-        const stat = (): void => {
+        const req = () => {
             if(currentTries > FS_RETRIES){
                 return reject(lastErr)
             }
@@ -121,11 +128,16 @@ export const gracefulLStat = (path: string): Promise<any> => {
             fs.lstat(path).then(resolve).catch((err: any) => {
                 lastErr = err
 
-                return setTimeout(stat, FS_RETRY_TIMEOUT)
+                if(FS_RETRY_CODES.includes(err.code)){
+                    return setTimeout(req, FS_RETRY_TIMEOUT)
+                }
+                else{
+                    return reject(err)
+                }
             })
         }
 
-        return stat()
+        return req()
     })
 }
 
@@ -145,7 +157,12 @@ export const canReadAtPath = (fullPath: string): Promise<boolean> => {
                 if(err){
                     lastErr = err
 
-                    return setTimeout(req, FS_RETRY_TIMEOUT)
+                    if(FS_RETRY_CODES.includes(err.code)){
+                        return setTimeout(req, FS_RETRY_TIMEOUT)
+                    }
+                    else{
+                        return reject(err)
+                    }
                 }
     
                 return resolve(true)
@@ -172,7 +189,12 @@ export const canWriteAtPath = (fullPath: string): Promise<boolean> => {
                 if(err){
                     lastErr = err
 
-                    return setTimeout(req, FS_RETRY_TIMEOUT)
+                    if(FS_RETRY_CODES.includes(err.code)){
+                        return setTimeout(req, FS_RETRY_TIMEOUT)
+                    }
+                    else{
+                        return reject(err)
+                    }
                 }
     
                 return resolve(true)
@@ -199,7 +221,12 @@ export const canReadWriteAtPath = (fullPath: string): Promise<boolean> => {
                 if(err){
                     lastErr = err
 
-                    return setTimeout(req, FS_RETRY_TIMEOUT)
+                    if(FS_RETRY_CODES.includes(err.code)){
+                        return setTimeout(req, FS_RETRY_TIMEOUT)
+                    }
+                    else{
+                        return reject(err)
+                    }
                 }
     
                 return resolve(true)
@@ -380,7 +407,12 @@ export const readChunk = (path: string, offset: number, length: number): Promise
                 if(err){
                     lastErr = err
             
-                    return setTimeout(req, FS_RETRY_TIMEOUT)
+                    if(FS_RETRY_CODES.includes(err.code)){
+                        return setTimeout(req, FS_RETRY_TIMEOUT)
+                    }
+                    else{
+                        return reject(err)
+                    }
                 }
     
                 const buffer = Buffer.alloc(length)
@@ -389,7 +421,12 @@ export const readChunk = (path: string, offset: number, length: number): Promise
                     if(err){
                         lastErr = err
             
-                        return setTimeout(req, FS_RETRY_TIMEOUT)
+                        if(FS_RETRY_CODES.includes(err.code)){
+                            return setTimeout(req, FS_RETRY_TIMEOUT)
+                        }
+                        else{
+                            return reject(err)
+                        }
                     }
     
                     let data: any = undefined
@@ -405,7 +442,12 @@ export const readChunk = (path: string, offset: number, length: number): Promise
                         if(err){
                             lastErr = err
             
-                            return setTimeout(req, FS_RETRY_TIMEOUT)
+                            if(FS_RETRY_CODES.includes(err.code)){
+                                return setTimeout(req, FS_RETRY_TIMEOUT)
+                            }
+                            else{
+                                return reject(err)
+                            }
                         }
     
                         return resolve(data)
@@ -425,7 +467,11 @@ export const rm = (path: string): Promise<boolean> => {
         try{
             var stats = await gracefulLStat(path)
         }
-        catch(e){
+        catch(e: any){
+            if(e.code == "ENOENT"){
+                return resolve(true)
+            }
+
             return reject(e)
         }
 
@@ -443,20 +489,38 @@ export const rm = (path: string): Promise<boolean> => {
                 try{
                     await fs.unlink(path)
                 }
-                catch(e){
+                catch(e: any){
                     lastErr = e
 
-                    return setTimeout(req, FS_RETRY_TIMEOUT)
+                    if(e.code == "ENOENT"){
+                        return resolve(true)
+                    }
+
+                    if(FS_RETRY_CODES.includes(e.code)){
+                        return setTimeout(req, FS_RETRY_TIMEOUT)
+                    }
+                    else{
+                        return reject(e)
+                    }
                 }
             }
             else{
                 try{
                     await fs.remove(path)
                 }
-                catch(e){
+                catch(e: any){
                     lastErr = e
 
-                    return setTimeout(req, FS_RETRY_TIMEOUT)
+                    if(e.code == "ENOENT"){
+                        return resolve(true)
+                    }
+
+                    if(FS_RETRY_CODES.includes(e.code)){
+                        return setTimeout(req, FS_RETRY_TIMEOUT)
+                    }
+                    else{
+                        return reject(e)
+                    }
                 }
             }
     
@@ -484,12 +548,22 @@ export const mkdir = (path: string, location: any, task: any): Promise<any> => {
                 gracefulLStat(absolutePath).then(resolve).catch((err: any) => {
                     lastErr = err
     
-                    return setTimeout(req, FS_RETRY_TIMEOUT)
+                    if(FS_RETRY_CODES.includes(err.code)){
+                        return setTimeout(req, FS_RETRY_TIMEOUT)
+                    }
+                    else{
+                        return reject(err)
+                    }
                 })
             }).catch((err: any) => {
                 lastErr = err
 
-                return setTimeout(req, FS_RETRY_TIMEOUT)
+                if(FS_RETRY_CODES.includes(err.code)){
+                    return setTimeout(req, FS_RETRY_TIMEOUT)
+                }
+                else{
+                    return reject(err)
+                }
             })
         }
 
@@ -692,7 +766,12 @@ export const move = (before: string, after: string, overwrite: boolean = true): 
             }).then(resolve).catch((err: any) => {
                 lastErr = err
 
-                return setTimeout(req, FS_RETRY_TIMEOUT)
+                if(FS_RETRY_CODES.includes(err.code)){
+                    return setTimeout(req, FS_RETRY_TIMEOUT)
+                }
+                else{
+                    return reject(err)
+                }
             })
         }
 
@@ -723,7 +802,12 @@ export const rename = (before: string, after: string): Promise<any> => {
             fs.rename(before, after).then(resolve).catch((err: any) => {
                 lastErr = err
 
-                return setTimeout(req, FS_RETRY_TIMEOUT)
+                if(FS_RETRY_CODES.includes(err.code)){
+                    return setTimeout(req, FS_RETRY_TIMEOUT)
+                }
+                else{
+                    return reject(err)
+                }
             })
         }
 
