@@ -4,6 +4,7 @@ const fs = require("fs-extra")
 const writeFileAtomic = require("write-file-atomic")
 const crypto = require("crypto")
 const log = require("electron-log")
+const { memoize } = require("lodash")
 
 const DB_VERSION = 1
 const DB_PATH = pathModule.join(app.getPath("userData"), "db_v" + DB_VERSION)
@@ -12,17 +13,11 @@ const MEMORY_CACHE_KEY = "db:"
 const MAX_RETRIES = 32
 const RETRY_TIMEOUT = 250
 
-const hashKey = (key) => {
-    if(require("../memoryCache").has("dbKeyHash:" + key)){
-        return require("../memoryCache").get("dbKeyHash:" + key)
-    }
-
+const hashKey = memoize((key) => {
     const hash = crypto.createHash("sha256").update(key).digest("hex")
 
-    require("../memoryCache").set("dbKeyHash:" + key, hash)
-
     return hash
-}
+})
 
 // Clear leftover temp files etc
 const dirCheck = async () => {
