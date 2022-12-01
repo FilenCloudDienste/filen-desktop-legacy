@@ -309,7 +309,7 @@ export const isPathIncluded = memoize((tasks: string[], path: string) => {
     }
 
     return false
-}, (tasks: string[], path: string) => tasks.map(task => task) + ":" + path)
+}, (tasks: string[], path: string) => JSON.stringify(tasks) + ":" + path)
 
 export const isIgnoredBySelectiveSync = memoize((selectiveSyncRemoteIgnore: { [key: string]: boolean }, path: string): boolean => {
     if(Object.keys(selectiveSyncRemoteIgnore).length <= 0){
@@ -327,4 +327,4 @@ export const isIgnoredBySelectiveSync = memoize((selectiveSyncRemoteIgnore: { [k
     }
 
     return false
-}, (selectiveSyncRemoteIgnore: { [key: string]: boolean }, path: string) => Object.keys(selectiveSyncRemoteIgnore) + ":" + path)
+}, (selectiveSyncRemoteIgnore: { [key: string]: boolean }, path: string) => JSON.stringify(Object.keys(selectiveSyncRemoteIgnore)) + ":" + path)

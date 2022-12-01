@@ -58,7 +58,7 @@ export const checkLastModified = (path: string): Promise<{ changed: boolean, mti
                 })
             }
 
-            req()
+            return req()
         }).catch(reject)
     })
 }
@@ -152,7 +152,7 @@ export const canReadAtPath = (fullPath: string): Promise<boolean> => {
             })
         }
 
-        req()
+        return req()
     })
 }
 
@@ -179,7 +179,7 @@ export const canWriteAtPath = (fullPath: string): Promise<boolean> => {
             })
         }
 
-        req()
+        return req()
     })
 }
 
@@ -206,7 +206,7 @@ export const canReadWriteAtPath = (fullPath: string): Promise<boolean> => {
             })
         }
 
-        req()
+        return req()
     })
 }
 
@@ -414,7 +414,7 @@ export const readChunk = (path: string, offset: number, length: number): Promise
             })
         }
 
-        req()
+        return req()
     })
 }
 
@@ -463,7 +463,7 @@ export const rm = (path: string): Promise<boolean> => {
             return resolve(true)
         }
 
-        req()
+        return req()
     })
 }
 
@@ -493,7 +493,7 @@ export const mkdir = (path: string, location: any, task: any): Promise<any> => {
             })
         }
 
-        req()
+        return req()
     })
 }
 
@@ -696,7 +696,7 @@ export const move = (before: string, after: string, overwrite: boolean = true): 
             })
         }
 
-        req()
+        return req()
     })
 }
 
@@ -727,6 +727,6 @@ export const rename = (before: string, after: string): Promise<any> => {
             })
         }
 
-        req()
+        return req()
     })
 }
