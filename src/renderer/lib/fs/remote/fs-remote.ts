@@ -476,40 +476,32 @@ export const findOrCreateParentDirectory = (path: string, baseFolderUUID: string
     })
 }
 
-export const mkdir = (path: string, remoteTreeNow: any, location: any, task: any, uuid: string): Promise<{ parent: string, uuid: string }> => {
-    return new Promise(async (resolve, reject) => {
-        const name = pathModule.basename(path)
+export const mkdir = async (path: string, remoteTreeNow: any, location: any, task: any, uuid: string): Promise<{ parent: string, uuid: string }> => {
+    const name = pathModule.basename(path)
 
-        if(typeof uuid !== "string"){
-            uuid = uuidv4()
-        }
+    if(typeof uuid !== "string"){
+        uuid = uuidv4()
+    }
 
-        if(typeof name !== "string"){
-            return reject(new Error("Could not create remote folder: Name invalid: " + name))
-        }
-        
-        if(name.length <= 0){
-            return reject(new Error("Could not create remote folder: Name invalid: " + name))
-        }
+    if(typeof name !== "string"){
+        throw new Error("Could not create remote folder: Name invalid: " + name)
+    }
+    
+    if(name.length <= 0){
+        throw new Error("Could not create remote folder: Name invalid: " + name)
+    }
 
-        if(!(await doesExistLocally(normalizePath(location.local + "/" + path)))){
-            return reject("deletedLocally")
-        }
+    if(!(await doesExistLocally(normalizePath(location.local + "/" + path)))){
+        throw "deletedLocally"
+    }
 
-        try{
-            var parent = await findOrCreateParentDirectory(path, location.remoteUUID, remoteTreeNow, normalizePath(location.local + "/" + path))
-        }
-        catch(e){
-            return reject(e)
-        }
+    const parent = await findOrCreateParentDirectory(path, location.remoteUUID, remoteTreeNow, normalizePath(location.local + "/" + path))
+    const createdUUID = await createDirectory(uuid, name, parent)
 
-        createDirectory(uuid, name, parent).then((createdUUID) => {
-            return resolve({
-                parent,
-                uuid: createdUUID
-            })
-        }).catch(reject)
-    })
+    return {
+        parent,
+        uuid: createdUUID
+    }
 }
 
 export const upload = (path: string, remoteTreeNow: any, location: any, task: any, uuid: string): Promise<any> => {
@@ -760,41 +752,44 @@ export const rm = (type: string, uuid: string): Promise<any> => {
     return trashItem({ type, uuid })
 }
 
-export const move = (type: string, task: any, location: any, remoteTreeNow: any): Promise<boolean> => {
-    return new Promise((resolve, reject) => {
-        findOrCreateParentDirectory(task.to, location.remoteUUID, remoteTreeNow).then((parent) => {
-            const promise = type == "file" ? moveFile({
-                file: {
-                    uuid: task.item.uuid,
-                    name: task.item.metadata.name,
-                    size: task.item.metadata.size,
-                    mime: task.item.metadata.mime,
-                    key: task.item.metadata.key,
-                    lastModified: task.item.metadata.lastModified
-                },
-                parent
-            }) : moveFolder({
-                folder: {
-                    uuid: task.item.uuid,
-                    name: task.item.name
-                },
-                parent
-            })
+export const move = async (type: string, task: any, location: any, remoteTreeNow: any): Promise<boolean> => {
+    const parent = await findOrCreateParentDirectory(task.to, location.remoteUUID, remoteTreeNow)
 
-            promise.then(resolve).catch(reject)
-        }).catch(reject)
-    })
+    if(type == "file"){
+        await moveFile({
+            file: {
+                uuid: task.item.uuid,
+                name: task.item.metadata.name,
+                size: task.item.metadata.size,
+                mime: task.item.metadata.mime,
+                key: task.item.metadata.key,
+                lastModified: task.item.metadata.lastModified
+            },
+            parent
+        })
+    }
+    else{
+        await moveFolder({
+            folder: {
+                uuid: task.item.uuid,
+                name: task.item.name
+            },
+            parent
+        })
+    }
+
+    return true
 }
 
-export const rename = (type: string, task: any): Promise<boolean> => {
+export const rename = async (type: string, task: any): Promise<boolean> => {
     const newName = pathModule.basename(task.to)
 
-    return new Promise((resolve, reject) => {
-        if(newName.length == 0){
-            return reject(new Error("Invalid name"))
-        }
+    if(newName.length == 0){
+        throw new Error("Invalid name")
+    }
 
-        const promise = type == "file" ? renameFile({
+    if(type == "file"){
+        await renameFile({
             file: {
                 uuid: task.item.uuid,
                 name: newName,
@@ -804,14 +799,17 @@ export const rename = (type: string, task: any): Promise<boolean> => {
                 lastModified: task.item.metadata.lastModified
             },
             name: newName
-        }) : renameFolder({
+        })
+    }
+    else{
+        await renameFolder({
             folder: {
                 uuid: task.item.uuid,
                 name: newName
             },
             name: newName
         })
-        
-        promise.then(resolve).catch(reject)
-    })
+    }
+
+    return true
 }
