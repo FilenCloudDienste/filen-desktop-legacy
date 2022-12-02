@@ -110,7 +110,23 @@ export default class MainFooter extends React.Component<Props> {
                                                 marginLeft="5px" 
                                                 noOfLines={1}
                                             >
-                                                {i18n(lang, (runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length) == 1 ? "syncingItemsFooterSingular" : "syncingItemsFooterPlural", true, ["__COUNT__"], [(runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length) + ((runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length) >= maxConcurrentSyncTasks ? "+" : "")])}
+                                                {
+                                                    (() => {
+                                                        const runningTaskCount = (runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length)
+
+                                                        if(runningTaskCount == 1){
+                                                            return i18n(lang, "syncingItemsFooterSingular", true, ["__COUNT__"], ["1"])
+                                                        }
+                                                        else{
+                                                            if(runningTaskCount > 32 && ((runningTaskCount + 32) > maxConcurrentSyncTasks)){
+                                                                return i18n(lang, "syncingItemsFooterPlural", true, ["__COUNT__"], [maxConcurrentSyncTasks.toString() + "+"])
+                                                            }
+                                                            else{
+                                                                return i18n(lang, "syncingItemsFooterPlural", true, ["__COUNT__"], [runningTaskCount.toString()])
+                                                            }
+                                                        }
+                                                    })()
+                                                }
                                             </Text>
                                         </Flex>
                                     ) : runningSyncTasks > 0 ? (
@@ -157,7 +173,7 @@ export default class MainFooter extends React.Component<Props> {
                             overflow="hidden"
                         >
                             {
-                                paused || !isOnline ? (
+                                (paused || !isOnline) ? (
                                     <AiOutlinePauseCircle
                                         color={colors(platform, darkMode, "textPrimary")}
                                         size={14}

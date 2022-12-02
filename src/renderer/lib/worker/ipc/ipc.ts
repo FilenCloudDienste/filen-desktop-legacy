@@ -19,12 +19,10 @@ import {
 import db from "../../db"
 import * as fsLocal from "../../fs/local"
 import * as fsRemote from "../../fs/remote"
-import { isFileOrFolderNameIgnoredByDefault } from "../../helpers"
 import ipc from "../../ipc"
 import eventListener from "../../eventListener"
 
 const { ipcRenderer } = window.require("electron")
-const pathModule = window.require("path")
 const log = window.require("electron-log")
 
 let IS_SYNCING: boolean = false

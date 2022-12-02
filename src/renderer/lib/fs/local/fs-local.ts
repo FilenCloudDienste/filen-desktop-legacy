@@ -69,20 +69,17 @@ export const checkLastModified = (path: string): Promise<{ changed: boolean, mti
     })
 }
 
-export const getTempDir = (): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        if(memoryCache.has("tmpDir")){
-            return resolve(memoryCache.get("tmpDir"))
-        }
+export const getTempDir = async (): Promise<string> => {
+    if(memoryCache.has("tmpDir")){
+        return memoryCache.get("tmpDir")
+    }
 
-        ipc.getAppPath("temp").then((tmpDir) => {
-            tmpDir = normalizePath(tmpDir)
+    const tmpDirRes = await ipc.getAppPath("temp")
+    const tmpDir = normalizePath(tmpDirRes)
 
-            memoryCache.set("tmpDir", tmpDir)
+    memoryCache.set("tmpDir", tmpDir)
 
-            return resolve(tmpDir)
-        }).catch(reject)
-    })
+    return tmpDir
 }
 
 export const smokeTest = (path: string): Promise<boolean> => {
@@ -269,7 +266,7 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
                 fileFilter: ["!.filen.trash.local", "!System Volume Information"]
             })
             
-            dirStream.on("data", async (item: any) => {
+            dirStream.on("data", async (item: { path: string, fullPath: string, basename: string, stats: { isSymbolicLink: () => boolean, isDirectory: () => boolean, mtimeMs: number, ino: number, size: number } }) => {
                 statting += 1
 
                 try{
@@ -336,7 +333,7 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
                 log.warn("Readdirp warning:", warn)
             })
             
-            dirStream.on("error", (err: any) => {
+            dirStream.on("error", (err: Error) => {
                 dirStream.destroy()
 
                 statting = 0
