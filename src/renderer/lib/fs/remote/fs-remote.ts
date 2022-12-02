@@ -21,21 +21,14 @@ const folderPathUUID = new Map()
 
 const UPLOAD_VERSION: number = 2
 
-export const smokeTest = (uuid: string = ""): Promise<boolean> => {
-    return new Promise(async (resolve, reject) => {
-        try{
-            var response = await folderPresent({ apiKey: await db.get("apiKey"), uuid })
-        }
-        catch(e){
-            return reject(e)
-        }
+export const smokeTest = async (uuid: string = ""): Promise<boolean> => {
+    const response = await folderPresent({ apiKey: await db.get("apiKey"), uuid })
 
-        if(!response.present || response.trash){
-            return reject(new Error("Remote folder " + uuid + " is not present: " + JSON.stringify(response)))
-        }
+    if(!response.present || response.trash){
+        throw new Error("Remote folder " + uuid + " is not present: " + JSON.stringify(response))
+    }
 
-        return resolve(true)
-    })
+    return true
 }
 
 export const directoryTree = (uuid: string = "", skipCache: boolean = false, location?: any): Promise<any> => {
