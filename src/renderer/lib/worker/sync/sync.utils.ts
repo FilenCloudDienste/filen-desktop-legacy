@@ -2,9 +2,17 @@ import db from "../../db"
 import { sendToAllPorts } from "../ipc"
 import { memoize } from "lodash"
 import { isSubdir } from "../../helpers"
+import ipc from "../../ipc"
 
 const log = window.require("electron-log")
 const gitignoreParser = window.require("@gerhobbelt/gitignore-parser")
+const fs = window.require("fs-extra")
+const pathModule = window.require("path")
+const readline = window.require("readline")
+
+let APPLY_DONE_TASKS_PATH: { [key: string]: string } = {}
+let APPLY_DONE_TASKS_WRITESTREAM: { [key: string]: any } = {}
+const APPLY_DONE_TASKS_VERSION: number = 1
 
 export const isSyncLocationPaused = async (uuid: string): Promise<boolean> => {
     try{
@@ -312,6 +320,10 @@ export const isPathIncluded = memoize((tasks: string[], path: string) => {
 }, (tasks: string[], path: string) => JSON.stringify(tasks) + ":" + path)
 
 export const isIgnoredBySelectiveSync = memoize((selectiveSyncRemoteIgnore: { [key: string]: boolean }, path: string): boolean => {
+    if(typeof selectiveSyncRemoteIgnore == "undefined" || !selectiveSyncRemoteIgnore || selectiveSyncRemoteIgnore == null){
+        return false
+    }
+
     if(Object.keys(selectiveSyncRemoteIgnore).length <= 0){
         return false
     }
@@ -327,4 +339,168 @@ export const isIgnoredBySelectiveSync = memoize((selectiveSyncRemoteIgnore: { [k
     }
 
     return false
-}, (selectiveSyncRemoteIgnore: { [key: string]: boolean }, path: string) => JSON.stringify(Object.keys(selectiveSyncRemoteIgnore)) + ":" + path)
+}, (selectiveSyncRemoteIgnore: { [key: string]: boolean }, path: string) => ((typeof selectiveSyncRemoteIgnore == "undefined" || !selectiveSyncRemoteIgnore || selectiveSyncRemoteIgnore == null) ? "null" : JSON.stringify(Object.keys(selectiveSyncRemoteIgnore))) + ":" + path)
+
+export const getApplyDoneTaskPath = async (locationUUID: string) => {
+    if(typeof APPLY_DONE_TASKS_PATH[locationUUID] == "string" && APPLY_DONE_TASKS_PATH[locationUUID].length > 0){
+        return APPLY_DONE_TASKS_PATH[locationUUID]
+    }
+
+    const userDataPath: string = await ipc.getAppPath("userData")
+
+    await fs.ensureDir(pathModule.join(userDataPath, "data", "v" + APPLY_DONE_TASKS_VERSION))
+
+    const path: string = pathModule.join(userDataPath, "data", "v" + APPLY_DONE_TASKS_VERSION, "applyDoneTasks_" + locationUUID)
+
+    APPLY_DONE_TASKS_PATH[locationUUID] = path
+
+    return path
+}
+
+export const loadApplyDoneTasks = async (locationUUID: string) => {
+    return new Promise(async (resolve, reject) => {
+        if(window.location.href.indexOf("#worker") == -1){
+            return resolve(true)
+        }
+
+        try{
+            var path = await getApplyDoneTaskPath(locationUUID)
+        }
+        catch(e: any){
+            if(e.code == "ENOENT"){
+                return resolve(true)
+            }
+
+            return reject(e)
+        }
+
+        try{
+            await new Promise((resolve, reject) => {
+                fs.access(path, fs.constants.F_OK, (err: Error) => {
+                    if(err){
+                        return reject(err)
+                    }
+
+                    return resolve(true)
+                })
+            })
+        }
+        catch(e){
+            return resolve([])
+        }
+    
+        try{
+            const reader = readline.createInterface({
+                input: fs.createReadStream(path, {
+                    flags: "r"
+                }),
+                crlfDelay: Infinity
+            })
+
+            const tasks: any[] = []
+    
+            reader.on("line", (line: string) => {
+                if(typeof line !== "string"){
+                    return
+                }
+
+                if(line.length < 4){
+                    return
+                }
+
+                try{
+                    const parsed = JSON.parse(line)
+    
+                    tasks.push(parsed)
+                }
+                catch(e){
+                    log.error(e)
+                }
+            })
+    
+            reader.on("error", reject)
+            reader.on("close", () => resolve(tasks))
+        }
+        catch(e){
+            return reject(e)
+        }
+    })
+}
+
+export const addToApplyDoneTasks = async (locationUUID: string, task: any) => {
+    if(window.location.href.indexOf("#worker") == -1){
+        return true
+    }
+
+    try{
+        const path = await getApplyDoneTaskPath(locationUUID)
+
+        await new Promise((resolve, reject) => {
+            fs.appendFile(path, JSON.stringify(task) + "\n", (err: any) => {
+                if(err){
+                    return reject(err)
+                }
+
+                return resolve(true)
+            })
+        })
+    }
+    catch(e){
+        log.error(e)
+    }
+
+    return true
+}
+
+export const clearApplyDoneTasks = async (locationUUID: string) => {
+    if(window.location.href.indexOf("#worker") == -1){
+        return true
+    }
+
+    try{
+        var path = await getApplyDoneTaskPath(locationUUID)
+    }
+    catch(e){
+        log.error(e)
+
+        return true
+    }
+
+    try{
+        await new Promise((resolve, reject) => {
+            fs.access(path, fs.constants.F_OK, (err: Error) => {
+                if(err){
+                    return reject(err)
+                }
+
+                return resolve(true)
+            })
+        })
+    }
+    catch(e){
+        log.error(e)
+
+        return true
+    }
+
+    try{
+        await new Promise((resolve, reject) => {
+            fs.unlink(path, (err: any) => {
+                if(err){
+                    if(err.code == "ENOENT"){
+                        return resolve(true)
+                    }
+
+                    return reject(err)
+                }
+
+                return resolve(true)
+            })
+        })
+    }
+    catch(e){
+        log.error(e)
+    }
+
+    return true
+}

@@ -14,7 +14,7 @@ import { i18n } from "../../lib/i18n"
 
 const log = window.require("electron-log")
 
-interface Props {
+export interface MainHeaderProps {
     userId: number,
     email: string,
     platform: string,
@@ -25,7 +25,7 @@ interface Props {
     doneTasks: any
 }
 
-const MainHeader = memo(({ userId, email, platform, darkMode, lang, doneTasks, currentUploads, currentDownloads }: Props) => {
+const MainHeader = memo(({ userId, email, platform, darkMode, lang, doneTasks, currentUploads, currentDownloads }: MainHeaderProps) => {
     const paused: boolean = useDb("paused", false)
     const syncIssues: any = useDb("syncIssues", [])
     const [userInfo, setUserInfo] = useState<any>(undefined)

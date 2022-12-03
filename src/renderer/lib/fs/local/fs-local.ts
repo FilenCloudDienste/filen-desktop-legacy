@@ -697,7 +697,7 @@ export const download = (path: string, location: any, task: any): Promise<any> =
                     })
                 }
                 catch(e){
-                    fs.unlink(fileTmpPath)
+                    fs.unlink(fileTmpPath, () => {})
 
                     return reject(e)
                 }

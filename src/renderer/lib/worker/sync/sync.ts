@@ -3,9 +3,37 @@ import * as fsRemote from "../../fs/remote"
 import db from "../../db"
 import ipc from "../../ipc"
 import { v4 as uuidv4 } from "uuid"
-import { maxRetrySyncTask, retrySyncTaskTimeout, maxConcurrentDownloads as maxConcurrentDownloadsPreset, maxConcurrentUploads as maxConcurrentUploadsPreset, maxConcurrentSyncTasks } from "../../constants"
-import { Semaphore, SemaphoreInterface } from "../../helpers"
-import { isSyncLocationPaused, isSuspended, getIgnored, getSyncMode, onlyGetBaseParentMove, onlyGetBaseParentDelete, sortMoveRenameTasks, addToSyncIssues, updateLocationBusyStatus, emitSyncTask, emitSyncStatus, emitSyncStatusLocation, removeRemoteLocation, isPathIncluded, isIgnoredBySelectiveSync } from "./sync.utils"
+import {
+    maxRetrySyncTask,
+    retrySyncTaskTimeout,
+    maxConcurrentDownloads as maxConcurrentDownloadsPreset,
+    maxConcurrentUploads as maxConcurrentUploadsPreset,
+    maxConcurrentSyncTasks
+} from "../../constants"
+import {
+    Semaphore,
+    SemaphoreInterface
+} from "../../helpers"
+import {
+    isSyncLocationPaused,
+    isSuspended,
+    getIgnored,
+    getSyncMode,
+    onlyGetBaseParentMove,
+    onlyGetBaseParentDelete,
+    sortMoveRenameTasks,
+    addToSyncIssues,
+    updateLocationBusyStatus,
+    emitSyncTask,
+    emitSyncStatus,
+    emitSyncStatusLocation,
+    removeRemoteLocation,
+    isPathIncluded,
+    isIgnoredBySelectiveSync,
+    loadApplyDoneTasks,
+    addToApplyDoneTasks,
+    clearApplyDoneTasks
+} from "./sync.utils"
 import { sendToAllPorts } from "../ipc"
 
 const pathModule = window.require("path")
@@ -725,16 +753,18 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     task,
                                     location
                                 })
-        
-                                doneTasks.push({
+
+                                const doneTask = {
                                     type: "renameInRemote",
                                     task,
                                     location
-                                })
+                                }
+        
+                                doneTasks.push(doneTask)
 
                                 updateSyncTasksToDo()
 
-                                db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
+                                addToApplyDoneTasks(location.uuid, doneTask).then(() => {
                                     maxSyncTasksSemaphore.release()
         
                                     return resolve(done)
@@ -820,15 +850,17 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     location
                                 })
         
-                                doneTasks.push({
+                                const doneTask = {
                                     type: "renameInLocal",
                                     task,
                                     location
-                                })
+                                }
+
+                                doneTasks.push(doneTask)
 
                                 updateSyncTasksToDo()
 
-                                db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
+                                addToApplyDoneTasks(location.uuid, doneTask).then(() => {
                                     maxSyncTasksSemaphore.release()
         
                                     return resolve(done)
@@ -927,16 +959,18 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     task,
                                     location
                                 })
-        
-                                doneTasks.push({
+
+                                const doneTask = {
                                     type: "moveInRemote",
                                     task,
                                     location
-                                })
+                                }
+        
+                                doneTasks.push(doneTask)
                                 
                                 updateSyncTasksToDo()
 
-                                db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
+                                addToApplyDoneTasks(location.uuid, doneTask).then(() => {
                                     maxSyncTasksSemaphore.release()
         
                                     return resolve(done)
@@ -1021,16 +1055,18 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     task,
                                     location
                                 })
-        
-                                doneTasks.push({
+
+                                const doneTask = {
                                     type: "moveInLocal",
                                     task,
                                     location
-                                })
+                                }
+        
+                                doneTasks.push(doneTask)
 
                                 updateSyncTasksToDo()
 
-                                db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
+                                addToApplyDoneTasks(location.uuid, doneTask).then(() => {
                                     maxSyncTasksSemaphore.release()
         
                                     return resolve(done)
@@ -1129,16 +1165,18 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     task,
                                     location
                                 })
-        
-                                doneTasks.push({
+
+                                const doneTask = {
                                     type: "deleteInRemote",
                                     task,
                                     location
-                                })
+                                }
+        
+                                doneTasks.push(doneTask)
 
                                 updateSyncTasksToDo()
 
-                                db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
+                                addToApplyDoneTasks(location.uuid, doneTask).then(() => {
                                     maxSyncTasksSemaphore.release()
         
                                     return resolve(done)
@@ -1217,16 +1255,18 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     task,
                                     location
                                 })
-        
-                                doneTasks.push({
+
+                                const doneTask = {
                                     type: "deleteInLocal",
                                     task,
                                     location
-                                })
+                                }
+        
+                                doneTasks.push(doneTask)
 
                                 updateSyncTasksToDo()
 
-                                db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
+                                addToApplyDoneTasks(location.uuid, doneTask).then(() => {
                                     maxSyncTasksSemaphore.release()
         
                                     return resolve(done)
@@ -1320,8 +1360,8 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                         task,
                                         location
                                     })
-    
-                                    doneTasks.push({
+
+                                    const doneTask = {
                                         type: "uploadToRemote",
                                         task: {
                                             ...task,
@@ -1330,11 +1370,13 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                             }
                                         },
                                         location
-                                    })
+                                    }
+    
+                                    doneTasks.push(doneTask)
 
                                     updateSyncTasksToDo()
     
-                                    db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
+                                    addToApplyDoneTasks(location.uuid, doneTask).then(() => {
                                         maxConcurrentUploadsSemaphore.release()
                                         maxSyncTasksSemaphore.release()
             
@@ -1464,8 +1506,8 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                         task,
                                         location
                                     })
-    
-                                    doneTasks.push({
+
+                                    const doneTask = {
                                         type: "downloadFromRemote",
                                         task: {
                                             ...task,
@@ -1474,11 +1516,13 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                             }
                                         },
                                         location
-                                    })
+                                    }
+    
+                                    doneTasks.push(doneTask)
 
                                     updateSyncTasksToDo()
     
-                                    db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
+                                    addToApplyDoneTasks(location.uuid, doneTask).then(() => {
                                         maxConcurrentDownloadsSemaphore.release()
                                         maxSyncTasksSemaphore.release()
             
@@ -2451,7 +2495,7 @@ const syncLocation = async (location: any): Promise<any> => {
         var [lastLocalTree, lastRemoteTree, applyDoneTasksPast] = await Promise.all([
             db.get("lastLocalTree:" + location.uuid),
             db.get("lastRemoteTree:" + location.uuid),
-            db.get("applyDoneTasks:" + location.uuid)
+            loadApplyDoneTasks(location.uuid)
         ])
 
         if(applyDoneTasksPast && Array.isArray(applyDoneTasksPast)){
@@ -2689,10 +2733,9 @@ const syncLocation = async (location: any): Promise<any> => {
     try{
         await Promise.all([
             db.set("lastLocalTree:" + location.uuid, doneTasks.length > 0 ? localTreeNowApplied : localTreeNow),
-            db.set("lastRemoteTree:" + location.uuid, doneTasks.length > 0 ? remoteTreeNowApplied : remoteTreeNow)
+            db.set("lastRemoteTree:" + location.uuid, doneTasks.length > 0 ? remoteTreeNowApplied : remoteTreeNow),
+            clearApplyDoneTasks(location.uuid)
         ])
-
-        await db.remove("applyDoneTasks:" + location.uuid)
     }
     catch(e: any){
         log.error("Could not save lastLocalTree to DB for location " + location.uuid)
@@ -2901,6 +2944,8 @@ const sync = async (): Promise<any> => {
         status: "start",
         syncLocations
     })
+
+    await db.set("syncIssues", []).catch(log.error)
 
     for(let i = 0; i < syncLocations.length; i++){
         if(typeof syncLocations[i].remote == "undefined" || typeof syncLocations[i].remoteUUID == "undefined" || typeof syncLocations[i].remoteName == "undefined"){

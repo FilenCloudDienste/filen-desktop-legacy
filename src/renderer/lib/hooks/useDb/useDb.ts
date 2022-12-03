@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import eventListener from "../../eventListener"
 import db from "../../db"
+import memoryCache from "../../memoryCache"
 
 const log = window.require("electron-log")
 
@@ -11,6 +12,10 @@ const useDb = (dbKey: string, defaultValue: any): any => {
 		const setListener = eventListener.on("dbSet", ({ key }: { key: string }) => {
 			if(key !== dbKey){
 				return false
+			}
+
+			if(memoryCache.has(db.dbCacheKey + key)){
+				memoryCache.delete(db.dbCacheKey + key)
 			}
 
 			db.get(dbKey).then((value: any) => {
@@ -33,6 +38,10 @@ const useDb = (dbKey: string, defaultValue: any): any => {
 		const removeListener = eventListener.on("dbRemove", ({ key }: { key: string }) => {
 			if(key !== dbKey){
 				return false
+			}
+
+			if(memoryCache.has(db.dbCacheKey + key)){
+				memoryCache.delete(db.dbCacheKey + key)
 			}
 			
 			return setData(defaultValue)

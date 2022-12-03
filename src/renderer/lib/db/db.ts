@@ -34,7 +34,7 @@ const hashKey = memoize((key: string) => {
     return CryptoJS.SHA256(key).toString()
 })
 
-if(USE_MEMORY_CACHE && window.location.href.indexOf("#worker") !== -1){
+if(USE_MEMORY_CACHE){
     eventListener.on("dbSet", ({ key }: { key: string }) => {
         if(memoryCache.has(MEMORY_CACHE_KEY + key)){
             memoryCache.delete(MEMORY_CACHE_KEY + key)
@@ -294,7 +294,9 @@ const db = {
     set,
     remove,
     clear,
-    keys
+    keys,
+    dbCacheKey: MEMORY_CACHE_KEY,
+    dbVersion: DB_VERSION
 }
 
 export default db

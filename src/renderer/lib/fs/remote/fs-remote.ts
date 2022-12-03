@@ -1,7 +1,7 @@
 import { folderPresent, dirTree, createFolder, folderExists, uploadChunk, markUploadAsDone, checkIfItemParentIsShared, trashItem, moveFile, moveFolder, renameFile, renameFolder } from "../../api"
 import db from "../../db"
 import { decryptFolderName, decryptFileMetadata, hashFn, encryptMetadata, encryptData } from "../../crypto"
-import { convertTimestampToMs, pathIsFileOrFolderNameIgnoredByDefault, generateRandomString, Semaphore, isFolderPathExcluded, pathValidation, isPathOverMaxLength, isNameOverMaxLength } from "../../helpers"
+import { convertTimestampToMs, pathIsFileOrFolderNameIgnoredByDefault, generateRandomString, Semaphore, isFolderPathExcluded, pathValidation, isPathOverMaxLength, isNameOverMaxLength, pathIncludesDot } from "../../helpers"
 import { normalizePath, smokeTest as smokeTestLocal, readChunk, checkLastModified } from "../local"
 import { chunkSize, maxUploadThreads } from "../../constants"
 import { v4 as uuidv4 } from "uuid"
@@ -86,7 +86,6 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                     })
                 }
 
-                const treeItems = []
                 const [baseFolderUUID, baseFolderMetadata, baseFolderParent] = response.folders[0]
                 const baseFolderName = await decryptFolderName(baseFolderMetadata, masterKeys)
 
@@ -98,109 +97,160 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                     return reject(new Error("Could not decrypt base folder name"))
                 }
 
-                treeItems.push({
-                    uuid: baseFolderUUID,
-                    name: baseFolderName,
-                    parent: "base",
-                    type: "folder"
-                })
+                const addedFolders: { [key: string]: boolean } = {}
+                const addedFiles: { [key: string]: boolean } = {}
+                const builtTreeFiles: any = {}
+                const builtTreeFolders: any = {}
+                const builtTreeUUIDs: any = {}
+                const uuidsToPaths: any = {}
 
-                const addedFolders: any = {}
-                const addedFiles: any = {}
-                const promises = []
+                const promises = [
+                    ...response.folders.map(
+                        (folder: string[]) => {
+                            const [uuid, metadata, parent] = folder
 
-                for(let i = 0; i < response.folders.length; i++){
-                    const [uuid, metadata, parent] = response.folders[i]
+                            return new Promise((resolve) => {
+                                decryptFolderName(metadata, masterKeys).then((name) => {
+                                    new Promise<string>((resolve) => {
+                                        const parentExists = (): any => {
+                                            if(parent == "base"){
+                                                return resolve("")
+                                            }
+                                            else{
+                                                if(uuidsToPaths[parent]){
+                                                    return resolve(uuidsToPaths[parent])
+                                                }
+                                                
+                                                return setImmediate(parentExists)
+                                            }
+                                        }
+            
+                                        return parentExists()
+                                    }).then((parentPath) => {
+                                        const foundParentPath = parentPath.length == 0 ? "" : parentPath + "/"
+                                        const thisPath = foundParentPath + name
+                                        const entryPath = thisPath.split("/").slice(1).join("/")
+        
+                                        uuidsToPaths[uuid] = thisPath
+        
+                                        let include = true
+        
+                                        if(
+                                            typeof name !== "string"
+                                            || name.length <= 0
+                                            || isNameOverMaxLength(name)
+                                            || (excludeDot && pathIncludesDot(entryPath))
+                                            || !pathValidation(entryPath)
+                                            || pathIsFileOrFolderNameIgnoredByDefault(entryPath)
+                                            || isFolderPathExcluded(entryPath)
+                                            || isPathOverMaxLength(location.local + "/" + entryPath)
+                                        ){
+                                            include = false
+                                        }
+        
+                                        if(include && parent !== "base" && !addedFolders[parent + ":" + name]){
+                                            addedFolders[parent + ":" + name] = true
 
-                    promises.push(new Promise(async (resolve) => {
-                        if(uuid == baseFolderUUID){
-                            return resolve(true)
+                                            builtTreeFolders[entryPath] = {
+                                                uuid,
+                                                name,
+                                                parent,
+                                                type: "folder",
+                                                path: entryPath
+                                            }
+        
+                                            builtTreeUUIDs[uuid] = {
+                                                type: "folder",
+                                                path: entryPath
+                                            }
+                                        }
+        
+                                        return resolve(true)
+                                    }).catch(resolve)
+                                }).catch(resolve)
+                            })
                         }
+                    ),
+                    ...response.files.map(
+                        (file: string[]) => {
+                            const [uuid, bucket, region, chunks, parent, metadata, version, timestamp] = file
 
-                        const name = await decryptFolderName(metadata, masterKeys)
-
-                        if(name.length > 0 && !isNameOverMaxLength(name)){
-                            if(!addedFolders[parent + ":" + name]){
-                                addedFolders[parent + ":" + name] = true
-
-                                if(excludeDot){
-                                    if(!name.startsWith(".")){
-                                        treeItems.push({
-                                            uuid,
-                                            name,
-                                            parent,
-                                            type: "folder"
-                                        })
+                            return new Promise((resolve) => {
+                                decryptFileMetadata(metadata, masterKeys).then((decrypted) => {
+                                    if(typeof decrypted.lastModified == "number"){
+                                        if(decrypted.lastModified <= 0){
+                                            decrypted.lastModified = timestamp
+                                        }
                                     }
-                                }
-                                else{
-                                    treeItems.push({
-                                        uuid,
-                                        name,
-                                        parent,
-                                        type: "folder"
-                                    })
-                                }
-                            }
-                        }
-
-                        return resolve(true)
-                    }))
-                }
-
-                for(let i = 0; i < response.files.length; i++){
-                    const [uuid, bucket, region, chunks, parent, metadata, version, timestamp] = response.files[i]
-
-                    promises.push(new Promise(async (resolve) => {
-                        const decrypted = await decryptFileMetadata(metadata, masterKeys)
-
-                        if(typeof decrypted.lastModified == "number"){
-                            if(decrypted.lastModified <= 0){
-                                decrypted.lastModified = timestamp
-                            }
-                        }
-                        else{
-                            decrypted.lastModified = timestamp
-                        }
-
-                        decrypted.lastModified = convertTimestampToMs(decrypted.lastModified)
-
-                        if(decrypted.name.length > 0 && !isNameOverMaxLength(decrypted.name)){
-                            if(!addedFiles[parent + ":" + decrypted.name]){
-                                addedFiles[parent + ":" + decrypted.name] = true
-
-                                if(excludeDot){
-                                    if(!decrypted.name.startsWith(".")){
-                                        treeItems.push({
-                                            uuid,
-                                            region,
-                                            bucket,
-                                            chunks,
-                                            parent,
-                                            metadata: decrypted,
-                                            version,
-                                            type: "file"
-                                        })
+                                    else{
+                                        decrypted.lastModified = timestamp
                                     }
-                                }
-                                else{
-                                    treeItems.push({
-                                        uuid,
-                                        region,
-                                        bucket,
-                                        chunks,
-                                        parent,
-                                        metadata: decrypted,
-                                        version,
-                                        type: "file"
-                                    })
-                                }
-                            }
+            
+                                    decrypted.lastModified = convertTimestampToMs(decrypted.lastModified)
+            
+                                    new Promise<string>((resolve) => {
+                                        const parentExists = (): any => {
+                                            if(parent == "base"){
+                                                return resolve("")
+                                            }
+                                            else{
+                                                if(uuidsToPaths[parent]){
+                                                    return resolve(uuidsToPaths[parent])
+                                                }
+                                                
+                                                return setImmediate(parentExists)
+                                            }
+                                        }
+            
+                                        return parentExists()
+                                    }).then((parentPath) => {
+                                        const foundParentPath = parentPath.length == 0 ? "" : parentPath + "/"
+                                        const thisPath = parent == "base" ? decrypted.name : foundParentPath + decrypted.name
+                                        const entryPath = thisPath.split("/").slice(1).join("/")
+                
+                                        let include = true
+                
+                                        if(
+                                            typeof decrypted.name !== "string"
+                                            || decrypted.name.length <= 0
+                                            || isNameOverMaxLength(decrypted.name)
+                                            || (excludeDot && pathIncludesDot(entryPath))
+                                            || !pathValidation(entryPath)
+                                            || pathIsFileOrFolderNameIgnoredByDefault(entryPath)
+                                            || isFolderPathExcluded(entryPath)
+                                            || isPathOverMaxLength(location.local + "/" + entryPath)
+                                        ){
+                                            include = false
+                                        }
+                
+                                        if(include && parent !== "base" && !addedFiles[parent + ":" + decrypted.name]){
+                                            addedFiles[parent + ":" + decrypted.name] = true
+                
+                                            builtTreeFiles[entryPath] = {
+                                                uuid,
+                                                region,
+                                                bucket,
+                                                chunks,
+                                                parent,
+                                                metadata: decrypted,
+                                                version,
+                                                type: "file",
+                                                path: entryPath
+                                            }
+                
+                                            builtTreeUUIDs[uuid] = {
+                                                type: "file",
+                                                path: entryPath
+                                            }
+                                        }
+                
+                                        return resolve(true)
+                                    }).catch(resolve)
+                                }).catch(resolve)
+                            })
                         }
-
-                        return resolve(true)
-                    }))
-                }
+                    )
+                ]
 
                 try{
                     await Promise.all(promises)
@@ -211,150 +261,22 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                     return reject(e)
                 }
 
-                const nest = (items: any, uuid: string = "base", currentPath: string = "", link: string = "parent"): any => {
-                    return items.filter((item: any) => item[link] == uuid).map((item: any) => ({ 
-                        ...item,
-                        path: item.type == "folder" ? (currentPath + "/" + item.name) : (currentPath + "/" + item.metadata.name),
-                        children: nest(items, item.uuid, item.type == "folder" ? (currentPath + "/" + item.name) : (currentPath + "/" + item.metadata.name), link)
-                    }))
+                const obj = {
+                    files: builtTreeFiles,
+                    folders: builtTreeFolders,
+                    uuids: builtTreeUUIDs
+                }
+                
+                try{
+                    await db.set(cacheKey, obj)
+                }
+                catch(e){
+                    return reject(e)
                 }
 
-                const tree = nest(treeItems)
-                let reading: number = 0
-                const folders: any = {}
-                const files: any = {}
-                const uuids: any = {}
-
-                const iterateTree = (parent: any, callback: Function) => {
-                    if(parent.type == "folder"){
-                        folders[parent.path] = parent
-                        uuids[parent.uuid] = {
-                            type: "folder",
-                            path: parent.path
-                        }
-                    }
-                    else{
-                        files[parent.path] = parent
-                        uuids[parent.uuid] = {
-                            type: "file",
-                            path: parent.path
-                        }
-                    }
-
-                    if(parent.children.length > 0){
-                        for(let i = 0; i < parent.children.length; i++){
-                            reading += 1
-            
-                            iterateTree(parent.children[i], callback)
-                        }
-                    }
-            
-                    reading -= 1
-            
-                    if(reading == 0){
-                        return callback()
-                    }
-                }
-            
-                reading += 1
-
-                iterateTree(tree[0], async () => {
-                    const newFiles: any = {}
-                    const newFolders: any = {}
-                    const newUUIDS: any = {}
-
-                    for(const prop in files){
-                        const newProp = prop.split("/").slice(2).join("/")
-
-                        delete files[prop].children
-
-                        if(newProp.length > 0){
-                            let include = true
-
-                            if(excludeDot && (newProp.indexOf("/.") !== -1 || newProp.startsWith("."))){
-                                include = false
-                            }
-
-                            if(!pathValidation(newProp) || pathIsFileOrFolderNameIgnoredByDefault(newProp)){
-                                include = false
-                            }
-
-                            if(include && !isFolderPathExcluded(newProp) && !isPathOverMaxLength(location.local + "/" + newProp)){
-                                newFiles[newProp] = {
-                                    ...files[prop],
-                                    path: newProp
-                                }
-                            }
-                        }
-                    }
-
-                    for(const prop in folders){
-                        const newProp = prop.split("/").slice(2).join("/")
-
-                        delete folders[prop].children
-
-                        if(newProp.length > 0){
-                            let include = true
-
-                            if(excludeDot && (newProp.indexOf("/.") !== -1 || newProp.startsWith("."))){
-                                include = false
-                            }
-
-                            if(!pathValidation(newProp) || pathIsFileOrFolderNameIgnoredByDefault(newProp)){
-                                include = false
-                            }
-
-                            if(include && !isFolderPathExcluded(newProp) && !isPathOverMaxLength(location.local + "/" + newProp)){
-                                newFolders[newProp] = {
-                                    ...folders[prop],
-                                    path: newProp
-                                }
-    
-                                folderPathUUID.set(newProp, folders[prop].uuid)
-                            }
-                        }
-                    }
-
-                    for(const prop in uuids){
-                        const newValue = uuids[prop].path.split("/").slice(2).join("/")
-
-                        if(newValue.length > 0){
-                            let include = true
-
-                            if(excludeDot && (newValue.indexOf("/.") !== -1 || newValue.startsWith("."))){
-                                include = false
-                            }
-
-                            if(!pathValidation(newValue) || pathIsFileOrFolderNameIgnoredByDefault(newValue)){
-                                include = false
-                            }
-
-                            if(include && !isFolderPathExcluded(newValue) && !isPathOverMaxLength(location.local + "/" + newValue)){
-                                newUUIDS[prop] = {
-                                    ...uuids[prop],
-                                    path: newValue
-                                }
-                            }
-                        }
-                    }
-
-                    const obj = {
-                        files: newFiles,
-                        folders: newFolders,
-                        uuids: newUUIDS
-                    }
-                    
-                    try{
-                        await db.set(cacheKey, obj)
-                    }
-                    catch(e){
-                        return reject(e)
-                    }
-
-                    return resolve({
-                        changed: true,
-                        data: obj
-                    })
+                return resolve({
+                    changed: true,
+                    data: obj
                 })
             }).catch(reject)
         }).catch(reject)

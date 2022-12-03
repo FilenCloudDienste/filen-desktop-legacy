@@ -32,6 +32,10 @@ export const isNameOverMaxLength = memoize((name: string) => {
   return name.length > 254
 })
 
+export const pathIncludesDot = memoize((path: string) => {
+  return (path.indexOf("/.") !== -1 || path.startsWith("."))
+})
+
 export const isSubdir = memoize((parent: string, path: string) => {
   const relative = pathModule.relative(parent, path)
   const isSubdir = relative && !relative.startsWith("..") && !pathModule.isAbsolute(relative)

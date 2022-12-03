@@ -13,7 +13,7 @@ const pathModule = window.require("path")
 const { shell } = window.require("electron")
 const log = window.require("electron-log")
 
-interface Props {
+export interface ItemProps {
     task: any,
     style: any,
     userId: number,
@@ -30,7 +30,7 @@ task.running !== "undefined" -> active move/rename/delete
 task.done !== "undefined" -> done task
 */
 
-const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOnline }: Props) => {
+const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOnline }: ItemProps) => {
     const itemName: string = useRef(pathModule.basename(task.task.path)).current
     const timeSinceInterval = useRef<any>(undefined)
     const itemAbsolutePath: string = useRef(pathModule.normalize(task.location.local + "/" + task.task.path)).current
@@ -101,7 +101,15 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
             >
                 <Flex width="14%">
                     {
-                        typeof itemIcon == "string" ? itemIcon == "folder" ? (
+                        memoryCache.has(itemIconCacheKey) ? (
+                            <Flex>
+                                <Image 
+                                    src={memoryCache.get(itemIconCacheKey)}
+                                    width="24px"
+                                    height="24px" 
+                                />
+                            </Flex>
+                        ) : typeof itemIcon == "string" ? itemIcon == "folder" ? (
                             <Flex>
                                 <BsFillFolderFill
                                     size={25}
