@@ -142,7 +142,9 @@ const pl: {
     updateWindowInfo: "Nowa wersja została pobrana i jest gotowa do zainstalowania. Proszę zainstalować ją jak najszybciej, aby skorzystać z poprawek błędów i nowych funkcji.",
     updateWindowButton: "Zainstaluj",
     updateWindowInfo2: "Aplikacja zostanie zamknięta i rozpocznie przepływ aktualizacji. Prosimy nie przerywać tego procesu.",
-    titlebarUpdateInstalled: "Aktualizacja zainstalowana"
+    titlebarUpdateInstalled: "Aktualizacja zainstalowana",
+    clearLocalEventLog: "Wyczyść lokalny dziennik zdarzeń",
+    clearLocalEventLogInfo: "Spowoduje to wyczyszczenie wyświetlonego lokalnego dziennika zdarzeń. Czy jesteś pewny? Tej czynności nie można cofnąć!"
 }
 
 export default pl
