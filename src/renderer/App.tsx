@@ -3,21 +3,20 @@
 import React, { memo, lazy, Suspense } from "react"
 import { ChakraProvider, theme } from "@chakra-ui/react"
 import useDb from "./lib/hooks/useDb"
-
-const MainWindow = lazy(() => import("./windows/main"))
-const WorkerWindow = lazy(() => import("./windows/worker"))
-const AuthWindow = lazy(() => import("./windows/auth"))
-const SettingsWindow = lazy(() => import("./windows/settings"))
-const DownloadWindow = lazy(() => import("./windows/download"))
-const UploadWindow = lazy(() => import("./windows/upload"))
-const CloudWindow = lazy(() => import("./windows/cloud"))
-const SelectiveSyncWindow = lazy(() => import("./windows/selectiveSync"))
-const UpdateWindow = lazy(() => import("./windows/update"))
+import { formatBytes } from "./lib/helpers"
 
 const startingRoute = window.location.hash.replace("#", "").split("/")
 const getParams = new URLSearchParams(window.location.search)
 
+const log = window.require("electron-log")
+
 console.log(startingRoute[0])
+
+setInterval(() => {
+	const memInfo = window.performance.memory
+
+    log.info("#" + startingRoute[0] + " memoryUsage", "heap =", formatBytes(memInfo.usedJSHeapSize), "totalHeap =", formatBytes(memInfo.totalJSHeapSize), "limit =", formatBytes(memInfo.jsHeapSizeLimit))
+}, 2500)
 
 const customTheme = {
 	...theme,
@@ -30,6 +29,8 @@ const customTheme = {
 let App: any = () => <></>
 
 if(startingRoute[0] == "worker"){
+	const WorkerWindow = lazy(() => import("./windows/worker"))
+
 	App = memo(() => {
 		return (
 			<Suspense
@@ -43,6 +44,8 @@ if(startingRoute[0] == "worker"){
 	})
 }
 else if(startingRoute[0] == "auth"){
+	const AuthWindow = lazy(() => import("./windows/auth"))
+	
 	App = memo(() => {
 		return (
 			<ChakraProvider theme={customTheme}>
@@ -58,6 +61,8 @@ else if(startingRoute[0] == "auth"){
 	})
 }
 else if(startingRoute[0] == "main"){
+	const MainWindow = lazy(() => import("./windows/main"))
+
 	App = memo(() => {
 		const userId: number = useDb("userId", 0)
 		const email: string = useDb("email", "")
@@ -80,6 +85,8 @@ else if(startingRoute[0] == "main"){
 	})
 }
 else if(startingRoute[0] == "settings"){
+	const SettingsWindow = lazy(() => import("./windows/settings"))
+
 	App = memo(() => {
 		const userId: number = useDb("userId", 0)
 		const email: string = useDb("email", "")
@@ -96,6 +103,8 @@ else if(startingRoute[0] == "settings"){
 	})
 }
 else if(startingRoute[0] == "download"){
+	const DownloadWindow = lazy(() => import("./windows/download"))
+
 	App = memo(() => {
 		const userId: number = useDb("userId", 0)
 		const email: string = useDb("email", "")
@@ -118,6 +127,8 @@ else if(startingRoute[0] == "download"){
 	})
 }
 else if(startingRoute[0] == "upload"){
+	const UploadWindow = lazy(() => import("./windows/upload"))
+
 	App = memo(() => {
 		const userId: number = useDb("userId", 0)
 		const email: string = useDb("email", "")
@@ -140,6 +151,8 @@ else if(startingRoute[0] == "upload"){
 	})
 }
 else if(startingRoute[0] == "selectiveSync"){
+	const SelectiveSyncWindow = lazy(() => import("./windows/selectiveSync"))
+
 	App = memo(() => {
 		const userId: number = useDb("userId", 0)
 		const email: string = useDb("email", "")
@@ -162,6 +175,8 @@ else if(startingRoute[0] == "selectiveSync"){
 	})
 }
 else if(startingRoute[0] == "cloud"){
+	const CloudWindow = lazy(() => import("./windows/cloud"))
+
 	App = memo(() => {
 		const userId: number = useDb("userId", 0)
 		const email: string = useDb("email", "")
@@ -185,6 +200,8 @@ else if(startingRoute[0] == "cloud"){
 }
 
 else if(startingRoute[0] == "update"){
+	const UpdateWindow = lazy(() => import("./windows/update"))
+
 	App = memo(() => {
 		return (
 			<ChakraProvider theme={customTheme}>

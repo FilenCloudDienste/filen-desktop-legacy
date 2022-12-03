@@ -130,7 +130,7 @@ const handleMessage = (type: string, request: any) => {
 
             Promise.all([
                 fsLocal.directoryTree(location.local),
-                fsRemote.directoryTree(location.remoteUUID, true)
+                fsRemote.directoryTree(location.remoteUUID, true, location)
             ]).then(([localTree, remoteTree]) => {
                 return resolve({
                     localTree,
@@ -141,7 +141,7 @@ const handleMessage = (type: string, request: any) => {
         else if(type == "remoteTree"){
             const { location } = request
 
-            fsRemote.directoryTree(location.remoteUUID, true).then(resolve).catch(reject)
+            fsRemote.directoryTree(location.remoteUUID, true, location).then(resolve).catch(reject)
         }
         else if(type == "localTree"){
             const { location } = request
@@ -218,7 +218,7 @@ export const listen = () => {
                         return resolve(true)
                     }
 
-                    return setTimeout(check, 25)
+                    return setTimeout(check, 10)
                 }
                 
                 return check()
@@ -235,16 +235,21 @@ export const listen = () => {
                     }
                 })
             })
-        }, 100)
+        }, 1000)
     })
 
-    eventListener.on("syncStatus", (data: any) => {
-        const { type } = data
+    eventListener.on("syncStatus", (response: any) => {
+        const { type, data } = response
 
-        if(type == "acquireSyncLock"){
-            IS_SYNCING = true
+        if(type == "init"){
+            if(data.status == "done"){
+                IS_SYNCING = true
+            }
+            else{
+                IS_SYNCING = false
+            }
         }
-        else if(type == "releaseSyncLock"){
+        else if(type == "cleanup"){
             IS_SYNCING = false
         }
     })

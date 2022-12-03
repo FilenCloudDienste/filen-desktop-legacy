@@ -9,6 +9,7 @@ import useDb from "../../lib/hooks/useDb"
 import eventListener from "../../lib/eventListener"
 import useAppVersion from "../../lib/hooks/useAppVersion"
 import { maxConcurrentSyncTasks } from "../../lib/constants"
+import { loadMetadataFromDisk } from "../../lib/memoryCache/memoryCache"
 
 const log = window.require("electron-log")
 const https = window.require("https")
@@ -140,7 +141,13 @@ const WorkerWindow = memo(() => {
                         db.set("downloadPaused", false),
                         db.set("isOnline", true)
                     ]).then(() => {
-                        sync()
+                        loadMetadataFromDisk().then(() => {
+                            sync()
+                        }).catch((err) => {
+                            sync()
+
+                            log.error(err)
+                        })
                     }).catch((err) => {
                         log.error(err)
                     })

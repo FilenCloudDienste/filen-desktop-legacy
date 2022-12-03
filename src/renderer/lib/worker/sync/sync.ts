@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from "uuid"
 import { maxRetrySyncTask, retrySyncTaskTimeout, maxConcurrentDownloads as maxConcurrentDownloadsPreset, maxConcurrentUploads as maxConcurrentUploadsPreset, maxConcurrentSyncTasks } from "../../constants"
 import { Semaphore, SemaphoreInterface } from "../../helpers"
 import { isSyncLocationPaused, isSuspended, getIgnored, getSyncMode, onlyGetBaseParentMove, onlyGetBaseParentDelete, sortMoveRenameTasks, addToSyncIssues, updateLocationBusyStatus, emitSyncTask, emitSyncStatus, emitSyncStatusLocation, removeRemoteLocation, isPathIncluded, isIgnoredBySelectiveSync } from "./sync.utils"
+import { sendToAllPorts } from "../ipc"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
@@ -649,19 +650,40 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
         log.info("downloadFromRemote", downloadFromRemoteTasks.length)
 
         const doneTasks: any[] = []
+        let syncTasksToDo: number = (renameInRemoteTasks.length + renameInLocalTasks.length + moveInRemoteTasks.length +  moveInLocalTasks.length + deleteInRemoteTasks.length + deleteInLocalTasks.length + uploadToRemoteTasks.length + downloadFromRemoteTasks.length)
+
+        sendToAllPorts({
+            type: "syncTasksToDo",
+            data: syncTasksToDo
+        })
+
+        const updateSyncTasksToDo = () => {
+            syncTasksToDo -= 1
+
+            sendToAllPorts({
+                type: "syncTasksToDo",
+                data: syncTasksToDo
+            })
+        }
 
         if(renameInRemoteTasks.length > 0){
             await Promise.allSettled([
                 ...renameInRemoteTasks.map((task: any) => new Promise((resolve, reject) => {
                     if(typeof task !== "object"){
+                        updateSyncTasksToDo()
+
                         return resolve(true)
                     }
 
                     if(typeof task.item !== "object"){
+                        updateSyncTasksToDo()
+
                         return resolve(true)
                     }
 
                     if(typeof task.item.uuid !== "string"){
+                        updateSyncTasksToDo()
+
                         return resolve(true)
                     }
 
@@ -676,6 +698,8 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                         const doTask = (lastErr?: any) => {
                             if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                                maxSyncTasksSemaphore.release()
+
                                 log.error("renameInRemote task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
     
@@ -688,7 +712,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     err: lastErr
                                 })
 
-                                maxSyncTasksSemaphore.release()
+                                updateSyncTasksToDo()
     
                                 return false
                             }
@@ -707,6 +731,8 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     task,
                                     location
                                 })
+
+                                updateSyncTasksToDo()
 
                                 db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
                                     maxSyncTasksSemaphore.release()
@@ -738,14 +764,20 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
             await Promise.allSettled([
                 ...renameInLocalTasks.map((task: any) => new Promise((resolve, reject) => {
                     if(typeof task !== "object"){
+                        updateSyncTasksToDo()
+
                         return resolve(true)
                     }
 
                     if(typeof task.from !== "string"){
+                        updateSyncTasksToDo()
+
                         return resolve(true)
                     }
 
                     if(typeof task.to !== "string"){
+                        updateSyncTasksToDo()
+
                         return resolve(true)
                     }
 
@@ -760,6 +792,8 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                         const doTask = (lastErr?: any) => {
                             if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                                maxSyncTasksSemaphore.release()
+
                                 log.error("renameInLocal task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
     
@@ -772,7 +806,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     err: lastErr
                                 })
 
-                                maxSyncTasksSemaphore.release()
+                                updateSyncTasksToDo()
     
                                 return false
                             }
@@ -792,6 +826,8 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     location
                                 })
 
+                                updateSyncTasksToDo()
+
                                 db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
                                     maxSyncTasksSemaphore.release()
         
@@ -808,11 +844,15 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
                                 if(typeof err.code !== "undefined"){
                                     if(err.code == "ENOENT"){
+                                        updateSyncTasksToDo()
+
                                         return resolve(true)
                                     }
                                 }
 
                                 if(err.toString().indexOf("ENOENT:") !== -1){
+                                    updateSyncTasksToDo()
+
                                     return resolve(true)
                                 }
     
@@ -832,14 +872,20 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
             await Promise.allSettled([
                 ...moveInRemoteTasks.map((task: any) => new Promise((resolve, reject) => {
                     if(typeof task !== "object"){
+                        updateSyncTasksToDo()
+
                         return resolve(true)
                     }
 
                     if(typeof task.item !== "object"){
+                        updateSyncTasksToDo()
+
                         return resolve(true)
                     }
 
                     if(typeof task.item.uuid !== "string"){
+                        updateSyncTasksToDo()
+
                         return resolve(true)
                     }
 
@@ -854,6 +900,8 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                         const doTask = (lastErr?: any) => {
                             if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                                maxSyncTasksSemaphore.release()
+
                                 log.error("moveInRemote task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
     
@@ -865,8 +913,8 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     location,
                                     err: lastErr
                                 })
-
-                                maxSyncTasksSemaphore.release()
+                                
+                                updateSyncTasksToDo()
     
                                 return false
                             }
@@ -885,6 +933,8 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     task,
                                     location
                                 })
+                                
+                                updateSyncTasksToDo()
 
                                 db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
                                     maxSyncTasksSemaphore.release()
@@ -916,14 +966,20 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
             await Promise.allSettled([
                 ...moveInLocalTasks.map((task: any) => new Promise((resolve, reject) => {
                     if(typeof task !== "object"){
+                        updateSyncTasksToDo()
+
                         return resolve(true)
                     }
 
                     if(typeof task.from !== "string"){
+                        updateSyncTasksToDo()
+
                         return resolve(true)
                     }
 
                     if(typeof task.to !== "string"){
+                        updateSyncTasksToDo()
+
                         return resolve(true)
                     }
 
@@ -938,6 +994,8 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                         const doTask = (lastErr?: any) => {
                             if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                                maxSyncTasksSemaphore.release()
+
                                 log.error("moveInLocal task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
     
@@ -950,7 +1008,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     err: lastErr
                                 })
 
-                                maxSyncTasksSemaphore.release()
+                                updateSyncTasksToDo()
     
                                 return false
                             }
@@ -970,6 +1028,8 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     location
                                 })
 
+                                updateSyncTasksToDo()
+
                                 db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
                                     maxSyncTasksSemaphore.release()
         
@@ -986,11 +1046,15 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
                                 if(typeof err.code !== "undefined"){
                                     if(err.code == "ENOENT"){
+                                        updateSyncTasksToDo()
+
                                         return resolve(true)
                                     }
                                 }
 
                                 if(err.toString().indexOf("ENOENT:") !== -1){
+                                    updateSyncTasksToDo()
+
                                     return resolve(true)
                                 }
     
@@ -1010,14 +1074,20 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
             await Promise.allSettled([
                 ...deleteInRemoteTasks.map((task: any) => new Promise((resolve, reject) => {
                     if(typeof task !== "object"){
+                        updateSyncTasksToDo()
+
                         return resolve(true)
                     }
 
                     if(typeof task.item !== "object"){
+                        updateSyncTasksToDo()
+
                         return resolve(true)
                     }
 
                     if(typeof task.item.uuid !== "string"){
+                        updateSyncTasksToDo()
+
                         return resolve(true)
                     }
 
@@ -1032,6 +1102,8 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                         const doTask = (lastErr?: any) => {
                             if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                                maxSyncTasksSemaphore.release()
+
                                 log.error("deleteInRemote task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
     
@@ -1044,7 +1116,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     err: lastErr
                                 })
 
-                                maxSyncTasksSemaphore.release()
+                                updateSyncTasksToDo()
     
                                 return false
                             }
@@ -1063,6 +1135,8 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     task,
                                     location
                                 })
+
+                                updateSyncTasksToDo()
 
                                 db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
                                     maxSyncTasksSemaphore.release()
@@ -1094,10 +1168,14 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
             await Promise.allSettled([
                 ...deleteInLocalTasks.map((task: any) => new Promise((resolve, reject) => {
                     if(typeof task !== "object"){
+                        updateSyncTasksToDo()
+
                         return resolve(true)
                     }
 
                     if(typeof task.path !== "string"){
+                        updateSyncTasksToDo()
+
                         return resolve(true)
                     }
 
@@ -1112,6 +1190,8 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                         const doTask = (lastErr?: any) => {
                             if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                                maxSyncTasksSemaphore.release()
+
                                 log.error("deleteInLocal task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
     
@@ -1124,7 +1204,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     err: lastErr
                                 })
 
-                                maxSyncTasksSemaphore.release()
+                                updateSyncTasksToDo()
     
                                 return false
                             }
@@ -1143,6 +1223,8 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     task,
                                     location
                                 })
+
+                                updateSyncTasksToDo()
 
                                 db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
                                     maxSyncTasksSemaphore.release()
@@ -1174,14 +1256,20 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
             await Promise.allSettled([
                 ...uploadToRemoteTasks.map((task: any) => new Promise((resolve, reject) => {
                     if(typeof task !== "object"){
+                        updateSyncTasksToDo()
+
                         return resolve(true)
                     }
 
                     if(typeof task.item !== "object"){
+                        updateSyncTasksToDo()
+
                         return resolve(true)
                     }
 
                     if(typeof task.item.uuid !== "string"){
+                        updateSyncTasksToDo()
+
                         return resolve(true)
                     }
 
@@ -1196,6 +1284,8 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                         const doTask = (lastErr?: any) => {
                             if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                                maxSyncTasksSemaphore.release()
+
                                 log.error("uploadToRemote task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
     
@@ -1208,7 +1298,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     err: lastErr
                                 })
 
-                                maxSyncTasksSemaphore.release()
+                                updateSyncTasksToDo()
     
                                 return false
                             }
@@ -1241,6 +1331,8 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                         },
                                         location
                                     })
+
+                                    updateSyncTasksToDo()
     
                                     db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
                                         maxConcurrentUploadsSemaphore.release()
@@ -1267,6 +1359,8 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                         maxConcurrentUploadsSemaphore.release()
                                         maxSyncTasksSemaphore.release()
 
+                                        updateSyncTasksToDo()
+
                                         return resolve(true)
                                     }
 
@@ -1284,6 +1378,8 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
                                         maxConcurrentUploadsSemaphore.release()
                                         maxSyncTasksSemaphore.release()
+
+                                        updateSyncTasksToDo()
 
                                         return resolve(true)
                                     }
@@ -1310,10 +1406,14 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
             await Promise.allSettled([
                 ...downloadFromRemoteTasks.map((task: any) => new Promise((resolve, reject) => {
                     if(typeof task !== "object"){
+                        updateSyncTasksToDo()
+
                         return resolve(true)
                     }
 
                     if(typeof task.path !== "string"){
+                        updateSyncTasksToDo()
+
                         return resolve(true)
                     }
 
@@ -1328,6 +1428,8 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                         const doTask = (lastErr?: any) => {
                             if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                                maxSyncTasksSemaphore.release()
+                                
                                 log.error("downloadFromRemote task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
     
@@ -1340,7 +1442,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     err: lastErr
                                 })
 
-                                maxSyncTasksSemaphore.release()
+                                updateSyncTasksToDo()
     
                                 return false
                             }
@@ -1373,6 +1475,8 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                         },
                                         location
                                     })
+
+                                    updateSyncTasksToDo()
     
                                     db.set("applyDoneTasks:" + location.uuid, doneTasks).then(() => {
                                         maxConcurrentDownloadsSemaphore.release()
@@ -1404,6 +1508,11 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                 }))
             ])
         }
+
+        sendToAllPorts({
+            type: "syncTasksToDo",
+            data: 0
+        })
 
         return resolve({ doneTasks })
     })
@@ -2295,10 +2404,10 @@ const syncLocation = async (location: any): Promise<any> => {
             fsRemote.directoryTree(location.remoteUUID, typeof IS_FIRST_REQUEST[location.uuid] == "undefined", location)
         ])
 
-        await Promise.all([
+        /*await Promise.all([
             db.set("localDataChanged:" + location.uuid, false),
             db.set("remoteDataChanged:" + location.uuid, false)
-        ])
+        ])*/
     }
     catch(e: any){
         if((await isSuspended())){
@@ -2411,8 +2520,10 @@ const syncLocation = async (location: any): Promise<any> => {
     })
 
     try{
-        var localDeltas = await getDeltas("local", lastLocalTree, localTreeNow)
-        var remoteDeltas = await getDeltas("remote", lastRemoteTree, remoteTreeNow)
+        var [localDeltas, remoteDeltas] = await Promise.all([
+            getDeltas("local", lastLocalTree, localTreeNow),
+            getDeltas("remote", lastRemoteTree, remoteTreeNow)
+        ])
     }
     catch(e: any){
         log.error("Could not get deltas for location " + location.uuid)

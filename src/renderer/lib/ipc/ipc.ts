@@ -78,11 +78,10 @@ const handleGlobalMessage = (data: any) => {
     const { type } = data
 
     if(type == "dbSet"){
-        const { key, value } = data.data
+        const { key } = data.data
 
         eventListener.emit("dbSet", {
-            key,
-            value
+            key
         })
     }
     else if(type == "dbRemove"){
@@ -96,13 +95,14 @@ const handleGlobalMessage = (data: any) => {
         eventListener.emit("dbClear")
     }
     else if(
-        data.type == "uploadProgress" || 
-        data.type == "downloadProgress" || 
-        data.type == "syncTask" || 
-        data.type == "syncStatus" || 
-        data.type == "syncStatusLocation" || 
-        data.type == "downloadProgressSeperate" ||
-        data.type == "uploadProgressSeperate"
+        data.type == "uploadProgress"
+        || data.type == "downloadProgress"
+        || data.type == "syncTask"
+        || data.type == "syncStatus"
+        || data.type == "syncStatusLocation"
+        || data.type == "downloadProgressSeperate"
+        || data.type == "uploadProgressSeperate"
+        || data.type == "syncTasksToDo"
     ){
         eventListener.emit(data.type, data.data)
     }
@@ -149,7 +149,7 @@ const ipc = {
             })
         })
     },
-    getAppPath: (path: string): Promise<any> => {
+    getAppPath: (path: string): Promise<string> => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 

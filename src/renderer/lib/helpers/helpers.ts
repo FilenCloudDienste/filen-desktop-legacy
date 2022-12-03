@@ -2,7 +2,35 @@ import { defaultIgnored } from "../constants"
 import { memoize } from "lodash"
 
 const pathModule = window.require("path")
-const checkDiskSpace = window.require("check-disk-space")
+const is = window.require("electron-is")
+
+export const isPathOverMaxLength = memoize((path: string) => {
+  if(is.linux()){
+    return path.length > 4095
+  }
+  else if(is.macOS()){
+    return path.length > 1023
+  }
+  else if(is.windows()){
+    return path.length > 254
+  }
+
+  return path.length > 254
+})
+
+export const isNameOverMaxLength = memoize((name: string) => {
+  if(is.linux()){
+    return name.length > 254
+  }
+  else if(is.macOS()){
+    return name.length > 254
+  }
+  else if(is.windows()){
+    return name.length > 254
+  }
+
+  return name.length > 254
+})
 
 export const isSubdir = memoize((parent: string, path: string) => {
   const relative = pathModule.relative(parent, path)
@@ -568,17 +596,4 @@ export function timeSince(ts: number, lang: string = "en") {
       return Math.floor(interval) + " minutes ago";
     }
     return Math.floor(seconds) + " seconds ago";
-}
-
-export const localDiskSpace = async (path: string): Promise<number> => {
-	try{
-		const space = await (typeof checkDiskSpace == "function" ? checkDiskSpace : checkDiskSpace['default'])(pathModule.normalize(path))
-
-		return space.free
-	}
-	catch(e){
-		console.error(e)
-
-		return Number.MAX_SAFE_INTEGER
-	}
 }

@@ -39,8 +39,7 @@ const handleMessage = (type, data) => {
                     emitGlobal("global-message", {
                         type: "dbSet",
                         data: {
-                            key,
-                            value
+                            key
                         }
                     })
 

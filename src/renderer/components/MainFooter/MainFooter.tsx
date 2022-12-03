@@ -5,20 +5,14 @@ import { AiOutlineCheckCircle, AiOutlinePauseCircle } from "react-icons/ai"
 import colors from "../../styles/colors"
 import isEqual from "react-fast-compare"
 import { i18n } from "../../lib/i18n"
-import { maxConcurrentSyncTasks } from "../../lib/constants"
 
 interface Props {
-    userId: number,
-    email: string,
     platform: string,
     darkMode: boolean,
     lang: string,
-    currentUploads: any,
-    currentDownloads: any,
     paused: boolean,
-    runningTasks: any,
     totalRemaining: any,
-    runningSyncTasks: any,
+    syncTasksToDo: number,
     isOnline: boolean,
     acquiringLock: boolean,
     checkingChanges: boolean
@@ -31,17 +25,12 @@ export default class MainFooter extends React.Component<Props> {
 
     render(){
         const {
-            userId,
-            email,
             platform,
             darkMode,
             lang,
-            currentUploads,
-            currentDownloads,
             paused,
-            runningTasks,
             totalRemaining,
-            runningSyncTasks,
+            syncTasksToDo,
             isOnline,
             acquiringLock,
             checkingChanges
@@ -78,7 +67,7 @@ export default class MainFooter extends React.Component<Props> {
                                     {i18n(lang, "acquiringSyncLock")}
                                 </Text>
                             </Flex>
-                        ) : checkingChanges && (runningTasks.length + runningSyncTasks + Object.keys(currentUploads).length + Object.keys(currentDownloads).length) <= 0 ? (
+                        ) : checkingChanges && syncTasksToDo <= 0 ? (
                             <Flex alignItems="center">
                                 <Spinner
                                     width="12px"
@@ -97,7 +86,7 @@ export default class MainFooter extends React.Component<Props> {
                         ) : (
                             <>
                                 {
-                                    (runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length) > 0 ? (
+                                    syncTasksToDo > 0 ? (
                                         <Flex alignItems="center">
                                             <Spinner
                                                 width="12px"
@@ -112,24 +101,16 @@ export default class MainFooter extends React.Component<Props> {
                                             >
                                                 {
                                                     (() => {
-                                                        const runningTaskCount = (runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length)
-
-                                                        if(runningTaskCount == 1){
+                                                        if(syncTasksToDo == 1){
                                                             return i18n(lang, "syncingItemsFooterSingular", true, ["__COUNT__"], ["1"])
                                                         }
-                                                        else{
-                                                            if(runningTaskCount > 32 && ((runningTaskCount + 32) > maxConcurrentSyncTasks)){
-                                                                return i18n(lang, "syncingItemsFooterPlural", true, ["__COUNT__"], [maxConcurrentSyncTasks.toString() + "+"])
-                                                            }
-                                                            else{
-                                                                return i18n(lang, "syncingItemsFooterPlural", true, ["__COUNT__"], [runningTaskCount.toString()])
-                                                            }
-                                                        }
+                                                        
+                                                        return i18n(lang, "syncingItemsFooterPlural", true, ["__COUNT__"], [syncTasksToDo.toString()])
                                                     })()
                                                 }
                                             </Text>
                                         </Flex>
-                                    ) : runningSyncTasks > 0 ? (
+                                    ) : syncTasksToDo > 0 ? (
                                         <Flex alignItems="center">
                                             <Spinner
                                                 width="12px"
@@ -181,7 +162,7 @@ export default class MainFooter extends React.Component<Props> {
                                 ) : (
                                     <>
                                         {
-                                            (Object.keys(currentUploads).length + Object.keys(currentDownloads).length) > 0 && (() => {
+                                            syncTasksToDo > 0 && (() => {
                                                 const remainingReadable = getTimeRemaining((new Date().getTime() + (totalRemaining * 1000)))
 
                                                 if(remainingReadable.total <= 1 || remainingReadable.minutes <= 1){

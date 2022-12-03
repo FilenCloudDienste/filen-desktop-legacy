@@ -1,7 +1,7 @@
 import { folderPresent, dirTree, createFolder, folderExists, uploadChunk, markUploadAsDone, checkIfItemParentIsShared, trashItem, moveFile, moveFolder, renameFile, renameFolder } from "../../api"
 import db from "../../db"
 import { decryptFolderName, decryptFileMetadata, hashFn, encryptMetadata, encryptData } from "../../crypto"
-import { convertTimestampToMs, pathIsFileOrFolderNameIgnoredByDefault, generateRandomString, Semaphore, isFolderPathExcluded, pathValidation } from "../../helpers"
+import { convertTimestampToMs, pathIsFileOrFolderNameIgnoredByDefault, generateRandomString, Semaphore, isFolderPathExcluded, pathValidation, isPathOverMaxLength, isNameOverMaxLength } from "../../helpers"
 import { normalizePath, smokeTest as smokeTestLocal, readChunk, checkLastModified } from "../local"
 import { chunkSize, maxUploadThreads } from "../../constants"
 import { v4 as uuidv4 } from "uuid"
@@ -31,7 +31,7 @@ export const smokeTest = async (uuid: string = ""): Promise<boolean> => {
     return true
 }
 
-export const directoryTree = (uuid: string = "", skipCache: boolean = false, location?: any): Promise<any> => {
+export const directoryTree = (uuid: string = "", skipCache: boolean = false, location: any): Promise<any> => {
     return new Promise((resolve, reject) => {
         Promise.all([
             db.get("deviceId"),
@@ -69,7 +69,7 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                         log.error(e)
                     }
 
-                    return directoryTree(uuid, true).then(resolve).catch(reject)
+                    return directoryTree(uuid, true, location).then(resolve).catch(reject)
                 }
 
                 folderPathUUID.clear()
@@ -119,7 +119,7 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
 
                         const name = await decryptFolderName(metadata, masterKeys)
 
-                        if(name.length > 0 && name.length < 250){
+                        if(name.length > 0 && !isNameOverMaxLength(name)){
                             if(!addedFolders[parent + ":" + name]){
                                 addedFolders[parent + ":" + name] = true
 
@@ -165,7 +165,7 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
 
                         decrypted.lastModified = convertTimestampToMs(decrypted.lastModified)
 
-                        if(decrypted.name.length > 0 && decrypted.name.length < 250){
+                        if(decrypted.name.length > 0 && !isNameOverMaxLength(decrypted.name)){
                             if(!addedFiles[parent + ":" + decrypted.name]){
                                 addedFiles[parent + ":" + decrypted.name] = true
 
@@ -202,7 +202,14 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                     }))
                 }
 
-                await Promise.all(promises)
+                try{
+                    await Promise.all(promises)
+                }
+                catch(e){
+                    log.error(e)
+
+                    return reject(e)
+                }
 
                 const nest = (items: any, uuid: string = "base", currentPath: string = "", link: string = "parent"): any => {
                     return items.filter((item: any) => item[link] == uuid).map((item: any) => ({ 
@@ -272,7 +279,7 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                                 include = false
                             }
 
-                            if(include && !isFolderPathExcluded(newProp)){
+                            if(include && !isFolderPathExcluded(newProp) && !isPathOverMaxLength(location.local + "/" + newProp)){
                                 newFiles[newProp] = {
                                     ...files[prop],
                                     path: newProp
@@ -297,7 +304,7 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                                 include = false
                             }
 
-                            if(include && !isFolderPathExcluded(newProp)){
+                            if(include && !isFolderPathExcluded(newProp) && !isPathOverMaxLength(location.local + "/" + newProp)){
                                 newFolders[newProp] = {
                                     ...folders[prop],
                                     path: newProp
@@ -322,7 +329,7 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                                 include = false
                             }
 
-                            if(include && !isFolderPathExcluded(newValue)){
+                            if(include && !isFolderPathExcluded(newValue) && !isPathOverMaxLength(location.local + "/" + newValue)){
                                 newUUIDS[prop] = {
                                     ...uuids[prop],
                                     path: newValue

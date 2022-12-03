@@ -11,7 +11,7 @@ import MainFooter from "../../components/MainFooter"
 import MainList from "../../components/MainList"
 import MainHeader from "../../components/MainHeader"
 import useDb from "../../lib/hooks/useDb"
-import { throttle } from "lodash"
+import { throttle, debounce } from "lodash"
 import { sizeOverheadMultiplier, speedMultiplier } from "../../lib/constants"
 import UpdateModal from "../../components/UpdateModal"
 import MaxStorageModal from "../../components/MaxStorageModal"
@@ -41,6 +41,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
     const [totalRemaining, setTotalRemaining] = useState<number>(0)
     const [acquiringLock, setAcquiringLock] = useState<boolean>(false)
     const [checkingChanges, setCheckingChanges] = useState<boolean>(false)
+    const [syncTasksToDo, setSyncTasksToDo] = useState<number>(0)
     
     const acquiringLockTimeout = useRef<any>(undefined)
     const bytesSent = useRef<number>(0)
@@ -64,7 +65,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
         return remaining > 0 ? remaining : 0
     }
 
-    const setDoneTasksThrottled = useCallback(throttle(({ doneTasks }) => {
+    const setDoneTasksThrottled = useCallback(debounce(({ doneTasks }) => {
         if(doneTasks.length > 0){
             db.set("doneTasks:" + userId, doneTasks.slice(0, 1024)).catch(log.error)
         }
@@ -365,6 +366,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
             }
         })
 
+        const syncTasksToDoListener = eventListener.on("syncTasksToDo", setSyncTasksToDo)
         const doneTasksClearedListener = eventListener.on("doneTasksCleared", () => setDoneTasks([]))
 
         ipcRenderer.send("window-ready", windowId)
@@ -375,6 +377,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
             downloadProgressListener.remove()
             syncStatusListener.remove()
             doneTasksClearedListener.remove()
+            syncTasksToDoListener.remove()
         }
     }, [])
 
@@ -416,16 +419,11 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
                 isOnline={isOnline}
             />
             <MainFooter
-                userId={userId}
-                email={email}
                 platform={platform}
                 darkMode={darkMode}
                 lang={lang}
-                currentUploads={currentUploads}
-                currentDownloads={currentDownloads}
-                runningTasks={runningTasks}
                 totalRemaining={totalRemaining}
-                runningSyncTasks={(runningTasks.length + Object.keys(currentUploads).length + Object.keys(currentDownloads).length)}
+                syncTasksToDo={syncTasksToDo}
                 isOnline={isOnline}
                 acquiringLock={acquiringLock}
                 checkingChanges={checkingChanges}

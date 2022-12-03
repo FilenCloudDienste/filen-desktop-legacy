@@ -8,12 +8,22 @@ const useDb = (dbKey: string, defaultValue: any): any => {
     const [data, setData] = useState<any>(defaultValue)
 
 	useEffect(() => {
-		const setListener = eventListener.on("dbSet", ({ key, value }: { key: string, value: any }) => {
+		const setListener = eventListener.on("dbSet", ({ key }: { key: string }) => {
 			if(key !== dbKey){
 				return false
 			}
 
-			return setData(value)
+			db.get(dbKey).then((value: any) => {
+				if(!value){
+					return setData(defaultValue)
+				}
+	
+				if(value == null){
+					return setData(defaultValue)
+				}
+	
+				return setData(value)
+			}).catch(log.error)
 		})
 
 		const clearListener = eventListener.on("dbClear", () => {

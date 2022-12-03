@@ -204,7 +204,11 @@ export const decryptFolderName = (metadata: string, masterKeys: string[]): Promi
 
         if(typeof folderName == "string"){
             if(folderName.length > 0){
-                memoryCache.set(cacheKey, folderName)
+                if(!memoryCache.has(cacheKey)){
+                    memoryCache.set(cacheKey, folderName)
+
+                    await memoryCache.saveMetadataToDisk(cacheKey, folderName)
+                }
             }
         }
 
@@ -366,7 +370,11 @@ export const decryptFileMetadata = (metadata: string, masterKeys: string[]): Pro
     
         if(typeof obj.name == "string"){
             if(obj.name.length > 0){
-                memoryCache.set(cacheKey, obj)
+                if(!memoryCache.has(cacheKey)){
+                    memoryCache.set(cacheKey, obj)
+
+                    await memoryCache.saveMetadataToDisk(cacheKey, obj)
+                }
             }
         }
     
@@ -403,7 +411,11 @@ export const decryptFolderLinkKey = (metadata: string, masterKeys: string[]): Pr
 
         if(typeof link == "string"){
             if(link.length > 0){
-                memoryCache.set(cacheKey, link)
+                if(!memoryCache.has(cacheKey)){
+                    memoryCache.set(cacheKey, link)
+
+                    await memoryCache.saveMetadataToDisk(cacheKey, link)
+                }
             }
         }
     
@@ -444,7 +456,11 @@ export const decryptFolderNameLink = (metadata: string, linkKey: string): Promis
 
         if(typeof folderName == "string"){
             if(folderName.length > 0){
-                memoryCache.set(cacheKey, folderName)
+                if(!memoryCache.has(cacheKey)){
+                    memoryCache.set(cacheKey, folderName)
+
+                    await memoryCache.saveMetadataToDisk(cacheKey, folderName)
+                }
             }
         }
 
@@ -497,7 +513,11 @@ export const decryptFileMetadataLink = (metadata: string, linkKey: string): Prom
 
         if(typeof obj.name == "string"){
             if(obj.name.length >= 1){
-                memoryCache.set(cacheKey, obj)
+                if(!memoryCache.has(cacheKey)){
+                    memoryCache.set(cacheKey, obj)
+
+                    await memoryCache.saveMetadataToDisk(cacheKey, obj)
+                }
             }
         }
 
@@ -532,7 +552,11 @@ export const decryptFolderNamePrivateKey = (metadata: string, privateKey: any): 
 
         if(typeof folderName == "string"){
             if(folderName.length > 0){
-                memoryCache.set(cacheKey, folderName)
+                if(!memoryCache.has(cacheKey)){
+                    memoryCache.set(cacheKey, folderName)
+
+                    await memoryCache.saveMetadataToDisk(cacheKey, folderName)
+                }
             }
         }
 
@@ -583,7 +607,11 @@ export const decryptFileMetadataPrivateKey = (metadata: string, privateKey: any)
 
         if(typeof obj.name == "string"){
             if(obj.name.length >= 1){
-                memoryCache.set(cacheKey, obj)
+                if(!memoryCache.has(cacheKey)){
+                    memoryCache.set(cacheKey, obj)
+
+                    await memoryCache.saveMetadataToDisk(cacheKey, obj)
+                }
             }
         }
 
