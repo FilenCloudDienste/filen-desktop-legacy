@@ -253,6 +253,8 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                                                 type: "file",
                                                 path: entryPath
                                             }
+
+                                            memoryCache.set("fileKey:" + uuid, decrypted.key)
                                         }
                 
                                         return resolve(true)
@@ -655,6 +657,8 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
                             key,
                             lastModified
                         })
+
+                        memoryCache.set("fileKey:" + uuid, key)
     
                         return resolve({
                             uuid,

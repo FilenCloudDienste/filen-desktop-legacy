@@ -144,7 +144,9 @@ const de: {
     updateWindowInfo2: "Die App wird beendet und der Update Vorgang gestartet. Bitte unterbrechen Sie diesen Vorgang nicht.",
     titlebarUpdateInstalled: "Update installiert",
     clearLocalEventLog: "Lokalen Event Log leeren",
-    clearLocalEventLogInfo: "Hiermit wird der lokale Event Log geleert. Sind Sie sicher? Diese Aktion kann nicht rückgängig gemacht werden!"
+    clearLocalEventLogInfo: "Hiermit wird der lokale Event Log geleert. Sind Sie sicher? Diese Aktion kann nicht rückgängig gemacht werden!",
+    copied: "Kopiert",
+    publicLinkCopied: "Öffentlicher Link in die Zwischenablage kopiert"
 }
 
 export default de

@@ -21,6 +21,7 @@ import * as fsLocal from "../../fs/local"
 import * as fsRemote from "../../fs/remote"
 import ipc from "../../ipc"
 import eventListener from "../../eventListener"
+import memoryCache from "../../memoryCache"
 
 const { ipcRenderer } = window.require("electron")
 const log = window.require("electron-log")
@@ -170,6 +171,15 @@ const handleMessage = (type: string, request: any) => {
             const { region, bucket, uuid, index, from } = request
 
             downloadChunk({ region, bucket, uuid, index, from }).then(resolve).catch(reject)
+        }
+        else if(type == "getFileKey"){
+            const { uuid } = request
+
+            if(memoryCache.has("fileKey:" + uuid)){
+                return resolve(memoryCache.get("fileKey:" + uuid))
+            }
+
+            return reject(new Error("File key for " + uuid + " not found"))
         }
         else{
             return reject("Invalid message type: " + type.toString())

@@ -601,3 +601,16 @@ export function timeSince(ts: number, lang: string = "en") {
     }
     return Math.floor(seconds) + " seconds ago";
 }
+
+export const copyToClipboard = (text: string): Promise<boolean> => {
+  return new Promise((resolve, reject) => {
+    try{
+      navigator.clipboard.writeText(text)
+
+      return resolve(true)
+    }
+    catch(e){
+      return reject(e)
+    }
+  })
+}

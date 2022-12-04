@@ -1071,6 +1071,23 @@ const ipc = {
                 type: "installUpdate"
             })
         })
+    },
+    getFileKey: (uuid: string): Promise<any> => {
+        return new Promise((resolve, reject) => {
+            const messageId = uuidv4()
+
+            resolves[messageId] = resolve
+            rejects[messageId] = reject
+
+            return ipcRenderer.send("proxy-for-worker", {
+                messageId,
+                messageSender: MESSAGE_SENDER,
+                type: "getFileKey",
+                data: {
+                    uuid
+                }
+            })
+        })
     }
 }
 

@@ -144,7 +144,9 @@ const en: {
     updateWindowInfo2: "The app will exit and start the update flow. Please do not interrupt this process.",
     titlebarUpdateInstalled: "Update installed",
     clearLocalEventLog: "Clear local event log",
-    clearLocalEventLogInfo: "This will clear the local event log shown. Are you sure? This action cannot be undone!"
+    clearLocalEventLogInfo: "This will clear the local event log shown. Are you sure? This action cannot be undone!",
+    copied: "Copied",
+    publicLinkCopied: "Public link copied to clipboard"
 }
 
 export default en

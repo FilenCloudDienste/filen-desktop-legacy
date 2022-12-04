@@ -1,13 +1,17 @@
 import React, { memo, useState, useEffect, useRef, useCallback } from "react"
-import { Flex, Text, Progress, Spinner, Image } from "@chakra-ui/react"
+import { Flex, Text, Progress, Spinner, Image, useToast } from "@chakra-ui/react"
 import { bpsToReadable, timeSince } from "../../lib/helpers"
 import colors from "../../styles/colors"
 import { BsFileEarmark, BsFillFolderFill } from "react-icons/bs"
 import { IoSearchOutline, IoArrowDown, IoArrowUp } from "react-icons/io5"
-import { AiOutlinePauseCircle } from "react-icons/ai"
+import { AiOutlinePauseCircle, AiOutlineLink } from "react-icons/ai"
 import ipc from "../../lib/ipc"
 import memoryCache from "../../lib/memoryCache"
 import { i18n } from "../../lib/i18n"
+import { itemPublicLinkInfo, enableItemPublicLink } from "../../lib/api"
+import { copyToClipboard } from "../../lib/helpers"
+import { decryptFolderLinkKey } from "../../lib/crypto"
+import db from "../../lib/db"
 
 const pathModule = window.require("path")
 const { shell } = window.require("electron")
@@ -38,6 +42,10 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
     const [hovering, setHovering] = useState<boolean>(false)
     const [itemTimeSince, setItemTimeSince] = useState<string>(timeSince(typeof task.timestamp == "number" ? task.timestamp : new Date().getTime()))
     const [itemIcon, setItemIcon] = useState<any>(task.task.type == "folder" ? "folder" : (memoryCache.has(itemIconCacheKey) ? memoryCache.get(itemIconCacheKey) : undefined))
+    const [creatingPublicLink, setCreatingPublicLink] = useState<boolean>(false)
+    const toast = useToast()
+    const publicLinkInfo = useRef<any>(undefined)
+    const publicLinkKey = useRef<string>("")
 
     const getFileIcon = useCallback(() => {
         if(task.task.type == "file" && typeof task.location !== "undefined" && typeof task.location.local !== "undefined"){
@@ -67,6 +75,124 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
         timeSinceInterval.current = setInterval(() => {
             setItemTimeSince(timeSince(typeof task.timestamp == "number" ? task.timestamp : new Date().getTime()))
         }, 1000)
+    }, [])
+
+    const fetchPublicLinkInfo = useCallback((uuid: string, type: "folder" | "file", waitUntilEnabled: boolean = false, waitUntilDisabled: boolean = false): Promise<any> => {
+        return new Promise((resolve, reject) => {
+            const req = () => {
+                itemPublicLinkInfo(uuid, type).then(async (info) => {
+                    const exists: boolean = type == "file" ? (typeof info.enabled == "boolean" && info.enabled) : (typeof info.exists == "boolean" && info.exists)
+
+                    if(waitUntilEnabled && !exists){
+                        return setTimeout(req, 250)
+                    }
+    
+                    if(waitUntilDisabled && exists){
+                        return setTimeout(req, 250)
+                    }
+
+                    if(type == "folder" && exists){
+                        const masterKeys: string[] = await db.get("masterKeys")
+                        const keyDecrypted: string = await decryptFolderLinkKey(info.key, masterKeys)
+        
+                        if(keyDecrypted.length == 0){
+                            return reject(new Error("Could not decrypt link key"))
+                        }
+        
+                        publicLinkKey.current = keyDecrypted
+                    }
+
+                    publicLinkInfo.current = info
+        
+                    return resolve(info)
+                }).catch(reject)
+            }
+
+            return req()
+        })
+    }, [])
+
+    const copyPublicLink = useCallback((uuid: string, type: "folder" | "file", info: any) => {
+        if(type == "file"){
+            ipc.getFileKey(uuid).then((fileKey) => {
+                copyToClipboard("https://drive.filen.io/d/" + info.uuid +  "#" + fileKey).then(() => {
+                    toast({
+                        position: "bottom",
+                        title: i18n(lang, "copied"),
+                        description: i18n(lang, "publicLinkCopied"),
+                        status: "success",
+                        duration: 2500,
+                        containerStyle: {
+                            fontSize: 13,
+                            padding: 5
+                        }
+                    })
+
+                    setCreatingPublicLink(false)
+                }).catch((err) => {
+                    log.error(err)
+
+                    setCreatingPublicLink(false)
+                })
+            }).catch((err) => {
+                log.error(err)
+    
+                setCreatingPublicLink(false)
+            })
+        }
+        else{
+            copyToClipboard("https://drive.filen.io/f/" + info.uuid +  "#" + publicLinkKey.current).then(() => {
+                toast({
+                    position: "bottom",
+                    title: i18n(lang, "copied"),
+                    description: i18n(lang, "publicLinkCopied"),
+                    status: "success",
+                    duration: 2500,
+                    containerStyle: {
+                        fontSize: 13,
+                        padding: 5
+                    }
+                })
+
+                setCreatingPublicLink(false)
+            }).catch((err) => {
+                log.error(err)
+
+                setCreatingPublicLink(false)
+            })
+        }
+    }, [task, lang])
+
+    const createPublicLink = useCallback((uuid: string, type: "folder" | "file") => {
+        setCreatingPublicLink(true)
+
+        fetchPublicLinkInfo(uuid, type).then((info) => {
+            const enabled: boolean = type == "file" ? (typeof info.enabled == "boolean" && info.enabled) : (typeof info.exists == "boolean" && info.exists && typeof publicLinkKey.current == "string" && publicLinkKey.current.length >= 32)
+
+            if(enabled){
+                copyPublicLink(uuid, type, info)
+
+                return
+            }
+
+            enableItemPublicLink(uuid, type).then(() => {
+                fetchPublicLinkInfo(uuid, type, true).then((info) => {
+                    copyPublicLink(uuid, type, info)
+                }).catch((err) => {
+                    log.error(err)
+
+                    setCreatingPublicLink(false)
+                })
+            }).catch((err) => {
+                log.error(err)
+
+                setCreatingPublicLink(false)
+            })
+        }).catch((err) => {
+            log.error(err)
+
+            setCreatingPublicLink(false)
+        })
     }, [])
 
     useEffect(() => {
@@ -356,6 +482,32 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
                                             justifyContent="flex-end" 
                                             flexDirection="row"
                                         >
+                                            {
+                                                ["uploadToRemote", "renameInRemote", "moveInRemote"].includes(task.type) && typeof task.task.type == "string" && task.task.type == "file" && (
+                                                    <>
+                                                        {
+                                                            creatingPublicLink ? (
+                                                                <Spinner 
+                                                                    width="14px"
+                                                                    height="14px"
+                                                                    marginRight="10px"
+                                                                    color={colors(platform, darkMode, "textPrimary")}
+                                                                />
+                                                            ) : (
+                                                                <AiOutlineLink 
+                                                                    size={18} 
+                                                                    color={colors(platform, darkMode, "textPrimary")} 
+                                                                    cursor="pointer"
+                                                                    style={{
+                                                                        marginRight: "10px"
+                                                                    }}
+                                                                    onClick={() => createPublicLink(task.task.item.uuid, "file")} 
+                                                                />
+                                                            )
+                                                        }
+                                                    </>
+                                                )
+                                            }
                                             <IoSearchOutline 
                                                 size={18} 
                                                 color={colors(platform, darkMode, "textPrimary")} 

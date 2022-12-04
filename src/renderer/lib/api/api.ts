@@ -1,5 +1,5 @@
 import { apiServers, uploadServers, downloadServers, maxRetryAPIRequest, retryAPIRequestTimeout, maxRetryUpload, maxRetryDownload, retryUploadTimeout, retryDownloadTimeout, maxConcurrentAPIRequest, maxConcurrentUploads, maxConcurrentDownloads } from "../constants"
-import { getRandomArbitrary, Semaphore, nodeBufferToArrayBuffer } from "../helpers"
+import { getRandomArbitrary, Semaphore, nodeBufferToArrayBuffer, generateRandomString } from "../helpers"
 import { hashFn, encryptMetadata, encryptMetadataPublicKey, decryptFolderLinkKey, decryptFileMetadata, decryptFolderName } from "../crypto"
 import db from "../db"
 import { sendToAllPorts } from "../worker/ipc"
@@ -7,6 +7,7 @@ import { logout } from "../../windows/settings/settings"
 import striptags from "striptags"
 import { isSyncLocationPaused } from "../worker/sync/sync.utils"
 import memoryCache from "../memoryCache"
+import { v4 as uuidv4 } from "uuid"
 
 const https = window.require("https")
 const log = window.require("electron-log")
@@ -1945,6 +1946,127 @@ export const renameFolder = ({ folder, name }: { folder: any, name: string }): P
                     }).catch(reject)
                 }).catch(reject)
             }).catch(reject)
+        }).catch(reject)
+    })
+}
+
+export const itemPublicLinkInfo = (uuid: string, type: "folder" | "file"): Promise<any> => {
+    return new Promise((resolve, reject) => {
+        db.get("apiKey").then((apiKey) => {
+            apiRequest({
+                method: "POST",
+                endpoint: type == "file" ? "/v1/link/status" : "/v1/dir/link/status",
+                data: type == "file" ? {
+                    apiKey,
+                    fileUUID: uuid
+                } : {
+                    apiKey,
+                    uuid: uuid
+                }
+            }).then((response) => {
+                if(!response.status){
+                    return reject(response.message)
+                }
+    
+                return resolve(response.data)
+            }).catch(reject) 
+        }).catch(reject)
+    })
+}
+
+export const enableItemPublicLink = (uuid: string, type: "folder" | "file", progressCallback?: (current: number, total: number) => any): Promise<boolean> => {
+    return new Promise((resolve, reject) => {
+        db.get("apiKey").then(async (apiKey) => {
+            if(type == "file"){
+                const linkUUID: string = uuidv4()
+
+                apiRequest({
+                    method: "POST",
+                    endpoint: "/v1/link/edit",
+                    data: {
+                        apiKey,
+                        uuid: linkUUID,
+                        fileUUID: uuid,
+                        expiration: "never",
+                        password: "empty",
+                        passwordHashed: hashFn("empty"),
+                        salt: generateRandomString(32),
+                        downloadBtn: "enable",
+                        type: "enable"
+                    }
+                }).then((response) => {
+                    if(typeof progressCallback == "function"){
+                        progressCallback(1, 1)
+                    }
+
+                    if(!response.status){
+                        return reject(response.message)
+                    }
+        
+                    return resolve(true)
+                }).catch(reject) 
+            }
+            else{
+                //createFolderPublicLink(item, progressCallback).then(() => {
+                //    return resolve(true)
+                //}).catch(reject)
+
+                return reject(new Error("not implemented"))
+            }
+        }).catch(reject)
+    })
+}
+
+export const disableItemPublicLink = (uuid: string, type: "folder" | "file", linkUUID: string): Promise<boolean> => {
+    return new Promise((resolve, reject) => {
+        db.get("apiKey").then(async (apiKey) => {
+            if(type == "file"){
+                if(typeof linkUUID !== "string"){
+                    return reject(new Error("Invalid linkUUID"))
+                }
+
+                if(linkUUID.length < 32){
+                    return reject(new Error("Invalid linkUUID"))
+                }
+
+                apiRequest({
+                    method: "POST",
+                    endpoint: "/v1/link/edit",
+                    data: {
+                        apiKey,
+                        uuid: linkUUID,
+                        fileUUID: uuid,
+                        expiration: "never",
+                        password: "empty",
+                        passwordHashed: hashFn("empty"),
+                        salt: generateRandomString(32),
+                        downloadBtn: "enable",
+                        type: "disable"
+                    }
+                }).then((response) => {
+                    if(!response.status){
+                        return reject(response.message)
+                    }
+        
+                    return resolve(true)
+                }).catch(reject) 
+            }
+            else{
+                apiRequest({
+                    method: "POST",
+                    endpoint: "/v1/dir/link/remove",
+                    data: {
+                        apiKey,
+                        uuid
+                    }
+                }).then((response) => {
+                    if(!response.status){
+                        return reject(response.message)
+                    }
+        
+                    return resolve(true)
+                }).catch(reject)
+            }
         }).catch(reject)
     })
 }

@@ -760,7 +760,10 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                 if(currentSyncLocations[i].uuid == location.uuid){
                     currentSyncLocations[i].paused = paused
 
-                    await db.set("localDataChanged:" + currentSyncLocations[i].uuid, true)
+                    await Promise.all([
+                        db.set("localDataChanged:" + currentSyncLocations[i].uuid, true),
+                        db.set("remoteDataChanged:" + currentSyncLocations[i].uuid, true)
+                    ])
                 }
             }
 
@@ -1325,6 +1328,11 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                         for(let i = 0; i < currentSyncLocations.length; i++){
                                                             if(currentSyncLocations[i].uuid == currentSyncLocation.uuid){
                                                                 currentSyncLocations[i].type = type
+
+                                                                await Promise.all([
+                                                                    db.set("localDataChanged:" + currentSyncLocations[i].uuid, true),
+                                                                    db.set("remoteDataChanged:" + currentSyncLocations[i].uuid, true)
+                                                                ])
                                                             }
                                                         }
 
@@ -1523,7 +1531,10 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                                 currentSyncLocations[i].paused = paused
 
                                                                 if(!paused){
-                                                                    await db.set("localDataChanged:" + currentSyncLocations[i].uuid, true)
+                                                                    await Promise.all([
+                                                                        db.set("localDataChanged:" + currentSyncLocations[i].uuid, true),
+                                                                        db.set("remoteDataChanged:" + currentSyncLocations[i].uuid, true)
+                                                                    ])
                                                                 }
                                                             }
                                                         }
