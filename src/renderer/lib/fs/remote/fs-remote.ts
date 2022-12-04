@@ -129,6 +129,11 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                                     }).then((parentPath) => {
                                         const foundParentPath = parentPath.length == 0 ? "" : parentPath + "/"
                                         const thisPath = foundParentPath + name
+
+                                        if(parent !== "base" && thisPath.indexOf("/") == -1){
+                                            return resolve(true)
+                                        }
+
                                         const entryPath = thisPath.split("/").slice(1).join("/")
         
                                         uuidsToPaths[uuid] = thisPath
@@ -206,6 +211,11 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                                     }).then((parentPath) => {
                                         const foundParentPath = parentPath.length == 0 ? "" : parentPath + "/"
                                         const thisPath = parent == "base" ? decrypted.name : foundParentPath + decrypted.name
+
+                                        if(parent !== "base" && thisPath.indexOf("/") == -1){
+                                            return resolve(true)
+                                        }
+
                                         const entryPath = thisPath.split("/").slice(1).join("/")
                 
                                         let include = true

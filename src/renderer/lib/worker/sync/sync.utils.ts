@@ -1,7 +1,7 @@
 import db from "../../db"
 import { sendToAllPorts } from "../ipc"
 import { memoize } from "lodash"
-import { isSubdir } from "../../helpers"
+import { isSubdir, Semaphore } from "../../helpers"
 import ipc from "../../ipc"
 
 const log = window.require("electron-log")
@@ -11,8 +11,8 @@ const pathModule = window.require("path")
 const readline = window.require("readline")
 
 let APPLY_DONE_TASKS_PATH: { [key: string]: string } = {}
-let APPLY_DONE_TASKS_WRITESTREAM: { [key: string]: any } = {}
 const APPLY_DONE_TASKS_VERSION: number = 1
+const applyDoneTasksSemaphore = new Semaphore(1)
 
 export const isSyncLocationPaused = async (uuid: string): Promise<boolean> => {
     try{
@@ -363,10 +363,14 @@ export const loadApplyDoneTasks = async (locationUUID: string) => {
             return resolve(true)
         }
 
+        await applyDoneTasksSemaphore.acquire()
+
         try{
             var path = await getApplyDoneTaskPath(locationUUID)
         }
         catch(e: any){
+            applyDoneTasksSemaphore.release()
+
             if(e.code == "ENOENT"){
                 return resolve(true)
             }
@@ -386,6 +390,8 @@ export const loadApplyDoneTasks = async (locationUUID: string) => {
             })
         }
         catch(e){
+            applyDoneTasksSemaphore.release()
+            
             return resolve([])
         }
     
@@ -418,10 +424,21 @@ export const loadApplyDoneTasks = async (locationUUID: string) => {
                 }
             })
     
-            reader.on("error", reject)
-            reader.on("close", () => resolve(tasks))
+            reader.on("error", (err: any) => {
+                applyDoneTasksSemaphore.release()
+
+                return reject(err)
+            })
+
+            reader.on("close", () => {
+                applyDoneTasksSemaphore.release()
+
+                return resolve(tasks)
+            })
         }
         catch(e){
+            applyDoneTasksSemaphore.release()
+
             return reject(e)
         }
     })
@@ -431,6 +448,8 @@ export const addToApplyDoneTasks = async (locationUUID: string, task: any) => {
     if(window.location.href.indexOf("#worker") == -1){
         return true
     }
+
+    await applyDoneTasksSemaphore.acquire()
 
     try{
         const path = await getApplyDoneTaskPath(locationUUID)
@@ -449,6 +468,8 @@ export const addToApplyDoneTasks = async (locationUUID: string, task: any) => {
         log.error(e)
     }
 
+    applyDoneTasksSemaphore.release()
+
     return true
 }
 
@@ -457,11 +478,13 @@ export const clearApplyDoneTasks = async (locationUUID: string) => {
         return true
     }
 
+    await applyDoneTasksSemaphore.acquire()
+
     try{
         var path = await getApplyDoneTaskPath(locationUUID)
     }
     catch(e){
-        log.error(e)
+        applyDoneTasksSemaphore.release()
 
         return true
     }
@@ -478,7 +501,7 @@ export const clearApplyDoneTasks = async (locationUUID: string) => {
         })
     }
     catch(e){
-        log.error(e)
+        applyDoneTasksSemaphore.release()
 
         return true
     }
@@ -498,9 +521,9 @@ export const clearApplyDoneTasks = async (locationUUID: string) => {
             })
         })
     }
-    catch(e){
-        log.error(e)
-    }
+    catch{}
+
+    applyDoneTasksSemaphore.release()
 
     return true
 }

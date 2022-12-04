@@ -1,4 +1,5 @@
 import ipc from "../ipc"
+import { Semaphore } from "../helpers"
 
 const readline = window.require("readline")
 const pathModule = window.require("path")
@@ -8,6 +9,7 @@ const log = window.require("electron-log")
 const cacheMap = new Map()
 const METADATA_DISK_CACHE_VERSION = 1
 let METADATA_DISK_PATH = ""
+const metadataSemaphore = new Semaphore(1)
 
 export const has = (key: string) => {
     return cacheMap.has(key)
@@ -57,10 +59,14 @@ export const loadMetadataFromDisk = async () => {
             return resolve(true)
         }
 
+        await metadataSemaphore.acquire()
+
         try{
             var metadataPath = await getMetadataDiskPath()
         }
         catch(e: any){
+            metadataSemaphore.release()
+
             if(e.code == "ENOENT"){
                 return resolve(true)
             }
@@ -80,6 +86,8 @@ export const loadMetadataFromDisk = async () => {
             })
         }
         catch(e){
+            metadataSemaphore.release()
+
             return resolve(true)
         }
     
@@ -110,10 +118,21 @@ export const loadMetadataFromDisk = async () => {
                 }
             })
     
-            reader.on("error", reject)
-            reader.on("close", resolve)
+            reader.on("error", (err: any) => {
+                metadataSemaphore.release()
+
+                return reject(err)
+            })
+
+            reader.on("close", () => {
+                metadataSemaphore.release()
+
+                return resolve(true)
+            })
         }
         catch(e){
+            metadataSemaphore.release()
+
             return reject(e)
         }
     })
@@ -123,6 +142,8 @@ export const saveMetadataToDisk = async (key: string, metadata: any) => {
     if(window.location.href.indexOf("#worker") == -1){
         return true
     }
+
+    await metadataSemaphore.acquire()
 
     try{
         const path = await getMetadataDiskPath()
@@ -143,6 +164,8 @@ export const saveMetadataToDisk = async (key: string, metadata: any) => {
     catch(e){
         log.error(e)
     }
+
+    metadataSemaphore.release()
 
     return true
 }

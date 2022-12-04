@@ -8,7 +8,6 @@ import ipc from "../../lib/ipc"
 import useDb from "../../lib/hooks/useDb"
 import eventListener from "../../lib/eventListener"
 import useAppVersion from "../../lib/hooks/useAppVersion"
-import { maxConcurrentSyncTasks } from "../../lib/constants"
 import { loadMetadataFromDisk } from "../../lib/memoryCache/memoryCache"
 
 const log = window.require("electron-log")
@@ -181,7 +180,7 @@ const WorkerWindow = memo(() => {
                     else{
                         if(runningSyncTasks > 0){
                             ipc.updateTrayIcon("sync")
-                            ipc.updateTrayTooltip("Filen v" + appVersion + "\nSyncing " + runningSyncTasks + (runningSyncTasks >= maxConcurrentSyncTasks ? "+" : "") + " items")
+                            ipc.updateTrayTooltip("Filen v" + appVersion + "\nSyncing " + runningSyncTasks + " items")
                         }
                         else{
                             db.get("userId").then((userId: number) => {
@@ -242,30 +241,7 @@ const WorkerWindow = memo(() => {
 
         window.addEventListener("offline", offlineListener)
 
-        const syncTaskListener = eventListener.on("syncTask", (data: any) => {
-            const task = data.data
-
-            if(task.err){
-                setRunningSyncTasks(prev => prev - 1)
-            }
-            else{
-                if(task.status == "start"){
-                    setRunningSyncTasks(prev => prev + 1)
-                }
-                else if(task.status == "done"){
-                    setRunningSyncTasks(prev => prev - 1)
-                }
-            }
-        })
-
-        const syncStatusListener = eventListener.on("syncStatus", (data: any) => {
-            if(data.type == "init"){
-                setRunningSyncTasks(0)
-            }
-            else if(data.type == "cleanup"){
-                setRunningSyncTasks(0)
-            }
-        })
+        const syncTasksToDoListener = eventListener.on("syncTasksToDo", setRunningSyncTasks)
 
         listen()
         init()
@@ -273,8 +249,7 @@ const WorkerWindow = memo(() => {
 
         return () => {
             window.removeEventListener("offline", offlineListener)
-            syncTaskListener.remove()
-            syncStatusListener.remove()
+            syncTasksToDoListener.remove()
 		}
     }, [])
 
