@@ -173,7 +173,7 @@ export const decryptFolderName = (metadata: string, masterKeys: string[]): Promi
             return resolve("")
         }
 
-        const cacheKey = "decryptFolderName:" + metadata.toString()
+        const cacheKey = "decryptFolderName:" + metadata
 
         if(memoryCache.has(cacheKey)){
             return resolve(memoryCache.get(cacheKey))

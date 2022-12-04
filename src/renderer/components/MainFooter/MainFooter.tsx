@@ -19,8 +19,10 @@ export interface MainFooterProps {
 
 const MainFooter = memo(({ platform, darkMode, lang, paused, totalRemaining, syncTasksToDo, isOnline, acquiringLock, checkingChanges }: MainFooterProps) => {
     const remainingReadable = useMemo(() => {
+        totalRemaining = (totalRemaining + syncTasksToDo)
+
         return getTimeRemaining((new Date().getTime() + (totalRemaining * 1000)))
-    }, [totalRemaining])
+    }, [totalRemaining, syncTasksToDo])
 
     return (
         <Flex

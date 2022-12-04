@@ -6,6 +6,7 @@ import { sendToAllPorts } from "../worker/ipc"
 import { logout } from "../../windows/settings/settings"
 import striptags from "striptags"
 import { isSyncLocationPaused } from "../worker/sync/sync.utils"
+import memoryCache from "../memoryCache"
 
 const https = window.require("https")
 const log = window.require("electron-log")
@@ -399,6 +400,8 @@ export const createFolder = ({ uuid, name, parent }: { uuid: string, name: strin
                                 }
                             }).then(() => {
                                 createFolderSemaphore.release()
+
+                                memoryCache.saveMetadataToDisk("decryptFolderName:" + encrypted, name)
 
                                 return resolve(uuid)
                             }).catch((err) => {

@@ -9,6 +9,7 @@ import { sendToAllPorts } from "../../worker/ipc"
 import { remoteStorageLeft } from "../../user/info"
 import { isSyncLocationPaused } from "../../worker/sync/sync.utils"
 import { canReadWriteAtPath } from "../local"
+import memoryCache from "../../memoryCache"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
@@ -646,6 +647,14 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
                         catch(e){
                             log.error(e)
                         }
+
+                        memoryCache.saveMetadataToDisk("decryptFileMetadata:" + metaData, {
+                            name,
+                            size,
+                            mime,
+                            key,
+                            lastModified
+                        })
     
                         return resolve({
                             uuid,
