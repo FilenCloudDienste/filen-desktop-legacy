@@ -30,7 +30,7 @@ const MainFooter = memo(({ platform, darkMode, lang, totalRemaining, syncTasksTo
         <Flex
             flexDirection="row" 
             justifyContent="space-between" 
-            paddingTop="9px" 
+            paddingTop={platform == "linux" ? "5px" : "9px"}
             paddingLeft="12px" 
             paddingRight="12px" 
             overflow="hidden" 
