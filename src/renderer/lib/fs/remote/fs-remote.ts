@@ -21,6 +21,7 @@ const uploadThreadsSemaphore = new Semaphore(maxUploadThreads)
 const folderPathUUID = new Map()
 
 const UPLOAD_VERSION: number = 2
+const previousDatasets: { [key: string]: string } = {}
 
 export const smokeTest = async (uuid: string = ""): Promise<boolean> => {
     const response = await folderPresent({ apiKey: await db.get("apiKey"), uuid })
@@ -52,8 +53,10 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                 return reject(new Error("Invalid master keys, length = 0"))
             }
 
-            dirTree({ apiKey, uuid, deviceId, skipCache }).then(async (response) => {
+            dirTree({ apiKey, uuid, deviceId, skipCache, includeRaw: true }).then(async (res) => {
                 const cacheKey: string = "directoryTree:" + uuid + ":" + deviceId
+                const response = res.data
+                const raw = res.raw
 
                 if(response.folders.length == 0 && response.files.length == 0){ // Data did not change
                     try{
@@ -71,6 +74,26 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                     }
 
                     return directoryTree(uuid, true, location).then(resolve).catch(reject)
+                }
+
+                const rawEx = raw.split('"randomBytes"')
+
+                if(rawEx.length == 2){
+                    if(previousDatasets[location.uuid] && previousDatasets[location.uuid] === rawEx[0]){
+                        try{
+                            var dbCache = await db.get(cacheKey)
+    
+                            if(dbCache){
+                                return resolve({
+                                    changed: false,
+                                    data: dbCache
+                                })
+                            }
+                        }
+                        catch(e){
+                            log.error(e)
+                        }
+                    }
                 }
 
                 folderPathUUID.clear()
@@ -278,6 +301,10 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                     files: builtTreeFiles,
                     folders: builtTreeFolders,
                     uuids: builtTreeUUIDs
+                }
+
+                if(rawEx.length == 2){
+                    previousDatasets[location.uuid] = rawEx[0]
                 }
                 
                 try{

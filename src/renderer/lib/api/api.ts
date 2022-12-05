@@ -70,7 +70,7 @@ export const getDownloadServer = () => {
     return downloadServers[getRandomArbitrary(0, (downloadServers.length - 1))]
 }
 
-export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, timeout = 500000 }): Promise<any> => {
+export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, timeout = 500000, includeRaw = false }): Promise<any> => {
     return new Promise((resolve, reject) => {
         let currentTries = 0
 
@@ -119,7 +119,8 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
 
                     response.on("end", () => {
                         try{
-                            const obj = JSON.parse(Buffer.concat(res).toString())
+                            const str = Buffer.concat(res).toString()
+                            const obj = JSON.parse(str)
     
                             if(typeof obj.message == "string"){
                                 if(obj.message.toLowerCase().indexOf("invalid api key") !== -1){
@@ -136,6 +137,13 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
                             }
 
                             apiRequestSemaphore.release()
+
+                            if(includeRaw){
+                                return resolve({
+                                    data: obj,
+                                    raw: str
+                                })
+                            }
 
                             return resolve(obj)
                         }
@@ -283,7 +291,7 @@ export const folderPresent = ({ apiKey, uuid }: { apiKey: string, uuid: string }
     })
 }
 
-export const dirTree = ({ apiKey, uuid, deviceId, skipCache = false }: { apiKey: string, uuid: string, deviceId: string, skipCache: boolean }): Promise<any> => {
+export const dirTree = ({ apiKey, uuid, deviceId, skipCache = false, includeRaw = false }: { apiKey: string, uuid: string, deviceId: string, skipCache?: boolean, includeRaw?: boolean }): Promise<{ data: any, raw: string }> => {
     return new Promise((resolve, reject) => {
         apiRequest({
             method: "POST",
@@ -293,13 +301,22 @@ export const dirTree = ({ apiKey, uuid, deviceId, skipCache = false }: { apiKey:
                 uuid,
                 deviceId,
                 skipCache: skipCache ? 1 : 0
+            },
+            includeRaw
+        }).then((res) => {
+            if(includeRaw){
+                if(!res.data.status){
+                    return reject(res.data.message)
+                }
+    
+                return resolve({ data: res.data.data, raw: res.raw })
             }
-        }).then((response: any) => {
-            if(!response.status){
-                return reject(response.message)
+            
+            if(!res.status){
+                return reject(res.message)
             }
 
-            return resolve(response.data)
+            return resolve(res.data)
         }).catch(reject)
     })
 }
