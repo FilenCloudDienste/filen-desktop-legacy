@@ -10,7 +10,6 @@ import IsOnlineBottomToast from "../../components/IsOnlineBottomToast"
 import MainFooter from "../../components/MainFooter"
 import MainList from "../../components/MainList"
 import MainHeader from "../../components/MainHeader"
-import useDb from "../../lib/hooks/useDb"
 import { throttle, debounce } from "lodash"
 import { sizeOverheadMultiplier } from "../../lib/constants"
 import UpdateModal from "../../components/UpdateModal"
@@ -40,8 +39,6 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
     const [doneTasks, setDoneTasks] = useAsyncState<any>([])
     const [runningTasks, setRunningTasks] = useAsyncState<any>([])
     const [activity, setActivity] = useAsyncState<any>([])
-    const syncLocations: [] = useDb("syncLocations:" + userId, [])
-    const paused = useDb("paused", false)
     const [totalRemaining, setTotalRemaining] = useState<number>(0)
     const [acquiringLock, setAcquiringLock] = useState<boolean>(false)
     const [checkingChanges, setCheckingChanges] = useState<boolean>(false)
@@ -422,8 +419,6 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
                 darkMode={darkMode}
                 lang={lang}
                 activity={activity}
-                syncLocations={syncLocations}
-                paused={paused}
                 isOnline={isOnline}
             />
             <MainFooter
@@ -435,7 +430,6 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
                 isOnline={isOnline}
                 acquiringLock={acquiringLock}
                 checkingChanges={checkingChanges}
-                paused={paused}
             />
             <IsOnlineBottomToast
                 userId={userId}

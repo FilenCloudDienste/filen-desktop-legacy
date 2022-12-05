@@ -4,12 +4,12 @@ import { getTimeRemaining } from "../../lib/helpers"
 import { AiOutlineCheckCircle, AiOutlinePauseCircle } from "react-icons/ai"
 import colors from "../../styles/colors"
 import { i18n } from "../../lib/i18n"
+import useDb from "../../lib/hooks/useDb"
 
 export interface MainFooterProps {
     platform: string,
     darkMode: boolean,
     lang: string,
-    paused: boolean,
     totalRemaining: any,
     syncTasksToDo: number,
     isOnline: boolean,
@@ -17,9 +17,11 @@ export interface MainFooterProps {
     checkingChanges: boolean
 }
 
-const MainFooter = memo(({ platform, darkMode, lang, paused, totalRemaining, syncTasksToDo, isOnline, acquiringLock, checkingChanges }: MainFooterProps) => {
+const MainFooter = memo(({ platform, darkMode, lang, totalRemaining, syncTasksToDo, isOnline, acquiringLock, checkingChanges }: MainFooterProps) => {
+    const paused = useDb("paused", false)
+
     const remainingReadable = useMemo(() => {
-        totalRemaining = (totalRemaining + syncTasksToDo)
+        totalRemaining = (totalRemaining + Math.floor(syncTasksToDo / 2))
 
         return getTimeRemaining((new Date().getTime() + (totalRemaining * 1000)))
     }, [totalRemaining, syncTasksToDo])

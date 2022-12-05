@@ -12,6 +12,7 @@ import { itemPublicLinkInfo, enableItemPublicLink } from "../../lib/api"
 import { copyToClipboard } from "../../lib/helpers"
 import { decryptFolderLinkKey } from "../../lib/crypto"
 import db from "../../lib/db"
+import { v4 as uuidv4 } from "uuid"
 
 const pathModule = window.require("path")
 const { shell } = window.require("electron")
@@ -34,13 +35,36 @@ task.running !== "undefined" -> active move/rename/delete
 task.done !== "undefined" -> done task
 */
 
+const ItemTimeSince = memo(({ task }: { task: any }) => {
+    const [itemTimeSince, setItemTimeSince] = useState<string>(timeSince(typeof task.timestamp == "number" ? task.timestamp : new Date().getTime()))
+    const timeSinceInterval = useRef<NodeJS.Timer>()
+
+    const startTimeSinceInterval = useCallback(() => {
+        clearInterval(timeSinceInterval.current)
+
+        setItemTimeSince(timeSince(typeof task.timestamp == "number" ? task.timestamp : new Date().getTime()))
+
+        timeSinceInterval.current = setInterval(() => {
+            setItemTimeSince(timeSince(typeof task.timestamp == "number" ? task.timestamp : new Date().getTime()))
+        }, 1000)
+    }, [])
+
+    useEffect(() => {
+        startTimeSinceInterval()
+
+        return () => {
+            clearInterval(timeSinceInterval.current)
+        }
+    }, [])
+
+    return <>{itemTimeSince}</>
+})
+
 const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOnline }: ItemProps) => {
     const itemName: string = useRef(pathModule.basename(task.task.path)).current
-    const timeSinceInterval = useRef<any>(undefined)
-    const itemAbsolutePath: string = useRef(pathModule.normalize(task.location.local + "/" + task.task.path)).current
-    const itemIconCacheKey: string = useRef("fileIcon:" + itemAbsolutePath).current
+    const itemExt: string = useRef(itemName.indexOf(".") !== -1 ? pathModule.extname(itemName) : "").current
+    const itemIconCacheKey: string = useRef("fileIconExt:" + itemExt).current
     const [hovering, setHovering] = useState<boolean>(false)
-    const [itemTimeSince, setItemTimeSince] = useState<string>(timeSince(typeof task.timestamp == "number" ? task.timestamp : new Date().getTime()))
     const [itemIcon, setItemIcon] = useState<any>(task.task.type == "folder" ? "folder" : (memoryCache.has(itemIconCacheKey) ? memoryCache.get(itemIconCacheKey) : undefined))
     const [creatingPublicLink, setCreatingPublicLink] = useState<boolean>(false)
     const toast = useToast()
@@ -53,11 +77,11 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
                 setItemIcon(memoryCache.get(itemIconCacheKey))
             }
             else{
-                ipc.getFileIcon(itemAbsolutePath).then((icon) => {
+                ipc.getFileIcon(uuidv4() + itemExt).then((icon) => {
                     if(typeof icon == "string" && icon.indexOf("data:") !== -1){
-                        setItemIcon(icon)
-
                         memoryCache.set(itemIconCacheKey, icon)
+
+                        setItemIcon(icon)
                     }
                     else{
                         setItemIcon(null)
@@ -66,16 +90,6 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
             }
         }
     }, [task])
-
-    const startTimeSinceInterval = useCallback(() => {
-        clearInterval(timeSinceInterval.current)
-
-        setItemTimeSince(timeSince(typeof task.timestamp == "number" ? task.timestamp : new Date().getTime()))
-
-        timeSinceInterval.current = setInterval(() => {
-            setItemTimeSince(timeSince(typeof task.timestamp == "number" ? task.timestamp : new Date().getTime()))
-        }, 1000)
-    }, [])
 
     const fetchPublicLinkInfo = useCallback((uuid: string, type: "folder" | "file", waitUntilEnabled: boolean = false, waitUntilDisabled: boolean = false): Promise<any> => {
         return new Promise((resolve, reject) => {
@@ -196,12 +210,7 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
     }, [])
 
     useEffect(() => {
-        startTimeSinceInterval()
         getFileIcon()
-
-        return () => {
-            clearInterval(timeSinceInterval.current)
-        }
     }, [])
 
     return (
@@ -400,7 +409,9 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
                                                 &nbsp;
                                                 &#8226;
                                                 &nbsp;
-                                                {itemTimeSince}
+                                                <ItemTimeSince
+                                                    task={task}
+                                                />
                                             </Text>
                                         )
                                     }
