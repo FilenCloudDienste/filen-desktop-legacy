@@ -1564,8 +1564,6 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
 const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTree, localTreeNow, remoteTreeNow, location }: { localDeltas: any, remoteDeltas: any, lastLocalTree: any, lastRemoteTree: any, localTreeNow: any, remoteTreeNow: any, location: any }): Promise<any> => {
     return new Promise(async (resolve, reject) => {
-        console.log({ localDeltas: localDeltas.files, remoteDeltas: remoteDeltas.files })
-
         try{
             var syncMode = await getSyncMode(location)
         }
@@ -2371,7 +2369,6 @@ const syncLocation = async (location: any): Promise<any> => {
     try{
         await Promise.all([
             fsLocal.smokeTest(pathModule.normalize(location.local)),
-            fsLocal.canReadWriteAtPath(pathModule.normalize(location.local)),
             fsRemote.smokeTest(location.remoteUUID)
         ])
     }

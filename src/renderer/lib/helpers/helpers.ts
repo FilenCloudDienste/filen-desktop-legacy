@@ -631,3 +631,7 @@ export const calcTimeLeft = (loadedBytes: number, totalBytes: number, started: n
 
   return remaining > 0 ? remaining : 0
 }
+
+export const windowsPathToUnixStyle = memoize((path: string) => {
+  return path.split("\\").join("/")
+})

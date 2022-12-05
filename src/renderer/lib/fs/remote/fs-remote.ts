@@ -683,7 +683,7 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
                             mime,
                             key,
                             lastModified
-                        })
+                        }).catch(log.error)
 
                         memoryCache.set("fileKey:" + uuid, key)
     

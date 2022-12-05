@@ -21,7 +21,7 @@ import { Semaphore, calcSpeed, calcTimeLeft } from "../../lib/helpers"
 const log = window.require("electron-log")
 const { ipcRenderer } = window.require("electron")
 
-const stateMutex = new Semaphore(1)
+const stateMutex = new Semaphore(32)
 
 export interface TransferProgress {
     uuid: string,
@@ -38,7 +38,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
     const [currentDownloads, setCurrentDownloads] = useAsyncState<any>({})
     const [doneTasks, setDoneTasks] = useAsyncState<any>([])
     const [runningTasks, setRunningTasks] = useAsyncState<any>([])
-    const [activity, setActivity] = useAsyncState<any>([])
+    const [activity, setActivity] = useState<any>([])
     const [totalRemaining, setTotalRemaining] = useState<number>(0)
     const [acquiringLock, setAcquiringLock] = useState<boolean>(false)
     const [checkingChanges, setCheckingChanges] = useState<boolean>(false)
@@ -55,10 +55,8 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
         }
     }, 5000), [])
 
-    const throttleActivityUpdate = useCallback(throttle(async ({ doneTasks, runningTasks, currentUploads, currentDownloads }) => {
-        await stateMutex.acquire()
-
-        await setActivity([
+    const throttleActivityUpdate = useCallback(throttle(({ doneTasks, runningTasks, currentUploads, currentDownloads }) => {
+        setActivity([
             ...Object.keys(currentUploads).map((key: string) => ({
                 type: "uploadToRemote",
                 realtime: true,
@@ -84,8 +82,6 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
                 timestamp: task.timestamp
             }))
         ])
-
-        stateMutex.release()
     }, 500), [])
 
     const throttleTotalRemainingUpdate = useCallback(throttle(() => {
