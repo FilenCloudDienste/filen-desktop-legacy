@@ -1562,8 +1562,17 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     })
 }
 
-const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTree, localTreeNow, remoteTreeNow }: { localDeltas: any, remoteDeltas: any, lastLocalTree: any, lastRemoteTree: any, localTreeNow: any, remoteTreeNow: any }): Promise<any> => {
-    return new Promise((resolve, reject) => {
+const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTree, localTreeNow, remoteTreeNow, location }: { localDeltas: any, remoteDeltas: any, lastLocalTree: any, lastRemoteTree: any, localTreeNow: any, remoteTreeNow: any, location: any }): Promise<any> => {
+    return new Promise(async (resolve, reject) => {
+        console.log({ localDeltas: localDeltas.files, remoteDeltas: remoteDeltas.files })
+
+        try{
+            var syncMode = await getSyncMode(location)
+        }
+        catch(e){
+            return reject(e)
+        }
+
         const localFileDeltas = localDeltas.files
         const localFolderDeltas = localDeltas.folders
         const remoteFileDeltas = remoteDeltas.files
@@ -1582,7 +1591,6 @@ const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTre
 
         for(const path in localFolderDeltas){
             const localDelta = localFolderDeltas[path]?.type
-            const remoteDelta = remoteFolderDeltas[path]?.type
             const existsInRemote = typeof remoteFolderDeltas[path] !== "undefined"
 
             if(localDelta == "RENAMED" && !addedToList[path]){
@@ -1697,7 +1705,7 @@ const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTre
             const existsInRemote = typeof remoteFileDeltas[path] !== "undefined"
             const localLastModified = localTreeNow[path]?.lastModified
             const remoteLastModified = remoteTreeNow[path]?.metadata.lastModified
-            const sameLastModified = localLastModified === remoteTreeNow[path]?.metadata.lastModified
+            const sameLastModified = localLastModified === remoteTreeNow[path]?.metadata?.lastModified
 
             if(localDelta == "RENAMED" && !addedToList[path]){
                 addedToList[path] = true
@@ -1810,6 +1818,22 @@ const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTre
                         uuid: uuidv4()
                     }
                 })
+            }
+
+            if(syncMode == "localBackup" || syncMode == "localToCloud"){
+                if((localDelta == "NEW" || localDelta == "NEWER") && (remoteDelta == "UNCHANGED" || remoteDelta == "OLD" || remoteDelta == "OLDER") && !addedToList[path]){
+                    addedToList[path] = true
+    
+                    uploadToRemote.push({
+                        uuid: uuidv4(),
+                        path,
+                        type: "file",
+                        item: {
+                            ...localTreeNow.files[path],
+                            uuid: uuidv4()
+                        }
+                    })
+                }
             }
         }
 
@@ -2605,7 +2629,7 @@ const syncLocation = async (location: any): Promise<any> => {
     })
 
     try{
-        var { uploadToRemote, downloadFromRemote, renameInLocal, renameInRemote, moveInLocal, moveInRemote, deleteInLocal, deleteInRemote } = await consumeDeltas({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTree, localTreeNow, remoteTreeNow })
+        var { uploadToRemote, downloadFromRemote, renameInLocal, renameInRemote, moveInLocal, moveInRemote, deleteInLocal, deleteInRemote } = await consumeDeltas({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTree, localTreeNow, remoteTreeNow, location })
     }
     catch(e: any){
         log.error("Could not consume deltas for location " + location.uuid)
