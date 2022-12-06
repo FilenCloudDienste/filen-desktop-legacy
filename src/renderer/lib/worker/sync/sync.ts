@@ -10,10 +10,7 @@ import {
     maxConcurrentUploads as maxConcurrentUploadsPreset,
     maxConcurrentSyncTasks
 } from "../../constants"
-import {
-    Semaphore,
-    SemaphoreInterface
-} from "../../helpers"
+import { Semaphore } from "../../helpers"
 import {
     isSyncLocationPaused,
     isSuspended,
@@ -35,6 +32,7 @@ import {
     clearApplyDoneTasks
 } from "./sync.utils"
 import { sendToAllPorts } from "../ipc"
+import type { SemaphoreInterface, Delta, Location } from "../../../../types"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
@@ -47,10 +45,10 @@ const maxConcurrentUploadsSemaphore: SemaphoreInterface = new Semaphore(maxConcu
 const maxConcurrentDownloadsSemaphore: SemaphoreInterface = new Semaphore(maxConcurrentDownloadsPreset)
 const maxSyncTasksSemaphore: SemaphoreInterface = new Semaphore(maxConcurrentSyncTasks)
 
-const getDeltas = (type: "local" | "remote", before: any, now: any): Promise<any> => {
+const getDeltas = (type: "local" | "remote", before: any, now: any): Promise<{ folders: Delta, files: Delta }> => {
     return new Promise((resolve, _) => {
-        const deltasFiles: any = {}
-        const deltasFolders: any = {}
+        const deltasFiles: Delta = {}
+        const deltasFolders: Delta = {}
         
         if(type == "local"){
             const beforeFiles = before.files
@@ -323,7 +321,7 @@ const getDeltas = (type: "local" | "remote", before: any, now: any): Promise<any
 // Sorting the tasks so we don't have duplicates or for example delete something that has been renamed or move something that has been renamed etc.
 // We also filter for ignored files/folders here + the sync mode
 
-const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameInRemote, moveInLocal, moveInRemote, deleteInLocal, deleteInRemote, location }: { uploadToRemote: any, downloadFromRemote: any, renameInLocal: any, renameInRemote: any, moveInLocal: any, moveInRemote: any, deleteInLocal: any, deleteInRemote: any, location: any }): Promise<any> => {
+const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameInRemote, moveInLocal, moveInRemote, deleteInLocal, deleteInRemote, location }: { uploadToRemote: any, downloadFromRemote: any, renameInLocal: any, renameInRemote: any, moveInLocal: any, moveInRemote: any, deleteInLocal: any, deleteInRemote: any, location: Location }): Promise<any> => {
     return new Promise(async (resolve, reject) => {
         const ignored = []
 
@@ -640,7 +638,7 @@ const sortTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameIn
     })
 }
 
-const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameInRemote, moveInLocal, moveInRemote, deleteInLocal, deleteInRemote, lastLocalTree, lastRemoteTree, localTreeNow, remoteTreeNow, location }: { uploadToRemote: any, downloadFromRemote: any, renameInLocal: any, renameInRemote: any, moveInLocal: any, moveInRemote: any, deleteInLocal: any, deleteInRemote: any, lastLocalTree: any, lastRemoteTree: any, localTreeNow: any, remoteTreeNow: any, location: any }): Promise<any> => {
+const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renameInRemote, moveInLocal, moveInRemote, deleteInLocal, deleteInRemote, lastLocalTree, lastRemoteTree, localTreeNow, remoteTreeNow, location }: { uploadToRemote: any, downloadFromRemote: any, renameInLocal: any, renameInRemote: any, moveInLocal: any, moveInRemote: any, deleteInLocal: any, deleteInRemote: any, lastLocalTree: any, lastRemoteTree: any, localTreeNow: any, remoteTreeNow: any, location: Location }): Promise<any> => {
     return new Promise(async (resolve, reject) => {
         try{
             var {
@@ -1562,7 +1560,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     })
 }
 
-const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTree, localTreeNow, remoteTreeNow, location }: { localDeltas: any, remoteDeltas: any, lastLocalTree: any, lastRemoteTree: any, localTreeNow: any, remoteTreeNow: any, location: any }): Promise<any> => {
+const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTree, localTreeNow, remoteTreeNow, location }: { localDeltas: any, remoteDeltas: any, lastLocalTree: any, lastRemoteTree: any, localTreeNow: any, remoteTreeNow: any, location: Location }): Promise<any> => {
     return new Promise(async (resolve, reject) => {
         try{
             var syncMode = await getSyncMode(location)
@@ -2341,7 +2339,7 @@ const applyDoneTasksToSavedState = ({ doneTasks, localTreeNow, remoteTreeNow }: 
     })
 }
 
-const syncLocation = async (location: any): Promise<any> => {
+const syncLocation = async (location: Location): Promise<any> => {
     if(location.paused){
         log.info("Sync location " + location.uuid + " -> " + location.local + " <-> " + location.remote + " [" + location.type + "] is paused")
 
@@ -2468,11 +2466,6 @@ const syncLocation = async (location: any): Promise<any> => {
             fsLocal.directoryTree(pathModule.normalize(location.local), typeof IS_FIRST_REQUEST[location.uuid] == "undefined", location),
             fsRemote.directoryTree(location.remoteUUID, typeof IS_FIRST_REQUEST[location.uuid] == "undefined", location)
         ])
-
-        /*await Promise.all([
-            db.set("localDataChanged:" + location.uuid, false),
-            db.set("remoteDataChanged:" + location.uuid, false)
-        ])*/
     }
     catch(e: any){
         if((await isSuspended())){

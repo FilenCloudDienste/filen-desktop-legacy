@@ -6,11 +6,13 @@ export interface RemoteFileMetadata {
     mime: string
 }
 
+export type ItemType = "folder" | "file"
+
 export interface RemoteItem {
     uuid: string,
     name: string,
     parent: string,
-    type: "folder" | "file",
+    type: ItemType,
     path: string,
     region: string,
     bucket: string,
@@ -20,7 +22,7 @@ export interface RemoteItem {
 }
 
 export interface RemoteUUIDs {
-    type: "folder" | "file",
+    type: ItemType,
     path: string
 }
 
@@ -37,4 +39,87 @@ export interface RemoteDirectoryTreeResult {
             [key: string]: RemoteUUIDs
         }
     }
+}
+
+export interface ReaddirFallbackEntry {
+    entry: {
+        name: string,
+        size: number,
+        lastModified: number,
+        ino: number
+    },
+    ino: {
+        type: ItemType,
+        path: string
+    }
+}
+
+export interface SemaphoreInterface {
+    acquire: Function,
+    release: Function,
+    count: Function,
+    setMax: Function,
+    purge: Function
+}
+
+export type DeltaType = "NEW" | "NEWER" | "OLDER" | "UNCHANGED" | "DELETED" | "RENAMED" | "MOVED"
+
+export type Delta = {
+    [key: string]: {
+        type: DeltaType,
+        from?: string,
+        to?: string
+    }
+}
+
+export type LocalTreeFiles = {
+    [key: string]: {
+        name: string,
+        lastModified: number,
+        ino: number,
+        size: number
+    }
+}
+
+export type LocalTreeFolders = {
+    [key: string]: {
+        name: string,
+        lastModified: number,
+        ino: number
+    }
+}
+
+export type LocalTreeIno = {
+    [key: number]: {
+        type: string,
+        path: string 
+    }
+}
+
+export interface LocalDirectoryTreeResult {
+    changed: boolean,
+    data: {
+        files: LocalTreeFiles,
+        folders: LocalTreeFolders,
+        ino: LocalTreeIno
+    }
+}
+
+export type SyncModes = "twoWay" | "localToCloud" | "localBackup" | "cloudToLocal" | "cloudBackup"
+
+export interface Location {
+    uuid: string,
+    local: string,
+    remote: string | undefined,
+    remoteUUID: string | undefined,
+    remoteName: string | undefined,
+    type: SyncModes,
+    paused: boolean,
+    busy: boolean,
+    localChanged: boolean
+}
+
+export interface SyncIssue {
+    message: string,
+    timestamp: number
 }

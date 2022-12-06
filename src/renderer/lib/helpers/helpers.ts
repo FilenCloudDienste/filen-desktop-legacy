@@ -1,5 +1,6 @@
 import { defaultIgnored, speedMultiplier } from "../constants"
 import { memoize } from "lodash"
+import type { SemaphoreInterface } from "../../../types"
 
 const pathModule = window.require("path")
 const is = window.require("electron-is")
@@ -43,17 +44,17 @@ export const isSubdir = memoize((parent: string, path: string) => {
   return isSubdir
 }, (parent: string, path: string) => parent + ":" + path)
 
-export const normalizePlatform = (platform: string) => {
-    if(platform == "darwin"){
-        return "mac"
-    }
-    else if(platform == "linux"){
-        return "linux"
-    }
-    else{
-        return "windows"
-    }
-}
+export const normalizePlatform = memoize((platform: string) => {
+  if(platform == "darwin"){
+      return "mac"
+  }
+  else if(platform == "linux"){
+      return "linux"
+  }
+  else{
+      return "windows"
+  }
+})
 
 export const getRandomArbitrary = (min: number, max: number) => {
     return Math.floor(Math.random() * (max - min) + min)
@@ -89,7 +90,7 @@ export const pathValidation = memoize((path: string) => {
   return true
 })
 
-export function compareVersions(current: string, got: string){
+export const compareVersions = memoize((current: string, got: string) => {
 	function compare(a: string, b: string) {
 		if (a === b) {
 		   return 0;
@@ -129,21 +130,21 @@ export function compareVersions(current: string, got: string){
 	else{
 		return "ok"
 	}
-}
+})
 
-export const formatBytes = (bytes: number, decimals: number = 2) => {
-    if(bytes == 0){
-        return "0 Bytes"
-    }
+export const formatBytes = memoize((bytes: number, decimals: number = 2) => {
+  if(bytes == 0){
+      return "0 Bytes"
+  }
 
-    let k = 1024
-    let dm = decimals < 0 ? 0 : decimals
-    let sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
+  let k = 1024
+  let dm = decimals < 0 ? 0 : decimals
+  let sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
 
-    let i = Math.floor(Math.log(bytes) / Math.log(k))
+  let i = Math.floor(Math.log(bytes) / Math.log(k))
 
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i]
-}
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i]
+})
 
 export const getChunkSize = (bps: number) => {
   const set = Math.floor(1024 * 16)
@@ -178,17 +179,17 @@ export const arrayBufferToHex = (buffer: any) => {
     return [...new Uint8Array(buffer)].map(x => x.toString(16).padStart(2, "0")).join("")
 }
 
-export const getParentFromURL = (url: string) => {
-    const ex = url.split("/")
+export const getParentFromURL = memoize((url: string) => {
+  const ex = url.split("/")
 
-    return ex[ex.length - 1].trim()
-}
+  return ex[ex.length - 1].trim()
+})
 
-export const getParentFromParentFromURL = (url: string) => {
-    const ex = url.split("/")
+export const getParentFromParentFromURL = memoize((url: string) => {
+  const ex = url.split("/")
 
-    return ex[ex.length - 2].trim()
-}
+  return ex[ex.length - 2].trim()
+})
 
 export const base64ToArrayBuffer = (base64: string) => {
     const binary_string = window.atob(base64)
@@ -283,14 +284,6 @@ export function convertWordArrayToArrayBuffer(wordArray: any) {
     }
 
     return uInt8Array
-}
-
-export interface SemaphoreInterface {
-  acquire: Function,
-  release: Function,
-  count: Function,
-  setMax: Function,
-  purge: Function
 }
 
 export const Semaphore = function(this: SemaphoreInterface, max: number) {

@@ -563,17 +563,19 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
                             var key = generateRandomString(32)
                             var rm = generateRandomString(32)
                             var uploadKey = generateRandomString(32)
-                            var nameEnc = await encryptMetadata(name, key)
                             var nameH = nameHashed
-                            var mimeEnc = await encryptMetadata(mime, key)
-                            var sizeEnc = await encryptMetadata(size.toString(), key)
-                            var metaData = await encryptMetadata(JSON.stringify({
-                                name,
-                                size,
-                                mime,
-                                key,
-                                lastModified
-                            }, (_, value) => typeof value == "bigint" ? parseInt(value.toString()) : value), masterKeys[masterKeys.length - 1])
+                            var [nameEnc, mimeEnc, sizeEnc, metaData] = await Promise.all([
+                                encryptMetadata(name, key),
+                                encryptMetadata(mime, key),
+                                encryptMetadata(size.toString(), key),
+                                encryptMetadata(JSON.stringify({
+                                    name,
+                                    size,
+                                    mime,
+                                    key,
+                                    lastModified
+                                }, (_, value) => typeof value == "bigint" ? parseInt(value.toString()) : value), masterKeys[masterKeys.length - 1])
+                            ])
                         }
                         catch(e){
                             log.error("Metadata generation failed for " + absolutePath)

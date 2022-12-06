@@ -3,6 +3,7 @@ import { sendToAllPorts } from "../ipc"
 import { memoize } from "lodash"
 import { isSubdir, Semaphore } from "../../helpers"
 import ipc from "../../ipc"
+import type { Location, SyncModes } from "../../../../types"
 
 const log = window.require("electron-log")
 const gitignoreParser = window.require("@gerhobbelt/gitignore-parser")
@@ -53,7 +54,7 @@ export const compileGitIgnore = memoize((ignore: string) => {
 })
 
 // Parse lists into .gitignore like compatible format
-export const getIgnored = (location: any): Promise<any> => {
+export const getIgnored = (location: Location): Promise<{ selectiveSyncRemoteIgnore: any, filenIgnore: any, selectiveSyncRemoteIgnoreRaw: string, filenIgnoreRaw: string }> => {
     return new Promise((resolve, reject) => {
         Promise.all([
             db.get("selectiveSync:remote:" + location.uuid),
@@ -73,7 +74,7 @@ export const getIgnored = (location: any): Promise<any> => {
     })
 }
 
-export const getSyncMode = (location: any) => {
+export const getSyncMode = (location: Location): Promise<SyncModes> => {
     return new Promise((resolve, reject) => {
         db.get("userId").then((userId) => {
             db.get("syncLocations:" + userId).then((syncLocations) => {

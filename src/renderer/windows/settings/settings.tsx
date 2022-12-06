@@ -29,6 +29,7 @@ import { BsKeyboard, BsFillFolderFill } from "react-icons/bs"
 import List from "react-virtualized/dist/commonjs/List"
 import { debounce } from "lodash"
 import { sendToAllPorts } from "../../lib/worker/ipc"
+import type { Location, SyncIssue } from "../../../types"
 
 const log = window.require("electron-log")
 const { shell, ipcRenderer } = window.require("electron")
@@ -59,10 +60,10 @@ export const logout = async () => {
 }
 
 const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: boolean, lang: string, platform: string }) => {
-    const [openAtStartupAsync, setOpenAtStartupAsync] = useState<any>(undefined)
-    const [appVersionAsync, setAppVersionAsync] = useState<any>(undefined)
+    const [openAtStartupAsync, setOpenAtStartupAsync] = useState<boolean | undefined>(undefined)
+    const [appVersionAsync, setAppVersionAsync] = useState<string | number | undefined>(undefined)
     const [openAtStartup, setOpenAtStartup] = useState<boolean>(true)
-    const [appVersion, setAppVersion] = useState<string>("1")
+    const [appVersion, setAppVersion] = useState<string | number | undefined>("1")
     const [excludeDot, setExcludeDot] = useState<boolean>(true)
     const [clearLocalEventLogModalOpen, setClearLocalEventLogModalOpen] = useState<boolean>(false)
 
@@ -588,17 +589,17 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
 })
 
 const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMode: boolean, lang: string, platform: string, userId: number }) => {
-    const syncLocations: any = useDb("syncLocations:" + userId, [])
+    const syncLocations: Location[] = useDb("syncLocations:" + userId, [])
     const toast = useToast()
     const [syncSettingsModalOpen, setSyncSettingsModalOpen] = useState<boolean>(false)
-    const [currentSyncLocation, setCurrentSyncLocation] = useState<any>(undefined)
+    const [currentSyncLocation, setCurrentSyncLocation] = useState<Location | undefined>(undefined)
     const [confirmDeleteModalOpen, setConfirmDeleteModalOpen] = useState<boolean>(false)
     const [ignoredFilesModalOpen, setIgnoredFilesModalOpen] = useState<boolean>(false)
     const [currentSyncLocationIgnored, setCurrentSyncLocationIgnored] = useState<string>("")
     const [isDeletingSyncLocation, setIsDeletingSyncLocation] = useState<boolean>(false)
 
     const createNewSyncLocation = () => {
-        db.get("syncLocations:" + userId).then((currentSyncLocations) => {
+        db.get("syncLocations:" + userId).then((currentSyncLocations: Location[] | null) => {
             ipc.selectFolder().then((result) => {
                 if(result.canceled){
                     return false
@@ -673,13 +674,13 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                     let created: boolean = false
     
                     try{
-                        let currentSyncLocations = await db.get("syncLocations:" + userId)
+                        let currentSyncLocations: Location[] | null = await db.get("syncLocations:" + userId)
     
                         if(!Array.isArray(currentSyncLocations)){
                             currentSyncLocations = []
                         }
     
-                        if(currentSyncLocations.filter((location: any) => location.local == localPath).length == 0){
+                        if(currentSyncLocations.filter(location => location.local == localPath).length == 0){
                             currentSyncLocations.push({
                                 uuid,
                                 local: localPath,
@@ -748,9 +749,9 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
         db.set("filenIgnore:" + uuid, value).catch(log.error)
     }, 1000), [])
 
-    const toggleSyncPauseStatus = async (location: any, paused: boolean) => {
+    const toggleSyncPauseStatus = async (location: Location, paused: boolean) => {
         try{
-            let currentSyncLocations = await db.get("syncLocations:" + userId)
+            let currentSyncLocations: Location[] | null = await db.get("syncLocations:" + userId)
 
             if(!Array.isArray(currentSyncLocations)){
                 currentSyncLocations = []
@@ -852,7 +853,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                             rowCount={syncLocations.length}
                             rowHeight={55}
                             estimatedRowSize={syncLocations.length * 55}
-                            rowRenderer={({ index, key, style }: { index: number, key: string, style: any }) => {
+                            rowRenderer={({ index, key, style }: { index: number, key: string, style: React.CSSProperties }) => {
                                 const location = syncLocations[index]
 
                                 return (
@@ -1055,7 +1056,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                             }}
                                                             fontSize={14} 
                                                             onClick={() => {
-                                                                db.get("syncLocations:" + userId).then((currentSyncLocations) => {
+                                                                db.get("syncLocations:" + userId).then((currentSyncLocations: Location[] | null) => {
                                                                     ipc.selectRemoteFolder().then(async (result) => {
                                                                         if(result.canceled){
                                                                             return false
@@ -1070,8 +1071,8 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                                                 if(typeof currentSyncLocations[i].remote == "string"){
                                                                                     if(
                                                                                         currentSyncLocations[i].remote == path
-                                                                                        || isSubdir(currentSyncLocations[i].remote, path)
-                                                                                        || isSubdir(path, currentSyncLocations[i].remote)
+                                                                                        || isSubdir(currentSyncLocations[i].remote as string, path)
+                                                                                        || isSubdir(path, currentSyncLocations[i].remote as string)
                                                                                     ){
                                                                                         found = true
                                                                                     }
@@ -1098,7 +1099,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                                         }
         
                                                                         try{
-                                                                            let currentSyncLocations = await db.get("syncLocations:" + userId)
+                                                                            let currentSyncLocations: Location[] | null = await db.get("syncLocations:" + userId)
         
                                                                             if(!Array.isArray(currentSyncLocations)){
                                                                                 currentSyncLocations = []
@@ -1319,7 +1320,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                     const type = e.nativeEvent.target.value
 
                                                     try{
-                                                        let currentSyncLocations = await db.get("syncLocations:" + userId)
+                                                        let currentSyncLocations: Location[] | null = await db.get("syncLocations:" + userId)
 
                                                         if(!Array.isArray(currentSyncLocations)){
                                                             currentSyncLocations = []
@@ -1520,7 +1521,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                     const paused = event.nativeEvent.target.checked
 
                                                     try{
-                                                        let currentSyncLocations = await db.get("syncLocations:" + userId)
+                                                        let currentSyncLocations: Location[] | null = await db.get("syncLocations:" + userId)
 
                                                         if(!Array.isArray(currentSyncLocations)){
                                                             currentSyncLocations = []
@@ -1664,7 +1665,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                 setIsDeletingSyncLocation(true)
 
                                 try{
-                                    let currentSyncLocations = await db.get("syncLocations:" + userId)
+                                    let currentSyncLocations: Location[] | null = await db.get("syncLocations:" + userId)
 
                                     if(!Array.isArray(currentSyncLocations)){
                                         currentSyncLocations = []
@@ -1806,7 +1807,7 @@ const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }: { darkM
                                         alignItems="center"
                                     >
                                         <Avatar
-                                            name={email}
+                                            name={typeof userInfo.avatarURL == "string" && userInfo.avatarURL.indexOf("https://") !== -1 ? undefined : email}
                                             src={typeof userInfo.avatarURL == "string" && userInfo.avatarURL.indexOf("https://") !== -1 ? userInfo.avatarURL : undefined}
                                         />
                                         <Flex flexDirection="column">
@@ -1992,7 +1993,7 @@ const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }: { darkM
 })
 
 const SettingsWindowIssues = memo(({ darkMode, lang, platform }: { darkMode: boolean, lang: string, platform: string }) => {
-    const syncIssues: any[] = useDb("syncIssues", [])
+    const syncIssues: SyncIssue[] = useDb("syncIssues", [])
 
     const [clearIssuesModalOpen, setClearIssuesModalOpen] = useState(false)
 
@@ -2877,7 +2878,7 @@ const SettingsSelection = memo(({ darkMode, lang, platform, selection, setSelect
     )
 })
 
-const SettingsWindow = memo(({ startingRoute, userId, email, windowId }: { startingRoute: any, userId: number, email: string, windowId: string }) => {
+const SettingsWindow = memo(({ startingRoute, userId, email, windowId }: { startingRoute: string[], userId: number, email: string, windowId: string }) => {
     const darkMode = useDarkMode()
     const lang = useLang()
     const platform = usePlatform()

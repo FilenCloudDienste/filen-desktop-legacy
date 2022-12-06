@@ -8,25 +8,13 @@ import db from "../../db"
 import * as constants from "../../constants"
 import { isSyncLocationPaused } from "../../worker/sync/sync.utils"
 import type { Stats } from "fs-extra"
+import type { ReaddirFallbackEntry, LocalDirectoryTreeResult, LocalTreeFiles, LocalTreeFolders, LocalTreeIno } from "../../../../types"
 
 const fs = window.require("fs-extra")
 const pathModule = window.require("path")
 const readdirp = window.require("readdirp")
 const log = window.require("electron-log")
 const is = window.require("electron-is")
-
-export interface ReaddirFallbackEntry {
-    entry: {
-        name: string,
-        size: number,
-        lastModified: number,
-        ino: number
-    },
-    ino: {
-        type: "folder" | "file",
-        path: string
-    }
-}
 
 const downloadThreadsSemaphore = new Semaphore(constants.maxDownloadThreads)
 const FS_RETRIES = 64
@@ -259,7 +247,7 @@ export const canReadWriteAtPath = (fullPath: string): Promise<boolean> => {
     })
 }
 
-export const directoryTree = (path: string, skipCache: boolean = false, location?: any): Promise<any> => {
+export const directoryTree = (path: string, skipCache: boolean = false, location?: any): Promise<LocalDirectoryTreeResult> => {
     return new Promise((resolve, reject) => {
         const cacheKey = "directoryTreeLocal:" + location.uuid
 
@@ -281,9 +269,9 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
 
             path = normalizePath(path)
 
-            const files: { [key: string]: { name: string, lastModified: number, ino: number, size: number } } = {}
-            const folders: { [key: string]: { name: string, lastModified: number, ino: number } } = {}
-            const ino: { [key: number]: { type: string, path: string } } = {}
+            const files: LocalTreeFiles = {}
+            const folders: LocalTreeFolders = {}
+            const ino: LocalTreeIno = {}
             const windows: boolean = is.windows()
             let statting: number = 0
 
