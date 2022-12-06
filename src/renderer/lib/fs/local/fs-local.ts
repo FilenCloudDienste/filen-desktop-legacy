@@ -317,10 +317,18 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
                             const fallback = readdirFallback.get(readdirFallbackKey)
 
                             if(fallback){
-                                files[item.path] = fallback.entry
+                                if(fallback.ino.type == "file"){
+                                    files[item.path] = fallback.entry
+                                }
+                                else{
+                                    folders[item.path] = fallback.entry
+                                }
+
                                 ino[fallback.entry.ino] = fallback.ino
 
-                                log.error("Using fallback readdir entry for " + item.path)
+                                log.error("Using fallback readdir entry for " + item.fullPath)
+
+                                statting -= 1
 
                                 return
                             }
@@ -395,10 +403,16 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
                                         const fallback = readdirFallback.get(readdirFallbackKey)
 
                                         if(fallback){
-                                            files[item.path] = fallback.entry
+                                            if(fallback.ino.type == "file"){
+                                                files[item.path] = fallback.entry
+                                            }
+                                            else{
+                                                folders[item.path] = fallback.entry
+                                            }
+
                                             ino[fallback.entry.ino] = fallback.ino
 
-                                            log.error("Using fallback readdir entry for " + item.path)
+                                            log.error("Using fallback readdir entry for " + item.fullPath)
                                         }
                                     }
                                 }
@@ -413,10 +427,16 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
                         const fallback = readdirFallback.get(readdirFallbackKey)
 
                         if(fallback){
-                            files[item.path] = fallback.entry
+                            if(fallback.ino.type == "file"){
+                                files[item.path] = fallback.entry
+                            }
+                            else{
+                                folders[item.path] = fallback.entry
+                            }
+
                             ino[fallback.entry.ino] = fallback.ino
 
-                            log.error("Using fallback readdir entry for " + item.path)
+                            log.error("Using fallback readdir entry for " + item.fullPath)
                         }
                     }
                 }
