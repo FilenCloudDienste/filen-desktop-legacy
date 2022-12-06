@@ -14,7 +14,6 @@ const pathModule = window.require("path")
 const readdirp = window.require("readdirp")
 const log = window.require("electron-log")
 const is = window.require("electron-is")
-const readline = window.require("readline")
 
 export interface ReaddirFallbackEntry {
     entry: {
@@ -35,155 +34,6 @@ const FS_RETRY_TIMEOUT = 500
 const FS_RETRY_CODES = ["EAGAIN", "EBUSY", "ECANCELED", "EBADF", "EINTR", "EIO", "EMFILE", "ENFILE", "ENOMEM", "EPIPE", "ETXTBSY", "ESPIPE", "EAI_SYSTEM", "EAI_CANCELED"]
 const FS_NORETRY_CODES = ["ENOENT", "ENODEV", "EACCES", "EPERM", "EINVAL", "ENAMETOOLONG", "ENOBUFS", "ENOSPC", "EROFS"]
 const readdirFallback = new Map<string, ReaddirFallbackEntry>()
-const READDIR_FALLBACK_VERSION = 1
-let READDIR_FALLBACK_PATH = ""
-let READDIR_FALLBACK_LOADED = false
-const readdirFallbackSemaphore = new Semaphore(1)
-
-export const getReaddirFallbackPath = async () => {
-    if(READDIR_FALLBACK_PATH.length > 0){
-        return READDIR_FALLBACK_PATH
-    }
-
-    const userDataPath: string = await ipc.getAppPath("userData")
-
-    await fs.ensureDir(pathModule.join(userDataPath, "data", "v" + READDIR_FALLBACK_VERSION))
-
-    const metadataPath: string = pathModule.join(userDataPath, "data", "v" + READDIR_FALLBACK_VERSION, "readdirFallback")
-
-    READDIR_FALLBACK_PATH = metadataPath
-
-    return metadataPath
-}
-
-export const loadReaddirFallbackFromDisk = async () => {
-    return new Promise(async (resolve, reject) => {
-        await readdirFallbackSemaphore.acquire()
-
-        if(READDIR_FALLBACK_LOADED){
-            readdirFallbackSemaphore.release()
-
-            return resolve(true)
-        }
-
-        if(window.location.href.indexOf("#worker") == -1){
-            readdirFallbackSemaphore.release()
-
-            return resolve(true)
-        }
-
-        try{
-            var path = await getReaddirFallbackPath()
-        }
-        catch(e: any){
-            readdirFallbackSemaphore.release()
-
-            if(e.code == "ENOENT"){
-                return resolve(true)
-            }
-
-            return reject(e)
-        }
-
-        try{
-            await new Promise((resolve, reject) => {
-                fs.access(path, fs.constants.F_OK, (err: Error) => {
-                    if(err){
-                        return reject(err)
-                    }
-
-                    return resolve(true)
-                })
-            })
-        }
-        catch(e){
-            readdirFallbackSemaphore.release()
-
-            return resolve(true)
-        }
-    
-        try{
-            const reader = readline.createInterface({
-                input: fs.createReadStream(path, {
-                    flags: "r"
-                }),
-                crlfDelay: Infinity
-            })
-    
-            reader.on("line", (line: string) => {
-                if(typeof line !== "string"){
-                    return
-                }
-
-                if(line.length < 4){
-                    return
-                }
-
-                try{
-                    const parsed = JSON.parse(line)
-    
-                    readdirFallback.set(parsed.key, parsed.entry)
-                }
-                catch(e){
-                    log.error(e)
-                }
-            })
-    
-            reader.on("error", (err: any) => {
-                readdirFallbackSemaphore.release()
-
-                return reject(err)
-            })
-
-            reader.on("close", () => {
-                readdirFallbackSemaphore.release()
-
-                READDIR_FALLBACK_LOADED = true
-
-                log.info("Readdir fallback loaded successfully")
-
-                return resolve(true)
-            })
-        }
-        catch(e){
-            readdirFallbackSemaphore.release()
-
-            return reject(e)
-        }
-    })
-}
-
-export const saveReaddirFallbackToDisk = async (key: string, entry: ReaddirFallbackEntry) => {
-    if(window.location.href.indexOf("#worker") == -1){
-        return true
-    }
-
-    await readdirFallbackSemaphore.acquire()
-
-    try{
-        const path = await getReaddirFallbackPath()
-
-        await new Promise((resolve, reject) => {
-            fs.appendFile(path, JSON.stringify({
-                key,
-                entry
-            }) + "\n", (err: any) => {
-                if(err){
-                    return reject(err)
-                }
-
-                return resolve(true)
-            })
-        })
-    }
-    catch(e){
-        log.error(e)
-    }
-
-    readdirFallbackSemaphore.release()
-
-    return true
-}
 
 export const normalizePath = (path: string): string => {
     return pathModule.normalize(path)
@@ -429,13 +279,6 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
                 })
             }
 
-            try{
-                await loadReaddirFallbackFromDisk()
-            }
-            catch(e){
-                log.error(e)
-            }
-
             path = normalizePath(path)
 
             const files: { [key: string]: { name: string, lastModified: number, ino: number, size: number } } = {}
@@ -511,19 +354,15 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
                                     path: item.path
                                 }
 
-                                if(!readdirFallback.has(readdirFallbackKey)){
-                                    const readdirFallbackEntry: ReaddirFallbackEntry = {
-                                        entry,
-                                        ino: {
-                                            type: "folder",
-                                            path: item.path
-                                        }
+                                const readdirFallbackEntry: ReaddirFallbackEntry = {
+                                    entry,
+                                    ino: {
+                                        type: "folder",
+                                        path: item.path
                                     }
-    
-                                    readdirFallback.set(readdirFallbackKey, readdirFallbackEntry)
-    
-                                    saveReaddirFallbackToDisk(readdirFallbackKey, readdirFallbackEntry).catch(log.error)
                                 }
+
+                                readdirFallback.set(readdirFallbackKey, readdirFallbackEntry)
                             }
                             else{
                                 if(item.stats.size > 0){
@@ -541,19 +380,15 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
                                         path: item.path
                                     }
 
-                                    if(!readdirFallback.has(readdirFallbackKey)){
-                                        const readdirFallbackEntry: ReaddirFallbackEntry = {
-                                            entry,
-                                            ino: {
-                                                type: "file",
-                                                path: item.path
-                                            }
+                                    const readdirFallbackEntry: ReaddirFallbackEntry = {
+                                        entry,
+                                        ino: {
+                                            type: "file",
+                                            path: item.path
                                         }
-    
-                                        readdirFallback.set(readdirFallbackKey, readdirFallbackEntry)
-    
-                                        saveReaddirFallbackToDisk(readdirFallbackKey, readdirFallbackEntry).catch(log.error)
                                     }
+
+                                    readdirFallback.set(readdirFallbackKey, readdirFallbackEntry)
                                 }
                                 else{
                                     if(readdirFallback.has(readdirFallbackKey)){

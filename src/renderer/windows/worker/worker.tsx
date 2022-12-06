@@ -8,7 +8,6 @@ import ipc from "../../lib/ipc"
 import useDb from "../../lib/hooks/useDb"
 import eventListener from "../../lib/eventListener"
 import useAppVersion from "../../lib/hooks/useAppVersion"
-import { loadMetadataFromDisk } from "../../lib/memoryCache/memoryCache"
 
 const log = window.require("electron-log")
 const https = window.require("https")
@@ -140,13 +139,7 @@ const WorkerWindow = memo(() => {
                         db.set("downloadPaused", false),
                         db.set("isOnline", true)
                     ]).then(() => {
-                        loadMetadataFromDisk().then(() => {
-                            sync()
-                        }).catch((err) => {
-                            sync()
-
-                            log.error(err)
-                        })
+                        sync()
                     }).catch((err) => {
                         log.error(err)
                     })

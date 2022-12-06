@@ -677,14 +677,6 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
                             log.error(e)
                         }
 
-                        memoryCache.saveMetadataToDisk("decryptFileMetadata:" + metaData, {
-                            name,
-                            size,
-                            mime,
-                            key,
-                            lastModified
-                        }).catch(log.error)
-
                         memoryCache.set("fileKey:" + uuid, key)
     
                         return resolve({
