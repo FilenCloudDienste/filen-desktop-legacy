@@ -8,7 +8,7 @@ import { AiOutlinePauseCircle, AiOutlineLink } from "react-icons/ai"
 import ipc from "../../lib/ipc"
 import memoryCache from "../../lib/memoryCache"
 import { i18n } from "../../lib/i18n"
-import { itemPublicLinkInfo, enableItemPublicLink } from "../../lib/api"
+import { itemPublicLinkInfo, enableItemPublicLink, filePresent } from "../../lib/api"
 import { copyToClipboard } from "../../lib/helpers"
 import { decryptFolderLinkKey } from "../../lib/crypto"
 import db from "../../lib/db"
@@ -67,6 +67,7 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
     const [hovering, setHovering] = useState<boolean>(false)
     const [itemIcon, setItemIcon] = useState<any>(task.task.type == "folder" ? "folder" : (memoryCache.has(itemIconCacheKey) ? memoryCache.get(itemIconCacheKey) : undefined))
     const [creatingPublicLink, setCreatingPublicLink] = useState<boolean>(false)
+    const [canCreatePublicLink, setCanCreatePublicLink] = useState<boolean>(true)
     const toast = useToast()
     const publicLinkInfo = useRef<any>(undefined)
     const publicLinkKey = useRef<string>("")
@@ -180,26 +181,46 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
     const createPublicLink = useCallback((uuid: string, type: "folder" | "file") => {
         setCreatingPublicLink(true)
 
-        fetchPublicLinkInfo(uuid, type).then((info) => {
-            const enabled: boolean = type == "file" ? (typeof info.enabled == "boolean" && info.enabled) : (typeof info.exists == "boolean" && info.exists && typeof publicLinkKey.current == "string" && publicLinkKey.current.length >= 32)
-
-            if(enabled){
-                copyPublicLink(uuid, type, info)
+        filePresent(uuid).then((present) => {
+            if(!present.present){
+                setCreatingPublicLink(false)
+                setCanCreatePublicLink(false)
 
                 return
             }
 
-            enableItemPublicLink(uuid, type).then(() => {
-                fetchPublicLinkInfo(uuid, type, true).then((info) => {
+            if(present.versioned || present.trash){
+                setCreatingPublicLink(false)
+                setCanCreatePublicLink(false)
+
+                return
+            }
+
+            fetchPublicLinkInfo(uuid, type).then((info) => {
+                const enabled: boolean = type == "file" ? (typeof info.enabled == "boolean" && info.enabled) : (typeof info.exists == "boolean" && info.exists && typeof publicLinkKey.current == "string" && publicLinkKey.current.length >= 32)
+    
+                if(enabled){
                     copyPublicLink(uuid, type, info)
+    
+                    return
+                }
+    
+                enableItemPublicLink(uuid, type).then(() => {
+                    fetchPublicLinkInfo(uuid, type, true).then((info) => {
+                        copyPublicLink(uuid, type, info)
+                    }).catch((err) => {
+                        log.error(err)
+    
+                        setCreatingPublicLink(false)
+                    })
                 }).catch((err) => {
                     log.error(err)
-
+    
                     setCreatingPublicLink(false)
                 })
             }).catch((err) => {
                 log.error(err)
-
+    
                 setCreatingPublicLink(false)
             })
         }).catch((err) => {
@@ -494,7 +515,7 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
                                             flexDirection="row"
                                         >
                                             {
-                                                ["uploadToRemote", "renameInRemote", "moveInRemote"].includes(task.type) && typeof task.task.type == "string" && task.task.type == "file" && (
+                                                ["uploadToRemote", "renameInRemote", "moveInRemote"].includes(task.type) && typeof task.task.type == "string" && task.task.type == "file" && canCreatePublicLink && (
                                                     <>
                                                         {
                                                             creatingPublicLink ? (

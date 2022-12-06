@@ -291,6 +291,24 @@ export const folderPresent = ({ apiKey, uuid }: { apiKey: string, uuid: string }
     })
 }
 
+export const filePresent = async (uuid: string): Promise<any> => {
+    const apiKey: string = await db.get("apiKey")
+    const response = await apiRequest({
+        method: "POST",
+        endpoint: "/v1/file/present",
+        data: {
+            apiKey,
+            uuid
+        }
+    })
+
+    if(!response.status){
+        throw new Error(response.message)
+    }
+
+    return response.data
+}
+
 export const dirTree = ({ apiKey, uuid, deviceId, skipCache = false, includeRaw = false }: { apiKey: string, uuid: string, deviceId: string, skipCache?: boolean, includeRaw?: boolean }): Promise<{ data: any, raw: string }> => {
     return new Promise((resolve, reject) => {
         apiRequest({
@@ -806,12 +824,7 @@ export const checkIfItemParentIsShared = ({ type, parent, metaData }: { type: st
                             const folders = contents.folders
 
                             for(let i = 0; i < files.length; i++){
-                                try{
-                                    var decrypted = await decryptFileMetadata(files[i].metadata, masterKeys)
-                                }
-                                catch(e){
-                                    //console.log(e)
-                                }
+                                const decrypted = await decryptFileMetadata(files[i].metadata, masterKeys)
 
                                 if(typeof decrypted == "object"){
                                     if(typeof decrypted.name == "string"){
@@ -823,10 +836,10 @@ export const checkIfItemParentIsShared = ({ type, parent, metaData }: { type: st
                                                 parent: files[i].parent,
                                                 metadata: {
                                                     name: decrypted.name,
-                                                    size: parseInt(decrypted.size),
+                                                    size: decrypted.size,
                                                     mime: striptags(decrypted.mime),
                                                     key: decrypted.key,
-                                                    lastModified: parseInt(decrypted.lastModified)
+                                                    lastModified: decrypted.lastModified
                                                 },
                                                 type: "file"
                                             })
@@ -1038,12 +1051,7 @@ export const checkIfItemParentIsShared = ({ type, parent, metaData }: { type: st
                             const folders = contents.folders
 
                             for(let i = 0; i < files.length; i++){
-                                try{
-                                    var decrypted = await decryptFileMetadata(files[i].metadata, masterKeys)
-                                }
-                                catch(e){
-                                    //console.log(e)
-                                }
+                                const decrypted = await decryptFileMetadata(files[i].metadata, masterKeys)
 
                                 if(typeof decrypted == "object"){
                                     if(typeof decrypted.name == "string"){
@@ -1055,10 +1063,10 @@ export const checkIfItemParentIsShared = ({ type, parent, metaData }: { type: st
                                                 parent: files[i].parent,
                                                 metadata: {
                                                     name: decrypted.name,
-                                                    size: parseInt(decrypted.size),
+                                                    size: decrypted.size,
                                                     mime: striptags(decrypted.mime),
                                                     key: decrypted.key,
-                                                    lastModified: parseInt(decrypted.lastModified)
+                                                    lastModified: decrypted.lastModified
                                                 },
                                                 type: "file"
                                             })
@@ -1108,13 +1116,7 @@ export const checkIfItemParentIsShared = ({ type, parent, metaData }: { type: st
 
                                 for(let x = 0; x < totalLinks; x++){
                                     const link = data.links[x]
-
-                                    try{
-                                        var key: any = await decryptFolderLinkKey(link.linkKey, masterKeys)
-                                    }
-                                    catch(e){
-                                        //console.log(e)
-                                    }
+                                    const key = await decryptFolderLinkKey(link.linkKey, masterKeys)
 
                                     if(typeof key == "string"){
                                         if(key.length > 0){

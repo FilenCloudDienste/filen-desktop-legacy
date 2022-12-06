@@ -47,7 +47,7 @@ const maxConcurrentUploadsSemaphore: SemaphoreInterface = new Semaphore(maxConcu
 const maxConcurrentDownloadsSemaphore: SemaphoreInterface = new Semaphore(maxConcurrentDownloadsPreset)
 const maxSyncTasksSemaphore: SemaphoreInterface = new Semaphore(maxConcurrentSyncTasks)
 
-const getDeltas = (type: string, before: any, now: any): Promise<any> => {
+const getDeltas = (type: "local" | "remote", before: any, now: any): Promise<any> => {
     return new Promise((resolve, _) => {
         const deltasFiles: any = {}
         const deltasFolders: any = {}

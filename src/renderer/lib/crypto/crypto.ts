@@ -1,6 +1,7 @@
 import memoryCache from "../memoryCache"
 import { arrayBufferToHex, base64ToArrayBuffer, arrayBufferToBase64, generateRandomString, convertArrayBufferToBinaryString, convertWordArrayToArrayBuffer } from "../helpers"
 import striptags from "striptags"
+import type { RemoteFileMetadata } from "../../../types"
 
 const CryptoJS = window.require("crypto-js")
 const md2 = window.require("js-md2")
@@ -319,7 +320,7 @@ export const decryptData = (data: any, key: string, version: number): Promise<Ui
     })
 }
 
-export const decryptFileMetadata = (metadata: string, masterKeys: string[]): Promise<any> => {
+export const decryptFileMetadata = (metadata: string, masterKeys: string[]): Promise<RemoteFileMetadata> => {
     return new Promise(async (resolve, reject) => {
         const cacheKey = "decryptFileMetadata:" + metadata
 
@@ -460,7 +461,7 @@ export const decryptFolderNameLink = (metadata: string, linkKey: string): Promis
     })
 }
 
-export const decryptFileMetadataLink = (metadata: string, linkKey: string): Promise<any> => {
+export const decryptFileMetadataLink = (metadata: string, linkKey: string): Promise<RemoteFileMetadata> => {
     return new Promise(async (resolve, reject) => {
         const cacheKey = "decryptFileMetadataLink:" + metadata
 
@@ -552,7 +553,7 @@ export const decryptFolderNamePrivateKey = (metadata: string, privateKey: any): 
     })
 }
 
-export const decryptFileMetadataPrivateKey = (metadata: string, privateKey: any): Promise<any> => {
+export const decryptFileMetadataPrivateKey = (metadata: string, privateKey: any): Promise<RemoteFileMetadata> => {
     return new Promise(async (resolve, reject) => {
         const cacheKey = "decryptFileMetadataPrivateKey:" + metadata
 
@@ -620,7 +621,7 @@ export const encryptMetadataPublicKey = ({ data, publicKey }: { data: string, pu
     })
 }
 
-export const generateKeypair = (): Promise<any> => {
+export const generateKeypair = (): Promise<{ publicKey: string, privateKey: string }> => {
     return new Promise((resolve, reject) => {
         window.crypto.subtle.generateKey({
             name: "RSA-OAEP",

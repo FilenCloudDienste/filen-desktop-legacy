@@ -10,6 +10,7 @@ import { remoteStorageLeft } from "../../user/info"
 import { isSyncLocationPaused } from "../../worker/sync/sync.utils"
 import { canReadWriteAtPath } from "../local"
 import memoryCache from "../../memoryCache"
+import type { RemoteItem, RemoteUUIDs, RemoteDirectoryTreeResult } from "../../../../types"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
@@ -33,7 +34,7 @@ export const smokeTest = async (uuid: string = ""): Promise<boolean> => {
     return true
 }
 
-export const directoryTree = (uuid: string = "", skipCache: boolean = false, location: any): Promise<any> => {
+export const directoryTree = (uuid: string = "", skipCache: boolean = false, location: any): Promise<RemoteDirectoryTreeResult> => {
     return new Promise((resolve, reject) => {
         Promise.all([
             db.get("deviceId"),
@@ -123,10 +124,10 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
 
                 const addedFolders: { [key: string]: boolean } = {}
                 const addedFiles: { [key: string]: boolean } = {}
-                const builtTreeFiles: any = {}
-                const builtTreeFolders: any = {}
-                const builtTreeUUIDs: any = {}
-                const uuidsToPaths: any = {}
+                const builtTreeFiles: { [key: string]: RemoteItem } = {}
+                const builtTreeFolders: { [key: string]: RemoteItem } = {}
+                const builtTreeUUIDs: { [key: string]: RemoteUUIDs } = {}
+                const uuidsToPaths: { [key: string]: string } = {}
 
                 const promises = [
                     ...response.folders.map(
@@ -185,7 +186,18 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                                                 name,
                                                 parent,
                                                 type: "folder",
-                                                path: entryPath
+                                                path: entryPath,
+                                                region: "",
+                                                bucket: "",
+                                                chunks: 0,
+                                                metadata: {
+                                                    name,
+                                                    size: 0,
+                                                    key: "",
+                                                    mime: "",
+                                                    lastModified: 0
+                                                },
+                                                version: 0
                                             }
         
                                             builtTreeUUIDs[uuid] = {
@@ -208,11 +220,11 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                                 decryptFileMetadata(metadata, masterKeys).then((decrypted) => {
                                     if(typeof decrypted.lastModified == "number"){
                                         if(decrypted.lastModified <= 0){
-                                            decrypted.lastModified = timestamp
+                                            decrypted.lastModified = timestamp as any as number
                                         }
                                     }
                                     else{
-                                        decrypted.lastModified = timestamp
+                                        decrypted.lastModified = timestamp as any as number
                                     }
             
                                     decrypted.lastModified = convertTimestampToMs(decrypted.lastModified)
@@ -264,12 +276,13 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                                                 uuid,
                                                 region,
                                                 bucket,
-                                                chunks,
+                                                chunks: chunks as any as number,
                                                 parent,
                                                 metadata: decrypted,
-                                                version,
+                                                version: version as any as number,
                                                 type: "file",
-                                                path: entryPath
+                                                path: entryPath,
+                                                name: decrypted.name
                                             }
                 
                                             builtTreeUUIDs[uuid] = {
@@ -719,7 +732,7 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
     })
 }
 
-export const rm = (type: string, uuid: string): Promise<any> => {
+export const rm = (type: string, uuid: string): Promise<boolean> => {
     return trashItem({ type, uuid })
 }
 

@@ -326,9 +326,9 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
 
                                 ino[fallback.entry.ino] = fallback.ino
 
-                                log.error("Using fallback readdir entry for " + item.fullPath)
-
                                 statting -= 1
+
+                                log.error("Using fallback readdir entry for " + item.fullPath)
 
                                 return
                             }
