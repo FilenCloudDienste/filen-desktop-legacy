@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from "react"
+import { memo, useEffect, useRef, useState, useCallback } from "react"
 import { listen } from "../../lib/worker/ipc"
 import sync from "../../lib/worker/sync"
 import { updateKeys } from "../../lib/user"
@@ -8,8 +8,9 @@ import ipc from "../../lib/ipc"
 import useDb from "../../lib/hooks/useDb"
 import eventListener from "../../lib/eventListener"
 import useAppVersion from "../../lib/hooks/useAppVersion"
-import type { Location } from "../../../types"
+import type { Location, SyncIssue } from "../../../types"
 import { listen as socketListen } from "../../lib/worker/socket"
+import { debounce } from "lodash"
 
 const log = window.require("electron-log")
 const https = window.require("https")
@@ -25,12 +26,12 @@ const checkInternet = async (): Promise<any> => {
         method: "GET",
         hostname: "api.filen.io",
         path: "/",
-        timeout: 30000,
+        timeout: 15000,
         headers: {
             "User-Agent": "filen-desktop"
         },
         agent: new https.Agent({
-            timeout: 30000
+            timeout: 15000
         })
     }, async (response: any) => {
         if(response.statusCode !== 200){
@@ -47,13 +48,9 @@ const checkInternet = async (): Promise<any> => {
             return setTimeout(checkInternet, 3000)
         })
 
-        response.on("timeout", async () => {
-            await db.set("isOnline", false).catch(log.error)
-
-            return setTimeout(checkInternet, 3000)
+        response.on("data", (chunk: Buffer) => {
+            return res.push(chunk)
         })
-
-        response.on("data", (chunk: Buffer) => res.push(chunk))
 
         response.on("end", async () => {
             try{
@@ -80,12 +77,6 @@ const checkInternet = async (): Promise<any> => {
     })
 
     req.on("error", async () => {
-        await db.set("isOnline", false).catch(log.error)
-
-        return setTimeout(checkInternet, 3000)
-    })
-
-    req.on("timeout", async () => {
         await db.set("isOnline", false).catch(log.error)
 
         return setTimeout(checkInternet, 3000)
@@ -154,60 +145,60 @@ const WorkerWindow = memo(() => {
         }
     }
 
-    useEffect(() => {
+    const updateTray = useCallback((icon: "paused" | "error" | "sync" | "normal", message: string) => {
+        ipc.updateTrayIcon(icon)
+        ipc.updateTrayTooltip("Filen v" + appVersion + "\n" + message)
+    }, [appVersion])
+
+    const processTray = useCallback(debounce((isLoggedIn: boolean, isOnline: boolean, paused: boolean, syncIssues: SyncIssue[], runningSyncTasks: number) => {
         if(!isLoggedIn){
-            ipc.updateTrayIcon("paused")
-            ipc.updateTrayTooltip("Filen v" + appVersion + "\nPlease login")
+            updateTray("paused", "Please login")
         }
         else{
             if(!isOnline){
-                ipc.updateTrayIcon("paused")
-                ipc.updateTrayTooltip("Filen v" + appVersion + "\nYou are offline")
+                updateTray("error", "You are offline")
             }
             else{
                 if(paused){
-                    ipc.updateTrayIcon("paused")
-                    ipc.updateTrayTooltip("Filen v" + appVersion + "\nPaused")
+                    updateTray("paused", "Paused")
                 }
                 else{
                     if(syncIssues.length > 0){
-                        ipc.updateTrayIcon("error")
-                        ipc.updateTrayTooltip("Filen v" + appVersion + "\n" + syncIssues.length + " sync issues")
+                        updateTray("error", syncIssues.length + " sync issues")
                     }
                     else{
                         if(runningSyncTasks > 0){
-                            ipc.updateTrayIcon("sync")
-                            ipc.updateTrayTooltip("Filen v" + appVersion + "\nSyncing " + runningSyncTasks + " items")
+                            updateTray("sync", "Syncing " + runningSyncTasks + " items")
                         }
                         else{
                             db.get("userId").then((userId: number) => {
                                 db.get("syncLocations:" + userId).then((syncLocations: any) => {
                                     if(Array.isArray(syncLocations) && syncLocations.length > 0 && syncLocations.filter(item => typeof item.remoteUUID == "string").length > 0){
-                                        ipc.updateTrayIcon("normal")
-                                        ipc.updateTrayTooltip("Filen v" + appVersion + "\nEverything synced")
+                                        updateTray("normal", "Everything synced")
                                     }
                                     else{
-                                        ipc.updateTrayIcon("paused")
-                                        ipc.updateTrayTooltip("Filen v" + appVersion + "\nNo sync locations setup yet")
+                                        updateTray("paused", "No sync locations setup yet")
                                     }
                                 }).catch((err) => {
                                     log.error(err)
 
-                                    ipc.updateTrayIcon("normal")
-                                    ipc.updateTrayTooltip("Filen v" + appVersion + "\nEverything synced")
+                                    updateTray("normal", "Everything synced")
                                 })
                             }).catch((err) => {
                                 log.error(err)
 
-                                ipc.updateTrayIcon("normal")
-                                ipc.updateTrayTooltip("Filen v" + appVersion + "\nEverything synced")            
+                                updateTray("normal", "Everything synced")         
                             })
                         }
                     }
                 }
             }
         }
-    }, [syncIssues, paused, runningSyncTasks, appVersion, isOnline, isLoggedIn])
+    }, 250), [])
+
+    useEffect(() => {
+        processTray(isLoggedIn, isOnline, paused, syncIssues, runningSyncTasks)
+    }, [isLoggedIn, isOnline, paused, syncIssues, runningSyncTasks])
 
     useEffect(() => {
         (async () => {

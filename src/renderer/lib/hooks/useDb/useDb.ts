@@ -10,7 +10,7 @@ const useDb = (dbKey: string, defaultValue: any): any => {
 
 	const fetchDataFromDb = useCallback((key: string) => {
 		db.get(key).then((value: any) => {
-			if(!value){
+			if(typeof value == "undefined"){
 				return setData(defaultValue)
 			}
 
