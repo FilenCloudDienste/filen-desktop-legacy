@@ -692,6 +692,14 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
                             log.error(e)
                         }
 
+                        memoryCache.set("decryptFileMetadata:" + metaData, {
+                            name,
+                            size,
+                            mime,
+                            key,
+                            lastModified
+                        })
+                        
                         memoryCache.set("fileKey:" + uuid, key)
     
                         return resolve({
@@ -734,9 +742,7 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
     })
 }
 
-export const rm = (type: string, uuid: string): Promise<boolean> => {
-    return trashItem({ type, uuid })
-}
+export const rm = (type: string, uuid: string): Promise<boolean> => trashItem({ type, uuid })
 
 export const move = async (type: string, task: any, location: any, remoteTreeNow: any): Promise<boolean> => {
     const parent = await findOrCreateParentDirectory(task.to, location.remoteUUID, remoteTreeNow)

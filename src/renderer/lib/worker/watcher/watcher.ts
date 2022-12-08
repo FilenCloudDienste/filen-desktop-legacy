@@ -1,28 +1,22 @@
-const pathModule = require("path")
-const log = require("electron-log")
-const nodeWatch = require("node-watch")
-const is = require("electron-is")
+import eventListener from "../../eventListener"
+import type { WatcherEvent } from "../../../../types"
+
+const pathModule = window.require("path")
+const log = window.require("electron-log")
+const nodeWatch = window.require("node-watch")
+const is = window.require("electron-is")
 
 const LINUX_EVENT_EMIT_TIMER = 60000
-const SUBS = {}
-const linuxWatchUpdateTimeout = {}
-const lastEvent = {}
+const SUBS: { [key: string]: any } = {}
+const linuxWatchUpdateTimeout: { [key: string]: NodeJS.Timer } = {}
+const lastEvent: { [key: string]: number } = {}
 
-const emitToWorker = (data) => {
-    try{
-        if(typeof require("../shared").get("WORKER_WINDOW") !== "undefined"){
-            require("../shared").get("WORKER_WINDOW").webContents.send("watcher-event", data)
-        }
-    }
-    catch(e){
-        log.error(e)
-    }
-
-    return true
+const emitToWorker = (data: WatcherEvent) => {
+    eventListener.emit("watcher-event", data)
 }
 
-module.exports = (path, locationUUID) => {
-    return new Promise((resolve) => {
+export const watch = (path: string, locationUUID: string): Promise<any> => {
+    return new Promise((resolve, reject) => {
         if(typeof SUBS[path] !== "undefined"){
             return resolve(SUBS[path])
         }
@@ -34,13 +28,13 @@ module.exports = (path, locationUUID) => {
                 persistent: true
             })
     
-            SUBS[path].on("change", (event, name) => {
+            SUBS[path].on("change", (event: string, name: string) => {
                 lastEvent[path] = new Date().getTime()
 
                 emitToWorker({ event, name, watchPath: path, locationUUID })
             })
     
-            SUBS[path].on("error", (err) => log.error(err))
+            SUBS[path].on("error", log.error)
     
             SUBS[path].on("ready", () => {
                 if(is.linux()){
@@ -70,6 +64,8 @@ module.exports = (path, locationUUID) => {
             })
         }
         catch(e){
+            log.error(e)
+
             return reject(e)
         }
     })

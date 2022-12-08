@@ -89,6 +89,23 @@ module.exports = {
             }
 
             try{
+                if(USE_MEMORY_CACHE){
+                    if(require("../memoryCache").has(MEMORY_CACHE_KEY + key)){
+                        const cached = require("../memoryCache").get(MEMORY_CACHE_KEY + key)
+
+                        if(JSON.stringify(cached, (_, val) => typeof val == "bigint" ? val.toString() : val) === JSON.stringify(value, (_, val) => typeof val == "bigint" ? val.toString() : val)){
+                            require("../ipc").emitGlobal("global-message", {
+                                type: "dbSet",
+                                data: {
+                                    key
+                                }
+                            })
+                            
+                            return resolve(true)
+                        }
+                    }
+                }
+
                 var val = JSON.stringify({
                     key,
                     value
@@ -115,6 +132,13 @@ module.exports = {
                         if(USE_MEMORY_CACHE){
                             require("../memoryCache").set(MEMORY_CACHE_KEY + key, value)
                         }
+
+                        require("../ipc").emitGlobal("global-message", {
+                            type: "dbSet",
+                            data: {
+                                key
+                            }
+                        })
     
                         return resolve(true)
                     }).catch((err) => {
@@ -157,6 +181,13 @@ module.exports = {
                                 require("../memoryCache").delete(MEMORY_CACHE_KEY + key)
                             }
                         }
+
+                        require("../ipc").emitGlobal("global-message", {
+                            type: "dbRemove",
+                            data: {
+                                key
+                            }
+                        })
         
                         return resolve(true)
                     }
@@ -167,6 +198,13 @@ module.exports = {
                                 require("../memoryCache").delete(MEMORY_CACHE_KEY + key)
                             }
                         }
+
+                        require("../ipc").emitGlobal("global-message", {
+                            type: "dbRemove",
+                            data: {
+                                key
+                            }
+                        })
         
                         return resolve(true)
                     }).catch((err) => {
@@ -199,6 +237,10 @@ module.exports = {
                         }
                     })
                 }
+
+                require("../ipc").emitGlobal("global-message", {
+                    type: "dbClear"
+                })
 
                 return resolve(true)
             }).catch(reject)

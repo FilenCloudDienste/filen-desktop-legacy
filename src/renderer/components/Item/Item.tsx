@@ -13,21 +13,13 @@ import { copyToClipboard } from "../../lib/helpers"
 import { decryptFolderLinkKey } from "../../lib/crypto"
 import db from "../../lib/db"
 import { v4 as uuidv4 } from "uuid"
+import type { ItemProps } from "../../../types"
 
 const pathModule = window.require("path")
 const { shell } = window.require("electron")
 const log = window.require("electron-log")
 
-export interface ItemProps {
-    task: any,
-    style: any,
-    userId: number,
-    platform: string,
-    darkMode: boolean,
-    paused: boolean,
-    lang: string,
-    isOnline: boolean
-}
+const PUBLIC_LINK_ALLOWED_TYPES: string[] = ["uploadToRemote", "renameInRemote", "moveInRemote", "downloadFromRemote", "moveInLocal", "renameInLocal"]
 
 /*
 task.realtime !== "undefined" -> active upload/download
@@ -71,6 +63,7 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
     const toast = useToast()
     const publicLinkInfo = useRef<any>(undefined)
     const publicLinkKey = useRef<string>("")
+    const didCheckIfCanCreatePublicLinkOnHover = useRef<boolean>(false)
 
     const getFileIcon = useCallback(() => {
         if(task.task.type == "file" && typeof task.location !== "undefined" && typeof task.location.local !== "undefined"){
@@ -229,6 +222,36 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
             setCreatingPublicLink(false)
         })
     }, [])
+
+    useEffect(() => {
+        if(hovering && !didCheckIfCanCreatePublicLinkOnHover.current && PUBLIC_LINK_ALLOWED_TYPES.includes(task.type) && typeof task.task.type == "string" && task.task.type == "file"){
+            didCheckIfCanCreatePublicLinkOnHover.current = true
+
+            setTimeout(() => {
+                didCheckIfCanCreatePublicLinkOnHover.current = false
+            }, 60000)
+
+            filePresent(task.task.item.uuid).then((present) => {
+                if(!present.present){
+                    setCanCreatePublicLink(false)
+    
+                    return
+                }
+    
+                if(present.versioned || present.trash){
+                    setCanCreatePublicLink(false)
+    
+                    return
+                }
+
+                setCanCreatePublicLink(true)
+            }).catch((err) => {
+                log.error(err)
+    
+                setCanCreatePublicLink(false)
+            })
+        }
+    }, [hovering, task])
 
     useEffect(() => {
         getFileIcon()
@@ -515,7 +538,7 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
                                             flexDirection="row"
                                         >
                                             {
-                                                ["uploadToRemote", "renameInRemote", "moveInRemote"].includes(task.type) && typeof task.task.type == "string" && task.task.type == "file" && canCreatePublicLink && (
+                                                PUBLIC_LINK_ALLOWED_TYPES.includes(task.type) && typeof task.task.type == "string" && task.task.type == "file" && canCreatePublicLink && (
                                                     <>
                                                         {
                                                             creatingPublicLink ? (

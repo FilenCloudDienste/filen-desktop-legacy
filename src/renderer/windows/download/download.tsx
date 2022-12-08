@@ -1028,10 +1028,6 @@ const DownloadWindow = memo(({ userId, email, windowId }: { userId: number, emai
                 )
             }
             <IsOnlineBottomToast
-                userId={userId}
-                email={email}
-                platform={platform}
-                darkMode={darkMode}
                 lang={lang}
             />
         </Container>

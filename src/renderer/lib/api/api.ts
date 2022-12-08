@@ -437,6 +437,8 @@ export const createFolder = ({ uuid, name, parent }: { uuid: string, name: strin
                             }).then(() => {
                                 createFolderSemaphore.release()
 
+                                memoryCache.set("decryptFolderName:" + encrypted, name)
+
                                 return resolve(uuid)
                             }).catch((err) => {
                                 createFolderSemaphore.release()

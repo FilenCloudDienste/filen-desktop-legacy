@@ -515,41 +515,6 @@ const ipc = {
             })
         })
     },
-    watchDirectory: (path: string, locationUUID: string): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "watchDirectory",
-                data: {
-                    path,
-                    locationUUID
-                }
-            })
-        })
-    },
-    selectiveSyncDirectoryTrees: (location: any): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("proxy-for-worker", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "selectiveSyncDirectoryTrees",
-                data: {
-                    location
-                }
-            })
-        })
-    },
     remoteTree: (location: any): Promise<any> => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
@@ -1016,48 +981,6 @@ const ipc = {
             })
         })
     },
-    acquireSyncLock: (): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "acquireSyncLock"
-            })
-        })
-    },
-    releaseSyncLock: (): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "releaseSyncLock"
-            })
-        })
-    },
-    openUpdateWindow: (): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "openUpdateWindow"
-            })
-        })
-    },
     installUpdate: (): Promise<any> => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
@@ -1072,7 +995,7 @@ const ipc = {
             })
         })
     },
-    getFileKey: (uuid: string): Promise<any> => {
+    getFileKey: (uuid: string): Promise<string> => {
         return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 

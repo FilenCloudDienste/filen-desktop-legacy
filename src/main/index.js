@@ -1,12 +1,11 @@
 process.noAsar = true
 
-const { app, BrowserWindow, powerMonitor, powerSaveBlocker, Menu } = require("electron")
+const { app, BrowserWindow, powerMonitor, Menu } = require("electron")
 const log = require("electron-log")
 const is = require("electron-is")
 const { autoUpdater } = require("electron-updater")
 const { v4: uuidv4 } = require("uuid")
 const Sentry = require("@sentry/electron/main")
-const { formatBytes } = require("./lib/helpers")
 
 app.disableHardwareAcceleration()
 //app.commandLine.appendSwitch("wm-window-animations-disabled")
@@ -41,14 +40,7 @@ if(!is.dev()){
 	})
 }
 
-setInterval(() => {
-	const memInfo = process.memoryUsage()
-
-    log.info("mainProcess memoryUsage", "heap =", formatBytes(memInfo.heapUsed), "totalHeap =", formatBytes(memInfo.heapTotal), "external =", formatBytes(memInfo.external), "rss =", formatBytes(memInfo.rss), "arrayBuffers =", formatBytes(memInfo.arrayBuffers))
-}, is.dev() ? 2500 : 15000)
-
 let CHECK_UPDATE_INTERVAL = undefined
-let POWER_SAVE_BLOCKER = null
 let UPDATE_WINDOW_SHOWN = false
 
 autoUpdater.logger = log
@@ -113,7 +105,7 @@ autoUpdater.on("update-downloaded", (info) => {
 	
 				UPDATE_WINDOW_SHOWN = false
 			})
-		}, 5000)
+		}, 60000)
 	}
 })
 
@@ -135,8 +127,6 @@ app.on("second-instance", () => {
 })
 
 powerMonitor.on("shutdown", () => {
-	//powerSaveBlocker.stop(POWER_SAVE_BLOCKER)
-
 	app.exit(0)
 })
 
@@ -222,8 +212,6 @@ else{
 				]
 			}
 		]))
-
-		//POWER_SAVE_BLOCKER = powerSaveBlocker.start("prevent-app-suspension")
 
 		autoUpdater.checkForUpdates().catch(log.error)
 	

@@ -436,11 +436,7 @@ const SelectiveSyncWindow = memo(({ userId, email, windowId }: { userId: number,
                     </Flex>
                 )
             }
-            <IsOnlineBottomToast 
-                userId={userId} 
-                email={email} 
-                platform={platform} 
-                darkMode={darkMode} 
+            <IsOnlineBottomToast
                 lang={lang} 
             />
         </Container>

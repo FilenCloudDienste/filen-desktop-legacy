@@ -107,23 +107,12 @@ const buildMenu = (type = "default") => {
                 {
                     label: "Quit Filen",
                     click: () => {
-                        dialog.showMessageBox(undefined, {
-                            message: "Are you sure you want to quit?",
-                            type: "warning",
-                            buttons: [
-                                "Quit",
-                                "Cancel"
-                            ],
-                            defaultId: 0,
-                            title: "Filen",
-                            cancelId: 0
-                        }).then(({ response }) => {
-                            if(response == 1){
-                                return false
-                            }
-
-                            app.exit()
-                        }).catch(log.error)
+                        try{
+                            app.exit(0)
+                        }
+                        catch(e){
+                            log.error(e)
+                        }
                     }
                 }
             ]

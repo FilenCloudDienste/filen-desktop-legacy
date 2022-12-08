@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import eventListener from "../../eventListener"
 import db from "../../db"
 import memoryCache from "../../memoryCache"
@@ -7,6 +7,24 @@ const log = window.require("electron-log")
 
 const useDb = (dbKey: string, defaultValue: any): any => {
     const [data, setData] = useState<any>(defaultValue)
+
+	const fetchDataFromDb = useCallback((key: string) => {
+		db.get(key).then((value: any) => {
+			if(!value){
+				return setData(defaultValue)
+			}
+
+			if(value == null){
+				return setData(defaultValue)
+			}
+
+			return setData(value)
+		}).catch((err) => {
+			log.error(err)
+
+			return setData(defaultValue)
+		})
+	}, [])
 
 	useEffect(() => {
 		const setListener = eventListener.on("dbSet", ({ key }: { key: string }) => {
@@ -18,17 +36,7 @@ const useDb = (dbKey: string, defaultValue: any): any => {
 				memoryCache.delete(db.dbCacheKey + key)
 			}
 
-			db.get(dbKey).then((value: any) => {
-				if(!value){
-					return setData(defaultValue)
-				}
-	
-				if(value == null){
-					return setData(defaultValue)
-				}
-	
-				return setData(value)
-			}).catch(log.error)
+			fetchDataFromDb(key)
 		})
 
 		const clearListener = eventListener.on("dbClear", () => {
@@ -47,17 +55,7 @@ const useDb = (dbKey: string, defaultValue: any): any => {
 			return setData(defaultValue)
 		})
 
-		db.get(dbKey).then((value: any) => {
-			if(!value){
-				return setData(defaultValue)
-			}
-
-			if(value == null){
-				return setData(defaultValue)
-			}
-
-			return setData(value)
-		}).catch(log.error)
+		fetchDataFromDb(dbKey)
 
 		return () => {
 			setListener.remove()

@@ -605,11 +605,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number, email: 
                     </ModalFooter>
                 </ModalContent>
             </Modal>
-            <IsOnlineBottomToast 
-                userId={userId} 
-                email={email} 
-                platform={platform} 
-                darkMode={darkMode} 
+            <IsOnlineBottomToast
                 lang={lang} 
             />
         </Container>

@@ -37,11 +37,9 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
     const [runningTasks, setRunningTasks] = useState<any>([])
     const [activity, setActivity] = useState<any>([])
     const [totalRemaining, setTotalRemaining] = useState<number>(0)
-    const [acquiringLock, setAcquiringLock] = useState<boolean>(false)
     const [checkingChanges, setCheckingChanges] = useState<boolean>(false)
     const [syncTasksToDo, setSyncTasksToDo] = useState<number>(0)
     
-    const acquiringLockTimeout = useRef<any>(undefined)
     const bytesSent = useRef<number>(0)
     const allBytes = useRef<number>(0)
     const progressStarted = useRef<number>(-1)
@@ -329,18 +327,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
 
                 setTotalRemaining(0)
             }
-            else if(type == "acquireSyncLock"){
-                if(data.data.status == "start"){
-                    acquiringLockTimeout.current = setTimeout(() => setAcquiringLock(true), 3000)
-                }
-                else{
-                    setAcquiringLock(false)
-                    clearTimeout(acquiringLockTimeout.current)
-                }
-            }
-            else if(type == "sync" || type == "cleanup" || type == "releaseSyncLock"){
-                setAcquiringLock(false)
-                clearTimeout(acquiringLockTimeout.current)
+            else if(type == "sync" || type == "cleanup"){
                 setCheckingChanges(false)
             }
             else if(type == "dataChanged"){
@@ -405,14 +392,9 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
                 totalRemaining={totalRemaining}
                 syncTasksToDo={syncTasksToDo}
                 isOnline={isOnline}
-                acquiringLock={acquiringLock}
                 checkingChanges={checkingChanges}
             />
             <IsOnlineBottomToast
-                userId={userId}
-                email={email}
-                platform={platform}
-                darkMode={darkMode}
                 lang={lang}
             />
             <UpdateModal

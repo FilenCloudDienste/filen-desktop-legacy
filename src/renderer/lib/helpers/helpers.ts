@@ -13,24 +13,24 @@ export const isPathOverMaxLength = memoize((path: string) => {
     return path.length > 1023
   }
   else if(is.windows()){
-    return path.length > 254
+    return path.length > 255
   }
 
-  return path.length > 254
+  return path.length > 255
 })
 
 export const isNameOverMaxLength = memoize((name: string) => {
   if(is.linux()){
-    return name.length > 254
+    return name.length > 255
   }
   else if(is.macOS()){
-    return name.length > 254
+    return name.length > 255
   }
   else if(is.windows()){
-    return name.length > 254
+    return name.length > 255
   }
 
-  return name.length > 254
+  return name.length > 255
 })
 
 export const pathIncludesDot = memoize((path: string) => {
@@ -132,7 +132,7 @@ export const compareVersions = memoize((current: string, got: string) => {
 	}
 })
 
-export const formatBytes = memoize((bytes: number, decimals: number = 2) => {
+export const formatBytes = (bytes: number, decimals: number = 2) => {
   if(bytes == 0){
       return "0 Bytes"
   }
@@ -144,7 +144,7 @@ export const formatBytes = memoize((bytes: number, decimals: number = 2) => {
   let i = Math.floor(Math.log(bytes) / Math.log(k))
 
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i]
-})
+}
 
 export const getChunkSize = (bps: number) => {
   const set = Math.floor(1024 * 16)

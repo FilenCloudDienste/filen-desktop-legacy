@@ -191,15 +191,6 @@ const handleMessage = (type, data) => {
                 return reject(e)
             }
         }
-        else if(type == "watchDirectory"){
-            const { path, locationUUID } = data
-
-            require("../watcher")(path, locationUUID).then(() => {
-                return resolve(true)
-            }).catch((err) => {
-                return reject(err)
-            })
-        }
         else if(type == "minimizeWindow"){
             try{
                 if(data.window == "settings"){
@@ -505,27 +496,15 @@ const handleMessage = (type, data) => {
                 }).catch(reject)
             })
         }
-        else if(type == "quitApp"){
-            dialog.showMessageBox(undefined, {
-                message: "Are you sure you want to quit?",
-                type: "warning",
-                buttons: [
-                    "Quit",
-                    "Cancel"
-                ],
-                defaultId: 0,
-                title: "Filen",
-                cancelId: 0
-            }).then(({ response }) => {
-                if(response == 1){
-                    return resolve(true)
-                }
+        else if(type == "quitApp" || type == "exitApp"){
+            try{
+                app.exit(0)
 
-                app.quit()
-            }).catch(reject)
-        }
-        else if(type == "exitApp"){
-            app.quit()
+                return resolve(true)
+            }
+            catch(e){
+                return reject(e)
+            }
         }
         else if(type == "openDownloadWindow"){
             require("../windows").createDownload(data.args).then(() => {
@@ -562,21 +541,6 @@ const handleMessage = (type, data) => {
             require("../trayMenu").upload(data.type)
 
             return resolve(true)
-        }
-        else if(type == "acquireSyncLock"){
-            require("../syncLock").acquireSyncLock("sync").then(() => {
-                return resolve(true)
-            }).catch(reject)
-        }
-        else if(type == "releaseSyncLock"){
-            require("../syncLock").releaseSyncLock("sync").then(() => {
-                return resolve(true)
-            }).catch(reject)
-        }
-        else if(type == "openUpdateWindow"){
-            require("../windows").createUpdate().then(() => {
-                return resolve(true)
-            }).catch(reject)
         }
         else if(type == "installUpdate"){
             try{

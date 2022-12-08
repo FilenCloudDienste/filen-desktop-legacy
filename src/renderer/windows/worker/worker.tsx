@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useRef, useState } from "react"
+import { memo, useEffect, useRef, useState } from "react"
 import { listen } from "../../lib/worker/ipc"
 import sync from "../../lib/worker/sync"
 import { updateKeys } from "../../lib/user"
@@ -8,13 +8,14 @@ import ipc from "../../lib/ipc"
 import useDb from "../../lib/hooks/useDb"
 import eventListener from "../../lib/eventListener"
 import useAppVersion from "../../lib/hooks/useAppVersion"
+import type { Location } from "../../../types"
 
 const log = window.require("electron-log")
 const https = window.require("https")
 
-const checkInternet = (): any => {
+const checkInternet = async (): Promise<any> => {
     if(!window.navigator.onLine){
-        db.set("isOnline", false).catch(log.error)
+        await db.set("isOnline", false).catch(log.error)
 
         return setTimeout(checkInternet, 3000)
     }
@@ -32,7 +33,7 @@ const checkInternet = (): any => {
         })
     }, async (response: any) => {
         if(response.statusCode !== 200){
-            db.set("isOnline", false).catch(log.error)
+            await db.set("isOnline", false).catch(log.error)
 
             return setTimeout(checkInternet, 3000)
         }
@@ -40,35 +41,37 @@ const checkInternet = (): any => {
         const res: Buffer[] = []
 
         response.on("error", async () => {
-            db.set("isOnline", false).catch(log.error)
+            await db.set("isOnline", false).catch(log.error)
 
             return setTimeout(checkInternet, 3000)
         })
 
         response.on("timeout", async () => {
-            db.set("isOnline", false).catch(log.error)
+            await db.set("isOnline", false).catch(log.error)
 
             return setTimeout(checkInternet, 3000)
         })
 
-        response.on("data", (chunk: Buffer) => {
-            res.push(chunk)
-        })
+        response.on("data", (chunk: Buffer) => res.push(chunk))
 
         response.on("end", async () => {
             try{
                 const str = Buffer.concat(res).toString()
             
                 if(str.indexOf("Invalid endpoint") == -1){
-                    db.set("isOnline", false).catch(log.error)
+                    await db.set("isOnline", false).catch(log.error)
         
                     return setTimeout(checkInternet, 3000)
                 }
         
-                db.set("isOnline", true).catch(log.error)
+                await db.set("isOnline", true).catch(log.error)
+
+                return setTimeout(checkInternet, 3000)
             }
             catch(e){
                 log.error(e)
+
+                await db.set("isOnline", false).catch(log.error)
             }
 
             return setTimeout(checkInternet, 3000)
@@ -76,18 +79,18 @@ const checkInternet = (): any => {
     })
 
     req.on("error", async () => {
-        db.set("isOnline", false).catch(log.error)
+        await db.set("isOnline", false).catch(log.error)
 
         return setTimeout(checkInternet, 3000)
     })
 
     req.on("timeout", async () => {
-        db.set("isOnline", false).catch(log.error)
+        await db.set("isOnline", false).catch(log.error)
 
         return setTimeout(checkInternet, 3000)
     })
 
-    req.end()
+    return req.end()
 }
 
 const WorkerWindow = memo(() => {
@@ -97,7 +100,7 @@ const WorkerWindow = memo(() => {
     const paused: boolean = useDb("paused", false)
     const [runningSyncTasks, setRunningSyncTasks] = useState<number>(0)
     const appVersion: string = useAppVersion()
-    const isLoggedIn: boolean = useDb("isLoggedIn", true)
+    const isLoggedIn: boolean = useDb("isLoggedIn", false)
 
     const init = async (): Promise<any> => {
         if(initDone.current){
@@ -105,48 +108,46 @@ const WorkerWindow = memo(() => {
         }
 
         await new Promise((resolve) => {
-            const wait = setInterval(async (): Promise<any> => {
+            const wait = async (): Promise<any> => {
                 if(!isOnline){
-                    return false
+                    return setTimeout(wait, 100)
                 }
 
                 try{
-                    var isLoggedIn = await db.get("isLoggedIn")
+                    const loggedIn: boolean | null = await db.get("isLoggedIn")
+
+                    if(loggedIn && isOnline){
+                        return resolve(true)
+                    }
                 }
                 catch(e){
-                    return log.error(e)
+                    log.error(e)
                 }
 
-                if(isLoggedIn && isOnline){
-                    clearInterval(wait)
+                return setTimeout(wait, 100)
+            }
 
-                    return resolve(true)
-                }
-            }, 1000)
+            return wait()
         })
 
         if(!initDone.current){
             initDone.current = true
 
-            setTimeout(() => {
-                updateKeys().then(() => {
-                    Promise.all([
-                        db.set("paused", false),
-                        db.set("syncIssues", []),
-                        db.set("maxStorageReached", false),
-                        db.set("suspend", false),
-                        db.set("uploadPaused", false),
-                        db.set("downloadPaused", false),
-                        db.set("isOnline", true)
-                    ]).then(() => {
-                        sync()
-                    }).catch((err) => {
-                        log.error(err)
-                    })
-                }).catch((err) => {
+            updateKeys().then(() => {
+                Promise.all([
+                    db.set("paused", false),
+                    db.set("syncIssues", []),
+                    db.set("maxStorageReached", false),
+                    db.set("suspend", false),
+                    db.set("uploadPaused", false),
+                    db.set("downloadPaused", false),
+                    db.set("isOnline", true)
+                ]).then(() => sync()).catch((err) => {
                     log.error(err)
                 })
-            }, 1000)
+            }).catch((err) => {
+                log.error(err)
+            })
         }
     }
 
@@ -209,15 +210,18 @@ const WorkerWindow = memo(() => {
         (async () => {
             if(!paused){
                 try{
-                    const userId = await db.get("userId")
-                    let currentSyncLocations = await db.get("syncLocations:" + userId)
+                    const userId: number | null = await db.get("userId")
+                    let currentSyncLocations: Location[] | null = await db.get("syncLocations:" + userId)
     
                     if(!Array.isArray(currentSyncLocations)){
                         currentSyncLocations = []
                     }
     
                     for(let i = 0; i < currentSyncLocations.length; i++){
-                        await db.set("localDataChanged:" + currentSyncLocations[i].uuid, true)
+                        await Promise.all([
+                            db.set("localDataChanged:" + currentSyncLocations[i].uuid, true),
+                            db.set("remoteDataChanged:" + currentSyncLocations[i].uuid, true)
+                        ])
                     }
                 }
                 catch(e){
@@ -246,7 +250,7 @@ const WorkerWindow = memo(() => {
 		}
     }, [])
 
-    return <></>
+    return null
 })
 
 export default WorkerWindow

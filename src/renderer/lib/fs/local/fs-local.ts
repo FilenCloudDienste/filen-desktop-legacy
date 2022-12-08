@@ -1,6 +1,6 @@
 import ipc from "../../ipc"
 import memoryCache from "../../memoryCache"
-import { convertTimestampToMs, Semaphore, isFolderPathExcluded, isSystemPathExcluded, pathIsFileOrFolderNameIgnoredByDefault, pathValidation, windowsPathToUnixStyle, pathIncludesDot } from "../../helpers"
+import { convertTimestampToMs, Semaphore, isFolderPathExcluded, isSystemPathExcluded, pathIsFileOrFolderNameIgnoredByDefault, pathValidation, windowsPathToUnixStyle, pathIncludesDot, isNameOverMaxLength, isPathOverMaxLength } from "../../helpers"
 import { downloadChunk } from "../../api"
 import { decryptData } from "../../crypto"
 import { v4 as uuidv4 } from "uuid"
@@ -8,7 +8,7 @@ import db from "../../db"
 import * as constants from "../../constants"
 import { isSyncLocationPaused } from "../../worker/sync/sync.utils"
 import type { Stats } from "fs-extra"
-import type { ReaddirFallbackEntry, LocalDirectoryTreeResult, LocalTreeFiles, LocalTreeFolders, LocalTreeIno } from "../../../../types"
+import type { ReaddirFallbackEntry, LocalDirectoryTreeResult, LocalTreeFiles, LocalTreeFolders, LocalTreeIno, Location } from "../../../../types"
 
 const fs = window.require("fs-extra")
 const pathModule = window.require("path")
@@ -247,7 +247,7 @@ export const canReadWriteAtPath = (fullPath: string): Promise<boolean> => {
     })
 }
 
-export const directoryTree = (path: string, skipCache: boolean = false, location?: any): Promise<LocalDirectoryTreeResult> => {
+export const directoryTree = (path: string, skipCache: boolean = false, location: Location): Promise<LocalDirectoryTreeResult> => {
     return new Promise((resolve, reject) => {
         const cacheKey = "directoryTreeLocal:" + location.uuid
 
@@ -331,6 +331,8 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
                         && pathValidation(item.path)
                         && !pathIsFileOrFolderNameIgnoredByDefault(item.path)
                         && !isSystemPathExcluded("//" + item.fullPath)
+                        && !isNameOverMaxLength(item.basename)
+                        && !isPathOverMaxLength(location.local + "/" + item.path)
                     ){
                         item.stats = await gracefulLStat(item.fullPath)
 

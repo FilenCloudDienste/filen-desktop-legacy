@@ -123,3 +123,21 @@ export interface SyncIssue {
     message: string,
     timestamp: number
 }
+
+export interface ItemProps {
+    task: any,
+    style: any,
+    userId: number,
+    platform: string,
+    darkMode: boolean,
+    paused: boolean,
+    lang: string,
+    isOnline: boolean
+}
+
+export interface WatcherEvent {
+    event: string,
+    name: string,
+    watchPath: string,
+    locationUUID: string
+}

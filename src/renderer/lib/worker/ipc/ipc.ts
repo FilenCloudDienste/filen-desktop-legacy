@@ -22,6 +22,7 @@ import * as fsRemote from "../../fs/remote"
 import ipc from "../../ipc"
 import eventListener from "../../eventListener"
 import memoryCache from "../../memoryCache"
+import type { WatcherEvent } from "../../../../types"
 
 const { ipcRenderer } = window.require("electron")
 const log = window.require("electron-log")
@@ -130,7 +131,7 @@ const handleMessage = (type: string, request: any) => {
             const { location } = request
 
             Promise.all([
-                fsLocal.directoryTree(location.local),
+                fsLocal.directoryTree(location.local, true, location),
                 fsRemote.directoryTree(location.remoteUUID, true, location)
             ]).then(([localTree, remoteTree]) => {
                 return resolve({
@@ -147,7 +148,7 @@ const handleMessage = (type: string, request: any) => {
         else if(type == "localTree"){
             const { location } = request
 
-            fsLocal.directoryTree(location.local, true).then(resolve).catch(reject)
+            fsLocal.directoryTree(location.local, true, location).then(resolve).catch(reject)
         }
         else if(type == "updateThrottles"){
             const { uploadKbps, downloadKbps } = request
@@ -212,11 +213,7 @@ export const listen = () => {
         })
     })
 
-    ipcRenderer.on("watcher-event", (_: any, data: any) => {
-        if(data.err){
-            return log.error(data.err)
-        }
-
+    eventListener.on("watcher-event", (data: WatcherEvent) => {
         clearTimeout(DEBOUNCE_WATCHER_EVENT[data.locationUUID])
 
         DEBOUNCE_WATCHER_EVENT[data.locationUUID] = setTimeout(() => {
@@ -232,8 +229,8 @@ export const listen = () => {
                 }
                 
                 return check()
-            }).then(() => {
-                db.set("localDataChanged:" + locationUUID, true).catch(log.error)
+            }).then(async () => {
+                await db.set("localDataChanged:" + locationUUID, true).catch(log.error)
 
                 sendToAllPorts({
                     type: "syncStatus",

@@ -6,7 +6,7 @@ const useIsOnline = (): boolean => {
 	const isOnline: boolean = useDb("isOnline", true)
 
 	useEffect(() => {
-		setData(typeof isOnline == "boolean" ? isOnline : true)
+		setData(typeof isOnline == "boolean" && isOnline !== null ? isOnline : true)
 	}, [isOnline])
 
 	return data

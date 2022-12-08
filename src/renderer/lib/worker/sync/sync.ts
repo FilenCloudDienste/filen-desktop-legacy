@@ -32,7 +32,8 @@ import {
     clearApplyDoneTasks
 } from "./sync.utils"
 import { sendToAllPorts } from "../ipc"
-import type { SemaphoreInterface, Delta, Location } from "../../../../types"
+import type { SemaphoreInterface, Delta, Location, SyncIssue } from "../../../../types"
+import { watch } from "../watcher"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
@@ -2339,7 +2340,7 @@ const applyDoneTasksToSavedState = ({ doneTasks, localTreeNow, remoteTreeNow }: 
     })
 }
 
-const syncLocation = async (location: Location): Promise<any> => {
+const syncLocation = async (location: Location): Promise<boolean> => {
     if(location.paused){
         log.info("Sync location " + location.uuid + " -> " + location.local + " <-> " + location.remote + " [" + location.type + "] is paused")
 
@@ -2412,7 +2413,7 @@ const syncLocation = async (location: Location): Promise<any> => {
         })
 
         try{
-            await ipc.watchDirectory(pathModule.normalize(location.local), location.uuid)
+            await watch(pathModule.normalize(location.local), location.uuid)
         }
         catch(e: any){
             if((await isSuspended())){
@@ -2465,6 +2466,11 @@ const syncLocation = async (location: Location): Promise<any> => {
             }] = await Promise.all([
             fsLocal.directoryTree(pathModule.normalize(location.local), typeof IS_FIRST_REQUEST[location.uuid] == "undefined", location),
             fsRemote.directoryTree(location.remoteUUID, typeof IS_FIRST_REQUEST[location.uuid] == "undefined", location)
+        ])
+
+        await Promise.all([
+            db.set("localDataChanged:" + location.uuid, false),
+            db.set("remoteDataChanged:" + location.uuid, false)
         ])
     }
     catch(e: any){
@@ -2684,7 +2690,7 @@ const syncLocation = async (location: Location): Promise<any> => {
     })
 
     try{
-        const syncIssues = await db.get("syncIssues")
+        const syncIssues: SyncIssue[] | null = await db.get("syncIssues")
 
         if(Array.isArray(syncIssues) && syncIssues.length > 0){
             log.info("Got open sync issues after consume, won't apply anything to saved state")
@@ -2780,34 +2786,17 @@ const syncLocation = async (location: Location): Promise<any> => {
     return true
 }
 
-const restartSyncLoop = async (): Promise<any> => {
-    emitSyncStatus("releaseSyncLock", {
-        status: "start"
-    })
-
-    try{
-        await ipc.releaseSyncLock()
-    }
-    catch(e){
-        log.error("Could not release sync lock from API")
-        log.error(e)
-
-        emitSyncStatus("releaseSyncLock", {
-            status: "err",
-            err: e
-        })
-    }
-
-    emitSyncStatus("releaseSyncLock", {
-        status: "done"
-    })
-
+const restartSyncLoop = () => {
     SYNC_RUNNING = false
 
     return setTimeout(sync, SYNC_TIMEOUT)
 }
 
 const sync = async (): Promise<any> => {
+    if(SYNC_RUNNING){
+        return log.info("Sync requested but already running, returning")
+    }
+
     if((await isSuspended())){
         return setTimeout(sync, SYNC_TIMEOUT)
     }
@@ -2830,14 +2819,14 @@ const sync = async (): Promise<any> => {
     })
 
     try{
-        var [userId, masterKeys, syncIssues, paused] = await Promise.all([
+        var [userId, masterKeys, syncIssues, paused]: [ number | null, string[] | null, SyncIssue[] | null, boolean | null ] = await Promise.all([
             db.get("userId"),
             db.get("masterKeys"),
             db.get("syncIssues"),
             db.get("paused")
         ])
 
-        var syncLocations = await db.get("syncLocations:" + userId)
+        var syncLocations: Location[] | null = await db.get("syncLocations:" + userId)
     }
     catch(e: any){
         log.error("Could not fetch syncLocations from DB")
@@ -2921,35 +2910,15 @@ const sync = async (): Promise<any> => {
         return setTimeout(sync, SYNC_TIMEOUT)
     }
 
-    if(SYNC_RUNNING){
-        return log.info("Sync requested but already running, returning")
-    }
-
     if((await isSuspended())){
         return setTimeout(sync, SYNC_TIMEOUT)
     }
 
-    emitSyncStatus("acquireSyncLock", {
-        status: "start"
-    })
-
-    try{
-        await ipc.acquireSyncLock()
-    }
-    catch(e){
-        emitSyncStatus("acquireSyncLock", {
-            status: "err",
-            err: e
-        })
-
-        return setTimeout(sync, SYNC_TIMEOUT)
+    if(SYNC_RUNNING){
+        return log.info("Sync requested but already running, returning")
     }
 
     SYNC_RUNNING = true
-
-    emitSyncStatus("acquireSyncLock", {
-        status: "done"
-    })
 
     log.info("Starting sync task")
     log.info(syncLocations.length + " syncLocations to sync")

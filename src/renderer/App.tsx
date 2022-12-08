@@ -3,7 +3,6 @@
 import React, { memo, lazy, Suspense } from "react"
 import { ChakraProvider, theme } from "@chakra-ui/react"
 import useDb from "./lib/hooks/useDb"
-import { formatBytes } from "./lib/helpers"
 
 const startingRoute = window.location.hash.replace("#", "").split("/")
 const getParams = new URLSearchParams(window.location.search)
@@ -11,12 +10,6 @@ const getParams = new URLSearchParams(window.location.search)
 const log = window.require("electron-log")
 
 console.log(startingRoute[0])
-
-setInterval(() => {
-	const memInfo = window.performance.memory
-
-    log.info("#" + startingRoute[0] + " memoryUsage", "heap =", formatBytes(memInfo.usedJSHeapSize), "totalHeap =", formatBytes(memInfo.totalJSHeapSize), "limit =", formatBytes(memInfo.jsHeapSizeLimit))
-}, 2500)
 
 const customTheme = {
 	...theme,

@@ -751,7 +751,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
 
     const toggleSyncPauseStatus = async (location: Location, paused: boolean) => {
         try{
-            let currentSyncLocations: Location[] | null = await db.get("syncLocations:" + userId)
+            let currentSyncLocations: Location[] = await db.get("syncLocations:" + userId)
 
             if(!Array.isArray(currentSyncLocations)){
                 currentSyncLocations = []
@@ -765,6 +765,13 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                         db.set("localDataChanged:" + currentSyncLocations[i].uuid, true),
                         db.set("remoteDataChanged:" + currentSyncLocations[i].uuid, true)
                     ])
+
+                    setTimeout(() => {
+                        Promise.all([
+                            db.set("localDataChanged:" + currentSyncLocations[i].uuid, true),
+                            db.set("remoteDataChanged:" + currentSyncLocations[i].uuid, true)
+                        ])
+                    }, 15000)
                 }
             }
 
@@ -1521,7 +1528,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                     const paused = event.nativeEvent.target.checked
 
                                                     try{
-                                                        let currentSyncLocations: Location[] | null = await db.get("syncLocations:" + userId)
+                                                        let currentSyncLocations: Location[] = await db.get("syncLocations:" + userId)
 
                                                         if(!Array.isArray(currentSyncLocations)){
                                                             currentSyncLocations = []
@@ -1536,6 +1543,13 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                                         db.set("localDataChanged:" + currentSyncLocations[i].uuid, true),
                                                                         db.set("remoteDataChanged:" + currentSyncLocations[i].uuid, true)
                                                                     ])
+
+                                                                    setTimeout(() => {
+                                                                        Promise.all([
+                                                                            db.set("localDataChanged:" + currentSyncLocations[i].uuid, true),
+                                                                            db.set("remoteDataChanged:" + currentSyncLocations[i].uuid, true)
+                                                                        ])
+                                                                    }, 15000)
                                                                 }
                                                             }
                                                         }
@@ -2977,11 +2991,7 @@ const SettingsWindow = memo(({ startingRoute, userId, email, windowId }: { start
                     </Flex>
                 )
             }
-            <IsOnlineBottomToast 
-                userId={userId} 
-                email={email} 
-                platform={platform} 
-                darkMode={darkMode} 
+            <IsOnlineBottomToast
                 lang={lang} 
             />
         </Container>
