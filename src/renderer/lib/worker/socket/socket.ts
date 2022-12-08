@@ -1,15 +1,18 @@
-const io = require("socket.io-client")
-const log = require("electron-log")
+import db from "../../db"
+import eventListener from "../../eventListener"
 
-let HEARTBEAT_INTERVAL = undefined
-let SOCKET = undefined
+const io = window.require("socket.io-client")
+const log = window.require("electron-log")
 
-const auth = async () => {
+let HEARTBEAT_INTERVAL: NodeJS.Timer
+let SOCKET: any = undefined
+
+const auth = async (): Promise<void> => {
     const apiKey = await new Promise((resolve) => {
         const waitForLoggedInInterval = setInterval(() => {
             Promise.all([
-                require("../db").get("isLoggedIn"),
-                require("../db").get("apiKey")
+                db.get("isLoggedIn"),
+                db.get("apiKey")
             ]).then(([isLoggedIn, apiKey]) => {
                 if(isLoggedIn && typeof apiKey == "string" && apiKey.length >= 32){
                     clearInterval(waitForLoggedInInterval)
@@ -27,14 +30,10 @@ const auth = async () => {
             apiKey
         })
     }
-
-    return true
 }
 
-const listen = () => {
-    return new Promise((resolve) => {
-        require("../shared").remove("SOCKET")
-
+export const listen = (): void => {
+    try{
         SOCKET = io("https://socket.filen.io", {
             path: "",
             timeout: 15000,
@@ -48,8 +47,6 @@ const listen = () => {
 
         SOCKET.on("connect", () => {
             log.info("Socket connected")
-
-            require("../shared").set("SOCKET", SOCKET)
 
             auth()
 
@@ -66,21 +63,22 @@ const listen = () => {
             log.warn("Socket disconnected")
 
             clearInterval(HEARTBEAT_INTERVAL)
-
-            require("../shared").remove("SOCKET")
         })
 
-        SOCKET.on("fm-to-sync-client-message", (data) => {
-            require("../ipc").emitGlobal("socket-event", {
+        SOCKET.on("fm-to-sync-client-message", (data: any) => {
+            eventListener.emit("socket-event", {
                 type: "fm-to-sync-client-message",
                 data
             })
         })
+    }
+    catch(e){
+        log.error(e)
 
-        return resolve(true)
-    })
+        setTimeout(listen, 5000)
+    }
 }
 
-module.exports = {
+export default {
     listen
 }

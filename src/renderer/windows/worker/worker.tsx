@@ -9,6 +9,7 @@ import useDb from "../../lib/hooks/useDb"
 import eventListener from "../../lib/eventListener"
 import useAppVersion from "../../lib/hooks/useAppVersion"
 import type { Location } from "../../../types"
+import { listen as socketListen } from "../../lib/worker/socket"
 
 const log = window.require("electron-log")
 const https = window.require("https")
@@ -132,6 +133,8 @@ const WorkerWindow = memo(() => {
 
         if(!initDone.current){
             initDone.current = true
+
+            socketListen()
 
             updateKeys().then(() => {
                 Promise.all([

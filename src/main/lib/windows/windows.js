@@ -917,7 +917,6 @@ const createWindows = () => {
     return new Promise(async (resolve, reject) => {
         try{
             await require("../ipc").listen()
-            await require("../socket").listen()
 
             const langSetManually = await require("../db").get("langSetManually")
 

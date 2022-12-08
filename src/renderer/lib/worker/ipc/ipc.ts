@@ -261,7 +261,7 @@ export const listen = () => {
         }
     })
 
-    ipcRenderer.on("socket-event", (_: any, res: any) => {
+    eventListener.on("socket-event", (res: any) => {
         const { type, data } = res
         const { args } = data
 
