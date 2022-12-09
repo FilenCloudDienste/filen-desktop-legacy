@@ -497,7 +497,7 @@ export const readChunk = (path: string, offset: number, length: number): Promise
         let currentTries = 0
         let lastErr: any = undefined
 
-        const req = () => {
+        const req = (): any => {
             if(currentTries > FS_RETRIES){
                 return reject(lastErr)
             }

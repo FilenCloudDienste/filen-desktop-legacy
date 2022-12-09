@@ -162,11 +162,12 @@
 			"sign": "./scripts/sign.js"
 		},
 		"nsis": {
-			"oneClick": false,
+			"oneClick": true,
 			"createDesktopShortcut": true,
 			"createStartMenuShortcut": true,
 			"deleteAppDataOnUninstall": true,
-			"allowToChangeInstallationDirectory": false
+			"allowToChangeInstallationDirectory": false,
+			"allowElevation": true
 		},
 		"linux": {
 			"maintainer": "Filen Cloud Dienste UG (haftungsbeschränkt)",

@@ -13,10 +13,10 @@ export const isPathOverMaxLength = memoize((path: string) => {
     return path.length > 1023
   }
   else if(is.windows()){
-    return path.length > 255
+    return path.length > 399
   }
 
-  return path.length > 255
+  return path.length > 399
 })
 
 export const isNameOverMaxLength = memoize((name: string) => {
