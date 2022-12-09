@@ -547,6 +547,8 @@ const handleMessage = (type, data) => {
                 autoUpdater.autoInstallOnAppQuit = false
                 autoUpdater.quitAndInstall(false, true)
 
+                app.exit(0)
+
                 return resolve(true)
             }
             catch(e){

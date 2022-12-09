@@ -111,26 +111,6 @@ const set = (key: string, value: any): Promise<boolean> => {
             return reject(new Error("Invalid key type, expected string, got " + typeof key))
         }
 
-        try{
-            if(USE_MEMORY_CACHE){
-                if(memoryCache.has(MEMORY_CACHE_KEY + key)){
-                    if(JSON.stringify(memoryCache.get(MEMORY_CACHE_KEY + key), (_, val) => typeof val == "bigint" ? val.toString() : val) === JSON.stringify(value, (_, val) => typeof val == "bigint" ? val.toString() : val)){
-                        sendToAllPorts({
-                            type: "dbSet",
-                            data: {
-                                key
-                            }
-                        })
-                        
-                        return resolve(true)
-                    }
-                }
-            }
-        }
-        catch(e){
-            return reject(e)
-        }
-
         getDbPath().then(() => {
             try{
                 var val = JSON.stringify({

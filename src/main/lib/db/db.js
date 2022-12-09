@@ -89,23 +89,6 @@ module.exports = {
             }
 
             try{
-                if(USE_MEMORY_CACHE){
-                    if(require("../memoryCache").has(MEMORY_CACHE_KEY + key)){
-                        const cached = require("../memoryCache").get(MEMORY_CACHE_KEY + key)
-
-                        if(JSON.stringify(cached, (_, val) => typeof val == "bigint" ? val.toString() : val) === JSON.stringify(value, (_, val) => typeof val == "bigint" ? val.toString() : val)){
-                            require("../ipc").emitGlobal("global-message", {
-                                type: "dbSet",
-                                data: {
-                                    key
-                                }
-                            })
-                            
-                            return resolve(true)
-                        }
-                    }
-                }
-
                 var val = JSON.stringify({
                     key,
                     value

@@ -194,7 +194,7 @@ const WorkerWindow = memo(() => {
                 }
             }
         }
-    }, 250), [])
+    }, 250), [appVersion])
 
     useEffect(() => {
         processTray(isLoggedIn, isOnline, paused, syncIssues, runningSyncTasks)
