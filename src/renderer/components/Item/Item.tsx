@@ -14,6 +14,7 @@ import { decryptFolderLinkKey } from "../../lib/crypto"
 import db from "../../lib/db"
 import { v4 as uuidv4 } from "uuid"
 import type { ItemProps } from "../../../types"
+import { createLocalTrashDirs } from "../../lib/fs/local"
 
 const pathModule = window.require("path")
 const { shell } = window.require("electron")
@@ -531,7 +532,7 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
                         ) : (
                             <>
                                 {
-                                    hovering && ["renameInLocal", "downloadFromRemote", "moveInLocal", "uploadToRemote", "renameInRemote", "moveInRemote"].includes(task.type) ? (
+                                    hovering && ["renameInLocal", "downloadFromRemote", "moveInLocal", "uploadToRemote", "renameInRemote", "moveInRemote", "deleteInLocal"].includes(task.type) ? (
                                         <Flex 
                                             alignItems="center" 
                                             justifyContent="flex-end" 
@@ -568,11 +569,18 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
                                                 color={colors(platform, darkMode, "textPrimary")} 
                                                 cursor="pointer" 
                                                 onClick={() => {
-                                                    try{
-                                                        shell.showItemInFolder(pathModule.normalize(task.location.local + "/" + task.task.path))
+                                                    if(task.type == "deleteInLocal"){
+                                                        createLocalTrashDirs().then(() => {
+                                                            shell.openPath(pathModule.normalize(pathModule.join(task.location.local, ".filen.trash.local"))).catch(log.error)
+                                                        }).catch(log.error)
                                                     }
-                                                    catch(e){
-                                                        log.error(e)
+                                                    else{
+                                                        try{
+                                                            shell.showItemInFolder(pathModule.normalize(pathModule.join(task.location.local, task.task.path)))
+                                                        }
+                                                        catch(e){
+                                                            log.error(e)
+                                                        }
                                                     }
                                                 }} 
                                             />
