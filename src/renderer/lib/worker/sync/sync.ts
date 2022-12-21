@@ -1246,9 +1246,9 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                 return false
                             }
     
-                            currentTries += 1 
+                            currentTries += 1
     
-                            fsLocal.rm(pathModule.normalize(location.local + "/" + task.path)).then((done) => {
+                            fsLocal.rm(pathModule.normalize(location.local + "/" + task.path), location).then((done) => {
                                 emitSyncTask("deleteInLocal", {
                                     status: "done",
                                     task,

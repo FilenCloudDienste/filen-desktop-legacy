@@ -46,8 +46,8 @@ const downloadFile = (absolutePath: string, file: any) => {
             }
 
             Promise.all([
-                fsLocal.rm(absolutePath),
-                fsLocal.rm(fileTmpPath)
+                fsLocal.rmPermanent(absolutePath),
+                fsLocal.rmPermanent(fileTmpPath)
             ]).then(async () => {
                 try{
                     var stream = fs.createWriteStream(fileTmpPath)
@@ -158,7 +158,7 @@ const downloadFile = (absolutePath: string, file: any) => {
                         fsLocal.checkLastModified(absolutePath).then(() => {
                             fsLocal.gracefulLStat(absolutePath).then((stat: any) => {
                                 if(stat.size <= 0){
-                                    fsLocal.rm(absolutePath)
+                                    fsLocal.rmPermanent(absolutePath)
             
                                     return reject(new Error(absolutePath + " size = " + stat.size))
                                 }
@@ -386,7 +386,7 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }: 
                     const baseDownloadPath: string = pathModule.normalize(downloadPath)
 
                     fsLocal.smokeTest(pathModule.normalize(pathModule.join(baseDownloadPath, ".."))).then(() => {
-                        fsLocal.rm(baseDownloadPath).then(() => {
+                        fsLocal.rmPermanent(baseDownloadPath).then(() => {
                             fs.mkdir(baseDownloadPath, {
                                 recursive: true,
                                 overwrite: true

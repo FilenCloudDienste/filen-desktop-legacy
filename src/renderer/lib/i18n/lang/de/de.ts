@@ -146,7 +146,9 @@ const de: {
     clearLocalEventLog: "Lokalen Event Log leeren",
     clearLocalEventLogInfo: "Hiermit wird der lokale Event Log geleert. Sind Sie sicher? Diese Aktion kann nicht rückgängig gemacht werden!",
     copied: "Kopiert",
-    publicLinkCopied: "Öffentlicher Link in die Zwischenablage kopiert"
+    publicLinkCopied: "Öffentlicher Link in die Zwischenablage kopiert",
+    clearLocalTrashDirs: "Lokale Papierkörbe leeren",
+    clearLocalTrashDirsInfo: "Das Leeren der lokalen Papierkörbe kann nicht rückgängig gemacht werden! Bist du dir sicher?"
 }
 
 export default de

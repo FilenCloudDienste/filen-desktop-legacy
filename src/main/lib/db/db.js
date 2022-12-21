@@ -5,6 +5,7 @@ const writeFileAtomic = require("write-file-atomic")
 const crypto = require("crypto")
 const log = require("electron-log")
 const { memoize } = require("lodash")
+const lockfile = require("proper-lockfile")
 
 const DB_VERSION = 1
 const DB_PATH = pathModule.join(app.getPath("userData"), "db_v" + DB_VERSION)
@@ -110,27 +111,39 @@ module.exports = {
 
                 tries += 1
 
-                fs.ensureFile(pathModule.join(DB_PATH, keyHash + ".json")).then(() => {
-                    writeFileAtomic(pathModule.join(DB_PATH, keyHash + ".json"), val).then(() => {
-                        if(USE_MEMORY_CACHE){
-                            require("../memoryCache").set(MEMORY_CACHE_KEY + key, value)
-                        }
+                const dbFilePath = pathModule.join(DB_PATH, keyHash + ".json")
 
-                        require("../ipc").emitGlobal("global-message", {
-                            type: "dbSet",
-                            data: {
-                                key
+                lockfile.lock(dbFilePath).then((release) => {
+                    fs.ensureFile(dbFilePath).then(() => {
+                        writeFileAtomic(dbFilePath, val).then(() => {
+                            if(USE_MEMORY_CACHE){
+                                require("../memoryCache").set(MEMORY_CACHE_KEY + key, value)
                             }
-                        })
     
-                        return resolve(true)
+                            require("../ipc").emitGlobal("global-message", {
+                                type: "dbSet",
+                                data: {
+                                    key
+                                }
+                            })
+        
+                            release().then(() => {
+                                return resolve(true)
+                            }).catch(reject)
+                        }).catch((err) => {
+                            lastErr = err
+    
+                            return setTimeout(write, RETRY_TIMEOUT)
+                        })
                     }).catch((err) => {
                         lastErr = err
-
+    
                         return setTimeout(write, RETRY_TIMEOUT)
                     })
                 }).catch((err) => {
                     lastErr = err
+
+                    tries -= 1
 
                     return setTimeout(write, RETRY_TIMEOUT)
                 })

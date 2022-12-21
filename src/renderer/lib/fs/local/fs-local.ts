@@ -22,6 +22,7 @@ const FS_RETRY_TIMEOUT = 500
 const FS_RETRY_CODES = ["EAGAIN", "EBUSY", "ECANCELED", "EBADF", "EINTR", "EIO", "EMFILE", "ENFILE", "ENOMEM", "EPIPE", "ETXTBSY", "ESPIPE", "EAI_SYSTEM", "EAI_CANCELED"]
 const FS_NORETRY_CODES = ["ENOENT", "ENODEV", "EACCES", "EPERM", "EINVAL", "ENAMETOOLONG", "ENOBUFS", "ENOSPC", "EROFS"]
 const readdirFallback = new Map<string, ReaddirFallbackEntry>()
+let LOCAL_TRASH_DIRS_CLEAN_INTERVAL: string | number | NodeJS.Timeout | undefined
 
 export const normalizePath = (path: string): string => {
     return pathModule.normalize(path)
@@ -558,7 +559,17 @@ export const readChunk = (path: string, offset: number, length: number): Promise
     })
 }
 
-export const rm = (path: string): Promise<boolean> => {
+export const rm = async (path: string, location: Location): Promise<boolean> => {
+    const trashDirPath = pathModule.normalize(pathModule.join(location.local, ".filen.trash.local"))
+    const basename = pathModule.basename(pathModule.normalize(path))
+
+    await fs.ensureDir(trashDirPath)
+    await move(pathModule.normalize(path), pathModule.normalize(pathModule.join(trashDirPath, basename)))
+
+    return true
+}
+
+export const rmPermanent = (path: string): Promise<boolean> => {
     return new Promise(async (resolve, reject) => {
         path = normalizePath(path)
 
@@ -705,8 +716,8 @@ export const download = (path: string, location: any, task: any): Promise<any> =
             }
 
             Promise.all([
-                rm(absolutePath),
-                rm(fileTmpPath)
+                rmPermanent(absolutePath),
+                rmPermanent(fileTmpPath)
             ]).then(async () => {
                 try{
                     var stream = fs.createWriteStream(fileTmpPath)
@@ -820,7 +831,7 @@ export const download = (path: string, location: any, task: any): Promise<any> =
                         checkLastModified(absolutePath).then(() => {
                             gracefulLStat(absolutePath).then((stat: any) => {
                                 if(stat.size <= 0){
-                                    rm(absolutePath)
+                                    rmPermanent(absolutePath)
             
                                     return reject(new Error(absolutePath + " size = " + stat.size))
                                 }
@@ -905,4 +916,138 @@ export const rename = (before: string, after: string): Promise<any> => {
 
         return req()
     })
+}
+
+export const createLocalTrashDirs = async (): Promise<boolean> => {
+    const userId: number | null = await db.get("userId")
+
+    if(!userId || !Number.isInteger(userId)){
+        return true
+    }
+
+    const syncLocations: Location[] | null = await db.get("syncLocations:" + userId)
+
+    if(!syncLocations || !Array.isArray(syncLocations)){
+        return true
+    }
+
+    await Promise.all([
+        ...syncLocations.map(location => fs.ensureDir(pathModule.normalize(pathModule.join(location.local, ".filen.trash.local"))))
+    ])
+
+    return true
+}
+
+export const clearLocalTrashDirs = (clearNow: boolean = false): Promise<boolean> => {
+    return new Promise((resolve, reject) => {
+        db.get("userId").then((userId) => {
+            if(!userId || !Number.isInteger(userId)){
+                return
+            }
+    
+            Promise.all([
+                db.get("syncLocations:" + userId),
+                createLocalTrashDirs()
+            ]).then(([syncLocations, _]: [Location[] | null, any]) => {
+                if(!syncLocations || !Array.isArray(syncLocations)){
+                    return
+                }
+        
+                Promise.allSettled([
+                    ...syncLocations.map(location => new Promise((resolve, reject) => {
+                        const path = pathModule.normalize(pathModule.join(location.local, ".filen.trash.local"))
+        
+                        const dirStream = readdirp(path, {
+                            alwaysStat: false,
+                            lstat: false,
+                            type: "all",
+                            depth: 2147483648
+                        })
+        
+                        let statting = 0
+                        const pathsToTrash: string[] = []
+                        const now = new Date().getTime()
+                        let dirSize = 0
+                        
+                        dirStream.on("data", async (item: { fullPath: string, stats: Stats }) => {
+                            statting += 1
+            
+                            if(clearNow){
+                                pathsToTrash.push(item.fullPath)
+                            }
+                            else{
+                                try{
+                                    item.stats = await gracefulLStat(item.fullPath)
+            
+                                    if(!item.stats.isSymbolicLink()){
+                                        if((item.stats.ctimeMs + constants.deleteFromLocalTrashAfter) <= now){
+                                            pathsToTrash.push(item.fullPath)
+                                        }
+            
+                                        dirSize += item.stats.size
+                                    }
+                                }
+                                catch(e){
+                                    log.error(e)
+                                }
+                            }
+            
+                            statting -= 1
+                        })
+                        
+                        dirStream.on("warn", (warn: any) => {
+                            log.error("[Local trash] Readdirp warning:", warn)
+                        })
+                        
+                        dirStream.on("error", (err: Error) => {
+                            dirStream.destroy()
+            
+                            statting = 0
+                            
+                            return reject(err)
+                        })
+                        
+                        dirStream.on("end", async () => {
+                            await new Promise((resolve) => {
+                                if(statting <= 0){
+                                    return resolve(true)
+                                }
+            
+                                const wait = setInterval(() => {
+                                    if(statting <= 0){
+                                        clearInterval(wait)
+            
+                                        return resolve(true)
+                                    }
+                                }, 10)
+                            })
+            
+                            statting = 0
+            
+                            dirStream.destroy()
+    
+                            await Promise.allSettled([
+                                db.set("localTrashDirSize:" + location.uuid, clearNow ? 0 : dirSize),
+                                ...pathsToTrash.map(pathToTrash => rmPermanent(pathToTrash))
+                            ])
+    
+                            return resolve(true)
+                        })
+                    }))
+                ]).then(() => {
+                    return resolve(true)
+                })
+            }).catch(reject)
+        }).catch(reject)
+    })
+}
+
+export const initLocalTrashDirs = () => {
+    clearLocalTrashDirs().catch(log.error)
+
+    clearInterval(LOCAL_TRASH_DIRS_CLEAN_INTERVAL)
+
+    LOCAL_TRASH_DIRS_CLEAN_INTERVAL = setInterval(() => {
+        clearLocalTrashDirs().catch(log.error)
+    }, constants.clearLocalTrashDirsInterval)
 }

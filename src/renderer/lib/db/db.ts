@@ -9,6 +9,7 @@ const writeFileAtomic = window.require("write-file-atomic")
 const pathModule = window.require("path")
 const CryptoJS = window.require("crypto-js")
 const log = window.require("electron-log")
+const lockfile = window.require("proper-lockfile")
 
 const DB_VERSION = 1
 let DB_PATH = ""
@@ -134,27 +135,39 @@ const set = (key: string, value: any): Promise<boolean> => {
 
                 tries += 1
 
-                fs.ensureFile(pathModule.join(DB_PATH, keyHash + ".json")).then(() => {
-                    writeFileAtomic(pathModule.join(DB_PATH, keyHash + ".json"), val).then(() => {
-                        if(USE_MEMORY_CACHE){
-                            memoryCache.set(MEMORY_CACHE_KEY + key, value)
-                        }
+                const dbFilePath = pathModule.join(DB_PATH, keyHash + ".json")
 
-                        sendToAllPorts({
-                            type: "dbSet",
-                            data: {
-                                key
+                lockfile.lock(dbFilePath).then((release: () => Promise<any>) => {
+                    fs.ensureFile(dbFilePath).then(() => {
+                        writeFileAtomic(dbFilePath, val).then(() => {
+                            if(USE_MEMORY_CACHE){
+                                memoryCache.set(MEMORY_CACHE_KEY + key, value)
                             }
+    
+                            sendToAllPorts({
+                                type: "dbSet",
+                                data: {
+                                    key
+                                }
+                            })
+    
+                            release().then(() => {
+                                return resolve(true)
+                            }).catch(reject)
+                        }).catch((err: any) => {
+                            lastErr = err
+    
+                            return setTimeout(write, RETRY_TIMEOUT)
                         })
-
-                        return resolve(true)
                     }).catch((err: any) => {
                         lastErr = err
-
+    
                         return setTimeout(write, RETRY_TIMEOUT)
                     })
                 }).catch((err: any) => {
                     lastErr = err
+
+                    tries -= 1
 
                     return setTimeout(write, RETRY_TIMEOUT)
                 })

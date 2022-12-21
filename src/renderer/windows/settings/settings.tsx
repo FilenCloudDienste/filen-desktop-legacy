@@ -66,22 +66,25 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
     const [appVersion, setAppVersion] = useState<string | number | undefined>("1")
     const [excludeDot, setExcludeDot] = useState<boolean>(true)
     const [clearLocalEventLogModalOpen, setClearLocalEventLogModalOpen] = useState<boolean>(false)
+    const [clearLocalTrashDirsModalOpen, setClearLocalTrashDirsModalOpen] = useState<boolean>(false)
+    const [localTrashDirsSize, setLocalTrashDirsSize] = useState<number>(0)
+    const [clearingLocalTrashDirs, setClearingLocalTrashDirs] = useState<boolean>(false)
 
-    const getOpenAtStartup = () => {
+    const getOpenAtStartup = useCallback(() => {
         ipc.getOpenOnStartup().then((open) => {
             setOpenAtStartupAsync(open)
             setOpenAtStartup(open)
         }).catch(log.error)
-    }
+    }, [])
 
-    const getAppVersion = () => {
+    const getAppVersion = useCallback(() => {
         ipc.getVersion().then((version) => {
             setAppVersionAsync(version)
             setAppVersion(version)
         }).catch(log.error)
-    }
+    }, [])
 
-    const getExcludeDot = () => {
+    const getExcludeDot = useCallback(() => {
         db.get("excludeDot").then((exclude) => {
             if(exclude == null){
                 setExcludeDot(true)
@@ -89,20 +92,42 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
                 return
             }
 
-            if(exclude){
-                setExcludeDot(true)
-            }
-            else{
-                setExcludeDot(false)
-            }
+            setExcludeDot(exclude)
         }).catch(log.error)
-    }
+    }, [])
 
-    const populate = () => {
+    const getLocalTrashDirsSize = useCallback(() => {
+        setLocalTrashDirsSize(0)
+
+        db.get("userId").then((userId: number | null) => {
+            if(!userId || !Number.isInteger(userId)){
+                return
+            }
+
+            db.get("syncLocations:" + userId).then((syncLocations: Location[] | null) => {
+                if(!syncLocations || !Array.isArray(syncLocations)){
+                    return
+                }
+
+                for(let i = 0; i < syncLocations.length; i++){
+                    db.get("localTrashDirSize:" + syncLocations[i].uuid).then((size: number | null) => {
+                        if(!size || !Number.isInteger(size)){
+                            return
+                        }
+
+                        setLocalTrashDirsSize(prev => prev + size)
+                    }).catch(log.error)
+                }
+            }).catch(log.error)
+        }).catch(log.error)
+    }, [])
+
+    const populate = useCallback(() => {
         getOpenAtStartup()
         getAppVersion()
         getExcludeDot()
-    }
+        getLocalTrashDirsSize()
+    }, [])
 
     useEffect(() => {
         if(typeof openAtStartupAsync !== "undefined"){
@@ -116,6 +141,12 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
 
     useEffect(() => {
         populate()
+
+        const updateLocalTrashDirsSizeInterval = setInterval(getLocalTrashDirsSize, 5000)
+
+        return () => {
+            clearInterval(updateLocalTrashDirsSizeInterval)
+        }
     }, [])
 
     return (
@@ -481,6 +512,52 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
                     </Flex>
                 </Flex>
                 <Flex 
+                    flexDirection="row" 
+                    justifyContent="space-between" 
+                    alignItems="center" 
+                    width="80%" 
+                    margin="0px auto" 
+                    marginTop="10px" 
+                    paddingBottom="5px" 
+                    borderBottom={"1px solid " + colors(platform, darkMode, "borderPrimary")}
+                >
+                    <Flex>
+                        <Text 
+                            color={colors(platform, darkMode, "textPrimary")} 
+                            fontSize={15}
+                        >
+                            {i18n(lang, "clearLocalTrashDirs")}
+                        </Text>
+                    </Flex>
+                    <Flex
+                        gap="10px"
+                        flexDirection="row"
+                        alignItems="center"
+                    >
+                        <Text 
+                            color={colors(platform, darkMode, "textSecondary")} 
+                            fontSize={localTrashDirsSize > 0 ? 12 : 15}
+                        >
+                            {formatBytes(localTrashDirsSize)}
+                        </Text>
+                        {
+                            localTrashDirsSize > 0 && (
+                                <Link 
+                                    color={colors(platform, darkMode, "link")} 
+                                    fontSize={14} 
+                                    textDecoration="none" 
+                                    _hover={{
+                                        textDecoration: "underline"
+                                    }}
+                                    onClick={() => setClearLocalTrashDirsModalOpen(true)}
+                                >
+                                    {i18n(lang, "clear")}
+                                </Link>
+                            )
+                        }
+                    </Flex>
+                </Flex>
+                <Flex 
                     width="100%" 
                     height="auto" 
                     bottom="50px" 
@@ -581,6 +658,90 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
                         >
                             {i18n(lang, "clear")}
                         </Link>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
+            <Modal 
+                onClose={() => setClearLocalTrashDirsModalOpen(false)} 
+                isOpen={clearLocalTrashDirsModalOpen} 
+                isCentered={true}
+            >
+                <ModalOverlay borderRadius="10px" />
+                <ModalContent 
+                    backgroundColor={colors(platform, darkMode, "backgroundPrimary")} 
+                    borderRadius="15px"
+                >
+                    <ModalCloseButton 
+                        color={colors(platform, darkMode, "textPrimary")}
+                        _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }}
+                    />
+                    <ModalHeader color={colors(platform, darkMode, "textPrimary")}>
+                        {i18n(lang, "clearLocalTrashDirs")}
+                    </ModalHeader>
+                    <ModalBody>
+                        <Flex
+                            width="100%"
+                            height="100px"
+                            justifyContent="center"
+                            alignItems="center"
+                        >
+                            <Text
+                                color={colors(platform, darkMode, "textPrimary")}
+                                fontSize={15}
+                            >
+                                {i18n(lang, "clearLocalTrashDirsInfo")}
+                            </Text>
+                        </Flex>
+                    </ModalBody>
+                    <ModalFooter>
+                        <Flex
+                            flexDirection="row"
+                            alignItems="center"
+                        >
+                            <Link 
+                                color="gray" 
+                                textDecoration="none" 
+                                _hover={{ textDecoration: "none" }} 
+                                onClick={() => setClearLocalTrashDirsModalOpen(false)}
+                            >
+                                {i18n(lang, "close")}
+                            </Link>
+                            <Link 
+                                color="red.500"
+                                textDecoration="none" 
+                                _hover={{ textDecoration: "none" }} 
+                                marginLeft="10px"
+                                cursor={clearingLocalTrashDirs ? "not-allowed" : "pointer"}
+                                onClick={() => {
+                                    if(clearingLocalTrashDirs){
+                                        return
+                                    }
+
+                                    setClearingLocalTrashDirs(true)
+
+                                    fsLocal.clearLocalTrashDirs(true).then(() => {
+                                        setClearLocalTrashDirsModalOpen(false)
+                                        setLocalTrashDirsSize(0)
+                                        setClearingLocalTrashDirs(false)
+                                    }).catch((err) => {
+                                        log.error(err)
+
+                                        setClearLocalTrashDirsModalOpen(false)
+                                        setClearingLocalTrashDirs(false)
+                                    })
+                                }}
+                            >
+                                {
+                                    clearingLocalTrashDirs ? (
+                                        <Spinner
+                                            width="15px"
+                                            height="15px"
+                                            color={colors(platform, darkMode, "textSecondary")}
+                                        />
+                                    ) : i18n(lang, "clear")
+                                }
+                            </Link>
+                        </Flex>
                     </ModalFooter>
                 </ModalContent>
             </Modal>

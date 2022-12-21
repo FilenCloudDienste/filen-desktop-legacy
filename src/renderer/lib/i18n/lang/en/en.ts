@@ -146,7 +146,9 @@ const en: {
     clearLocalEventLog: "Clear local event log",
     clearLocalEventLogInfo: "This will clear the local event log shown. Are you sure? This action cannot be undone!",
     copied: "Copied",
-    publicLinkCopied: "Public link copied to clipboard"
+    publicLinkCopied: "Public link copied to clipboard",
+    clearLocalTrashDirs: "Clear local trash bins",
+    clearLocalTrashDirsInfo: "Clearing the local trash bins cannot be undone! Are you sure?"
 }
 
 export default en

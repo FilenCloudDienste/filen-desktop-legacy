@@ -11,6 +11,7 @@ import useAppVersion from "../../lib/hooks/useAppVersion"
 import type { Location, SyncIssue } from "../../../types"
 import { listen as socketListen } from "../../lib/worker/socket"
 import { debounce } from "lodash"
+import { initLocalTrashDirs } from "../../lib/fs/local"
 
 const log = window.require("electron-log")
 const https = window.require("https")
@@ -136,7 +137,10 @@ const WorkerWindow = memo(() => {
                     db.set("uploadPaused", false),
                     db.set("downloadPaused", false),
                     db.set("isOnline", true)
-                ]).then(() => sync()).catch((err) => {
+                ]).then(() => {
+                    sync()
+                    initLocalTrashDirs()
+                }).catch((err) => {
                     log.error(err)
                 })
             }).catch((err) => {
