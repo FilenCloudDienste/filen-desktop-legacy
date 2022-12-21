@@ -5,7 +5,7 @@ import useLang from "../../lib/hooks/useLang"
 import usePlatform from "../../lib/hooks/usePlatform"
 import Titlebar from "../../components/Titlebar"
 import { i18n } from "../../lib/i18n"
-import { HiOutlineCog, HiOutlineSave } from "react-icons/hi"
+import { HiOutlineCog, HiOutlineSave, HiOutlineTrash } from "react-icons/hi"
 import { AiOutlineSync, AiOutlinePauseCircle, AiOutlineInfoCircle } from "react-icons/ai"
 import { VscAccount } from "react-icons/vsc"
 import useDb from "../../lib/hooks/useDb"
@@ -1186,7 +1186,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                 }
                                             </Flex>
                                             <Flex 
-                                                width="37%" 
+                                                width="32%" 
                                                 flexDirection="row" 
                                                 justifyContent="flex-end" 
                                                 alignItems="center"
@@ -1315,7 +1315,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                 }
                                             </Flex>
                                             <Flex 
-                                                width="8%" 
+                                                width="13%" 
                                                 flexDirection="row" 
                                                 justifyContent="space-between" 
                                                 alignItems="center"
@@ -1326,6 +1326,9 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                     size={15} 
                                                     cursor="pointer" 
                                                     pointerEvents="all" 
+                                                    style={{
+                                                        flexShrink: 0
+                                                    }}
                                                     onClick={() => {
                                                         setCurrentSyncLocation(location)
                                                         setSyncSettingsModalOpen(true)
@@ -1336,7 +1339,24 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                     size={15} 
                                                     cursor="pointer" 
                                                     pointerEvents="all"
+                                                    style={{
+                                                        flexShrink: 0
+                                                    }}
                                                     onClick={() => shell.openPath(pathModule.normalize(location.local)).catch(log.error)}
+                                                />
+                                                <HiOutlineTrash
+                                                    color={colors(platform, darkMode, "textPrimary")} 
+                                                    size={15} 
+                                                    cursor="pointer" 
+                                                    pointerEvents="all"
+                                                    style={{
+                                                        flexShrink: 0
+                                                    }}
+                                                    onClick={() => {
+                                                        fsLocal.createLocalTrashDirs().then(() => {
+                                                            shell.openPath(pathModule.normalize(pathModule.join(location.local, ".filen.trash.local"))).catch(log.error)
+                                                        }).catch(log.error)
+                                                    }}
                                                 />
                                             </Flex>
                                         </Flex>
