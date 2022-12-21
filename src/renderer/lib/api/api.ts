@@ -16,7 +16,6 @@ const { Readable } = window.require("stream")
 const progress = window.require("progress-stream")
 
 export const createFolderSemaphore = new Semaphore(1)
-export const apiRequestSemaphore = new Semaphore(maxConcurrentAPIRequest)
 export const throttleGroupUpload = new ThrottleGroup({ rate: 1024 * 1024 * 1024 })
 export const throttleGroupDownload = new ThrottleGroup({ rate: 1024 * 1024 * 1024 })
 
@@ -90,84 +89,74 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
 
             currentTries += 1
 
-            apiRequestSemaphore.acquire().then(() => {
-                const req = https.request({
-                    method: method.toUpperCase(),
-                    hostname: "api.filen.io",
-                    path: endpoint,
-                    port: 443,
-                    timeout: 86400000,
-                    agent: httpsAPIAgent,
-                    headers: {
-                        "Content-Type": "application/json",
-                        "User-Agent": "filen-desktop"
-                    }
-                }, (response: any) => {
-                    if(response.statusCode !== 200){
-                        log.error(new Error("API response " + response.statusCode + ", method: " + method.toUpperCase() + ", endpoint: " + endpoint + ", data: " + JSON.stringify(data)))
+            const req = https.request({
+                method: method.toUpperCase(),
+                hostname: "api.filen.io",
+                path: endpoint,
+                port: 443,
+                timeout: 86400000,
+                agent: httpsAPIAgent,
+                headers: {
+                    "Content-Type": "application/json",
+                    "User-Agent": "filen-desktop"
+                }
+            }, (response: any) => {
+                if(response.statusCode !== 200){
+                    log.error(new Error("API response " + response.statusCode + ", method: " + method.toUpperCase() + ", endpoint: " + endpoint + ", data: " + JSON.stringify(data)))
 
-                        apiRequestSemaphore.release()
-    
-                        return setTimeout(doRequest, retryAPIRequestTimeout) 
-                    }
+                    return setTimeout(doRequest, retryAPIRequestTimeout) 
+                }
 
-                    const res: Buffer[] = []
+                const res: Buffer[] = []
 
-                    response.on("data", (chunk: Buffer) => {
-                        res.push(chunk)
-                    })
-
-                    response.on("end", () => {
-                        try{
-                            const str = Buffer.concat(res).toString()
-                            const obj = JSON.parse(str)
-    
-                            if(typeof obj.message == "string"){
-                                if(obj.message.toLowerCase().indexOf("invalid api key") !== -1){
-                                    logout().catch(log.error)
-    
-                                    return reject(new Error(obj.message))
-                                }
-
-                                if(obj.message.toLowerCase().indexOf("api key not found") !== -1){
-                                    logout().catch(log.error)
-    
-                                    return reject(new Error(obj.message))
-                                }
-                            }
-
-                            apiRequestSemaphore.release()
-
-                            if(includeRaw){
-                                return resolve({
-                                    data: obj,
-                                    raw: str
-                                })
-                            }
-
-                            return resolve(obj)
-                        }
-                        catch(e){
-                            log.error(e)
-
-                            apiRequestSemaphore.release()
-        
-                            return reject(e)
-                        }
-                    })
+                response.on("data", (chunk: Buffer) => {
+                    res.push(chunk)
                 })
 
-                req.on("error", (err: any) => {
-                    log.error(err)
+                response.on("end", () => {
+                    try{
+                        const str = Buffer.concat(res).toString()
+                        const obj = JSON.parse(str)
 
-                    apiRequestSemaphore.release()
+                        if(typeof obj.message == "string"){
+                            if(obj.message.toLowerCase().indexOf("invalid api key") !== -1){
+                                logout().catch(log.error)
+
+                                return reject(new Error(obj.message))
+                            }
+
+                            if(obj.message.toLowerCase().indexOf("api key not found") !== -1){
+                                logout().catch(log.error)
+
+                                return reject(new Error(obj.message))
+                            }
+                        }
+
+                        if(includeRaw){
+                            return resolve({
+                                data: obj,
+                                raw: str
+                            })
+                        }
+
+                        return resolve(obj)
+                    }
+                    catch(e){
+                        log.error(e)
     
-                    return setTimeout(doRequest, retryAPIRequestTimeout)
+                        return reject(e)
+                    }
                 })
-
-                req.write(JSON.stringify(data))
-                req.end()
             })
+
+            req.on("error", (err: any) => {
+                log.error(err)
+
+                return setTimeout(doRequest, retryAPIRequestTimeout)
+            })
+
+            req.write(JSON.stringify(data))
+            req.end()
         }
 
         return doRequest()
