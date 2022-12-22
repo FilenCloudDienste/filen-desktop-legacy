@@ -64,12 +64,17 @@ export const getIgnored = (location: Location): Promise<{ selectiveSyncRemoteIgn
                 fIgnore = ""
             }
 
-            return resolve({
-                selectiveSyncRemoteIgnore: selectiveSyncRemote,
-                filenIgnore: compileGitIgnore(fIgnore),
-                selectiveSyncRemoteIgnoreRaw: selectiveSyncRemote,
-                filenIgnoreRaw: fIgnore
-            })
+            try{
+                return resolve({
+                    selectiveSyncRemoteIgnore: selectiveSyncRemote,
+                    filenIgnore: compileGitIgnore(fIgnore),
+                    selectiveSyncRemoteIgnoreRaw: selectiveSyncRemote,
+                    filenIgnoreRaw: fIgnore
+                })
+            }
+            catch(e){
+                return reject(e)
+            }
         }).catch(reject)
     })
 }
@@ -107,7 +112,7 @@ onlyGetBaseParent<Move/Delete>(tasks) will return
 }
 */
 
-export const onlyGetBaseParentMove = memoize((tasks: any): any => {
+export const onlyGetBaseParentMove = (tasks: any): any => {
     const sorted = tasks.sort((a: any, b: any) => {
         return a.path.split("/").length - b.path.split("/").length
     })
@@ -139,9 +144,9 @@ export const onlyGetBaseParentMove = memoize((tasks: any): any => {
     }
 
     return newTasks
-}, (tasks: any) => JSON.stringify(tasks))
+}
 
-export const onlyGetBaseParentDelete = memoize((tasks: any): any => {
+export const onlyGetBaseParentDelete = (tasks: any): any => {
     const sorted = tasks.sort((a: any, b: any) => {
         return a.path.split("/").length - b.path.split("/").length
     })
@@ -173,7 +178,7 @@ export const onlyGetBaseParentDelete = memoize((tasks: any): any => {
     }
 
     return newTasks
-}, (tasks: any) => JSON.stringify(tasks))
+}
 
 /*
 Move tasks usually come twice, like so:
@@ -190,7 +195,7 @@ Move tasks usually come twice, like so:
 Since we only need one of them we sort them and return only one task for each task
 */
 
-export const sortMoveRenameTasks = memoize((tasks: any): any => {
+export const sortMoveRenameTasks = (tasks: any): any => {
     const added: any = {}
     const newTasks: any[] = []
 
@@ -211,7 +216,7 @@ export const sortMoveRenameTasks = memoize((tasks: any): any => {
     }
 
     return newTasks
-}, (tasks: any) => JSON.stringify(tasks))
+}
 
 export const addToSyncIssues = (type: string, message: any): Promise<boolean> => {
     return new Promise((resolve, reject) => {
@@ -227,7 +232,7 @@ export const addToSyncIssues = (type: string, message: any): Promise<boolean> =>
             })
 
             db.set("syncIssues", syncIssues).then(() => resolve(true)).catch(reject)
-        })
+        }).catch(reject)
     })
 }
 
@@ -248,33 +253,48 @@ export const updateLocationBusyStatus = (uuid: string, busy: boolean): Promise<b
 }
 
 export const emitSyncTask = (type: string, data: any): void => {
-    sendToAllPorts({
-        type: "syncTask",
-        data: {
-            type,
-            data
-        }
-    })
+    try{
+        sendToAllPorts({
+            type: "syncTask",
+            data: {
+                type,
+                data
+            }
+        })
+    }
+    catch(e){
+        log.error(e)
+    }
 }
 
 export const emitSyncStatus = (type: string, data: any): void => {
-    sendToAllPorts({
-        type: "syncStatus",
-        data: {
-            type,
-            data
-        }
-    })
+    try{
+        sendToAllPorts({
+            type: "syncStatus",
+            data: {
+                type,
+                data
+            }
+        })
+    }
+    catch(e){
+        log.error(e)
+    }
 }
 
 export const emitSyncStatusLocation = (type: string, data: any): void => {
-    sendToAllPorts({
-        type: "syncStatusLocation",
-        data: {
-            type,
-            data
-        }
-    })
+    try{
+        sendToAllPorts({
+            type: "syncStatusLocation",
+            data: {
+                type,
+                data
+            }
+        })
+    }
+    catch(e){
+        log.error(e)
+    }
 }
 
 export const removeRemoteLocation = (location: any): Promise<boolean> => {

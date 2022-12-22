@@ -16,74 +16,94 @@ import { initLocalTrashDirs } from "../../lib/fs/local"
 const log = window.require("electron-log")
 const https = window.require("https")
 
-const checkInternet = async (): Promise<any> => {
-    if(!window.navigator.onLine){
-        await db.set("isOnline", false).catch(log.error)
+export const checkInternet = (): Promise<boolean> => {
+    return new Promise(async (resolve) => {
+        const timeout = setTimeout(async () => {
+            await db.set("isOnline", false).catch(log.error)
+    
+            return resolve(false)
+        }, 20000)
 
-        return setTimeout(checkInternet, 3000)
-    }
-
-    const req = https.request({
-        method: "GET",
-        hostname: "api.filen.io",
-        path: "/",
-        timeout: 15000,
-        headers: {
-            "User-Agent": "filen-desktop"
-        },
-        agent: new https.Agent({
-            timeout: 15000
-        })
-    }, async (response: any) => {
-        if(response.statusCode !== 200){
+        if(!window.navigator.onLine){
             await db.set("isOnline", false).catch(log.error)
 
-            return setTimeout(checkInternet, 3000)
+            clearTimeout(timeout)
+    
+            return resolve(false)
         }
+    
+        const req = https.request({
+            method: "GET",
+            hostname: "api.filen.io",
+            path: "/",
+            timeout: 15000,
+            headers: {
+                "User-Agent": "filen-desktop"
+            },
+            agent: new https.Agent({
+                timeout: 15000
+            })
+        }, async (response: any) => {
+            if(response.statusCode !== 200){
+                await db.set("isOnline", false).catch(log.error)
 
-        const res: Buffer[] = []
+                clearTimeout(timeout)
+    
+                return resolve(false)
+            }
+    
+            const res: Buffer[] = []
+    
+            response.on("error", async () => {
+                await db.set("isOnline", false).catch(log.error)
 
-        response.on("error", async () => {
+                clearTimeout(timeout)
+    
+                return resolve(false)
+            })
+    
+            response.on("data", (chunk: Buffer) => res.push(chunk))
+    
+            response.on("end", async () => {
+                try{
+                    const str = Buffer.concat(res).toString()
+                
+                    if(str.indexOf("Invalid endpoint") == -1){
+                        await db.set("isOnline", false).catch(log.error)
+
+                        clearTimeout(timeout)
+            
+                        return resolve(false)
+                    }
+            
+                    await db.set("isOnline", true).catch(log.error)
+
+                    clearTimeout(timeout)
+    
+                    return resolve(true)
+                }
+                catch(e){
+                    log.error(e)
+    
+                    await db.set("isOnline", false).catch(log.error)
+                }
+
+                clearTimeout(timeout)
+    
+                return resolve(false)
+            })
+        })
+    
+        req.on("error", async () => {
             await db.set("isOnline", false).catch(log.error)
 
-            return setTimeout(checkInternet, 3000)
+            clearTimeout(timeout)
+    
+            return resolve(false)
         })
-
-        response.on("data", (chunk: Buffer) => {
-            return res.push(chunk)
-        })
-
-        response.on("end", async () => {
-            try{
-                const str = Buffer.concat(res).toString()
-            
-                if(str.indexOf("Invalid endpoint") == -1){
-                    await db.set("isOnline", false).catch(log.error)
-        
-                    return setTimeout(checkInternet, 3000)
-                }
-        
-                await db.set("isOnline", true).catch(log.error)
-
-                return setTimeout(checkInternet, 3000)
-            }
-            catch(e){
-                log.error(e)
-
-                await db.set("isOnline", false).catch(log.error)
-            }
-
-            return setTimeout(checkInternet, 3000)
-        })
+    
+        req.end()
     })
-
-    req.on("error", async () => {
-        await db.set("isOnline", false).catch(log.error)
-
-        return setTimeout(checkInternet, 3000)
-    })
-
-    return req.end()
 }
 
 const WorkerWindow = memo(() => {
@@ -102,14 +122,11 @@ const WorkerWindow = memo(() => {
 
         await new Promise((resolve) => {
             const wait = async (): Promise<any> => {
-                if(!isOnline){
-                    return setTimeout(wait, 100)
-                }
-
                 try{
                     const loggedIn: boolean | null = await db.get("isLoggedIn")
+                    const isOnlineNow = await checkInternet()
 
-                    if(loggedIn && isOnline){
+                    if(loggedIn && isOnlineNow){
                         return resolve(true)
                     }
                 }
@@ -240,7 +257,6 @@ const WorkerWindow = memo(() => {
 
         listen()
         init()
-        checkInternet()
 
         return () => {
             window.removeEventListener("offline", offlineListener)

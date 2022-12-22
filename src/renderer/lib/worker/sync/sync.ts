@@ -1,7 +1,6 @@
 import * as fsLocal from "../../fs/local"
 import * as fsRemote from "../../fs/remote"
 import db from "../../db"
-import ipc from "../../ipc"
 import { v4 as uuidv4 } from "uuid"
 import {
     maxRetrySyncTask,
@@ -34,17 +33,20 @@ import {
 import { sendToAllPorts } from "../ipc"
 import type { SemaphoreInterface, Delta, Location, SyncIssue } from "../../../../types"
 import { watch } from "../watcher"
+import { checkInternet } from "../../../windows/worker/worker"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
 
 let SYNC_RUNNING: boolean = false
 const SYNC_TIMEOUT: number = 5000
+let NEXT_SYNC: number = new Date().getTime() - SYNC_TIMEOUT
 const IS_FIRST_REQUEST: { [key: string]: boolean } = {}
 const WATCHERS: { [key: string]: boolean } = {}
 const maxConcurrentUploadsSemaphore: SemaphoreInterface = new Semaphore(maxConcurrentUploadsPreset)
 const maxConcurrentDownloadsSemaphore: SemaphoreInterface = new Semaphore(maxConcurrentDownloadsPreset)
 const maxSyncTasksSemaphore: SemaphoreInterface = new Semaphore(maxConcurrentSyncTasks)
+const syncMutex = new Semaphore(1)
 
 const getDeltas = (type: "local" | "remote", before: any, now: any): Promise<{ folders: Delta, files: Delta }> => {
     return new Promise((resolve, _) => {
@@ -2786,32 +2788,40 @@ const syncLocation = async (location: Location): Promise<boolean> => {
     return true
 }
 
-const restartSyncLoop = () => {
-    SYNC_RUNNING = false
-
+const startSyncLoop = () => {
     return setTimeout(sync, SYNC_TIMEOUT)
 }
 
 const sync = async (): Promise<any> => {
-    if(SYNC_RUNNING){
-        return log.info("Sync requested but already running, returning")
+    await syncMutex.acquire()
+
+    if(SYNC_RUNNING || new Date().getTime() < NEXT_SYNC){
+        syncMutex.release()
+
+        return
     }
 
     if((await isSuspended())){
-        return setTimeout(sync, SYNC_TIMEOUT)
+        syncMutex.release()
+
+        return startSyncLoop()
     }
 
     try{
         if(!(await db.get("isLoggedIn"))){
-            return setTimeout(sync, SYNC_TIMEOUT)
+            syncMutex.release()
+
+            return startSyncLoop()
         }
     }
     catch(e: any){
+        syncMutex.release()
+
         log.error(e)
 
         addToSyncIssues("getIsLoggedIn", "Could not get logged in status: " + e.toString())
 
-        return setTimeout(sync, SYNC_TIMEOUT)
+        return startSyncLoop()
     }
 
     emitSyncStatus("init", {
@@ -2829,20 +2839,24 @@ const sync = async (): Promise<any> => {
         var syncLocations: Location[] | null = await db.get("syncLocations:" + userId)
     }
     catch(e: any){
+        syncMutex.release()
+
         log.error("Could not fetch syncLocations from DB")
         log.error(e)
 
-        addToSyncIssues("getIsLoggedIn", "Could not fetch syncLocations from DB: " + e.toString())
+        addToSyncIssues("getIsLoggedIn", "Could not fetch syncLocations from DB: " + e.toString()).catch(log.error)
 
         emitSyncStatus("init", {
             status: "err",
             err: e
         })
 
-        return setTimeout(sync, SYNC_TIMEOUT)
+        return startSyncLoop()
     }
 
     if(Array.isArray(syncIssues) && syncIssues.length > 0){
+        syncMutex.release()
+
         log.info("Will not continue, got open sync issues, need user intervention")
 
         emitSyncStatus("init", {
@@ -2850,10 +2864,12 @@ const sync = async (): Promise<any> => {
             err: "Will not continue, got open sync issues, need user intervention"
         })
 
-        return setTimeout(sync, SYNC_TIMEOUT)
+        return startSyncLoop()
     }
 
     if(Number.isNaN(userId)){
+        syncMutex.release()
+
         log.info("User id not found, instead found: " + typeof userId)
 
         emitSyncStatus("init", {
@@ -2861,12 +2877,14 @@ const sync = async (): Promise<any> => {
             err: "User id not found, instead found: " + typeof userId
         })
 
-        addToSyncIssues("getUserId", "User id not found, instead found: " + typeof userId)
+        addToSyncIssues("getUserId", "User id not found, instead found: " + typeof userId).catch(log.error)
 
-        return setTimeout(sync, SYNC_TIMEOUT)
+        return startSyncLoop()
     }
 
     if(!Array.isArray(masterKeys)){
+        syncMutex.release()
+
         log.info("Master keys not found, instead found: " + typeof masterKeys)
 
         emitSyncStatus("init", {
@@ -2874,12 +2892,14 @@ const sync = async (): Promise<any> => {
             err: "Master keys not found, instead found: " + typeof masterKeys
         })
 
-        addToSyncIssues("getUserId", "User id not found, instead found: " + typeof userId)
+        addToSyncIssues("getUserId", "User id not found, instead found: " + typeof userId).catch(log.error)
 
-        return setTimeout(sync, SYNC_TIMEOUT)
+        return startSyncLoop()
     }
 
     if(!Array.isArray(syncLocations)){
+        syncMutex.release()
+
         log.info("Sync locations not array, instead found: " + typeof syncLocations)
 
         emitSyncStatus("init", {
@@ -2887,10 +2907,12 @@ const sync = async (): Promise<any> => {
             err: "Sync locations not array, instead found: " + typeof syncLocations
         })
 
-        return setTimeout(sync, SYNC_TIMEOUT)
+        return startSyncLoop()
     }
 
     if(syncLocations.length == 0){
+        syncMutex.release()
+
         emitSyncStatus("init", {
             status: "done",
             syncLocations: []
@@ -2898,7 +2920,7 @@ const sync = async (): Promise<any> => {
 
         log.info("Sync locations empty")
 
-        return setTimeout(sync, SYNC_TIMEOUT)
+        return startSyncLoop()
     }
 
     emitSyncStatus("init", {
@@ -2907,67 +2929,91 @@ const sync = async (): Promise<any> => {
     })
 
     if(paused){
-        return setTimeout(sync, SYNC_TIMEOUT)
+        syncMutex.release()
+
+        return startSyncLoop()
     }
 
     if((await isSuspended())){
-        return setTimeout(sync, SYNC_TIMEOUT)
+        syncMutex.release()
+
+        return startSyncLoop()
     }
 
-    if(SYNC_RUNNING){
-        return log.info("Sync requested but already running, returning")
+    if(!(await checkInternet())){
+        syncMutex.release()
+
+        return startSyncLoop()
+    }
+
+    if(SYNC_RUNNING || new Date().getTime() < NEXT_SYNC){
+        syncMutex.release()
+
+        return
     }
 
     SYNC_RUNNING = true
 
-    log.info("Starting sync task")
-    log.info(syncLocations.length + " syncLocations to sync")
+    try{
+        log.info("Starting sync task")
+        log.info(syncLocations.length + " syncLocations to sync")
 
-    emitSyncStatus("sync", {
-        status: "start",
-        syncLocations
-    })
+        emitSyncStatus("sync", {
+            status: "start",
+            syncLocations
+        })
 
-    await db.set("syncIssues", []).catch(log.error)
+        await db.set("syncIssues", []).catch(log.error)
 
-    for(let i = 0; i < syncLocations.length; i++){
-        if(typeof syncLocations[i].remote == "undefined" || typeof syncLocations[i].remoteUUID == "undefined" || typeof syncLocations[i].remoteName == "undefined"){
-            continue
+        for(let i = 0; i < syncLocations.length; i++){
+            if(typeof syncLocations[i].remote == "undefined" || typeof syncLocations[i].remoteUUID == "undefined" || typeof syncLocations[i].remoteName == "undefined"){
+                continue
+            }
+
+            try{
+                await syncLocation(syncLocations[i])
+            }
+            catch(e: any){
+                log.error("Sync task for location " + syncLocations[i].uuid + " failed, reason:")
+                log.error(e)
+
+                addToSyncIssues("sync", "Could not sync " + syncLocations[i].local + " <-> " + syncLocations[i].remote + ": " + e.toString())
+                
+                emitSyncStatus("sync", {
+                    status: "err",
+                    syncLocations,
+                    err: e
+                })
+            }
         }
 
-        try{
-            await syncLocation(syncLocations[i])
-        }
-        catch(e: any){
-            log.error("Sync task for location " + syncLocations[i].uuid + " failed, reason:")
-            log.error(e)
+        emitSyncStatus("sync", {
+            status: "done",
+            syncLocations
+        })
 
-            addToSyncIssues("sync", "Could not sync " + syncLocations[i].local + " <-> " + syncLocations[i].remote + ": " + e.toString())
-            
-            emitSyncStatus("sync", {
-                status: "err",
-                syncLocations,
-                err: e
-            })
-        }
+        log.info("Cleaning up")
+
+        emitSyncStatus("cleanup", {
+            status: "start"
+        })
+
+        emitSyncStatus("cleanup", {
+            status: "done"
+        })
+    }
+    catch(e){
+        log.error(e)
     }
 
-    emitSyncStatus("sync", {
-        status: "done",
-        syncLocations
-    })
+    SYNC_RUNNING = false
+    NEXT_SYNC = new Date().getTime() + SYNC_TIMEOUT
 
-    log.info("Cleaning up")
+    syncMutex.release()
 
-    emitSyncStatus("cleanup", {
-        status: "start"
-    })
-
-    emitSyncStatus("cleanup", {
-        status: "done"
-    })
-
-    return restartSyncLoop()
+    return startSyncLoop()
 }
+
+setInterval(startSyncLoop, (SYNC_TIMEOUT * 1.5))
 
 export default sync
