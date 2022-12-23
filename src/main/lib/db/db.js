@@ -5,13 +5,12 @@ const writeFileAtomic = require("write-file-atomic")
 const crypto = require("crypto")
 const log = require("electron-log")
 const { memoize } = require("lodash")
-const lockfile = require("proper-lockfile")
 
 const DB_VERSION = 1
 const DB_PATH = pathModule.join(app.getPath("userData"), "db_v" + DB_VERSION)
 const USE_MEMORY_CACHE = false
 const MEMORY_CACHE_KEY = "db:"
-const MAX_RETRIES = 32
+const MAX_RETRIES = 64
 const RETRY_TIMEOUT = 250
 
 const hashKey = memoize((key) => {
@@ -19,6 +18,10 @@ const hashKey = memoize((key) => {
 
     return hash
 })
+
+const getRandomArbitrary = (min, max) => {
+    return Math.floor(Math.random() * (max - min) + min)
+}
 
 // Clear leftover temp files etc
 const dirCheck = async () => {
@@ -113,39 +116,23 @@ module.exports = {
 
                 const dbFilePath = pathModule.join(DB_PATH, keyHash + ".json")
 
-                lockfile.lock(dbFilePath).then((release) => {
-                    fs.ensureFile(dbFilePath).then(() => {
-                        writeFileAtomic(dbFilePath, val).then(() => {
-                            if(USE_MEMORY_CACHE){
-                                require("../memoryCache").set(MEMORY_CACHE_KEY + key, value)
-                            }
-    
-                            require("../ipc").emitGlobal("global-message", {
-                                type: "dbSet",
-                                data: {
-                                    key
-                                }
-                            })
-        
-                            release().then(() => {
-                                return resolve(true)
-                            }).catch(reject)
-                        }).catch((err) => {
-                            lastErr = err
-    
-                            return setTimeout(write, RETRY_TIMEOUT)
-                        })
-                    }).catch((err) => {
-                        lastErr = err
-    
-                        return setTimeout(write, RETRY_TIMEOUT)
+                writeFileAtomic(dbFilePath, val).then(() => {
+                    if(USE_MEMORY_CACHE){
+                        require("../memoryCache").set(MEMORY_CACHE_KEY + key, value)
+                    }
+
+                    require("../ipc").emitGlobal("global-message", {
+                        type: "dbSet",
+                        data: {
+                            key
+                        }
                     })
+
+                    return resolve(true)
                 }).catch((err) => {
                     lastErr = err
 
-                    tries -= 1
-
-                    return setTimeout(write, RETRY_TIMEOUT)
+                    return setTimeout(write, RETRY_TIMEOUT + getRandomArbitrary(10, 100))
                 })
             }
 
@@ -206,7 +193,7 @@ module.exports = {
                     }).catch((err) => {
                         lastErr = err
     
-                        return setTimeout(write, RETRY_TIMEOUT)
+                        return setTimeout(write, RETRY_TIMEOUT + getRandomArbitrary(10, 100))
                     })
                 })
             }

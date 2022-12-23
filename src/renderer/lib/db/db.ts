@@ -3,19 +3,19 @@ import memoryCache from "../memoryCache"
 import eventListener from "../eventListener"
 import { sendToAllPorts } from "../worker/ipc"
 import { memoize } from "lodash"
+import { getRandomArbitrary } from "../helpers"
 
 const fs = window.require("fs-extra")
 const writeFileAtomic = window.require("write-file-atomic")
 const pathModule = window.require("path")
 const CryptoJS = window.require("crypto-js")
 const log = window.require("electron-log")
-const lockfile = window.require("proper-lockfile")
 
 const DB_VERSION = 1
 let DB_PATH = ""
 const USE_MEMORY_CACHE: boolean = true
 const MEMORY_CACHE_KEY: string = "db:"
-const MAX_RETRIES = 32
+const MAX_RETRIES = 64
 const RETRY_TIMEOUT = 250
 
 const getDbPath = async (): Promise<string> => {
@@ -137,39 +137,23 @@ const set = (key: string, value: any): Promise<boolean> => {
 
                 const dbFilePath = pathModule.join(DB_PATH, keyHash + ".json")
 
-                lockfile.lock(dbFilePath).then((release: () => Promise<any>) => {
-                    fs.ensureFile(dbFilePath).then(() => {
-                        writeFileAtomic(dbFilePath, val).then(() => {
-                            if(USE_MEMORY_CACHE){
-                                memoryCache.set(MEMORY_CACHE_KEY + key, value)
-                            }
-    
-                            sendToAllPorts({
-                                type: "dbSet",
-                                data: {
-                                    key
-                                }
-                            })
-    
-                            release().then(() => {
-                                return resolve(true)
-                            }).catch(reject)
-                        }).catch((err: any) => {
-                            lastErr = err
-    
-                            return setTimeout(write, RETRY_TIMEOUT)
-                        })
-                    }).catch((err: any) => {
-                        lastErr = err
-    
-                        return setTimeout(write, RETRY_TIMEOUT)
+                writeFileAtomic(dbFilePath, val).then(() => {
+                    if(USE_MEMORY_CACHE){
+                        memoryCache.set(MEMORY_CACHE_KEY + key, value)
+                    }
+
+                    sendToAllPorts({
+                        type: "dbSet",
+                        data: {
+                            key
+                        }
                     })
+
+                    return resolve(true)
                 }).catch((err: any) => {
                     lastErr = err
 
-                    tries -= 1
-
-                    return setTimeout(write, RETRY_TIMEOUT)
+                    return setTimeout(write, RETRY_TIMEOUT + getRandomArbitrary(10, 100))
                 })
             }
 
@@ -233,7 +217,7 @@ const remove = (key: string): Promise<boolean> => {
                     }).catch((err: any) => {
                         lastErr = err
 
-                        return setTimeout(write, RETRY_TIMEOUT)
+                        return setTimeout(write, RETRY_TIMEOUT + getRandomArbitrary(10, 100))
                     })
                 })
             }
