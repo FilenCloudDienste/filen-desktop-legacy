@@ -146,7 +146,9 @@ const ru: {
     clearLocalEventLog: "Очистить локальный журнал событий",
     clearLocalEventLogInfo: "Это очистит отображаемый локальный журнал событий. Вы уверены? Это действие нельзя отменить!",
     copied: "Скопировано",
-    publicLinkCopied: "Публичная ссылка скопирована в буфер обмена"
+    publicLinkCopied: "Публичная ссылка скопирована в буфер обмена",
+    clearLocalTrashDirs: "Очистить локальные корзины",
+    clearLocalTrashDirsInfo: "Очистка локальных корзин не может быть отменена! Вы уверены?"
 }
 
 export default ru
