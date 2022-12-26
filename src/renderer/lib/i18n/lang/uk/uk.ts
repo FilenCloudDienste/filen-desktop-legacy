@@ -146,7 +146,9 @@ const uk: {
     clearLocalEventLog: "Очистити локальний журнал подій",
     clearLocalEventLogInfo: "Це очистить показаний локальний журнал подій. Ви впевнені? Цю дію не можна скасувати!",
     copied: "Скопійовано",
-    publicLinkCopied: "Публічне посилання скопійовано до буфера обміну"
+    publicLinkCopied: "Публічне посилання скопійовано до буфера обміну",
+    clearLocalTrashDirs: "Очистити локальні кошики",
+    clearLocalTrashDirsInfo: "Очищення локальних кошиків не може бути скасовано! Чи ви впевнені?"
 }
 
 export default uk
