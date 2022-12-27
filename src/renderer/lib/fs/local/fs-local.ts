@@ -17,8 +17,8 @@ const log = window.require("electron-log")
 const is = window.require("electron-is")
 
 const downloadThreadsSemaphore = new Semaphore(constants.maxDownloadThreads)
-const FS_RETRIES = 64
-const FS_RETRY_TIMEOUT = 500
+const FS_RETRIES = 8
+const FS_RETRY_TIMEOUT = 100
 const FS_RETRY_CODES = ["EAGAIN", "EBUSY", "ECANCELED", "EBADF", "EINTR", "EIO", "EMFILE", "ENFILE", "ENOMEM", "EPIPE", "ETXTBSY", "ESPIPE", "EAI_SYSTEM", "EAI_CANCELED"]
 const FS_NORETRY_CODES = ["ENOENT", "ENODEV", "EACCES", "EPERM", "EINVAL", "ENAMETOOLONG", "ENOBUFS", "ENOSPC", "EROFS"]
 const readdirFallback = new Map<string, ReaddirFallbackEntry>()
@@ -118,6 +118,7 @@ export const gracefulLStat = (path: string): Promise<any> => {
     return new Promise((resolve, reject) => {
         path = pathModule.normalize(path)
 
+        const cacheKey: string = "gracefulLStat:" + path
         let currentTries = 0
         let lastErr: any = undefined
 
@@ -128,7 +129,15 @@ export const gracefulLStat = (path: string): Promise<any> => {
 
             currentTries += 1
 
-            fs.lstat(path).then(resolve).catch((err: any) => {
+            fs.lstat(path).then((stats: Stats) => {
+                memoryCache.set(cacheKey, stats)
+
+                return resolve(stats)
+            }).catch((err: any) => {
+                if(err.code == "EPERM" && memoryCache.has(cacheKey)){
+                    return resolve(memoryCache.get(cacheKey))
+                }
+
                 lastErr = err
 
                 if(FS_RETRY_CODES.includes(err.code)){
@@ -213,8 +222,24 @@ export const canWriteAtPath = (fullPath: string): Promise<boolean> => {
     })
 }
 
+export const exists = (fullPath: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+        fs.access(pathModule.normalize(fullPath), fs.constants.F_OK, (err: any) => {
+            if(err){
+                if(err.code == "EPERM"){
+                    return resolve(true)
+                }
+
+                return resolve(false)
+            }
+
+            return resolve(true)
+        })
+    })
+}
+
 export const canReadWriteAtPath = (fullPath: string): Promise<boolean> => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         let currentTries = 0
         let lastErr: any = undefined
 
@@ -566,6 +591,8 @@ export const rm = async (path: string, location: Location): Promise<boolean> => 
     await fs.ensureDir(trashDirPath)
     await move(pathModule.normalize(path), pathModule.normalize(pathModule.join(trashDirPath, basename)))
 
+    memoryCache.delete("gracefulLStat:" + pathModule.normalize(path))
+
     return true
 }
 
@@ -578,6 +605,8 @@ export const rmPermanent = (path: string): Promise<boolean> => {
         }
         catch(e: any){
             if(e.code == "ENOENT"){
+                memoryCache.delete("gracefulLStat:" + pathModule.normalize(path))
+
                 return resolve(true)
             }
 
@@ -597,11 +626,15 @@ export const rmPermanent = (path: string): Promise<boolean> => {
             if(stats.isSymbolicLink()){
                 try{
                     await fs.unlink(path)
+
+                    memoryCache.delete("gracefulLStat:" + pathModule.normalize(path))
                 }
                 catch(e: any){
                     lastErr = e
 
                     if(e.code == "ENOENT"){
+                        memoryCache.delete("gracefulLStat:" + pathModule.normalize(path))
+
                         return resolve(true)
                     }
 
@@ -615,11 +648,15 @@ export const rmPermanent = (path: string): Promise<boolean> => {
             else{
                 try{
                     await fs.remove(path)
+
+                    memoryCache.delete("gracefulLStat:" + pathModule.normalize(path))
                 }
                 catch(e: any){
                     lastErr = e
 
                     if(e.code == "ENOENT"){
+                        memoryCache.delete("gracefulLStat:" + pathModule.normalize(path))
+
                         return resolve(true)
                     }
 

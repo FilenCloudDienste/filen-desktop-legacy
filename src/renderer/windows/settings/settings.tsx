@@ -142,6 +142,8 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
     useEffect(() => {
         populate()
 
+        fsLocal.clearLocalTrashDirs().catch(log.error)
+
         const updateLocalTrashDirsSizeInterval = setInterval(getLocalTrashDirsSize, 5000)
 
         return () => {

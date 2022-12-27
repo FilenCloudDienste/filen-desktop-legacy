@@ -121,5 +121,5 @@ export const sizeOverheadMultiplier: number = 1
 export const speedMultiplier: number = 1
 export const maxConcurrentSyncTasks: number = 128
 export const maxConcurrentAPIRequest: number = 128
-export const clearLocalTrashDirsInterval: number = 300000
+export const clearLocalTrashDirsInterval: number = (60000 * 15)
 export const deleteFromLocalTrashAfter: number = ((86400 * 1000) * 30)

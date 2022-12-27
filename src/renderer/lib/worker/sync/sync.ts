@@ -872,7 +872,40 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
         
                                     return resolve(done)
                                 })
-                            }).catch((err) => {
+                            }).catch(async (err) => {
+                                if(!(await fsRemote.doesExistLocally(pathModule.normalize(pathModule.join(location.local, task.path))))){
+                                    emitSyncTask("renameInLocal", {
+                                        status: "err",
+                                        task,
+                                        location,
+                                        err
+                                    })
+
+                                    maxSyncTasksSemaphore.release()
+
+                                    updateSyncTasksToDo()
+
+                                    return resolve(true)
+                                }
+
+                                if(
+                                    err == "eperm"
+                                    || (typeof err.code == "string" && err.code == "EPERM")
+                                ){
+                                    emitSyncTask("renameInLocal", {
+                                        status: "err",
+                                        task,
+                                        location,
+                                        err: err
+                                    })
+
+                                    maxSyncTasksSemaphore.release()
+
+                                    updateSyncTasksToDo()
+
+                                    return resolve(true)
+                                }
+
                                 log.error(err)
 
                                 if(typeof err.code !== "undefined"){
@@ -1078,7 +1111,40 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
         
                                     return resolve(done)
                                 })
-                            }).catch((err) => {
+                            }).catch(async (err) => {
+                                if(!(await fsRemote.doesExistLocally(pathModule.normalize(pathModule.join(location.local, task.path))))){
+                                    emitSyncTask("moveInLocal", {
+                                        status: "err",
+                                        task,
+                                        location,
+                                        err
+                                    })
+
+                                    maxSyncTasksSemaphore.release()
+
+                                    updateSyncTasksToDo()
+
+                                    return resolve(true)
+                                }
+
+                                if(
+                                    err == "eperm"
+                                    || (typeof err.code == "string" && err.code == "EPERM")
+                                ){
+                                    emitSyncTask("moveInLocal", {
+                                        status: "err",
+                                        task,
+                                        location,
+                                        err: err
+                                    })
+
+                                    maxSyncTasksSemaphore.release()
+
+                                    updateSyncTasksToDo()
+
+                                    return resolve(true)
+                                }
+
                                 log.error(err)
 
                                 if(typeof err.code !== "undefined"){
@@ -1278,7 +1344,40 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
         
                                     return resolve(done)
                                 })
-                            }).catch((err) => {
+                            }).catch(async (err) => {
+                                if(!(await fsRemote.doesExistLocally(pathModule.normalize(pathModule.join(location.local, task.path))))){
+                                    emitSyncTask("deleteInLocal", {
+                                        status: "err",
+                                        task,
+                                        location,
+                                        err
+                                    })
+
+                                    maxSyncTasksSemaphore.release()
+
+                                    updateSyncTasksToDo()
+
+                                    return resolve(true)
+                                }
+
+                                if(
+                                    err == "eperm"
+                                    || (typeof err.code == "string" && err.code == "EPERM")
+                                ){
+                                    emitSyncTask("deleteInLocal", {
+                                        status: "err",
+                                        task,
+                                        location,
+                                        err: err
+                                    })
+
+                                    maxSyncTasksSemaphore.release()
+
+                                    updateSyncTasksToDo()
+
+                                    return resolve(true)
+                                }
+
                                 log.error(err)
     
                                 return setTimeout(() => {
@@ -1411,6 +1510,8 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                         err.toString().toLowerCase().indexOf("invalid upload key") !== -1
                                         || err.toString().toLowerCase().indexOf("chunks are not matching") !== -1
                                         || err == "deletedLocally"
+                                        || err == "eperm"
+                                        || (typeof err.code == "string" && err.code == "EPERM")
                                     ){
                                         emitSyncTask("uploadToRemote", {
                                             status: "err",
