@@ -26,6 +26,8 @@ const getRandomArbitrary = (min, max) => {
 // Clear leftover temp files etc
 const dirCheck = async () => {
     try{
+        await fs.ensureDir(DB_PATH)
+
         const dir = await fs.readdir(DB_PATH)
 
         for(let i = 0; i < dir.length; i++){
@@ -87,12 +89,14 @@ module.exports = {
         })
     },
     set: (key, value) => {
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
             if(typeof key !== "string"){
                 return reject(new Error("Invalid key type, expected string, got " + typeof key))
             }
 
             try{
+                await fs.emptyDir(DB_PATH)
+
                 var val = JSON.stringify({
                     key,
                     value
