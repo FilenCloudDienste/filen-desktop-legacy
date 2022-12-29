@@ -24,10 +24,8 @@ const getRandomArbitrary = (min, max) => {
 }
 
 // Clear leftover temp files etc
-const dirCheck = async () => {
+/*const dirCheck = async () => {
     try{
-        await fs.ensureDir(DB_PATH)
-
         const dir = await fs.readdir(DB_PATH)
 
         for(let i = 0; i < dir.length; i++){
@@ -41,7 +39,7 @@ const dirCheck = async () => {
     }
 }
 
-dirCheck()
+dirCheck()*/
 
 module.exports = {
     get: (key) => {
@@ -89,14 +87,12 @@ module.exports = {
         })
     },
     set: (key, value) => {
-        return new Promise(async (resolve, reject) => {
+        return new Promise((resolve, reject) => {
             if(typeof key !== "string"){
                 return reject(new Error("Invalid key type, expected string, got " + typeof key))
             }
 
             try{
-                await fs.emptyDir(DB_PATH)
-
                 var val = JSON.stringify({
                     key,
                     value
@@ -120,19 +116,25 @@ module.exports = {
 
                 const dbFilePath = pathModule.join(DB_PATH, keyHash + ".json")
 
-                writeFileAtomic(dbFilePath, val).then(() => {
-                    if(USE_MEMORY_CACHE){
-                        require("../memoryCache").set(MEMORY_CACHE_KEY + key, value)
-                    }
-
-                    require("../ipc").emitGlobal("global-message", {
-                        type: "dbSet",
-                        data: {
-                            key
+                fs.ensureFile(dbFilePath).then(() => {
+                    writeFileAtomic(dbFilePath, val).then(() => {
+                        if(USE_MEMORY_CACHE){
+                            require("../memoryCache").set(MEMORY_CACHE_KEY + key, value)
                         }
+    
+                        require("../ipc").emitGlobal("global-message", {
+                            type: "dbSet",
+                            data: {
+                                key
+                            }
+                        })
+    
+                        return resolve(true)
+                    }).catch((err) => {
+                        lastErr = err
+    
+                        return setTimeout(write, RETRY_TIMEOUT + getRandomArbitrary(10, 100))
                     })
-
-                    return resolve(true)
                 }).catch((err) => {
                     lastErr = err
 
@@ -195,6 +197,23 @@ module.exports = {
         
                         return resolve(true)
                     }).catch((err) => {
+                        if(err.code == "ENOENT"){
+                            if(USE_MEMORY_CACHE){
+                                if(require("../memoryCache").has(MEMORY_CACHE_KEY + key)){
+                                    require("../memoryCache").delete(MEMORY_CACHE_KEY + key)
+                                }
+                            }
+    
+                            require("../ipc").emitGlobal("global-message", {
+                                type: "dbRemove",
+                                data: {
+                                    key
+                                }
+                            })
+            
+                            return resolve(true)
+                        }
+
                         lastErr = err
     
                         return setTimeout(write, RETRY_TIMEOUT + getRandomArbitrary(10, 100))
