@@ -5,6 +5,7 @@ const pathModule = require("path")
 const { v4: uuidv4 } = require("uuid")
 const AutoLaunch = require("auto-launch")
 const { autoUpdater } = require("electron-updater")
+const is = require("electron-is")
 
 const autoLauncher = new AutoLaunch({
     name: "Filen",
@@ -547,7 +548,9 @@ const handleMessage = (type, data) => {
                 autoUpdater.autoInstallOnAppQuit = false
                 autoUpdater.quitAndInstall(false, true)
 
-                app.exit(0)
+                if(is.windows()){
+                    setTimeout(() => app.exit(0), 2500)
+                }
 
                 return resolve(true)
             }

@@ -85,11 +85,7 @@ const UpdateWindow = memo(({ windowId, toVersion }: { windowId: string, toVersio
                                 
                                 setIsInstalling(true)
 
-                                ipc.installUpdate().catch((err) => {
-                                    log.error(err)
-
-                                    setTimeout(() => setIsInstalling(false), 15000)
-                                })
+                                ipc.installUpdate().catch(log.error)
                             }}
                         >
                             {i18n(lang, "updateWindowButton")}
