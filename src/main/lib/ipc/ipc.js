@@ -321,12 +321,7 @@ const handleMessage = (type, data) => {
         else if(type == "setOpenOnStartup"){
             const { open } = data
 
-            if(open){
-                var promise = autoLauncher.enable()
-            }
-            else{
-                var promise = autoLauncher.disable()
-            }
+            const promise = open ? autoLauncher.enable() : autoLauncher.disable()
 
             promise.then(() => {
                 return resolve(true)
@@ -549,7 +544,7 @@ const handleMessage = (type, data) => {
                 autoUpdater.quitAndInstall(false, true)
 
                 if(is.windows()){
-                    setTimeout(() => app.exit(0), 2500)
+                    setTimeout(() => app.exit(0), 3000)
                 }
 
                 return resolve(true)
