@@ -152,79 +152,11 @@ export const gracefulLStat = (path: string): Promise<any> => {
     })
 }
 
-export const canReadAtPath = (fullPath: string): Promise<boolean> => {
-    return new Promise((resolve, reject) => {
-        let currentTries = 0
-        let lastErr: any = undefined
-
-        const req = () => {
-            if(currentTries > FS_RETRIES){
-                log.error(lastErr)
-                
-                return resolve(false)
-            }
-
-            currentTries += 1
-
-            fs.access(pathModule.normalize(fullPath), fs.constants.F_OK | fs.constants.R_OK, (err: any) => {
-                if(err){
-                    lastErr = err
-
-                    if(FS_RETRY_CODES.includes(err.code)){
-                        return setTimeout(req, FS_RETRY_TIMEOUT)
-                    }
-                    
-                    log.error(lastErr)
-                
-                    return resolve(false)
-                }
-    
-                return resolve(true)
-            })
-        }
-
-        return req()
-    })
-}
-
-export const canWriteAtPath = (fullPath: string): Promise<boolean> => {
-    return new Promise((resolve, reject) => {
-        let currentTries = 0
-        let lastErr: any = undefined
-
-        const req = () => {
-            if(currentTries > FS_RETRIES){
-                log.error(lastErr)
-
-                return resolve(false)
-            }
-
-            currentTries += 1
-
-            fs.access(pathModule.normalize(fullPath), fs.constants.F_OK | fs.constants.W_OK, (err: any) => {
-                if(err){
-                    lastErr = err
-
-                    if(FS_RETRY_CODES.includes(err.code)){
-                        return setTimeout(req, FS_RETRY_TIMEOUT)
-                    }
-
-                    log.error(lastErr)
-                
-                    return resolve(false)
-                }
-                
-                return resolve(true)
-            })
-        }
-
-        return req()
-    })
-}
-
 export const exists = (fullPath: string): Promise<boolean> => {
     return new Promise((resolve) => {
-        fs.access(pathModule.normalize(fullPath), fs.constants.F_OK, (err: any) => {
+        const path = pathModule.normalize(fullPath)
+
+        fs.open(path, "r", (err: any, fd: any) => {
             if(err){
                 if(err.code == "EPERM"){
                     return resolve(true)
@@ -233,43 +165,79 @@ export const exists = (fullPath: string): Promise<boolean> => {
                 return resolve(false)
             }
 
-            return resolve(true)
+            const buffer = Buffer.alloc(1)
+
+            fs.read(fd, buffer, 0, 0, 0, (err: any) => {
+                if(err){
+                    if(err.code == "EPERM"){
+                        return resolve(true)
+                    }
+    
+                    return resolve(false)
+                }
+
+                fs.close(fd, (err: any) => {
+                    if(err){
+                        if(err.code == "EPERM"){
+                            return resolve(true)
+                        }
+        
+                        return resolve(false)
+                    }
+
+                    return resolve(true)
+                })
+            })
         })
     })
 }
 
 export const canReadWriteAtPath = (fullPath: string): Promise<boolean> => {
     return new Promise((resolve) => {
-        let currentTries = 0
-        let lastErr: any = undefined
+        const content = uuidv4()
+        const fileName = uuidv4()
+        const dirname = pathModule.dirname(pathModule.normalize(fullPath))
+        const path = pathModule.normalize(pathModule.join(dirname, fileName))
 
-        const req = () => {
-            if(currentTries > FS_RETRIES){
-                log.error(lastErr)
-                
+        fs.writeFile(path, content, {
+            encoding: "utf8"
+        }, (err: any) => {
+            if(err){
+                log.error(err)
+            
                 return resolve(false)
             }
 
-            currentTries += 1
-
-            fs.access(pathModule.normalize(fullPath), fs.constants.F_OK | fs.constants.R_OK | fs.constants.W_OK, (err: any) => {
+            fs.readFile(path, {
+                encoding: "utf8"
+            }, (err: any, data: string) => {
                 if(err){
-                    lastErr = err
+                    fs.unlink(path).catch(log.error)
 
-                    if(FS_RETRY_CODES.includes(err.code)){
-                        return setTimeout(req, FS_RETRY_TIMEOUT)
-                    }
-                    
-                    log.error(lastErr)
+                    log.error(err)
                 
                     return resolve(false)
                 }
-    
-                return resolve(true)
-            })
-        }
 
-        return req()
+                if(content !== data){
+                    fs.unlink(path).catch(log.error)
+
+                    log.error("canReadWriteAtPath: content !== data")
+                
+                    return resolve(false)
+                }
+
+                fs.unlink(path, (err: any) => {
+                    if(err){
+                        log.error(err)
+                    
+                        return resolve(false)
+                    }
+
+                    return resolve(true)
+                })
+            })
+        })
     })
 }
 

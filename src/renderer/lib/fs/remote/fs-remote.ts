@@ -2,7 +2,7 @@ import { folderPresent, dirTree, createFolder, folderExists, uploadChunk, markUp
 import db from "../../db"
 import { decryptFolderName, decryptFileMetadata, hashFn, encryptMetadata, encryptData } from "../../crypto"
 import { convertTimestampToMs, pathIsFileOrFolderNameIgnoredByDefault, generateRandomString, Semaphore, isFolderPathExcluded, pathValidation, isPathOverMaxLength, isNameOverMaxLength, pathIncludesDot } from "../../helpers"
-import { normalizePath, smokeTest as smokeTestLocal, readChunk, checkLastModified, canReadAtPath } from "../local"
+import { normalizePath, smokeTest as smokeTestLocal, readChunk, checkLastModified } from "../local"
 import { chunkSize, maxUploadThreads } from "../../constants"
 import { v4 as uuidv4 } from "uuid"
 import { sendToAllPorts } from "../../worker/ipc"
@@ -364,14 +364,15 @@ export const createDirectory = (uuid: string, name: string, parent: string): Pro
     })
 }
 
-export const doesExistLocally = (path: string): Promise<boolean> => {
-    return new Promise((resolve) => {
-        exists(pathModule.normalize(path)).then(() => {
-            return resolve(true)
-        }).catch(() => {
-            return resolve(false)
-        })
-    })
+export const doesExistLocally = async (path: string): Promise<boolean> => {
+    try{
+        await exists(pathModule.normalize(path))
+
+        return true
+    }
+    catch{
+        return false
+    }
 }
 
 export const findOrCreateParentDirectory = (path: string, baseFolderUUID: string, remoteTreeNow: any, absolutePathLocal?: string): Promise<string> => {
@@ -629,7 +630,7 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
                                             return resolve(response.data)
                                         }).catch(reject)
                                     }).catch(reject)
-                                })
+                                }).catch(reject)
                             })
                         }
     
@@ -667,9 +668,17 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
                             await markUploadAsDone({ uuid, uploadKey })
                         }
                         catch(e: any){
+                            if(!(await doesExistLocally(absolutePath))){
+                                return reject("deletedLocally")
+                            }
+
                             if(typeof e.code !== "undefined"){
                                 if(e.code == "EPERM"){
                                     return reject("eperm")
+                                }
+
+                                if(e.code == "ENOENT"){
+                                    return resolve(true)
                                 }
                             }
 

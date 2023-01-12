@@ -743,7 +743,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
                                 updateSyncTasksToDo()
     
-                                return false
+                                return resolve(true)
                             }
     
                             currentTries += 1
@@ -789,6 +789,10 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                     })
                 }))
             ])
+
+            for(let i = 0; i < renameInRemoteTasks.length; i++){
+                maxSyncTasksSemaphore.release()
+            }
         }
 
         if(renameInLocalTasks.length > 0){
@@ -839,7 +843,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
                                 updateSyncTasksToDo()
     
-                                return false
+                                return resolve(true)
                             }
     
                             currentTries += 1
@@ -891,6 +895,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                 if(
                                     err == "eperm"
                                     || (typeof err.code == "string" && err.code == "EPERM")
+                                    || err == "deletedLocally"
                                 ){
                                     emitSyncTask("renameInLocal", {
                                         status: "err",
@@ -932,6 +937,10 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                     })
                 }))
             ])
+
+            for(let i = 0; i < renameInLocal.length; i++){
+                maxSyncTasksSemaphore.release()
+            }
         }
 
         if(moveInRemoteTasks.length > 0){
@@ -982,7 +991,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                 
                                 updateSyncTasksToDo()
     
-                                return false
+                                return resolve(true)
                             }
     
                             currentTries += 1
@@ -1028,6 +1037,10 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                     })
                 }))
             ])
+
+            for(let i = 0; i < moveInRemoteTasks.length; i++){
+                maxSyncTasksSemaphore.release()
+            }
         }
 
         if(moveInLocalTasks.length > 0){
@@ -1078,7 +1091,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
                                 updateSyncTasksToDo()
     
-                                return false
+                                return resolve(true)
                             }
     
                             currentTries += 1
@@ -1130,6 +1143,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                 if(
                                     err == "eperm"
                                     || (typeof err.code == "string" && err.code == "EPERM")
+                                    || err == "deletedLocally"
                                 ){
                                     emitSyncTask("moveInLocal", {
                                         status: "err",
@@ -1171,6 +1185,10 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                     })
                 }))
             ])
+
+            for(let i = 0; i < moveInLocalTasks.length; i++){
+                maxSyncTasksSemaphore.release()
+            }
         }
 
         if(deleteInRemoteTasks.length > 0){
@@ -1221,7 +1239,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
                                 updateSyncTasksToDo()
     
-                                return false
+                                return resolve(true)
                             }
     
                             currentTries += 1
@@ -1267,6 +1285,10 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                     })
                 }))
             ])
+
+            for(let i = 0; i < deleteInRemoteTasks.length; i++){
+                maxSyncTasksSemaphore.release()
+            }
         }
 
         if(deleteInLocalTasks.length > 0){
@@ -1311,7 +1333,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
                                 updateSyncTasksToDo()
     
-                                return false
+                                return resolve(true)
                             }
     
                             currentTries += 1
@@ -1362,6 +1384,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
                                 if(
                                     err == "eperm"
+                                    || err == "deletedLocally"
                                     || (typeof err.code == "string" && err.code == "EPERM")
                                 ){
                                     emitSyncTask("deleteInLocal", {
@@ -1390,6 +1413,10 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                     })
                 }))
             ])
+
+            for(let i = 0; i < deleteInLocalTasks.length; i++){
+                maxSyncTasksSemaphore.release()
+            }
         }
 
         if(uploadToRemoteTasks.length > 0){
@@ -1440,7 +1467,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
                                 updateSyncTasksToDo()
     
-                                return false
+                                return resolve(true)
                             }
     
                             currentTries += 1
@@ -1544,6 +1571,11 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                     })
                 }))
             ])
+
+            for(let i = 0; i < uploadToRemoteTasks.length; i++){
+                maxSyncTasksSemaphore.release()
+                maxConcurrentUploadsSemaphore.release()
+            }
         }
 
         if(downloadFromRemoteTasks.length > 0){
@@ -1653,7 +1685,16 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                     })
                 }))
             ])
+
+            for(let i = 0; i < downloadFromRemoteTasks.length; i++){
+                maxSyncTasksSemaphore.release()
+                maxConcurrentDownloadsSemaphore.release()
+            }
         }
+
+        maxSyncTasksSemaphore.purge()
+        maxConcurrentDownloadsSemaphore.purge()
+        maxConcurrentUploadsSemaphore.purge()
 
         sendToAllPorts({
             type: "syncTasksToDo",
@@ -3063,8 +3104,6 @@ const sync = async (): Promise<any> => {
             status: "start",
             syncLocations
         })
-
-        await db.set("syncIssues", []).catch(log.error)
 
         for(let i = 0; i < syncLocations.length; i++){
             if(typeof syncLocations[i].remote == "undefined" || typeof syncLocations[i].remoteUUID == "undefined" || typeof syncLocations[i].remoteName == "undefined"){
