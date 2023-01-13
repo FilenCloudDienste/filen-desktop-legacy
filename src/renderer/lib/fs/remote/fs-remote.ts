@@ -2,7 +2,7 @@ import { folderPresent, dirTree, createFolder, folderExists, uploadChunk, markUp
 import db from "../../db"
 import { decryptFolderName, decryptFileMetadata, hashFn, encryptMetadata, encryptData } from "../../crypto"
 import { convertTimestampToMs, pathIsFileOrFolderNameIgnoredByDefault, generateRandomString, Semaphore, isFolderPathExcluded, pathValidation, isPathOverMaxLength, isNameOverMaxLength, pathIncludesDot } from "../../helpers"
-import { normalizePath, smokeTest as smokeTestLocal, readChunk, checkLastModified } from "../local"
+import { normalizePath, smokeTest as smokeTestLocal, readChunk, checkLastModified, gracefulLStat} from "../local"
 import { chunkSize, maxUploadThreads } from "../../constants"
 import { v4 as uuidv4 } from "uuid"
 import { sendToAllPorts } from "../../worker/ipc"
@@ -11,6 +11,7 @@ import { isSyncLocationPaused } from "../../worker/sync/sync.utils"
 import { exists } from "../local"
 import memoryCache from "../../memoryCache"
 import type { RemoteItem, RemoteUUIDs, RemoteDirectoryTreeResult } from "../../../../types"
+import type { Stats } from "fs-extra"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
@@ -511,7 +512,7 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
         })
 
         try{
-            var absolutePath = normalizePath(location.local + "/" + path)
+            var absolutePath = normalizePath(pathModule.join(location.local, path))
             var name = pathModule.basename(absolutePath)
             var nameHashed = hashFn(name.toLowerCase())
         }
@@ -565,7 +566,7 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
                             var rm = generateRandomString(32)
                             var uploadKey = generateRandomString(32)
                             var nameH = nameHashed
-                            var [nameEnc, mimeEnc, sizeEnc, metaData] = await Promise.all([
+                            var [nameEnc, mimeEnc, sizeEnc, metaData, origStats]: [string, string, string, string, Stats] = await Promise.all([
                                 encryptMetadata(name, key),
                                 encryptMetadata(mime, key),
                                 encryptMetadata(size.toString(), key),
@@ -575,7 +576,8 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
                                     mime,
                                     key,
                                     lastModified
-                                }, (_, value) => typeof value == "bigint" ? parseInt(value.toString()) : value), masterKeys[masterKeys.length - 1])
+                                }, (_, value) => typeof value == "bigint" ? parseInt(value.toString()) : value), masterKeys[masterKeys.length - 1]),
+                                gracefulLStat(absolutePath)
                             ])
                         }
                         catch(e){
@@ -589,6 +591,24 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
                             return new Promise(async (resolve, reject) => {
                                 if(!(await doesExistLocally(absolutePath))){
                                     return reject("deletedLocally")
+                                }
+
+                                try{
+                                    const stats: Stats = await gracefulLStat(absolutePath)
+
+                                    if(
+                                        origStats.birthtimeMs !== stats.birthtimeMs
+                                        || origStats.size !== stats.size
+                                        || origStats.ino !== stats.ino
+                                        || origStats.mtimeMs !== stats.mtimeMs
+                                    ){
+                                        return reject("deletedLocally")
+                                    }
+                                }
+                                catch(e: any){
+                                    if(e.code && e.code == "ENOENT"){
+                                        return reject("deletedLocally")
+                                    }
                                 }
 
                                 readChunk(absolutePath, (index * chunkSize), chunkSize).then((data) => {
@@ -664,6 +684,17 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
                                     })
                                 }
                             })
+
+                            const stats: Stats = await gracefulLStat(absolutePath)
+
+                            if(
+                                origStats.birthtimeMs !== stats.birthtimeMs
+                                || origStats.size !== stats.size
+                                || origStats.ino !== stats.ino
+                                || origStats.mtimeMs !== stats.mtimeMs
+                            ){
+                                return reject("deletedLocally")
+                            }
 
                             await markUploadAsDone({ uuid, uploadKey })
                         }

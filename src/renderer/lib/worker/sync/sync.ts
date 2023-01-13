@@ -2836,7 +2836,7 @@ const syncLocation = async (location: Location): Promise<boolean> => {
     try{
         const syncIssues: SyncIssue[] | null = await db.get("syncIssues")
 
-        if(Array.isArray(syncIssues) && syncIssues.length > 0){
+        if(Array.isArray(syncIssues) && syncIssues.length > 10){
             log.info("Got open sync issues after consume, won't apply anything to saved state")
 
             updateLocationBusyStatus(location.uuid, false)
@@ -2996,7 +2996,7 @@ const sync = async (): Promise<any> => {
         return startSyncLoop()
     }
 
-    if(Array.isArray(syncIssues) && syncIssues.length > 0){
+    if(Array.isArray(syncIssues) && syncIssues.length > 10){
         syncMutex.release()
 
         log.info("Will not continue, got open sync issues, need user intervention")

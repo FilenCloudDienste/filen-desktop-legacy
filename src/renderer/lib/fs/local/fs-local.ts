@@ -9,6 +9,7 @@ import * as constants from "../../constants"
 import { isSyncLocationPaused } from "../../worker/sync/sync.utils"
 import type { Stats } from "fs-extra"
 import type { ReaddirFallbackEntry, LocalDirectoryTreeResult, LocalTreeFiles, LocalTreeFolders, LocalTreeIno, Location } from "../../../../types"
+import { doesExistLocally } from "../remote"
 
 const fs = window.require("fs-extra")
 const pathModule = window.require("path")
@@ -114,7 +115,7 @@ export const smokeTest = (path: string): Promise<boolean> => {
     })
 }
 
-export const gracefulLStat = (path: string): Promise<any> => {
+export const gracefulLStat = (path: string): Promise<Stats> => {
     return new Promise((resolve, reject) => {
         path = pathModule.normalize(path)
 
@@ -156,38 +157,12 @@ export const exists = (fullPath: string): Promise<boolean> => {
     return new Promise((resolve) => {
         const path = pathModule.normalize(fullPath)
 
-        fs.open(path, "r", (err: any, fd: any) => {
+        fs.access(path, fs.constants.F_OK, (err: any) => {
             if(err){
-                if(err.code == "EPERM"){
-                    return resolve(true)
-                }
-
                 return resolve(false)
             }
 
-            const buffer = Buffer.alloc(1)
-
-            fs.read(fd, buffer, 0, 0, 0, (err: any) => {
-                if(err){
-                    if(err.code == "EPERM"){
-                        return resolve(true)
-                    }
-    
-                    return resolve(false)
-                }
-
-                fs.close(fd, (err: any) => {
-                    if(err){
-                        if(err.code == "EPERM"){
-                            return resolve(true)
-                        }
-        
-                        return resolve(false)
-                    }
-
-                    return resolve(true)
-                })
-            })
+            return resolve(true)
         })
     })
 }
@@ -195,7 +170,7 @@ export const exists = (fullPath: string): Promise<boolean> => {
 export const canReadWriteAtPath = (fullPath: string): Promise<boolean> => {
     return new Promise((resolve) => {
         const content = uuidv4()
-        const fileName = uuidv4()
+        const fileName = ".temp-smoketest." + uuidv4()
         const dirname = pathModule.dirname(pathModule.normalize(fullPath))
         const path = pathModule.normalize(pathModule.join(dirname, fileName))
 
@@ -553,13 +528,21 @@ export const readChunk = (path: string, offset: number, length: number): Promise
 }
 
 export const rm = async (path: string, location: Location): Promise<boolean> => {
+    path = pathModule.normalize(path)
+
     const trashDirPath = pathModule.normalize(pathModule.join(location.local, ".filen.trash.local"))
-    const basename = pathModule.basename(pathModule.normalize(path))
+    const basename = pathModule.basename(path)
+
+    if(!(await doesExistLocally(path))){
+        memoryCache.delete("gracefulLStat:" + path)
+
+        return true
+    }
 
     await fs.ensureDir(trashDirPath)
-    await move(pathModule.normalize(path), pathModule.normalize(pathModule.join(trashDirPath, basename)))
+    await move(path, pathModule.normalize(pathModule.join(trashDirPath, basename)))
 
-    memoryCache.delete("gracefulLStat:" + pathModule.normalize(path))
+    memoryCache.delete("gracefulLStat:" + path)
 
     return true
 }
@@ -645,7 +628,7 @@ export const rmPermanent = (path: string): Promise<boolean> => {
 
 export const mkdir = (path: string, location: any, task: any): Promise<any> => {
     return new Promise((resolve, reject) => {
-        const absolutePath = normalizePath(location.local + "/" + path)
+        const absolutePath = normalizePath(pathModule.join(location.local, path))
         let currentTries = 0
         let lastErr: any = undefined
 
@@ -705,7 +688,7 @@ export const download = (path: string, location: any, task: any): Promise<any> =
         })
 
         try{
-            var absolutePath = normalizePath(location.local + "/" + path)
+            var absolutePath = normalizePath(pathModule.join(location.local, path))
             var file = task.item
         }
         catch(e){
@@ -714,7 +697,7 @@ export const download = (path: string, location: any, task: any): Promise<any> =
 
         getTempDir().then((tmpDir) => {
             try{
-                var fileTmpPath = normalizePath(tmpDir + "/" + uuidv4())
+                var fileTmpPath = normalizePath(pathModule.join(tmpDir, uuidv4()))
             }
             catch(e){
                 return reject(e)
@@ -851,14 +834,18 @@ export const download = (path: string, location: any, task: any): Promise<any> =
     })
 }
 
-export const move = (before: string, after: string, overwrite: boolean = true): Promise<any> => {
-    return new Promise((resolve, reject) => {
+export const move = (before: string, after: string, overwrite: boolean = true): Promise<boolean> => {
+    return new Promise(async (resolve, reject) => {
         try{
             before = normalizePath(before)
             after = normalizePath(after)
         }
         catch(e){
             return reject(e)
+        }
+
+        if(!(await doesExistLocally(before))){
+            return resolve(true)
         }
 
         let currentTries = 0
@@ -888,14 +875,18 @@ export const move = (before: string, after: string, overwrite: boolean = true): 
     })
 }
 
-export const rename = (before: string, after: string): Promise<any> => {
-    return new Promise((resolve, reject) => {
+export const rename = (before: string, after: string): Promise<boolean> => {
+    return new Promise(async (resolve, reject) => {
         try{
             before = normalizePath(before)
             after = normalizePath(after)
         }
         catch(e){
             return reject(e)
+        }
+
+        if(!(await doesExistLocally(before))){
+            return resolve(true)
         }
 
         let currentTries = 0

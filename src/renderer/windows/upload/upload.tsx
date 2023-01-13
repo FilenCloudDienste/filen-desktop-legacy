@@ -23,6 +23,7 @@ import { showToast } from "../../components/Toast"
 import { encryptData, encryptMetadata, hashFn } from "../../lib/crypto"
 import useDb from "../../lib/hooks/useDb"
 import { AiOutlinePauseCircle } from "react-icons/ai"
+import type { Stats } from "fs-extra"
 
 const log = window.require("electron-log")
 const pathModule = window.require("path")
@@ -86,7 +87,7 @@ const uploadFile = (path: string, parent: string): Promise<boolean> => {
             db.get("masterKeys")
         ]).then(([apiKey, masterKeys]) => {
             fsLocal.smokeTest(absolutePath).then(() => {
-                fs.lstat(absolutePath).then(async (stat: any) => {
+                fsLocal.gracefulLStat(absolutePath).then(async (stat: Stats) => {
                     const size = parseInt(stat.size.toString())
                     const lastModified =  Math.floor(stat.mtimeMs)
                     const mime = mimeTypes.lookup(name) || ""
@@ -103,17 +104,20 @@ const uploadFile = (path: string, parent: string): Promise<boolean> => {
                         var key = generateRandomString(32)
                         var rm = generateRandomString(32)
                         var uploadKey = generateRandomString(32)
-                        var nameEnc = await encryptMetadata(name, key)
                         var nameH = nameHashed
-                        var mimeEnc = await encryptMetadata(mime, key)
-                        var sizeEnc = await encryptMetadata(size.toString(), key)
-                        var metaData = await encryptMetadata(JSON.stringify({
-                            name,
-                            size,
-                            mime,
-                            key,
-                            lastModified
-                        }, (_, value) => typeof value == "bigint" ? parseInt(value.toString()) : value), masterKeys[masterKeys.length - 1])
+                        var [nameEnc, mimeEnc, sizeEnc, metaData, origStats]: [string, string, string, string, Stats] = await Promise.all([
+                            encryptMetadata(name, key),
+                            encryptMetadata(mime, key),
+                            encryptMetadata(size.toString(), key),
+                            encryptMetadata(JSON.stringify({
+                                name,
+                                size,
+                                mime,
+                                key,
+                                lastModified
+                            }, (_, value) => typeof value == "bigint" ? parseInt(value.toString()) : value), masterKeys[masterKeys.length - 1]),
+                            fsLocal.gracefulLStat(absolutePath)
+                        ])
                     }
                     catch(e: any){
                         log.error("Metadata generation failed for " + absolutePath)
@@ -125,7 +129,29 @@ const uploadFile = (path: string, parent: string): Promise<boolean> => {
                     }
 
                     const uploadTask = (index: number) => {
-                        return new Promise((resolve, reject) => {
+                        return new Promise(async (resolve, reject) => {
+                            if(!(await fsRemote.doesExistLocally(absolutePath))){
+                                return reject("deletedLocally")
+                            }
+
+                            try{
+                                const stats: Stats = await fsLocal.gracefulLStat(absolutePath)
+
+                                if(
+                                    origStats.birthtimeMs !== stats.birthtimeMs
+                                    || origStats.size !== stats.size
+                                    || origStats.ino !== stats.ino
+                                    || origStats.mtimeMs !== stats.mtimeMs
+                                ){
+                                    return reject("deletedLocally")
+                                }
+                            }
+                            catch(e: any){
+                                if(e.code && e.code == "ENOENT"){
+                                    return reject("deletedLocally")
+                                }
+                            }
+
                             fsLocal.readChunk(absolutePath, (index * chunkSize), chunkSize).then((data) => {
                                 encryptData(data, key).then((encrypted) => {
                                     uploadChunk({
@@ -160,9 +186,6 @@ const uploadFile = (path: string, parent: string): Promise<boolean> => {
                         })
                     }
 
-                    let region = ""
-                    let bucket = ""
-
                     try{
                         await uploadTask(0)
 
@@ -172,9 +195,6 @@ const uploadFile = (path: string, parent: string): Promise<boolean> => {
                             for(let i = 1; i < (fileChunks + 1); i++){
                                 uploadThreadsSemaphore.acquire().then(() => {
                                     uploadTask(i).then((data: any) => {
-                                        region = data.region
-                                        bucket = data.bucket
-
                                         done += 1
 
                                         uploadThreadsSemaphore.release()
@@ -191,9 +211,34 @@ const uploadFile = (path: string, parent: string): Promise<boolean> => {
                             }
                         })
 
+                        const stats: Stats = await fsLocal.gracefulLStat(absolutePath)
+
+                        if(
+                            origStats.birthtimeMs !== stats.birthtimeMs
+                            || origStats.size !== stats.size
+                            || origStats.ino !== stats.ino
+                            || origStats.mtimeMs !== stats.mtimeMs
+                        ){
+                            return reject("deletedLocally")
+                        }
+
                         await markUploadAsDone({ uuid, uploadKey })
                     }
                     catch(e: any){
+                        if(!(await fsRemote.doesExistLocally(absolutePath))){
+                            return reject("deletedLocally")
+                        }
+
+                        if(typeof e.code !== "undefined"){
+                            if(e.code == "EPERM"){
+                                return reject(e)
+                            }
+
+                            if(e.code == "ENOENT"){
+                                return resolve(true)
+                            }
+                        }
+
                         if(e.toString().toLowerCase().indexOf("already exists") !== -1){
                             return resolve(true)
                         }
@@ -218,24 +263,6 @@ const uploadFile = (path: string, parent: string): Promise<boolean> => {
                     catch(e){
                         log.error(e)
                     }
-
-                    /*
-                    {
-                        uuid,
-                        bucket,
-                        region,
-                        chunks: fileChunks,
-                        parent,
-                        version: UPLOAD_VERSION,
-                        metadata: {
-                            key,
-                            name,
-                            size,
-                            mime,
-                            lastModified
-                        }
-                    }
-                    */
 
                     return resolve(true)
                 }).catch(reject)
