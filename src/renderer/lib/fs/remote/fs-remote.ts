@@ -20,7 +20,7 @@ const mimeTypes = window.require("mime-types")
 const findOrCreateParentDirectorySemaphore = new Semaphore(1)
 const createDirectorySemaphore = new Semaphore(1)
 const uploadThreadsSemaphore = new Semaphore(maxUploadThreads)
-const folderPathUUID = new Map()
+const folderPathUUID = new Map<string, string>()
 
 const UPLOAD_VERSION: number = 2
 const previousDatasets: { [key: string]: string } = {}
@@ -112,7 +112,7 @@ export const directoryTree = (uuid: string = "", skipCache: boolean = false, loc
                     })
                 }
 
-                const [baseFolderUUID, baseFolderMetadata, baseFolderParent] = response.folders[0]
+                const [baseFolderUUID, baseFolderMetadata, baseFolderParent]: [string, string, string] = response.folders[0]
                 const baseFolderName = await decryptFolderName(baseFolderMetadata, masterKeys)
 
                 if(baseFolderParent !== "base"){
@@ -382,7 +382,7 @@ export const findOrCreateParentDirectory = (path: string, baseFolderUUID: string
         const neededParentPath = neededPathEx.slice(0, -1).join("/")
 
         if(folderPathUUID.has(neededParentPath)){
-            return resolve(folderPathUUID.get(neededParentPath))
+            return resolve(folderPathUUID.get(neededParentPath) as string)
         }
 
         await findOrCreateParentDirectorySemaphore.acquire()
