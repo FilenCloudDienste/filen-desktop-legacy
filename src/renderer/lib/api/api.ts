@@ -1793,6 +1793,7 @@ export const moveFile = ({ file, parent }: { file: any, parent: string }): Promi
                         || response.message.toString().toLowerCase().indexOf("does not exist") !== -1
                         || response.message.toString().toLowerCase().indexOf("file not found") !== -1
                         || response.message.toString().toLowerCase().indexOf("belong") !== -1
+                        || response.message.toString().toLowerCase().indexOf("trash") !== -1
                         || (response.message.toString().toLowerCase().indexOf("not found") !== -1 && response.message.toString().toLowerCase().indexOf("api") == -1)
                     ){
                         return resolve(true)
@@ -1838,6 +1839,7 @@ export const moveFolder = ({ folder, parent }: { folder: any, parent: string }):
                         || response.message.toString().toLowerCase().indexOf("does not exist") !== -1
                         || response.message.toString().toLowerCase().indexOf("not found") !== -1
                         || response.message.toString().toLowerCase().indexOf("folder not found") !== -1
+                        || response.message.toString().toLowerCase().indexOf("trash") !== -1
                         || response.message.toString().toLowerCase().indexOf("belong") !== -1
                     ){
                         return resolve(true)

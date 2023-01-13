@@ -678,7 +678,7 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
                                 }
 
                                 if(e.code == "ENOENT"){
-                                    return resolve(true)
+                                    return reject("deletedLocally")
                                 }
                             }
 
