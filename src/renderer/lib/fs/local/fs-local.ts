@@ -169,50 +169,38 @@ export const exists = (fullPath: string): Promise<boolean> => {
 
 export const canReadWriteAtPath = (fullPath: string): Promise<boolean> => {
     return new Promise((resolve) => {
-        const content = uuidv4()
-        const fileName = ".temp-smoketest." + uuidv4()
-        const dirname = pathModule.dirname(pathModule.normalize(fullPath))
-        const path = pathModule.normalize(pathModule.join(dirname, fileName))
+        fullPath = pathModule.normalize(fullPath)
 
-        fs.writeFile(path, content, {
-            encoding: "utf8"
-        }, (err: any) => {
-            if(err){
-                log.error(err)
-            
-                return resolve(false)
-            }
-
-            fs.readFile(path, {
-                encoding: "utf8"
-            }, (err: any, data: string) => {
+        const req = (path: string) => {
+            fs.access(path, fs.constants.W_OK | fs.constants.R_OK, (err: any) => {
                 if(err){
-                    fs.unlink(path).catch(log.error)
+                    if(err.code){
+                        if(err.code == "EPERM"){
+                            log.error(err)
 
-                    log.error(err)
-                
-                    return resolve(false)
-                }
+                            return resolve(false)
+                        }
+                        else if(err.code == "ENOENT"){
+                            const newPath = pathModule.dirname(path)
 
-                if(content !== data){
-                    fs.unlink(path).catch(log.error)
+                            if(newPath.length > 0){
+                                return setImmediate(() => req(newPath))
+                            }
 
-                    log.error("canReadWriteAtPath: content !== data")
-                
-                    return resolve(false)
-                }
-
-                fs.unlink(path, (err: any) => {
-                    if(err){
-                        log.error(err)
-                    
-                        return resolve(false)
+                            return resolve(false)
+                        }
                     }
 
-                    return resolve(true)
-                })
+                    log.error(err)
+    
+                    return resolve(false)
+                }
+    
+                return resolve(true)
             })
-        })
+        }
+
+        return req(fullPath)
     })
 }
 

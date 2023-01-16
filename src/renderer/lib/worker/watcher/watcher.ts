@@ -29,10 +29,6 @@ export const watch = (path: string, locationUUID: string): Promise<any> => {
             })
     
             SUBS[path].on("change", (event: string, name: string) => {
-                if(name.indexOf(".temp-smoketest.") !== -1){
-                    return
-                }
-
                 lastEvent[path] = new Date().getTime()
 
                 emitToWorker({ event, name, watchPath: path, locationUUID })

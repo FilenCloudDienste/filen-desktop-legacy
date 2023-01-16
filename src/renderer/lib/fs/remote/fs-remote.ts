@@ -417,7 +417,7 @@ export const findOrCreateParentDirectory = (path: string, baseFolderUUID: string
                 if(typeof existingFolders[currentPath] == "undefined" && currentPath !== path){
                     try{
                         const createParentUUID = currentParentPath.length > 0 && typeof existingFolders[currentParentPath] == "object" && typeof existingFolders[currentParentPath].uuid == "string" ? existingFolders[currentParentPath].uuid : baseFolderUUID
-                        const createName = currentPath.split("/").pop().trim()
+                        const createName = currentPath.split("/").pop()
                         let createUUID = uuidv4()
     
                         createUUID = await createDirectory(createUUID, createName, createParentUUID)

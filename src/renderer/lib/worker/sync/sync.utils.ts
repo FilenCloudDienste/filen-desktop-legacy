@@ -349,11 +349,7 @@ export const isIgnoredBySelectiveSync = memoize((selectiveSyncRemoteIgnore: { [k
         return false
     }
 
-    path = path.trim()
-
     for(let prop in selectiveSyncRemoteIgnore){
-        prop = prop.trim()
-
         if(prop == path || isSubdir(prop, path) || isSubdir(path, prop)){
             return true
         }
