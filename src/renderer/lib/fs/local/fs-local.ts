@@ -528,7 +528,19 @@ export const rm = async (path: string, location: Location): Promise<boolean> => 
     }
 
     await fs.ensureDir(trashDirPath)
-    await move(path, pathModule.normalize(pathModule.join(trashDirPath, basename)))
+    
+    try{
+        await move(path, pathModule.normalize(pathModule.join(trashDirPath, basename)))
+    }
+    catch(e: any){
+        if(e.code && e.code == "ENOENT"){
+            memoryCache.delete("gracefulLStat:" + path)
+
+            return true
+        }
+
+        throw e
+    }
 
     memoryCache.delete("gracefulLStat:" + path)
 
@@ -539,11 +551,17 @@ export const rmPermanent = (path: string): Promise<boolean> => {
     return new Promise(async (resolve, reject) => {
         path = normalizePath(path)
 
+        if(!(await doesExistLocally(path))){
+            memoryCache.delete("gracefulLStat:" + pathModule.normalize(path))
+
+            return resolve(true)
+        }
+
         try{
             var stats = await gracefulLStat(path)
         }
         catch(e: any){
-            if(e.code == "ENOENT"){
+            if(e.code && e.code == "ENOENT"){
                 memoryCache.delete("gracefulLStat:" + pathModule.normalize(path))
 
                 return resolve(true)

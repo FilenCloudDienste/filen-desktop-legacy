@@ -732,7 +732,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                 log.error("renameInRemote task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
     
-                                addToSyncIssues("syncTask", "Could not rename " + pathModule.normalize(location.local + "/" + task.path) + " remotely: " + lastErr.toString())
+                                //addToSyncIssues("syncTask", "Could not rename " + pathModule.normalize(location.local + "/" + task.path) + " remotely: " + lastErr.toString())
     
                                 emitSyncTask("renameInRemote", {
                                     status: "err",
@@ -832,7 +832,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                 log.error("renameInLocal task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
     
-                                addToSyncIssues("syncTask", "Could not rename " + pathModule.normalize(location.local + "/" + task.path) + " locally: " + lastErr.toString())
+                                //addToSyncIssues("syncTask", "Could not rename " + pathModule.normalize(location.local + "/" + task.path) + " locally: " + lastErr.toString())
     
                                 emitSyncTask("renameInLocal", {
                                     status: "err",
@@ -980,7 +980,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                 log.error("moveInRemote task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
     
-                                addToSyncIssues("syncTask", "Could not move " + pathModule.normalize(location.remote + "/" + task.path) + " remotely: " + lastErr.toString())
+                                //addToSyncIssues("syncTask", "Could not move " + pathModule.normalize(location.remote + "/" + task.path) + " remotely: " + lastErr.toString())
     
                                 emitSyncTask("moveInRemote", {
                                     status: "err",
@@ -1080,7 +1080,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                 log.error("moveInLocal task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
     
-                                addToSyncIssues("syncTask", "Could not move " + pathModule.normalize(location.local + "/" + task.path) + " locally: " + lastErr.toString())
+                                //addToSyncIssues("syncTask", "Could not move " + pathModule.normalize(location.local + "/" + task.path) + " locally: " + lastErr.toString())
     
                                 emitSyncTask("moveInLocal", {
                                     status: "err",
@@ -1228,7 +1228,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                 log.error("deleteInRemote task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
     
-                                addToSyncIssues("syncTask", "Could not delete " + pathModule.normalize(location.remote + "/" + task.path) + " remotely: " + lastErr.toString())
+                                //addToSyncIssues("syncTask", "Could not delete " + pathModule.normalize(location.remote + "/" + task.path) + " remotely: " + lastErr.toString())
     
                                 emitSyncTask("deleteInRemote", {
                                     status: "err",
@@ -1322,7 +1322,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                 log.error("deleteInLocal task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
     
-                                addToSyncIssues("syncTask", "Could not delete " + pathModule.normalize(location.local + "/" + task.path) + " locally: " + lastErr.toString())
+                                //addToSyncIssues("syncTask", "Could not delete " + pathModule.normalize(location.local + "/" + task.path) + " locally: " + lastErr.toString())
             
                                 emitSyncTask("deleteInLocal", {
                                     status: "err",
@@ -1456,7 +1456,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                 log.error("uploadToRemote task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
     
-                                addToSyncIssues("syncTask", "Could not upload " + pathModule.normalize(location.local + "/" + task.path) + ": " + lastErr.toString())
+                                //addToSyncIssues("syncTask", "Could not upload " + pathModule.normalize(location.local + "/" + task.path) + ": " + lastErr.toString())
     
                                 emitSyncTask("uploadToRemote", {
                                     status: "err",
@@ -1609,7 +1609,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                 log.error("downloadFromRemote task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
     
-                                addToSyncIssues("syncTask", "Could not download " + pathModule.normalize(location.local + "/" + task.path) + ": " + lastErr.toString())
+                                //addToSyncIssues("syncTask", "Could not download " + pathModule.normalize(location.local + "/" + task.path) + ": " + lastErr.toString())
     
                                 emitSyncTask("downloadFromRemote", {
                                     status: "err",
@@ -1620,7 +1620,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
                                 updateSyncTasksToDo()
     
-                                return false
+                                return resolve(true)
                             }
     
                             currentTries += 1
@@ -2836,7 +2836,7 @@ const syncLocation = async (location: Location): Promise<boolean> => {
     try{
         const syncIssues: SyncIssue[] | null = await db.get("syncIssues")
 
-        if(Array.isArray(syncIssues) && syncIssues.length > 10){
+        if(Array.isArray(syncIssues) && syncIssues.length > 0){
             log.info("Got open sync issues after consume, won't apply anything to saved state")
 
             updateLocationBusyStatus(location.uuid, false)
@@ -2996,7 +2996,7 @@ const sync = async (): Promise<any> => {
         return startSyncLoop()
     }
 
-    if(Array.isArray(syncIssues) && syncIssues.length > 10){
+    if(Array.isArray(syncIssues) && syncIssues.length > 0){
         syncMutex.release()
 
         log.info("Will not continue, got open sync issues, need user intervention")
