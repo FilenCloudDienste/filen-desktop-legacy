@@ -3117,7 +3117,7 @@ const sync = async (): Promise<any> => {
                 log.error("Sync task for location " + syncLocations[i].uuid + " failed, reason:")
                 log.error(e)
 
-                addToSyncIssues("sync", "Could not sync " + syncLocations[i].local + " <-> " + syncLocations[i].remote + ": " + e.toString())
+                //addToSyncIssues("sync", "Could not sync " + syncLocations[i].local + " <-> " + syncLocations[i].remote + ": " + e.toString())
                 
                 emitSyncStatus("sync", {
                     status: "err",
