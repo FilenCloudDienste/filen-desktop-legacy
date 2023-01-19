@@ -541,14 +541,21 @@ const handleMessage = (type, data) => {
         else if(type == "installUpdate"){
             return setTimeout(() => {
                 try{
-                    autoUpdater.autoInstallOnAppQuit = false
+                    app.removeAllListeners("window-all-closed")
+
+                    const allWindows = BrowserWindow.getAllWindows()
+
+                    for(let i = 0; i < allWindows.length; i++){
+                        allWindows[i].destroy()
+                    }
+
                     autoUpdater.quitAndInstall(false, true)
     
                     if(is.windows()){
                         setTimeout(() => app.exit(0), 1000)
                     }
     
-                    return resolve(true)
+                    //return resolve(true)
                 }
                 catch(e){
                     return reject(e)

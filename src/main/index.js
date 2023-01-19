@@ -105,7 +105,7 @@ autoUpdater.on("update-downloaded", (info) => {
 	
 				UPDATE_WINDOW_SHOWN = false
 			})
-		}, 60000)
+		}, 5000)
 	}
 })
 

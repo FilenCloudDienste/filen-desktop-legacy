@@ -148,7 +148,8 @@ const en: {
     copied: "Copied",
     publicLinkCopied: "Public link copied to clipboard",
     clearLocalTrashDirs: "Clear local trash bins",
-    clearLocalTrashDirsInfo: "Clearing the local trash bins cannot be undone! Are you sure?"
+    clearLocalTrashDirsInfo: "Clearing the local trash bins cannot be undone! Are you sure?",
+    updateWindowInfo3: "The client will exit and start the update flow in the background. It will restart itself when it is done. Please do not interrupt this process."
 }
 
 export default en
