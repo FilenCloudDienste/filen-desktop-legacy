@@ -891,10 +891,6 @@ const createWorker = () => {
                 window.webContents.openDevTools({ mode: "detach" })
             }
 
-            window.webContents.session.enableNetworkEmulation({
-                offline: true
-            })
-
 			window.once("closed", () => {
 				require("../shared").remove("WORKER_WINDOW")
                 require("../shared").remove("WORKER_WINDOW_DEBUGGER")
@@ -903,6 +899,7 @@ const createWorker = () => {
 			})
 
             require("../shared").set("WORKER_WINDOW", window)
+
             activeWindows.push({ id: windowId, type: "WORKER_WINDOW" })
     
             return resolve(window)
