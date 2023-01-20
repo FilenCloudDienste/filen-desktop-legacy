@@ -2510,10 +2510,7 @@ const syncLocation = async (location: Location): Promise<boolean> => {
     })
 
     try{
-        await Promise.all([
-            fsLocal.smokeTest(pathModule.normalize(location.local)),
-            fsRemote.smokeTest(location.remoteUUID)
-        ])
+        await fsLocal.smokeTest(pathModule.normalize(location.local))
     }
     catch(e: any){
         if((await isSuspended())){
@@ -2522,20 +2519,36 @@ const syncLocation = async (location: Location): Promise<boolean> => {
             return false
         }
 
+        log.error("Smoke test for location " + location.uuid + " failed")
+        log.error(e)
+
+        addToSyncIssues("smokeTest", "Smoke test for location " + location.uuid + " failed: " + e.toString())
+
+        emitSyncStatusLocation("smokeTest", {
+            status: "err",
+            location,
+            err: e
+        })
+
+        updateLocationBusyStatus(location.uuid, false)
+
+        return false
+    }
+
+    try{
+        await fsRemote.smokeTest(location.remoteUUID)
+    }
+    catch(e: any){
+        if((await isSuspended())){
+            updateLocationBusyStatus(location.uuid, false)
+
+            return false
+        }
+
+        log.error(e)
+
         if(e.toString().toLowerCase().indexOf("remote folder") !== -1 && e.toString().toLowerCase().indexOf("is not present") !== -1){
             await removeRemoteLocation(location)
-        }
-        else{
-            log.error("Smoke test for location " + location.uuid + " failed")
-            log.error(e)
-
-            addToSyncIssues("smokeTest", "Smoke test for location " + location.uuid + " failed: " + e.toString())
-
-            emitSyncStatusLocation("smokeTest", {
-                status: "err",
-                location,
-                err: e
-            })
         }
 
         updateLocationBusyStatus(location.uuid, false)
@@ -2813,7 +2826,7 @@ const syncLocation = async (location: Location): Promise<boolean> => {
         log.error("Could not consume tasks for location " + location.uuid)
         log.error(e)
 
-        addToSyncIssues("consumeTasks", "Could not consume tasks for location " + location.uuid + ": " + e.toString())
+        //addToSyncIssues("consumeTasks", "Could not consume tasks for location " + location.uuid + ": " + e.toString())
 
         emitSyncStatusLocation("consumeTasks", {
             status: "err",
@@ -2836,7 +2849,7 @@ const syncLocation = async (location: Location): Promise<boolean> => {
     try{
         const syncIssues: SyncIssue[] | null = await db.get("syncIssues")
 
-        if(Array.isArray(syncIssues) && syncIssues.length > 0){
+        if(Array.isArray(syncIssues) && syncIssues.length > 10){
             log.info("Got open sync issues after consume, won't apply anything to saved state")
 
             updateLocationBusyStatus(location.uuid, false)
@@ -2996,7 +3009,7 @@ const sync = async (): Promise<any> => {
         return startSyncLoop()
     }
 
-    if(Array.isArray(syncIssues) && syncIssues.length > 0){
+    if(Array.isArray(syncIssues) && syncIssues.length > 10){
         syncMutex.release()
 
         log.info("Will not continue, got open sync issues, need user intervention")
