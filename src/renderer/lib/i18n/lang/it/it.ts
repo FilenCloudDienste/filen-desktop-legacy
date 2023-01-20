@@ -26,7 +26,7 @@ const it: {
     syncingFooterEverythingSynced: "Tutto sincronizzato",
     aboutRemaining: "Circa __TIME__ rimanenti",
     noSyncActivityYet: "Ancora nessuna attività",
-    createOne: "Aggiungi un'attività",
+    createOne: "Aggiungi attività",
     noSyncLocationsSetupYet: "Non è ancora stata impostata una posizione di sincronizzazione",
     storageUsed: "__USED__ utilizzati di __MAX__",
     quitFilen: "Esci da Filen",
