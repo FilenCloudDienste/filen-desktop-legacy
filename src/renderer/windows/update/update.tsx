@@ -60,7 +60,7 @@ const UpdateWindow = memo(({ windowId, toVersion }: { windowId: string, toVersio
                     marginTop="25px"
                     fontSize={14}
                 >
-                    {i18n(lang, "updateWindowInfo2")}
+                    {i18n(lang, "updateWindowInfo3")}
                 </Text>
                 {
                     isInstalling ? (

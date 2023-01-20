@@ -14,96 +14,11 @@ import { debounce } from "lodash"
 import { initLocalTrashDirs } from "../../lib/fs/local"
 
 const log = window.require("electron-log")
-const https = window.require("https")
 
-export const checkInternet = (): Promise<boolean> => {
-    return new Promise(async (resolve) => {
-        const timeout = setTimeout(async () => {
-            await db.set("isOnline", false).catch(log.error)
-    
-            return resolve(false)
-        }, 20000)
+export const checkInternet = async () => {
+    await db.set("isOnline", window.navigator.onLine).catch(log.error)
 
-        if(!window.navigator.onLine){
-            await db.set("isOnline", false).catch(log.error)
-
-            clearTimeout(timeout)
-    
-            return resolve(false)
-        }
-    
-        const req = https.request({
-            method: "GET",
-            hostname: "api.filen.io",
-            path: "/",
-            timeout: 15000,
-            headers: {
-                "User-Agent": "filen-desktop"
-            },
-            agent: new https.Agent({
-                timeout: 15000
-            })
-        }, async (response: any) => {
-            if(response.statusCode !== 200){
-                await db.set("isOnline", false).catch(log.error)
-
-                clearTimeout(timeout)
-    
-                return resolve(false)
-            }
-    
-            const res: Buffer[] = []
-    
-            response.on("error", async () => {
-                await db.set("isOnline", false).catch(log.error)
-
-                clearTimeout(timeout)
-    
-                return resolve(false)
-            })
-    
-            response.on("data", (chunk: Buffer) => res.push(chunk))
-    
-            response.on("end", async () => {
-                try{
-                    const str = Buffer.concat(res).toString()
-                
-                    if(str.indexOf("Invalid endpoint") == -1){
-                        await db.set("isOnline", false).catch(log.error)
-
-                        clearTimeout(timeout)
-            
-                        return resolve(false)
-                    }
-            
-                    await db.set("isOnline", true).catch(log.error)
-
-                    clearTimeout(timeout)
-    
-                    return resolve(true)
-                }
-                catch(e){
-                    log.error(e)
-    
-                    await db.set("isOnline", false).catch(log.error)
-                }
-
-                clearTimeout(timeout)
-    
-                return resolve(false)
-            })
-        })
-    
-        req.on("error", async () => {
-            await db.set("isOnline", false).catch(log.error)
-
-            clearTimeout(timeout)
-    
-            return resolve(false)
-        })
-    
-        req.end()
-    })
+    return window.navigator.onLine
 }
 
 const WorkerWindow = memo(() => {
@@ -124,9 +39,8 @@ const WorkerWindow = memo(() => {
             const wait = async (): Promise<any> => {
                 try{
                     const loggedIn: boolean | null = await db.get("isLoggedIn")
-                    const isOnlineNow = await checkInternet()
 
-                    if(loggedIn && isOnlineNow){
+                    if(typeof loggedIn == "boolean" && loggedIn !== null && loggedIn === true && window.navigator.onLine){
                         return resolve(true)
                     }
                 }
@@ -155,8 +69,9 @@ const WorkerWindow = memo(() => {
                     db.set("downloadPaused", false),
                     db.set("isOnline", true)
                 ]).then(() => {
-                    sync()
                     initLocalTrashDirs()
+                    checkInternet()
+                    sync()
                 }).catch((err) => {
                     log.error(err)
                 })
@@ -247,19 +162,12 @@ const WorkerWindow = memo(() => {
     }, [paused])
 
     useEffect(() => {
-        const offlineListener = (): void => {
-            db.set("isOnline", false).catch(log.error)
-        }
-
-        window.addEventListener("offline", offlineListener)
-
         const syncTasksToDoListener = eventListener.on("syncTasksToDo", setRunningSyncTasks)
 
         listen()
         init()
 
         return () => {
-            window.removeEventListener("offline", offlineListener)
             syncTasksToDoListener.remove()
 		}
     }, [])

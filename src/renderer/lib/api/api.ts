@@ -37,26 +37,6 @@ const httpsDownloadAgent = new https.Agent({
     timeout: 86400000
 })
 
-export const isOnline = () => {
-    return new Promise((resolve) => {
-        if(!window.navigator.onLine){
-            return resolve(false)
-        }
-
-        db.get("isOnline").then((online) => {
-            if(!online){
-                return resolve(false)
-            }
-
-            return resolve(true)
-        }).catch((err) => {
-            log.error(err)
-
-            return resolve(true)
-        })
-    })
-}
-
 export const getAPIServer = () => {
     return apiServers[getRandomArbitrary(0, (apiServers.length - 1))]
 }
@@ -73,8 +53,8 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
     return new Promise((resolve, reject) => {
         let currentTries = 0
 
-        const doRequest = async (): Promise<any> => {
-            if(!(await isOnline())){
+        const doRequest = (): any => {
+            if(!window.navigator.onLine){
                 return setTimeout(doRequest, retryAPIRequestTimeout)
             }
 
@@ -1451,7 +1431,7 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
             let currentTries = 0
 
             const doRequest = async (): Promise<any> => {
-                if(!(await isOnline())){
+                if(!window.navigator.onLine){
                     return setTimeout(doRequest, retryUploadTimeout)
                 }
 
@@ -1665,7 +1645,7 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync", loca
             let currentTries = 0
 
             const doRequest = async (): Promise<any> => {
-                if(!(await isOnline())){
+                if(!window.navigator.onLine){
                     return setTimeout(doRequest, retryDownloadTimeout)
                 }
 

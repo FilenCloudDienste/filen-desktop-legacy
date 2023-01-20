@@ -539,19 +539,28 @@ const handleMessage = (type, data) => {
             return resolve(true)
         }
         else if(type == "installUpdate"){
-            try{
-                autoUpdater.autoInstallOnAppQuit = false
-                autoUpdater.quitAndInstall(false, true)
+            return setTimeout(() => {
+                try{
+                    app.removeAllListeners("window-all-closed")
 
-                if(is.windows()){
-                    setTimeout(() => app.exit(0), 3000)
+                    const allWindows = BrowserWindow.getAllWindows()
+
+                    for(let i = 0; i < allWindows.length; i++){
+                        allWindows[i].destroy()
+                    }
+
+                    autoUpdater.quitAndInstall(false, true)
+    
+                    if(is.windows()){
+                        setTimeout(() => app.exit(0), 1000)
+                    }
+    
+                    //return resolve(true)
                 }
-
-                return resolve(true)
-            }
-            catch(e){
-                return reject(e)
-            }
+                catch(e){
+                    return reject(e)
+                }
+            }, 1000)
         }
         else{
             return reject("Invalid message type: " + type.toString())
