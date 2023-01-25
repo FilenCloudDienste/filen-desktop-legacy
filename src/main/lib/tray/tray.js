@@ -2,7 +2,6 @@ const { Tray, nativeImage } = require("electron")
 const path = require("path")
 const log = require("electron-log")
 const trayWindowPositioner = require("electron-traywindow-positioner")
-const is = require("electron-is")
 const { exec } = require("child_process")
 
 const TRAY_ICON_NORMAL = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/normal@2x.png")).resize({ width: 16, height: 16 })
@@ -10,15 +9,29 @@ const TRAY_ICON_SYNC = nativeImage.createFromPath(path.join(__dirname, "../../..
 const TRAY_ICON_PAUSED = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/pause@2x.png")).resize({ width: 16, height: 16 })
 const TRAY_ICON_ISSUE = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/issue@2x.png")).resize({ width: 16, height: 16 })
 
-const linuxCheckLibAppIndicator = () => {
+// XFCE etc.
+const linuxCheckStatusNotifierPlugin = () => {
     return new Promise((resolve, reject) => {
-        exec("/sbin/ldconfig -p | grep appindicator", (err, stdout, stderr) => {
+        exec("/sbin/ldconfig -p | grep statusnotifier-plugin", (err, stdout, stderr) => {
             if(err){
                 return reject(err)
             }
 
             if(stderr){
                 return reject(new Error(stderr))
+            }
+
+            return resolve(true)
+        })
+    })
+}
+
+// Default
+const linuxCheckLibAppIndicator = () => {
+    return new Promise((resolve, reject) => {
+        exec("/sbin/ldconfig -p | grep appindicator", (err, stdout, stderr) => {
+            if(err || stderr){
+                return linuxCheckStatusNotifierPlugin().then(resolve).catch(reject)
             }
 
             return resolve(true)
