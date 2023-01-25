@@ -12,7 +12,7 @@ const TRAY_ICON_ISSUE = nativeImage.createFromPath(path.join(__dirname, "../../.
 
 const linuxCheckLibAppIndicator = () => {
     return new Promise((resolve, reject) => {
-        exec("ldconfig -p | grep appindicator", (err, stdout, stderr) => {
+        exec("/sbin/ldconfig -p | grep appindicator", (err, stdout, stderr) => {
             if(err){
                 return reject(err)
             }
