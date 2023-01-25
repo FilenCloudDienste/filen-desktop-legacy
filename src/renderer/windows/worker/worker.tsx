@@ -167,8 +167,18 @@ const WorkerWindow = memo(() => {
         listen()
         init()
 
+        const onlineListener = () => {
+            checkInternet().catch(log.error)
+        }
+
+        window.addEventListener("online", onlineListener)
+        window.addEventListener("offline", onlineListener)
+
         return () => {
             syncTasksToDoListener.remove()
+
+            window.removeEventListener("online", onlineListener)
+            window.removeEventListener("offline", onlineListener)
 		}
     }, [])
 

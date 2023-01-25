@@ -121,7 +121,7 @@ const handleGlobalMessage = (data: any) => {
                                 db.set("localDataChanged:" + syncLocations[i].uuid, true),
                                 db.set("remoteDataChanged:" + syncLocations[i].uuid, true)
                             ]).catch(console.error)
-                        }, 3000)
+                        }, 5000)
                     }
                 }
             }).catch(console.error)

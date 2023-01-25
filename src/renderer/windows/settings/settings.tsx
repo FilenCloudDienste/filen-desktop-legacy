@@ -876,6 +876,18 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                     borderRadius: "15px"
                                 }
                             })
+
+                            await Promise.all([
+                                db.set("localDataChanged:" + uuid, true),
+                                db.set("remoteDataChanged:" + uuid, true)
+                            ])
+
+                            setTimeout(() => {
+                                Promise.all([
+                                    db.set("localDataChanged:" + uuid, true),
+                                    db.set("remoteDataChanged:" + uuid, true)
+                                ]).catch(log.error)
+                            }, 5000)
                         }
                     }
                     catch(e){
@@ -934,7 +946,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                             db.set("localDataChanged:" + currentSyncLocations[i].uuid, true),
                             db.set("remoteDataChanged:" + currentSyncLocations[i].uuid, true)
                         ])
-                    }, 15000)
+                    }, 5000)
                 }
             }
 
@@ -1732,7 +1744,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                                             db.set("localDataChanged:" + currentSyncLocations[i].uuid, true),
                                                                             db.set("remoteDataChanged:" + currentSyncLocations[i].uuid, true)
                                                                         ])
-                                                                    }, 15000)
+                                                                    }, 5000)
                                                                 }
                                                             }
                                                         }

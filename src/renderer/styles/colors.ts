@@ -1,3 +1,5 @@
+import { memoize, values } from "lodash"
+
 const colors: {
     [key: string]: any
 } = {
@@ -79,8 +81,8 @@ const colors: {
     }
 }
 
-const getColor = (platform: any, darkMode: any, name: any) => {
+const getColor = memoize((platform: string, darkMode: boolean, name: string) => {
     return typeof colors[darkMode ? 'dark' : 'light'][platform][name] == "undefined" ? "#000000" : colors[darkMode ? 'dark' : 'light'][platform][name]
-}
+}, (...args) => values(args))
 
 export default getColor

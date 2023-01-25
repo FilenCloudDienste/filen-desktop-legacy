@@ -2625,10 +2625,12 @@ const syncLocation = async (location: Location): Promise<boolean> => {
             fsRemote.directoryTree(location.remoteUUID, typeof IS_FIRST_REQUEST[location.uuid] == "undefined", location)
         ])
 
-        await Promise.all([
-            db.set("localDataChanged:" + location.uuid, false),
-            db.set("remoteDataChanged:" + location.uuid, false)
-        ])
+        if(typeof IS_FIRST_REQUEST[location.uuid] !== "undefined"){
+            await Promise.all([
+                db.set("localDataChanged:" + location.uuid, false),
+                db.set("remoteDataChanged:" + location.uuid, false)
+            ])
+        }
     }
     catch(e: any){
         if((await isSuspended())){
@@ -2644,7 +2646,9 @@ const syncLocation = async (location: Location): Promise<boolean> => {
             log.error("Could not get directory trees for location " + location.uuid)
             log.error(e)
 
-            addToSyncIssues("getTrees", "Could not get directory trees: " + e.toString())
+            if(window.navigator.onLine){
+                addToSyncIssues("getTrees", "Could not get directory trees: " + e.toString())
+            }
 
             emitSyncStatusLocation("getTrees", {
                 status: "err",
@@ -2690,7 +2694,9 @@ const syncLocation = async (location: Location): Promise<boolean> => {
         log.error("Could not get last local/remote tree for location " + location.uuid)
         log.error(e)
 
-        addToSyncIssues("getTrees", "Could not get last local/remote tree for location " + location.uuid + ": " + e.toString())
+        if(window.navigator.onLine){
+            addToSyncIssues("getTrees", "Could not get last local/remote tree for location " + location.uuid + ": " + e.toString())
+        }
 
         emitSyncStatusLocation("getTrees", {
             status: "err",
@@ -2861,7 +2867,7 @@ const syncLocation = async (location: Location): Promise<boolean> => {
         log.error("Could not get sync issues after consume for location " + location.uuid)
         log.error(e)
 
-        addToSyncIssues("getSyncIssuesAfterConsume", "Could not get sync issues after consume for location " + location.uuid + ": " + e.toString())
+        //addToSyncIssues("getSyncIssuesAfterConsume", "Could not get sync issues after consume for location " + location.uuid + ": " + e.toString())
 
         updateLocationBusyStatus(location.uuid, false)
 
@@ -2974,7 +2980,7 @@ const sync = async (): Promise<any> => {
 
         log.error(e)
 
-        addToSyncIssues("getIsLoggedIn", "Could not get logged in status: " + e.toString())
+        //addToSyncIssues("getIsLoggedIn", "Could not get logged in status: " + e.toString())
 
         return startSyncLoop()
     }
@@ -2999,7 +3005,7 @@ const sync = async (): Promise<any> => {
         log.error("Could not fetch syncLocations from DB")
         log.error(e)
 
-        addToSyncIssues("getIsLoggedIn", "Could not fetch syncLocations from DB: " + e.toString()).catch(log.error)
+        //addToSyncIssues("getIsLoggedIn", "Could not fetch syncLocations from DB: " + e.toString()).catch(log.error)
 
         emitSyncStatus("init", {
             status: "err",
@@ -3032,7 +3038,7 @@ const sync = async (): Promise<any> => {
             err: "User id not found, instead found: " + typeof userId
         })
 
-        addToSyncIssues("getUserId", "User id not found, instead found: " + typeof userId).catch(log.error)
+        //addToSyncIssues("getUserId", "User id not found, instead found: " + typeof userId).catch(log.error)
 
         return startSyncLoop()
     }
@@ -3047,7 +3053,7 @@ const sync = async (): Promise<any> => {
             err: "Master keys not found, instead found: " + typeof masterKeys
         })
 
-        addToSyncIssues("getUserId", "User id not found, instead found: " + typeof userId).catch(log.error)
+        //addToSyncIssues("getUserId", "User id not found, instead found: " + typeof userId).catch(log.error)
 
         return startSyncLoop()
     }

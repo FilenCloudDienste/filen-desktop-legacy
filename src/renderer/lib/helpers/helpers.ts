@@ -6,54 +6,54 @@ const pathModule = window.require("path")
 const is = window.require("electron-is")
 
 export const isPathOverMaxLength = memoize((path: string) => {
-  if(is.linux()){
-    return path.length > 4095
-  }
-  else if(is.macOS()){
-    return path.length > 1023
-  }
-  else if(is.windows()){
-    return path.length > 399
-  }
+	if(is.linux()){
+		return path.length > 4095
+	}
+	else if(is.macOS()){
+		return path.length > 1023
+	}
+	else if(is.windows()){
+		return path.length > 399
+	}
 
-  return path.length > 399
+	return path.length > 399
 })
 
 export const isNameOverMaxLength = memoize((name: string) => {
-  if(is.linux()){
-    return name.length > 255
-  }
-  else if(is.macOS()){
-    return name.length > 255
-  }
-  else if(is.windows()){
-    return name.length > 255
-  }
+	if(is.linux()){
+		return name.length > 255
+	}
+	else if(is.macOS()){
+		return name.length > 255
+	}
+	else if(is.windows()){
+		return name.length > 255
+	}
 
-  return name.length > 255
+	return name.length > 255
 })
 
 export const pathIncludesDot = memoize((path: string) => {
-  return (path.indexOf("/.") !== -1 || path.startsWith("."))
+  	return (path.indexOf("/.") !== -1 || path.startsWith("."))
 })
 
 export const isSubdir = memoize((parent: string, path: string) => {
-  const relative = pathModule.relative(parent, path)
-  const isSubdir = relative && !relative.startsWith("..") && !pathModule.isAbsolute(relative)
+	const relative = pathModule.relative(parent, path)
+	const isSubdir = relative && !relative.startsWith("..") && !pathModule.isAbsolute(relative)
 
-  return isSubdir
+	return isSubdir
 }, (parent: string, path: string) => parent + ":" + path)
 
 export const normalizePlatform = memoize((platform: string) => {
-  if(platform == "darwin"){
-      return "mac"
-  }
-  else if(platform == "linux"){
-      return "linux"
-  }
-  else{
-      return "windows"
-  }
+	if(platform == "darwin"){
+		return "mac"
+	}
+	else if(platform == "linux"){
+		return "linux"
+	}
+	else{
+		return "windows"
+	}
 })
 
 export const getRandomArbitrary = (min: number, max: number) => {
@@ -65,29 +65,29 @@ export const sleep = (ms: number = 1000) => {
 }
 
 export const fileAndFolderNameValidation = memoize((name: string) => {
-  const regex = /[<>:"\/\\|?*\x00-\x1F]|^(?:aux|con|clock\$|nul|prn|com[1-9]|lpt[1-9])$/i
+	const regex = /[<>:"\/\\|?*\x00-\x1F]|^(?:aux|con|clock\$|nul|prn|com[1-9]|lpt[1-9])$/i
 
-  if(regex.test(name)){
-      return false
-  }
+	if(regex.test(name)){
+		return false
+	}
 
-  return true
+	return true
 })
 
 export const pathValidation = memoize((path: string) => {
-  if(path.indexOf("/") == -1){
-      return fileAndFolderNameValidation(path)
-  }
-  
-  const ex = path.split("/")
+	if(path.indexOf("/") == -1){
+		return fileAndFolderNameValidation(path)
+	}
+	
+	const ex = path.split("/")
 
-  for(let i = 0; i < ex.length; i++){
-    if(!fileAndFolderNameValidation(ex[i].trim())){
-      return false
-    }
-  }
+	for(let i = 0; i < ex.length; i++){
+		if(!fileAndFolderNameValidation(ex[i].trim())){
+			return false
+		}
+	}
 
-  return true
+	return true
 })
 
 export const compareVersions = memoize((current: string, got: string) => {
@@ -133,28 +133,28 @@ export const compareVersions = memoize((current: string, got: string) => {
 })
 
 export const formatBytes = (bytes: number, decimals: number = 2) => {
-  if(bytes == 0){
-      return "0 Bytes"
-  }
+	if(bytes == 0){
+		return "0 Bytes"
+	}
 
-  let k = 1024
-  let dm = decimals < 0 ? 0 : decimals
-  let sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
+	let k = 1024
+	let dm = decimals < 0 ? 0 : decimals
+	let sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
 
-  let i = Math.floor(Math.log(bytes) / Math.log(k))
+	let i = Math.floor(Math.log(bytes) / Math.log(k))
 
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i]
+	return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i]
 }
 
 export const getChunkSize = (bps: number) => {
-  const set = Math.floor(1024 * 16)
-  const normal = Math.floor(bps / 10)
+	const set = Math.floor(1024 * 16)
+	const normal = Math.floor(bps / 10)
 
-  if(set > normal && normal > 0 && normal < (1024 * 1024 * 1024 * 1024)){
-      return normal
-  }
-  
-  return set
+	if(set > normal && normal > 0 && normal < (1024 * 1024 * 1024 * 1024)){
+		return normal
+	}
+	
+	return set
 }
 
 export function fetchWithTimeout(ms: number, promise: Promise<any>) {
@@ -180,15 +180,15 @@ export const arrayBufferToHex = (buffer: any) => {
 }
 
 export const getParentFromURL = memoize((url: string) => {
-  const ex = url.split("/")
+	const ex = url.split("/")
 
-  return ex[ex.length - 1].trim()
+	return ex[ex.length - 1].trim()
 })
 
 export const getParentFromParentFromURL = memoize((url: string) => {
-  const ex = url.split("/")
+	const ex = url.split("/")
 
-  return ex[ex.length - 2].trim()
+	return ex[ex.length - 2].trim()
 })
 
 export const base64ToArrayBuffer = (base64: string) => {
@@ -340,14 +340,14 @@ export const Semaphore = function(this: SemaphoreInterface, max: number) {
 } as any as { new (max: number): SemaphoreInterface; };
 
 export const convertTimestampToMs = memoize((timestamp: number): number => {
-  const date = new Date(timestamp * 1000)
+	const date = new Date(timestamp * 1000)
 
-  if(date.getFullYear() > 2100){
-      return Math.floor(timestamp)
-  }
-  else{
-      return Math.floor(timestamp * 1000)
-  }
+	if(date.getFullYear() > 2100){
+		return Math.floor(timestamp)
+	}
+	else{
+		return Math.floor(timestamp * 1000)
+	}
 })
 
 export const isSystemPathExcluded = memoize((path: string): boolean => {
@@ -385,89 +385,89 @@ export const isFolderPathExcluded = memoize((path: string): boolean => {
 })
 
 export const isFileOrFolderNameIgnoredByDefault = memoize((name: string): boolean => {
-  if(typeof name !== "string"){
-  return true
-}
+	if(typeof name !== "string"){
+		return true
+	}
 
-  name = name.toLowerCase().trim()
+	name = name.toLowerCase().trim()
 
-if(name.length <= 0){
-  return true
-}
+	if(name.length <= 0){
+		return true
+	}
 
-if(name.length >= 256){
-  return true
-}
+	if(name.length >= 256){
+		return true
+	}
 
-if(name.substring(0, 1) == " "){
-  return true
-}
+	if(name.substring(0, 1) == " "){
+		return true
+	}
 
-if(name.slice(-1) == " "){
-  return true
-}
+	if(name.slice(-1) == " "){
+		return true
+	}
 
-if(name.indexOf("\n") !== -1){
-  return true
-}
+	if(name.indexOf("\n") !== -1){
+		return true
+	}
 
-if(name.indexOf("\r") !== -1){
-  return true
-}
+	if(name.indexOf("\r") !== -1){
+		return true
+	}
 
-if(defaultIgnored.names.includes(name)){
-  return true
-}
+	if(defaultIgnored.names.includes(name)){
+		return true
+	}
 
-if(name.substring(0, 7) == ".~lock."){
-  return true
-}
+	if(name.substring(0, 7) == ".~lock."){
+		return true
+	}
 
-if(name.substring(0, 2) == "~$"){
-  return true
-}
+	if(name.substring(0, 2) == "~$"){
+		return true
+	}
 
-if(name.substring(name.length - 4) == ".tmp"){
-  return true
-}
+	if(name.substring(name.length - 4) == ".tmp"){
+		return true
+	}
 
-if(name.substring(name.length - 5) == ".temp"){
-  return true
-}
+	if(name.substring(name.length - 5) == ".temp"){
+		return true
+	}
 
-let ext: any = name.split(".")
+	let ext: any = name.split(".")
 
-if(ext.length >= 2){
-  ext = ext[ext.length - 1]
+	if(ext.length >= 2){
+		ext = ext[ext.length - 1]
 
-  if(typeof ext == "string"){
-    ext = ext.trim()
+		if(typeof ext == "string"){
+			ext = ext.trim()
 
-    if(ext.length > 0){
-      if(defaultIgnored.extensions.includes(ext)){
-        return true
-      }
-    }
-  }
-}
+			if(ext.length > 0){
+				if(defaultIgnored.extensions.includes(ext)){
+					return true
+				}
+			}
+		}
+	}
 
-return false
+	return false
 })
 
 export const pathIsFileOrFolderNameIgnoredByDefault = memoize((path: string) => {
-  if(path.indexOf("/") == -1){
-      return isFileOrFolderNameIgnoredByDefault(path)
-  }
-  
-  const ex = path.split("/")
+	if(path.indexOf("/") == -1){
+		return isFileOrFolderNameIgnoredByDefault(path)
+	}
+	
+	const ex = path.split("/")
 
-  for(let i = 0; i < ex.length; i++){
-    if(isFileOrFolderNameIgnoredByDefault(ex[i].trim())){
-      return true
-    }
-  }
+	for(let i = 0; i < ex.length; i++){
+		if(isFileOrFolderNameIgnoredByDefault(ex[i].trim())){
+			return true
+		}
+	}
 
-  return false
+	return false
 })
 
 export const pathToLowerCaseExtFileName = memoize((path: string) => {
@@ -498,42 +498,43 @@ export const pathToLowerCaseExtFileName = memoize((path: string) => {
 })
 
 export const fileNameToLowerCaseExt = memoize((name: string) => {
-  if(name.indexOf(".") == -1){
-    return name
-  }
-  
-  const fileNameEx = name.split(".")
-  const lowerCaseFileEnding = fileNameEx[fileNameEx.length - 1].toLowerCase()
+	if(name.indexOf(".") == -1){
+		return name
+	}
+	
+	const fileNameEx = name.split(".")
+	const lowerCaseFileEnding = fileNameEx[fileNameEx.length - 1].toLowerCase()
 
-  fileNameEx.pop()
+	fileNameEx.pop()
 
-  const fileNameWithLowerCaseEnding = fileNameEx.join(".") + "." + lowerCaseFileEnding
+	const fileNameWithLowerCaseEnding = fileNameEx.join(".") + "." + lowerCaseFileEnding
 
-  return fileNameWithLowerCaseEnding
+	return fileNameWithLowerCaseEnding
 })
 
 export const bpsToReadable = (bps: number) => {
-    if(!(bps > 0 && bps < (1024 * 1024 * 1024 * 1024))){
-      bps = 1
-    }
+	if(!(bps > 0 && bps < (1024 * 1024 * 1024 * 1024))){
+		bps = 1
+	}
 
-    let i = -1;
-    const byteUnits = [
-      " KB/s",
-      " MB/s",
-      " GB/s",
-      " TB/s",
-      " PB/s",
-      " EB/s",
-      " ZB/s",
-      " YB/s"
-    ];
-    do {
-      bps = bps / 1024;
-      i++;
-    } while (bps > 1024);
+	let i = -1;
+	const byteUnits = [
+		" KB/s",
+		" MB/s",
+		" GB/s",
+		" TB/s",
+		" PB/s",
+		" EB/s",
+		" ZB/s",
+		" YB/s"
+	];
 
-    return Math.max(bps, 0.1).toFixed(1) + byteUnits[i];
+	do {
+		bps = bps / 1024;
+		i++;
+	} while (bps > 1024);
+
+	return Math.max(bps, 0.1).toFixed(1) + byteUnits[i];
 };
 
 export function nodeBufferToArrayBuffer(buf: Buffer) {
@@ -554,77 +555,83 @@ export function getTimeRemaining(endtime: number){
     const days = Math.floor( total/(1000*60*60*24) );
   
     return {
-      total,
-      days,
-      hours,
-      minutes,
-      seconds
-    };
-  }
-
-export const isOnline = () => {
-    return window.navigator.onLine
+		total,
+		days,
+		hours,
+		minutes,
+		seconds
+    }
 }
 
-export function timeSince(ts: number, lang: string = "en") {
-    const date = new Date(ts)
-      // @ts-ignore
-    var seconds = Math.floor((new Date() - date) / 1000);
-    var interval = seconds / 31536000;
-  
-    if (interval > 1) {
-      return Math.floor(interval) + " years ago";
-    }
+export const isOnline = () => window.navigator.onLine
 
-    interval = seconds / 2592000;
-    if (interval > 1) {
-      return Math.floor(interval) + " months ago";
-    }
-    interval = seconds / 86400;
-    if (interval > 1) {
-      return Math.floor(interval) + " days ago";
-    }
-    interval = seconds / 3600;
-    if (interval > 1) {
-      return Math.floor(interval) + " hours ago";
-    }
-    interval = seconds / 60;
-    if (interval > 1) {
-      return Math.floor(interval) + " minutes ago";
-    }
-    return Math.floor(seconds) + " seconds ago";
+export function timeSince(ts: number, lang: string = "en") {
+	const date = new Date(ts)
+	// @ts-ignore
+	var seconds = Math.floor((new Date() - date) / 1000);
+	var interval = seconds / 31536000;
+
+	if (interval > 1) {
+		return Math.floor(interval) + " years ago";
+	}
+
+	interval = seconds / 2592000;
+
+	if (interval > 1) {
+		return Math.floor(interval) + " months ago";
+	}
+
+	interval = seconds / 86400;
+
+	if (interval > 1) {
+		return Math.floor(interval) + " days ago";
+	}
+
+	interval = seconds / 3600;
+
+	if (interval > 1) {
+		return Math.floor(interval) + " hours ago";
+	}
+
+	interval = seconds / 60;
+	
+	if (interval > 1) {
+		return Math.floor(interval) + " minutes ago";
+	}
+
+	return Math.floor(seconds) + " seconds ago";
 }
 
 export const copyToClipboard = (text: string): Promise<boolean> => {
-  return new Promise((resolve, reject) => {
-    try{
-      navigator.clipboard.writeText(text)
+	return new Promise((resolve, reject) => {
+		try{
+			navigator.clipboard.writeText(text)
 
-      return resolve(true)
-    }
-    catch(e){
-      return reject(e)
-    }
-  })
+			return resolve(true)
+		}
+		catch(e){
+			return reject(e)
+		}
+	})
 }
 
 export const calcSpeed = (now: number, started: number, bytes: number): number => {
-  now = new Date().getTime() - 1000
+	now = new Date().getTime() - 1000
 
-  const secondsDiff: number = ((now - started) / 1000)
-  const bps: number = Math.floor((bytes / secondsDiff) * speedMultiplier)
+	const secondsDiff: number = ((now - started) / 1000)
+	const bps: number = Math.floor((bytes / secondsDiff) * speedMultiplier)
 
-  return bps > 0 ? bps : 0
+	return bps > 0 ? bps : 0
 }
 
 export const calcTimeLeft = (loadedBytes: number, totalBytes: number, started: number): number => {
-  const elapsed: number = (new Date().getTime() - started)
-  const speed: number = (loadedBytes / (elapsed / 1000))
-  const remaining: number = ((totalBytes - loadedBytes) / speed)
+	const elapsed: number = (new Date().getTime() - started)
+	const speed: number = (loadedBytes / (elapsed / 1000))
+	const remaining: number = ((totalBytes - loadedBytes) / speed)
 
-  return remaining > 0 ? remaining : 0
+	return remaining > 0 ? remaining : 0
 }
 
 export const windowsPathToUnixStyle = memoize((path: string) => {
-  return path.split("\\").join("/")
+  	return path.split("\\").join("/")
 })
