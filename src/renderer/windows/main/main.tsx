@@ -16,6 +16,7 @@ import UpdateModal from "../../components/UpdateModal"
 import MaxStorageModal from "../../components/MaxStorageModal"
 import useIsOnline from "../../lib/hooks/useIsOnline"
 import { calcSpeed, calcTimeLeft } from "../../lib/helpers"
+import ipc from "../../lib/ipc"
 
 const log = window.require("electron-log")
 const { ipcRenderer } = window.require("electron")
@@ -39,6 +40,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
     const [totalRemaining, setTotalRemaining] = useState<number>(0)
     const [checkingChanges, setCheckingChanges] = useState<boolean>(false)
     const [syncTasksToDo, setSyncTasksToDo] = useState<number>(0)
+    const [isTrayAvailable, setIsTrayAvailable] = useState<boolean>(true)
     
     const bytesSent = useRef<number>(0)
     const allBytes = useRef<number>(0)
@@ -84,6 +86,10 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
             setTotalRemaining(calcTimeLeft(bytesSent.current, allBytes.current, progressStarted.current))
         }
     }, 1000), [])
+
+    useEffect(() => {
+        ipc.trayAvailable().then(setIsTrayAvailable).catch(console.error)
+    }, [])
 
     useEffect(() => {
         setDoneTasksThrottled({ doneTasks })
@@ -357,7 +363,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
             platform={platform}
         >
             {
-                platform == "linux" && (
+                !isTrayAvailable && (
                     <Titlebar
                         darkMode={darkMode}
                         lang={lang}

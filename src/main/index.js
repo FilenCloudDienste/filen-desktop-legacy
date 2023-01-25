@@ -48,8 +48,24 @@ autoUpdater.allowDowngrade = false
 autoUpdater.autoDownload = true
 autoUpdater.autoInstallOnAppQuit = false
 
-const initWindows = () => {
+const initWindows = async () => {
 	log.info("Initializing startup windows")
+
+	if(is.linux()){
+		try{
+			const trayAvailable = await require("./lib/tray").linuxCheckLibAppIndicator()
+
+			require("./lib/shared").set("trayAvailable", trayAvailable)
+		}
+		catch(e){
+			log.error(e)
+
+			require("./lib/shared").set("trayAvailable", false)
+		}
+	}
+	else{
+		require("./lib/shared").set("trayAvailable", true)
+	}
 
 	require("./lib/windows").createWindows().then(() => {
 		log.info("Init startup windows done")
@@ -219,7 +235,7 @@ else{
 	
 		CHECK_UPDATE_INTERVAL = setInterval(() => {
 			autoUpdater.checkForUpdates().catch(log.error)
-		}, 300000)
+		}, 3600000)
 	
 		initWindows()
 		

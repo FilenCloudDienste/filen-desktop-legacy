@@ -29,7 +29,7 @@ const wasOpenedAtSystemStart = () => {
 const createMain = (show = false) => {
     return new Promise(async (resolve, reject) => {
         try{
-            if(is.linux()){
+            if(!require("../shared").get("trayAvailable")){
                 show = true
             }
 
@@ -65,7 +65,7 @@ const createMain = (show = false) => {
                 maximizable: false,
                 minimizable: true,
                 hasShadow: false,
-                show: is.linux() ? true : false,
+                show,
                 backgroundColor: "rgba(0, 0, 0, 0)",
                 ...(
                     (is.linux() && !is.dev()) ? { icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png")) }
@@ -105,11 +105,11 @@ const createMain = (show = false) => {
 			})
 
 			window.once("show", () => {
-                require("../tray").positionWindowAtTray(window, windowTray)
+                require("../tray").positionWindow()
                 
                 setTimeout(() => {
                     window.on("blur", () => {
-                        if(is.linux()){
+                        if(!require("../shared").get("trayAvailable")){
                             return false
                         }
         
@@ -126,7 +126,7 @@ const createMain = (show = false) => {
             })
 
             ipcMain.once("window-ready", (_, id) => {
-                require("../tray").positionWindowAtTray(window, windowTray)
+                require("../tray").positionWindow()
 
                 if(id == windowId && show){
                     window.show()
@@ -137,7 +137,7 @@ const createMain = (show = false) => {
             
             activeWindows.push({ id: windowId, type: "MAIN_WINDOW" })
 
-            require("../tray").positionWindowAtTray(window, windowTray)
+            require("../tray").positionWindow()
 
             return resolve(window)
         }
@@ -658,6 +658,7 @@ const createSelectiveSync = (windowId = uuidv4(), args = {}) => {
             }
 
             require("../shared").set("SELECTIVE_SYNC_WINDOWS", selectiveSyncWindows)
+
             activeWindows.push({ id: windowId, type: "SELECTIVE_SYNC_WINDOWS" })
 
             return resolve(window)

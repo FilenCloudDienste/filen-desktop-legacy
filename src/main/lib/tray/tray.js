@@ -3,14 +3,31 @@ const path = require("path")
 const log = require("electron-log")
 const trayWindowPositioner = require("electron-traywindow-positioner")
 const is = require("electron-is")
+const { exec } = require("child_process")
 
 const TRAY_ICON_NORMAL = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/normal@2x.png")).resize({ width: 16, height: 16 })
 const TRAY_ICON_SYNC = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/sync@2x.png")).resize({ width: 16, height: 16 })
 const TRAY_ICON_PAUSED = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/pause@2x.png")).resize({ width: 16, height: 16 })
 const TRAY_ICON_ISSUE = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/issue@2x.png")).resize({ width: 16, height: 16 })
 
+const linuxCheckLibAppIndicator = () => {
+    return new Promise((resolve, reject) => {
+        exec("ldconfig -p | grep appindicator", (err, stdout, stderr) => {
+            if(err){
+                return reject(err)
+            }
+
+            if(stderr){
+                return reject(new Error(stderr))
+            }
+
+            return resolve(true)
+        })
+    })
+}
+
 const positionWindow = () => {
-    if(is.linux()){
+    if(!require("../shared").get("trayAvailable")){
         return true
     }
 
@@ -50,7 +67,7 @@ const onRightClick = () => {
 }
 
 const createTray = () => {
-    if(is.linux()){
+    if(!require("../shared").get("trayAvailable")){
         return undefined
     }
 
@@ -83,7 +100,7 @@ const createTray = () => {
 }
 
 const positionWindowAtTray = (window, tray) => {
-    if(typeof window == "undefined" || typeof tray == "undefined" || is.linux()){
+    if(typeof window == "undefined" || typeof tray == "undefined" || !require("../shared").get("trayAvailable")){
         return false
     }
 
@@ -99,7 +116,7 @@ const positionWindowAtTray = (window, tray) => {
 }
 
 const updateTrayIcon = (type) => {
-    if(is.linux()){
+    if(!require("../shared").get("trayAvailable")){
         return false
     }
 
@@ -131,7 +148,7 @@ const updateTrayIcon = (type) => {
 }
 
 const updateTrayMenu = (type = "default") => {
-    if(is.linux()){
+    if(!require("../shared").get("trayAvailable")){
         return false
     }
 
@@ -150,7 +167,7 @@ const updateTrayMenu = (type = "default") => {
 }
 
 const updateTrayTooltip = (text = "Filen") => {
-    if(is.linux()){
+    if(!require("../shared").get("trayAvailable")){
         return false
     }
 
@@ -179,5 +196,6 @@ module.exports = {
     updateTrayMenu,
     updateTrayTooltip,
     positionWindow,
-    toggleMainWindow
+    toggleMainWindow,
+    linuxCheckLibAppIndicator
 }

@@ -562,6 +562,15 @@ const handleMessage = (type, data) => {
                 }
             }, 1000)
         }
+        else if(type == "trayAvailable"){
+            const trayAvailable = require("../shared").get("trayAvailable")
+
+            if(typeof trayAvailable == "boolean"){
+                return resolve(trayAvailable)
+            }
+
+            return resolve(false)
+        }
         else{
             return reject("Invalid message type: " + type.toString())
         }

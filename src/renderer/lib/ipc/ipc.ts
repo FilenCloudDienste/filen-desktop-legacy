@@ -1011,6 +1011,20 @@ const ipc = {
                 }
             })
         })
+    },
+    trayAvailable: (): Promise<boolean> => {
+        return new Promise((resolve, reject) => {
+            const messageId = uuidv4()
+
+            resolves[messageId] = resolve
+            rejects[messageId] = reject
+
+            return ipcRenderer.send("message", {
+                messageId,
+                messageSender: MESSAGE_SENDER,
+                type: "trayAvailable"
+            })
+        })
     }
 }
 

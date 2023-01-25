@@ -1,4 +1,4 @@
-import React, { memo, useRef, useState } from "react"
+import React, { memo, useRef, useState, useEffect } from "react"
 import { Flex, Text } from "@chakra-ui/react"
 import colors from "../../styles/colors"
 import { BsDash } from "react-icons/bs"
@@ -16,14 +16,19 @@ const Titlebar = memo(({ darkMode, lang, platform, title }: Props) => {
     const [hoveringExit, setHoveringExit] = useState<boolean>(false)
     const currentWindow: string = useRef(window.location.hash.split("#")[1]).current
     const showX: boolean = useRef(currentWindow !== "main").current
+    const [isTrayAvailable, setIsTrayAvailable] = useState<boolean>(true)
 
+    useEffect(() => {
+        ipc.trayAvailable().then(setIsTrayAvailable).catch(console.error)
+    }, [])
+ 
     return (
         <Flex
             style={{
                 // @ts-ignore
                 WebkitAppRegion: "drag",
                 width: "99.75%",
-                backgroundColor: ((platform == "linux" && currentWindow == "main") || (currentWindow == "cloud" && platform == "mac")) ? "transparent" : colors(platform, darkMode, "titlebarBackgroundPrimary"),
+                backgroundColor: ((!isTrayAvailable && currentWindow == "main") || (currentWindow == "cloud" && platform == "mac")) ? "transparent" : colors(platform, darkMode, "titlebarBackgroundPrimary"),
                 paddingTop: 0,
                 alignItems: "center",
                 justifyContent: "center",
@@ -32,10 +37,10 @@ const Titlebar = memo(({ darkMode, lang, platform, title }: Props) => {
             }} 
             zIndex={100001}
             position="fixed" 
-            height={platform == "linux" && currentWindow == "main" ? ("30px") : (platform == "mac" ? "27px" : "35px")}
+            height={!isTrayAvailable && currentWindow == "main" ? ("30px") : (platform == "mac" ? "27px" : "35px")}
         >
             {
-                ["windows", "linux"].includes(platform) && (
+                (platform == "windows" || platform == "linux") && (
                     <Flex 
                         position="fixed"
                         top={0}
