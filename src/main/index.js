@@ -5,7 +5,6 @@ const log = require("electron-log")
 const is = require("electron-is")
 const { autoUpdater } = require("electron-updater")
 const { v4: uuidv4 } = require("uuid")
-const Sentry = require("@sentry/electron/main")
 
 app.disableHardwareAcceleration()
 //app.commandLine.appendSwitch("wm-window-animations-disabled")
@@ -18,26 +17,6 @@ app.commandLine.appendSwitch("no-proxy-server")
 if(is.dev()){
 	app.commandLine.appendSwitch("ignore-certificate-errors")
 	app.commandLine.appendSwitch("allow-insecure-localhost", "true")
-}
-
-if(!is.dev()){
-	Sentry.init({
-		dsn: "https://765df844a3364aff92ec3648f1815ff8@o4504039703314432.ingest.sentry.io/4504205266321408",
-		onFatalError: (err) => {
-			log.error(err)
-		},
-		beforeSend: (event, hint) =>{
-            try{
-                log.error(hint?.originalException)
-				log.error(event?.exception?.values)
-            }
-            catch(e){
-                console.error(e)
-            }
-
-            return event
-        }
-	})
 }
 
 let CHECK_UPDATE_INTERVAL = undefined
