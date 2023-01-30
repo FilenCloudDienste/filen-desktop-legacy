@@ -23,24 +23,6 @@ const getRandomArbitrary = (min, max) => {
     return Math.floor(Math.random() * (max - min) + min)
 }
 
-// Clear leftover temp files etc
-/*const dirCheck = async () => {
-    try{
-        const dir = await fs.readdir(DB_PATH)
-
-        for(let i = 0; i < dir.length; i++){
-            if(dir[i].length !== 69 || dir[i].split(".").length !== 2 || dir[i].indexOf(".json") == -1){
-                await fs.unlink(pathModule.join(DB_PATH, dir[i]))
-            }
-        }
-    }
-    catch(e){
-        log.error(e)
-    }
-}
-
-dirCheck()*/
-
 module.exports = {
     get: (key) => {
         return new Promise((resolve, reject) => {

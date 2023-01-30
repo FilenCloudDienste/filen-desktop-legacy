@@ -12,7 +12,6 @@ import {
 import { Semaphore } from "../../helpers"
 import {
     isSyncLocationPaused,
-    isSuspended,
     getIgnored,
     getSyncMode,
     onlyGetBaseParentMove,
@@ -32,8 +31,10 @@ import {
 } from "./sync.utils"
 import { sendToAllPorts } from "../ipc"
 import type { SemaphoreInterface, Delta, Location, SyncIssue } from "../../../../types"
-import { watch } from "../watcher"
 import { checkInternet } from "../../../windows/worker/worker"
+import ipc from "../../ipc"
+import eventListener from "../../eventListener"
+import { filePresent, folderPresent } from "../../api"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
@@ -1631,47 +1632,93 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                     task,
                                     location
                                 })
-    
-                                const promise = task.type == "folder" ? fsLocal.mkdir(task.path, location, task) : fsLocal.download(task.path, location, task)
-    
-                                promise.then((result) => {
-                                    emitSyncTask("downloadFromRemote", {
-                                        status: "done",
-                                        task,
-                                        location
-                                    })
 
-                                    const doneTask = {
-                                        type: "downloadFromRemote",
-                                        task: {
-                                            ...task,
-                                            info: {
-                                                ...result
-                                            }
-                                        },
-                                        location
+                                const isPresent = new Promise<boolean>((resolve, reject) => {
+                                    db.get("apiKey").then((apiKey) => {
+                                        if(task.type == "folder"){
+                                            folderPresent({
+                                                apiKey,
+                                                uuid: task.item.uuid
+                                            }).then((present) => {
+                                                if(!present.present || present.trash){
+                                                    return resolve(false)
+                                                }
+
+                                                return resolve(true)
+                                            }).catch(reject)
+                                        }
+                                        else{
+                                            filePresent(task.item.uuid).then((present) => {
+                                                if(!present.present || present.versioned || present.trash){
+                                                    return resolve(false)
+                                                }
+    
+                                                return resolve(true)
+                                            }).catch(reject)
+                                        }
+                                    }).catch(reject)
+                                })
+    
+                                isPresent.then((present) => {
+                                    if(!present){
+                                        maxConcurrentDownloadsSemaphore.release()
+                                        maxSyncTasksSemaphore.release()
+
+                                        updateSyncTasksToDo()
+            
+                                        return resolve(true)
+                                        
                                     }
+                                    
+                                    const promise = task.type == "folder" ? fsLocal.mkdir(task.path, location, task) : fsLocal.download(task.path, location, task)
     
-                                    doneTasks.push(doneTask)
+                                    promise.then((result) => {
+                                        emitSyncTask("downloadFromRemote", {
+                                            status: "done",
+                                            task,
+                                            location
+                                        })
 
-                                    updateSyncTasksToDo()
-    
-                                    addToApplyDoneTasks(location.uuid, doneTask).then(() => {
-                                        maxConcurrentDownloadsSemaphore.release()
-                                        maxSyncTasksSemaphore.release()
-            
-                                        return resolve(result)
+                                        const doneTask = {
+                                            type: "downloadFromRemote",
+                                            task: {
+                                                ...task,
+                                                info: {
+                                                    ...result
+                                                }
+                                            },
+                                            location
+                                        }
+        
+                                        doneTasks.push(doneTask)
+
+                                        updateSyncTasksToDo()
+        
+                                        addToApplyDoneTasks(location.uuid, doneTask).then(() => {
+                                            maxConcurrentDownloadsSemaphore.release()
+                                            maxSyncTasksSemaphore.release()
+                
+                                            return resolve(result)
+                                        }).catch((err) => {
+                                            log.error(err)
+        
+                                            maxConcurrentDownloadsSemaphore.release()
+                                            maxSyncTasksSemaphore.release()
+                
+                                            return resolve(result)
+                                        })
                                     }).catch((err) => {
-                                        log.error(err)
-    
                                         maxConcurrentDownloadsSemaphore.release()
-                                        maxSyncTasksSemaphore.release()
-            
-                                        return resolve(result)
+        
+                                        log.error(err)
+        
+                                        return setTimeout(() => {
+                                            doTask(err)
+                                        }, retrySyncTaskTimeout)
                                     })
                                 }).catch((err) => {
                                     maxConcurrentDownloadsSemaphore.release()
-    
+            
                                     log.error(err)
     
                                     return setTimeout(() => {
@@ -1728,7 +1775,7 @@ const consumeDeltas = ({ localDeltas, remoteDeltas, lastLocalTree, lastRemoteTre
         const deleteInLocal: any[] = []
         const deleteInRemote: any[] = []
 
-        const addedToList: any = {}
+        const addedToList: { [key: string]: boolean } = {}
 
         for(const path in localFolderDeltas){
             const localDelta = localFolderDeltas[path]?.type
@@ -2493,7 +2540,7 @@ const syncLocation = async (location: Location): Promise<boolean> => {
         return true
     }
 
-    if((await isSuspended()) || (await isSyncLocationPaused(location.uuid))){
+    if((await isSyncLocationPaused(location.uuid))){
         await updateLocationBusyStatus(location.uuid, false)
 
         return true
@@ -2513,12 +2560,6 @@ const syncLocation = async (location: Location): Promise<boolean> => {
         await fsLocal.smokeTest(pathModule.normalize(location.local))
     }
     catch(e: any){
-        if((await isSuspended())){
-            updateLocationBusyStatus(location.uuid, false)
-
-            return false
-        }
-
         log.error("Smoke test for location " + location.uuid + " failed")
         log.error(e)
 
@@ -2539,12 +2580,6 @@ const syncLocation = async (location: Location): Promise<boolean> => {
         await fsRemote.smokeTest(location.remoteUUID)
     }
     catch(e: any){
-        if((await isSuspended())){
-            updateLocationBusyStatus(location.uuid, false)
-
-            return false
-        }
-
         log.error(e)
 
         if(e.toString().toLowerCase().indexOf("remote folder") !== -1 && e.toString().toLowerCase().indexOf("is not present") !== -1){
@@ -2570,15 +2605,9 @@ const syncLocation = async (location: Location): Promise<boolean> => {
         })
 
         try{
-            await watch(pathModule.normalize(location.local), location.uuid)
+            await ipc.initWatcher(pathModule.normalize(location.local), location.uuid)
         }
         catch(e: any){
-            if((await isSuspended())){
-                await updateLocationBusyStatus(location.uuid, false)
-    
-                return false
-            }
-
             log.error("Could not start local directory watcher for location " + location.uuid)
             log.error(e)
 
@@ -2599,7 +2628,7 @@ const syncLocation = async (location: Location): Promise<boolean> => {
         })
     }
 
-    if((await isSuspended()) || (await isSyncLocationPaused(location.uuid))){
+    if((await isSyncLocationPaused(location.uuid))){
         await updateLocationBusyStatus(location.uuid, false)
 
         return true
@@ -2633,12 +2662,6 @@ const syncLocation = async (location: Location): Promise<boolean> => {
         }
     }
     catch(e: any){
-        if((await isSuspended())){
-            await updateLocationBusyStatus(location.uuid, false)
-
-            return false
-        }
-
         if(e.toString().toLowerCase().indexOf("folder not found") !== -1){
             await removeRemoteLocation(location)
         }
@@ -2733,7 +2756,7 @@ const syncLocation = async (location: Location): Promise<boolean> => {
         return false
     }
 
-    if((await isSuspended()) || (await isSyncLocationPaused(location.uuid))){
+    if((await isSyncLocationPaused(location.uuid))){
         await updateLocationBusyStatus(location.uuid, false)
 
         return true
@@ -2774,7 +2797,7 @@ const syncLocation = async (location: Location): Promise<boolean> => {
         location
     })
 
-    if((await isSuspended()) || (await isSyncLocationPaused(location.uuid))){
+    if((await isSyncLocationPaused(location.uuid))){
         await updateLocationBusyStatus(location.uuid, false)
 
         return true
@@ -2812,7 +2835,7 @@ const syncLocation = async (location: Location): Promise<boolean> => {
         location
     })
 
-    if((await isSuspended()) || (await isSyncLocationPaused(location.uuid))){
+    if((await isSyncLocationPaused(location.uuid))){
         await updateLocationBusyStatus(location.uuid, false)
 
         return true
@@ -2956,27 +2979,29 @@ const startSyncLoop = () => {
 const sync = async (): Promise<any> => {
     await syncMutex.acquire()
 
+    eventListener.emit("syncLoopStart")
+
     if(SYNC_RUNNING || new Date().getTime() < NEXT_SYNC){
         syncMutex.release()
 
+        eventListener.emit("syncLoopDone")
+
         return
-    }
-
-    if((await isSuspended())){
-        syncMutex.release()
-
-        return startSyncLoop()
     }
 
     try{
         if(!(await db.get("isLoggedIn"))){
             syncMutex.release()
 
+            eventListener.emit("syncLoopDone")
+
             return startSyncLoop()
         }
     }
     catch(e: any){
         syncMutex.release()
+
+        eventListener.emit("syncLoopDone")
 
         log.error(e)
 
@@ -3002,6 +3027,8 @@ const sync = async (): Promise<any> => {
     catch(e: any){
         syncMutex.release()
 
+        eventListener.emit("syncLoopDone")
+
         log.error("Could not fetch syncLocations from DB")
         log.error(e)
 
@@ -3018,6 +3045,8 @@ const sync = async (): Promise<any> => {
     if(Array.isArray(syncIssues) && syncIssues.length > 10){
         syncMutex.release()
 
+        eventListener.emit("syncLoopDone")
+
         log.info("Will not continue, got open sync issues, need user intervention")
 
         emitSyncStatus("init", {
@@ -3030,6 +3059,8 @@ const sync = async (): Promise<any> => {
 
     if(Number.isNaN(userId)){
         syncMutex.release()
+
+        eventListener.emit("syncLoopDone")
 
         log.info("User id not found, instead found: " + typeof userId)
 
@@ -3046,6 +3077,8 @@ const sync = async (): Promise<any> => {
     if(!Array.isArray(masterKeys)){
         syncMutex.release()
 
+        eventListener.emit("syncLoopDone")
+
         log.info("Master keys not found, instead found: " + typeof masterKeys)
 
         emitSyncStatus("init", {
@@ -3061,6 +3094,8 @@ const sync = async (): Promise<any> => {
     if(!Array.isArray(syncLocations)){
         syncMutex.release()
 
+        eventListener.emit("syncLoopDone")
+
         log.info("Sync locations not array, instead found: " + typeof syncLocations)
 
         emitSyncStatus("init", {
@@ -3073,6 +3108,8 @@ const sync = async (): Promise<any> => {
 
     if(syncLocations.length == 0){
         syncMutex.release()
+
+        eventListener.emit("syncLoopDone")
 
         emitSyncStatus("init", {
             status: "done",
@@ -3092,11 +3129,7 @@ const sync = async (): Promise<any> => {
     if(paused){
         syncMutex.release()
 
-        return startSyncLoop()
-    }
-
-    if((await isSuspended())){
-        syncMutex.release()
+        eventListener.emit("syncLoopDone")
 
         return startSyncLoop()
     }
@@ -3104,11 +3137,15 @@ const sync = async (): Promise<any> => {
     if(!(await checkInternet())){
         syncMutex.release()
 
+        eventListener.emit("syncLoopDone")
+
         return startSyncLoop()
     }
 
     if(SYNC_RUNNING || new Date().getTime() < NEXT_SYNC){
         syncMutex.release()
+
+        eventListener.emit("syncLoopDone")
 
         return
     }
@@ -3169,6 +3206,8 @@ const sync = async (): Promise<any> => {
     NEXT_SYNC = new Date().getTime() + SYNC_TIMEOUT
 
     syncMutex.release()
+
+    eventListener.emit("syncLoopDone")
 
     return startSyncLoop()
 }

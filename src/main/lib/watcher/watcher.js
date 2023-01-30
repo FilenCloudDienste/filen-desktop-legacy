@@ -1,21 +1,21 @@
-import eventListener from "../../eventListener"
-import type { WatcherEvent } from "../../../../types"
-
-const pathModule = window.require("path")
-const log = window.require("electron-log")
-const nodeWatch = window.require("node-watch")
-const is = window.require("electron-is")
+const pathModule = require("path")
+const log = require("electron-log")
+const nodeWatch = require("node-watch")
+const is = require("electron-is")
 
 const LINUX_EVENT_EMIT_TIMER = 60000
-const SUBS: { [key: string]: any } = {}
-const linuxWatchUpdateTimeout: { [key: string]: NodeJS.Timer } = {}
-const lastEvent: { [key: string]: number } = {}
+const SUBS = {}
+const linuxWatchUpdateTimeout = {}
+const lastEvent = {}
 
-const emitToWorker = (data: WatcherEvent) => {
-    eventListener.emit("watcher-event", data)
+const emitToWorker = (data) => {
+    require("../ipc").emitGlobal("global-message", {
+        type: "watcher-event",
+        data
+    })
 }
 
-export const watch = (path: string, locationUUID: string): Promise<any> => {
+const watch = (path, locationUUID) => {
     return new Promise((resolve, reject) => {
         if(typeof SUBS[path] !== "undefined"){
             return resolve(SUBS[path])
@@ -28,7 +28,7 @@ export const watch = (path: string, locationUUID: string): Promise<any> => {
                 persistent: true
             })
     
-            SUBS[path].on("change", (event: string, name: string) => {
+            SUBS[path].on("change", (event, name) => {
                 lastEvent[path] = new Date().getTime()
 
                 emitToWorker({ event, name, watchPath: path, locationUUID })
@@ -69,4 +69,8 @@ export const watch = (path: string, locationUUID: string): Promise<any> => {
             return reject(e)
         }
     })
+}
+
+module.exports = {
+    watch
 }

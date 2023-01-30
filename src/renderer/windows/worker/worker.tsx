@@ -109,8 +109,13 @@ const WorkerWindow = memo(() => {
                         else{
                             db.get("userId").then((userId: number) => {
                                 db.get("syncLocations:" + userId).then((syncLocations: any) => {
-                                    if(Array.isArray(syncLocations) && syncLocations.length > 0 && syncLocations.filter(item => typeof item.remoteUUID == "string").length > 0){
-                                        updateTray("normal", "Everything synced")
+                                    if(Array.isArray(syncLocations) && syncLocations.length > 0){
+                                        if(syncLocations.filter(item => typeof item.remoteUUID == "string").length > 0){
+                                            updateTray("normal", "Everything synced")
+                                        }
+                                        else{
+                                            updateTray("paused", "No sync remote locations setup yet")
+                                        }
                                     }
                                     else{
                                         updateTray("paused", "No sync locations setup yet")

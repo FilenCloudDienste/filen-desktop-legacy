@@ -135,6 +135,14 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
                 return setTimeout(doRequest, retryAPIRequestTimeout)
             })
 
+            req.on("timeout", () => {
+                log.error("API request timed out")
+
+                req.destroy()
+
+                return setTimeout(doRequest, retryAPIRequestTimeout)
+            })
+
             req.write(JSON.stringify(data))
             req.end()
         }
@@ -1521,6 +1529,15 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
                     return reject(err)
                 })
 
+                req.on("timeout", () => {
+                    log.error("Upload request timed out")
+
+                    throttle.destroy()
+                    req.destroy()
+
+                    return reject(new Error("Upload request timed out"))
+                })
+
                 const str = progress({
                     length: data.byteLength,
                     time: 100
@@ -1711,6 +1728,15 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync", loca
                     throttle.destroy()
 
                     return reject(err)
+                })
+
+                request.on("timeout", () => {
+                    log.error("Download request timed out")
+
+                    throttle.destroy()
+                    request.destroy()
+
+                    return reject(new Error("Download request timed out"))
                 })
         
                 request.end()

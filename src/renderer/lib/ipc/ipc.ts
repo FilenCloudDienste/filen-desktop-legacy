@@ -1,43 +1,15 @@
 import eventListener from "../eventListener"
 import { v4 as uuidv4 } from "uuid"
 import db from "../db"
+import { sendToAllPorts } from "../worker/ipc"
 
 const { ipcRenderer } = window.require("electron")
+const log = window.require("electron-log")
 
 const MESSAGE_SENDER: string = uuidv4()
 const resolves: any = {}
 const rejects: any = {}
-
-ipcRenderer.on("message", (_: any, data: any) => {
-    const { messageId, messageSender, response, err } = data
-
-    if(typeof messageId == "undefined" || typeof response == "undefined" || typeof messageSender == "undefined"){
-        return false
-    }
-
-    if(messageSender !== MESSAGE_SENDER){
-        return false
-    }
-
-    const resolve = resolves[messageId]
-    const reject = rejects[messageId]
-
-    if(!resolve || !reject){
-        return false
-    }
-
-    if(err){
-        reject(err)
-    }
-    else{
-        resolve(response)
-    }
-
-    delete resolves[messageId]
-    delete rejects[messageId]
-
-    return true
-})
+let DEBOUNCE_WATCHER_EVENT: any = {}
 
 ipcRenderer.on("global-message", (_: any, data: any) => {
     return handleGlobalMessage(data)
@@ -106,22 +78,23 @@ const handleGlobalMessage = (data: any) => {
     ){
         eventListener.emit(data.type, data.data)
     }
-    else if(type == "forceSync"){
+    else if(type == "forceSync" && window.location.href.indexOf("#worker") !== -1){
         db.get("userId").then((userId) => {
             db.get("syncLocations:" + userId).then((syncLocations) => {
                 if(Array.isArray(syncLocations)){
                     for(let i = 0; i < syncLocations.length; i++){
-                        Promise.all([
-                            db.set("localDataChanged:" + syncLocations[i].uuid, true),
-                            db.set("remoteDataChanged:" + syncLocations[i].uuid, true)
-                        ]).catch(console.error)
-
-                        setTimeout(() => {
+                        new Promise((resolve) => {
+                            const sub = eventListener.on("syncLoopDone", () => {
+                                sub.remove()
+            
+                                return resolve(true)
+                            })
+                        }).then(() => {
                             Promise.all([
                                 db.set("localDataChanged:" + syncLocations[i].uuid, true),
                                 db.set("remoteDataChanged:" + syncLocations[i].uuid, true)
                             ]).catch(console.error)
-                        }, 5000)
+                        })
                     }
                 }
             }).catch(console.error)
@@ -129,6 +102,33 @@ const handleGlobalMessage = (data: any) => {
     }
     else if(type == "doneTasksCleared"){
         eventListener.emit("doneTasksCleared")
+    }
+    else if(type == "watcher-event" && window.location.href.indexOf("#worker") !== -1){
+        const locationUUID: string = data.data.locationUUID
+
+        clearTimeout(DEBOUNCE_WATCHER_EVENT[locationUUID])
+
+        DEBOUNCE_WATCHER_EVENT[locationUUID] = setTimeout(() => {
+            new Promise((resolve) => {
+                const sub = eventListener.on("syncLoopDone", () => {
+                    sub.remove()
+
+                    return resolve(true)
+                })
+            }).then(() => {
+                db.set("localDataChanged:" + locationUUID, true).then(() => {
+                    sendToAllPorts({
+                        type: "syncStatus",
+                        data: {
+                            type: "dataChanged",
+                            data: {
+                                locationUUID
+                            }
+                        }
+                    })
+                }).catch(log.error)
+            })
+        }, 1000)
     }
 
     return true
@@ -150,39 +150,15 @@ const ipc = {
         })
     },
     getAppPath: (path: string): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "getAppPath",
-                data: {
-                    path
-                }
-            })
+        return ipcRenderer.invoke("getAppPath", {
+            path
         })
     },
     db: (action: string, key?: string, value?: any): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "db",
-                data: {
-                    action,
-                    key,
-                    value
-                }
-            })
+        return ipcRenderer.invoke("db", {
+            action,
+            key,
+            value
         })
     },
     apiRequest: ({ method, endpoint, data = {}, timeout = 864000000 }: { method: string, endpoint: string, data: any, timeout: number }): Promise<any> => {
@@ -206,110 +182,30 @@ const ipc = {
         })
     },
     closeAuthWindow: (): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "closeAuthWindow"
-            })
-        })
+        return ipcRenderer.invoke("closeAuthWindow")
     },
     createMainWindow: (): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "createMainWindow"
-            })
-        })
+        return ipcRenderer.invoke("createMainWindow")
     },
     loginDone: (): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "loginDone"
-            })
-        })
+        return ipcRenderer.invoke("loginDone")
     },
     openSettingsWindow: (page: string = "general"): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "openSettingsWindow",
-                data: {
-                    page
-                }
-            })
+        return ipcRenderer.invoke("openSettingsWindow", {
+            page
         })
     },
     selectFolder: (): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "selectFolder"
-            })
-        })
+        return ipcRenderer.invoke("selectFolder")
     },
     openSelectFolderRemoteWindow: (windowId: string = uuidv4()): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "openSelectFolderRemoteWindow",
-                data: {
-                    windowId
-                }
-            })
+        return ipcRenderer.invoke("openSelectFolderRemoteWindow", {
+            windowId
         })
     },
     selectRemoteFolder: (windowId = uuidv4()): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "selectRemoteFolder",
-                data: {
-                    windowId
-                }
-            })
+        return ipcRenderer.invoke("selectRemoteFolder", {
+            windowId
         })
     },
     remoteFolderSelected: (data: any): Promise<any> => {
@@ -550,39 +446,15 @@ const ipc = {
         })
     },
     minimizeWindow: (window: string = "settings", windowId: string = uuidv4()): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "minimizeWindow",
-                data: {
-                    window,
-                    windowId
-                }
-            })
+        return ipcRenderer.invoke("minimizeWindow", {
+            window,
+            windowId
         })
     },
     closeWindow: (window: string = "settings", windowId: string = uuidv4()): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "closeWindow",
-                data: {
-                    window,
-                    windowId
-                }
-            })
+        return ipcRenderer.invoke("closeWindow", {
+            window,
+            windowId
         })
     },
     updateThrottles: (uploadKbps: number, downloadKbps: number): Promise<any> => {
@@ -603,227 +475,64 @@ const ipc = {
             })
         })
     },
-    setOpenOnStartup: (open: boolean = true): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "setOpenOnStartup",
-                data: {
-                    open
-                }
-            })
+    setOpenOnStartup: (open: boolean = true): Promise<boolean> => {
+        return ipcRenderer.invoke("setOpenOnStartup", {
+            open
         })
     },
-    getOpenOnStartup: (): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "getOpenOnStartup"
-            })
-        })
+    getOpenOnStartup: (): Promise<boolean> => {
+        return ipcRenderer.invoke("getOpenOnStartup")
     },
     getVersion: (): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "getVersion"
-            })
-        })
+        return ipcRenderer.invoke("getVersion")
     },
-    saveLogs: (): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "saveLogs"
-            })
-        })
+    saveLogs: (): Promise<boolean> => {
+        return ipcRenderer.invoke("saveLogs")
     },
-    updateTrayIcon: (type: string = "normal"): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "updateTrayIcon",
-                data: {
-                    type
-                }
-            })
+    updateTrayIcon: (type: string = "normal"): Promise<boolean> => {
+        return ipcRenderer.invoke("updateTrayIcon", {
+            type
         })
     },
     updateTrayMenu: (type: string = "default"): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "updateTrayMenu",
-                data: {
-                    type
-                }
-            })
+        return ipcRenderer.invoke("updateTrayMenu", {
+            type
         })
     },
     updateTrayTooltip: (text: string = "Filen"): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "updateTrayTooltip",
-                data: {
-                    text
-                }
-            })
+        return ipcRenderer.invoke("updateTrayTooltip", {
+            text
         })
     },
     getFileIcon: (path: string): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "getFileIcon",
-                data: {
-                    path
-                }
-            })
+        return ipcRenderer.invoke("getFileIcon", {
+            path
         })
     },
     getFileIconExt: (ext: string = ""): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "getFileIconExt",
-                data: {
-                    ext
-                }
-            })
+        return ipcRenderer.invoke("getFileIconExt", {
+            ext
         })
     },
     getFileIconName: (name: string = "name"): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "getFileIconName",
-                data: {
-                    name
-                }
-            })
+        return ipcRenderer.invoke("getFileIconName", {
+            name
         })
     },
     quitApp: (): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "quitApp"
-            })
-        })
+        return ipcRenderer.invoke("quitApp")
     },
     exitApp: (): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "exitApp"
-            })
-        })
+        return ipcRenderer.invoke("exitApp")
     },
     openDownloadWindow: (args: any): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "openDownloadWindow",
-                data: {
-                    args
-                }
-            })
+        return ipcRenderer.invoke("openDownloadWindow", {
+            args
         })
     },
     openSelectiveSyncWindow: (args: any): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "openSelectiveSyncWindow",
-                data: {
-                    args
-                }
-            })
+        return ipcRenderer.invoke("openSelectiveSyncWindow", {
+            args
         })
     },
     uploadChunk: ({ queryParams, data, timeout = 86400000, from = "sync" }: { queryParams: any, data: any, timeout: number, from: string }): Promise<any> => {
@@ -923,77 +632,21 @@ const ipc = {
         })
     },
     updateKeybinds: (): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "updateKeybinds"
-            })
-        })
+        return ipcRenderer.invoke("updateKeybinds")
     },
     disableKeybinds: (): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "disableKeybinds"
-            })
-        })
+        return ipcRenderer.invoke("disableKeybinds")
     },
     restartApp: (): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "restartApp"
-            })
-        })
+        return ipcRenderer.invoke("restartApp")
     },
     openUploadWindow: (type: string = "files"): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "openUploadWindow",
-                data: {
-                    type
-                }
-            })
+        return ipcRenderer.invoke("openUploadWindow", {
+            type
         })
     },
     installUpdate: (): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "installUpdate"
-            })
-        })
+        return ipcRenderer.invoke("installUpdate")
     },
     getFileKey: (uuid: string): Promise<string> => {
         return new Promise((resolve, reject) => {
@@ -1013,17 +666,12 @@ const ipc = {
         })
     },
     trayAvailable: (): Promise<boolean> => {
-        return new Promise((resolve, reject) => {
-            const messageId = uuidv4()
-
-            resolves[messageId] = resolve
-            rejects[messageId] = reject
-
-            return ipcRenderer.send("message", {
-                messageId,
-                messageSender: MESSAGE_SENDER,
-                type: "trayAvailable"
-            })
+        return ipcRenderer.invoke("trayAvailable")
+    },
+    initWatcher: (path: string, locationUUID: string): Promise<boolean> => {
+        return ipcRenderer.invoke("initWatcher", {
+            path,
+            locationUUID
         })
     }
 }

@@ -125,22 +125,6 @@ powerMonitor.on("shutdown", () => {
 	app.exit(0)
 })
 
-powerMonitor.on("lock-screen", () => {
-	require("./lib/db").set("suspend", true).catch(log.error)
-})
-
-powerMonitor.on("suspend", () => {
-	require("./lib/db").set("suspend", true).catch(log.error)
-})
-
-powerMonitor.on("resume", () => {
-	setTimeout(() => require("./lib/db").set("suspend", false).catch(log.error), 5000)
-})
-
-powerMonitor.on("unlock-screen", () => {
-	setTimeout(() => require("./lib/db").set("suspend", false).catch(log.error), 5000)
-})
-
 if(!app.requestSingleInstanceLock()){
 	app.quit()
 }

@@ -22,13 +22,9 @@ import * as fsRemote from "../../fs/remote"
 import ipc from "../../ipc"
 import eventListener from "../../eventListener"
 import memoryCache from "../../memoryCache"
-import type { WatcherEvent } from "../../../../types"
 
 const { ipcRenderer } = window.require("electron")
 const log = window.require("electron-log")
-
-let IS_SYNCING: boolean = false
-let DEBOUNCE_WATCHER_EVENT: any = {}
 
 const handleMessage = (type: string, request: any) => {
     return new Promise((resolve, reject) => {
@@ -211,54 +207,6 @@ export const listen = () => {
                 err
             })
         })
-    })
-
-    eventListener.on("watcher-event", (data: WatcherEvent) => {
-        clearTimeout(DEBOUNCE_WATCHER_EVENT[data.locationUUID])
-
-        DEBOUNCE_WATCHER_EVENT[data.locationUUID] = setTimeout(() => {
-            const locationUUID: string = data.locationUUID
-
-            new Promise((resolve) => {
-                const check = (): any => {
-                    if(!IS_SYNCING){
-                        return resolve(true)
-                    }
-
-                    return setTimeout(check, 10)
-                }
-                
-                return check()
-            }).then(async () => {
-                await db.set("localDataChanged:" + locationUUID, true).catch(log.error)
-
-                sendToAllPorts({
-                    type: "syncStatus",
-                    data: {
-                        type: "dataChanged",
-                        data: {
-                            locationUUID
-                        }
-                    }
-                })
-            })
-        }, 1000)
-    })
-
-    eventListener.on("syncStatus", (response: any) => {
-        const { type, data } = response
-
-        if(type == "init"){
-            if(data.status == "done"){
-                IS_SYNCING = true
-            }
-            else{
-                IS_SYNCING = false
-            }
-        }
-        else if(type == "cleanup"){
-            IS_SYNCING = false
-        }
     })
 
     eventListener.on("socket-event", (res: any) => {
