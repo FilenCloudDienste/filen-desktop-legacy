@@ -51,9 +51,7 @@ export const defaultIgnored: {
         "temporary",
         "crdownload",
         "~cr",
-        "thumbdata",
-        "imgcache",
-        "db-shm"
+        "thumbdata"
     ],
     folders: [
         ".filen.trash.local",
