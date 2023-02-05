@@ -89,7 +89,7 @@ const watch = (path, locationUUID) => {
                     }
 
                     delete didCloseDueToResume[path]
-                }, 1000)
+                }, 5000)
             })
     
             SUBS[path].on("ready", () => {

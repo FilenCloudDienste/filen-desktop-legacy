@@ -2596,7 +2596,10 @@ const syncLocation = async (location: Location): Promise<boolean> => {
         location
     })
 
-    if(typeof WATCHERS[location.local] == "undefined"){
+    if(
+        typeof WATCHERS[location.local] == "undefined"
+        && (location.type == "localBackup" || location.type == "localToCloud" || location.type == "twoWay")
+    ){
         log.info("Starting local directory watcher for location " + location.uuid)
 
         emitSyncStatusLocation("initWatcher", {
