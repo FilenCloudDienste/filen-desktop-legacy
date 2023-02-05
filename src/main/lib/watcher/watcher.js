@@ -2,9 +2,11 @@ const pathModule = require("path")
 const log = require("electron-log")
 const nodeWatch = require("node-watch")
 const is = require("electron-is")
+const { powerMonitor } = require("electron")
 
 const LINUX_EVENT_EMIT_TIMER = 60000
 const SUBS = {}
+const SUBS_INFO = {}
 const linuxWatchUpdateTimeout = {}
 const lastEvent = {}
 
@@ -15,9 +17,36 @@ const emitToWorker = (data) => {
     })
 }
 
-const watch = (path, locationUUID) => {
+const resumeWatchers = () => {
+    console.log("RESUMING WATCHERS")
+
+    for(const path in SUBS_INFO){
+        const locationUUID = SUBS_INFO[path]
+
+        try{
+            if(typeof SUBS[path].isClosed == "function"){
+                if(!SUBS[path].isClosed()){
+                    SUBS[path].close()
+
+                    delete SUBS[path]
+                }
+            }
+        }
+        catch(e){
+            log.error(e)
+        }
+
+        watch(path, locationUUID, true).catch(log.error)
+    }
+}
+
+powerMonitor.on("resume", () => resumeWatchers())
+powerMonitor.on("unlock-screen", () => resumeWatchers())
+powerMonitor.on("user-did-become-active", () => resumeWatchers())
+
+const watch = (path, locationUUID, isReInit = false) => {
     return new Promise((resolve, reject) => {
-        if(typeof SUBS[path] !== "undefined"){
+        if(typeof SUBS[path] !== "undefined" && !isReInit){
             return resolve(SUBS[path])
         }
 
@@ -37,6 +66,8 @@ const watch = (path, locationUUID) => {
             SUBS[path].on("error", log.error)
     
             SUBS[path].on("ready", () => {
+                SUBS_INFO[path] = locationUUID
+
                 if(is.linux()){
                     clearInterval(linuxWatchUpdateTimeout[path])
 
