@@ -47,7 +47,6 @@ export const defaultIgnored: {
     extensions: [
         "tmp",
         "temp",
-        "lnk",
         "ffs_tmp",
         "temporary",
         "crdownload",
