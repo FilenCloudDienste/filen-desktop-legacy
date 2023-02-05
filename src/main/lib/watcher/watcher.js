@@ -9,6 +9,7 @@ const SUBS = {}
 const SUBS_INFO = {}
 const linuxWatchUpdateTimeout = {}
 const lastEvent = {}
+const didCloseDueToResume = {}
 
 const emitToWorker = (data) => {
     require("../ipc").emitGlobal("global-message", {
@@ -18,25 +19,25 @@ const emitToWorker = (data) => {
 }
 
 const resumeWatchers = () => {
-    console.log("RESUMING WATCHERS")
-
     for(const path in SUBS_INFO){
         const locationUUID = SUBS_INFO[path]
 
         try{
             if(typeof SUBS[path].isClosed == "function"){
                 if(!SUBS[path].isClosed()){
-                    SUBS[path].close()
+                    didCloseDueToResume[path] = true
 
-                    delete SUBS[path]
+                    SUBS[path].close()
                 }
+                
+                delete SUBS[path]
             }
         }
         catch(e){
             log.error(e)
         }
 
-        watch(path, locationUUID, true).catch(log.error)
+        watch(path, locationUUID).catch(log.error)
     }
 }
 
@@ -44,9 +45,9 @@ powerMonitor.on("resume", () => resumeWatchers())
 powerMonitor.on("unlock-screen", () => resumeWatchers())
 powerMonitor.on("user-did-become-active", () => resumeWatchers())
 
-const watch = (path, locationUUID, isReInit = false) => {
+const watch = (path, locationUUID) => {
     return new Promise((resolve, reject) => {
-        if(typeof SUBS[path] !== "undefined" && !isReInit){
+        if(typeof SUBS[path] !== "undefined"){
             return resolve(SUBS[path])
         }
 
@@ -63,7 +64,33 @@ const watch = (path, locationUUID, isReInit = false) => {
                 emitToWorker({ event, name, watchPath: path, locationUUID })
             })
     
-            SUBS[path].on("error", log.error)
+            SUBS[path].on("error", (err) => {
+                log.error(err)
+
+                delete didCloseDueToResume[path]
+                delete SUBS[path]
+                delete SUBS_INFO[path]
+            })
+
+            SUBS[path].on("close", () => {
+                setTimeout(() => {
+                    if(typeof didCloseDueToResume[path] == "undefined"){
+                        delete SUBS[path]
+                        delete SUBS_INFO[path]
+
+                        emitToWorker({
+                            event: "dummy",
+                            name: "dummy",
+                            watchPath: path,
+                            locationUUID
+                        })
+    
+                        watch(path, locationUUID).catch(log.error)
+                    }
+
+                    delete didCloseDueToResume[path]
+                }, 1000)
+            })
     
             SUBS[path].on("ready", () => {
                 SUBS_INFO[path] = locationUUID
