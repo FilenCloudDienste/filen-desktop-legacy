@@ -31,5 +31,4 @@ const keyEvent = (e: KeyboardEvent) => {
 window.onkeydown = keyEvent
 window.onkeyup = keyEvent
 
-// @ts-ignore
-createRoot(document.getElementById("root")).render(<App />)
+createRoot(document.getElementById("root") as HTMLDivElement).render(<App />)
