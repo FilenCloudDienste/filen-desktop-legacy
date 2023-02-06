@@ -52,7 +52,7 @@ const ko: {
     launchAtSystemStartup: "시스템 시작 시 자동으로 Filen 실행",
     darkMode: "다크 모드",
     excludeDot: "마침표로 시작하는 파일 및 폴더 제외(권장)",
-    excludeDotTooltip: "마침표로 시작하는 파일 및 폴더(예: \".gitignore, .DS_Store\)는 제외합니다.",
+    excludeDotTooltip: "마침표로 시작하는 파일 및 폴더(예: \".gitignore, .DS_Store\")는 제외합니다.",
     language: "언어",
     saveLogs: "로그 저장",
     cannotCreateSyncLocation: "동기화 위치를 만들 수 없습니다.",
