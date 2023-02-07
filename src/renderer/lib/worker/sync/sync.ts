@@ -2748,6 +2748,8 @@ const syncLocation = async (location: Location): Promise<boolean> => {
                 db.set("lastLocalTree:" + location.uuid, localTreeNow),
                 db.set("lastRemoteTree:" + location.uuid, remoteTreeNow)
             ])
+
+            delete IS_FIRST_REQUEST[location.uuid]
         }
         catch(e: any){
             log.error("Could not save lastLocalTree/lastRemoteTree to DB for location " + location.uuid)
