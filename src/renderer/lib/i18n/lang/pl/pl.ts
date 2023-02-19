@@ -144,7 +144,12 @@ const pl: {
     updateWindowInfo2: "Aplikacja zostanie zamknięta i rozpocznie przepływ aktualizacji. Prosimy nie przerywać tego procesu.",
     titlebarUpdateInstalled: "Aktualizacja zainstalowana",
     clearLocalEventLog: "Wyczyść lokalny dziennik zdarzeń",
-    clearLocalEventLogInfo: "Spowoduje to wyczyszczenie wyświetlonego lokalnego dziennika zdarzeń. Czy jesteś pewny? Tej czynności nie można cofnąć!"
+    clearLocalEventLogInfo: "Spowoduje to wyczyszczenie wyświetlonego lokalnego dziennika zdarzeń. Czy jesteś pewny? Tej czynności nie można cofnąć!",
+    copied: "Skopiowane",
+    publicLinkCopied: "Link publiczny został skopiowany do schowka",
+    clearLocalTrashDirs: "Opróżnij lokalne kosze na śmieci",
+    clearLocalTrashDirsInfo: "Wyczyszczenia lokalnych koszy na śmieci nie można cofnąć! Jesteś pewny?",
+    updateWindowInfo3: "Klient zakończy działanie i rozpocznie przepływ aktualizacji w tle. Po zakończeniu uruchomi się ponownie. Proszę nie przerywać tego procesu."
 }
 
 export default pl
