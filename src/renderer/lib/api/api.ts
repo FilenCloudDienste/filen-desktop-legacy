@@ -1697,6 +1697,14 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync", loca
 
                     const res: Buffer[] = []
 
+                    response.on("error", (err: Error) => {
+                        log.error(err)
+
+                        throttle.destroy()
+
+                        return setTimeout(doRequest, retryDownloadTimeout)
+                    })
+
                     response.pipe(throttle).on("data", (chunk: Buffer) => {
                         res.push(chunk)
         
@@ -1727,7 +1735,7 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync", loca
 
                     throttle.destroy()
 
-                    return reject(err)
+                    return setTimeout(doRequest, retryDownloadTimeout)
                 })
 
                 request.on("timeout", () => {
@@ -1736,7 +1744,7 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync", loca
                     throttle.destroy()
                     request.destroy()
 
-                    return reject(new Error("Download request timed out"))
+                    return setTimeout(doRequest, retryDownloadTimeout)
                 })
         
                 request.end()
