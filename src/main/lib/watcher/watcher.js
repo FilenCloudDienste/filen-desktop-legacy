@@ -19,6 +19,10 @@ const emitToWorker = (data) => {
 }
 
 const resumeWatchers = () => {
+    if(is.linux()){
+        return
+    }
+
     for(const path in SUBS_INFO){
         const locationUUID = SUBS_INFO[path]
 
@@ -47,6 +51,21 @@ powerMonitor.on("user-did-become-active", () => resumeWatchers())
 
 const watch = (path, locationUUID) => {
     return new Promise((resolve, reject) => {
+        if(is.linux()){
+            clearInterval(linuxWatchUpdateTimeout[path])
+
+            linuxWatchUpdateTimeout[path] = setInterval(() => {
+                emitToWorker({
+                    event: "dummy",
+                    name: "dummy",
+                    watchPath: path,
+                    locationUUID
+                })
+            }, LINUX_EVENT_EMIT_TIMER)
+
+            return
+        }
+
         if(typeof SUBS[path] !== "undefined"){
             return resolve(SUBS[path])
         }
@@ -94,29 +113,6 @@ const watch = (path, locationUUID) => {
     
             SUBS[path].on("ready", () => {
                 SUBS_INFO[path] = locationUUID
-
-                if(is.linux()){
-                    clearInterval(linuxWatchUpdateTimeout[path])
-
-                    linuxWatchUpdateTimeout[path] = setInterval(() => {
-                        const now = new Date().getTime()
-
-                        if(typeof lastEvent[path] !== "number"){
-                            lastEvent[path] = now
-                        }
-                        
-                        if((now - LINUX_EVENT_EMIT_TIMER) > lastEvent[path]){
-                            lastEvent[path] = now
-
-                            emitToWorker({
-                                event: "dummy",
-                                name: "dummy",
-                                watchPath: path,
-                                locationUUID
-                            })
-                        }
-                    }, 5000)
-                }
 
                 return resolve(SUBS[path])
             })
