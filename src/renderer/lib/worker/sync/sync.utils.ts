@@ -218,24 +218,6 @@ export const sortMoveRenameTasks = (tasks: any): any => {
     return newTasks
 }
 
-export const addToSyncIssues = (type: string, message: any): Promise<boolean> => {
-    return new Promise((resolve, reject) => {
-        db.get("syncIssues").then((syncIssues) => {
-            if(!Array.isArray(syncIssues)){
-                syncIssues = []
-            }
-
-            syncIssues.push({
-                type,
-                message,
-                timestamp: new Date().getTime()
-            })
-
-            db.set("syncIssues", syncIssues).then(() => resolve(true)).catch(reject)
-        }).catch(reject)
-    })
-}
-
 export const updateLocationBusyStatus = (uuid: string, busy: boolean): Promise<boolean> => {
     return new Promise((resolve, reject) => {
         db.get("userId").then((userId) => {

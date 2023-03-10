@@ -12,6 +12,8 @@ const autoLauncher = new AutoLaunch({
     path: app.getPath("exe"),
 })
 
+let syncIssues = []
+
 ipcMain.handle("db", async (_, { action, key, value }) => {
     if(action == "get"){
         return await require("../db").get(key)
@@ -495,6 +497,28 @@ ipcMain.handle("initWatcher", async (_, { path, locationUUID }) => {
     await require("../watcher").watch(path, locationUUID)
 
     return false
+})
+
+ipcMain.handle("addSyncIssue", async (_, { syncIssue }) => {
+    syncIssues.push(syncIssue)
+
+    return true
+})
+
+ipcMain.handle("removeSyncIssue", async (_, { uuid }) => {
+    syncIssues = syncIssues.filter(issue => issue.uuid !== uuid)
+
+    return true
+})
+
+ipcMain.handle("getSyncIssues", async () => {
+    return syncIssues
+})
+
+ipcMain.handle("clearSyncIssues", async () => {
+    syncIssues = []
+
+    return true
 })
 
 const updateKeybinds = () => {

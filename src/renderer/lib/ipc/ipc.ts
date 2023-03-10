@@ -2,6 +2,7 @@ import eventListener from "../eventListener"
 import { v4 as uuidv4 } from "uuid"
 import db from "../db"
 import { sendToAllPorts } from "../worker/ipc"
+import { SyncIssue } from "../../../types"
 
 const { ipcRenderer } = window.require("electron")
 const log = window.require("electron-log")
@@ -673,6 +674,22 @@ const ipc = {
             path,
             locationUUID
         })
+    },
+    getSyncIssues: (): Promise<SyncIssue[]> => {
+        return ipcRenderer.invoke("getSyncIssues")
+    },
+    addSyncIssue: (syncIssue: SyncIssue): Promise<boolean> => {
+        return ipcRenderer.invoke("addSyncIssue", {
+            syncIssue
+        })
+    },
+    removeSyncIssue: (uuid: string): Promise<boolean> => {
+        return ipcRenderer.invoke("removeSyncIssue", {
+            uuid
+        })
+    },
+    clearSyncIssues: (): Promise<boolean> => {
+        return ipcRenderer.invoke("clearSyncIssues")
     }
 }
 

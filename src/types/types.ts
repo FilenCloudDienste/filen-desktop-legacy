@@ -120,7 +120,12 @@ export interface Location {
 }
 
 export interface SyncIssue {
-    message: string,
+    uuid: string,
+    type: "critical" | "conflict" | "info" | "warning",
+    where: "remote" | "local",
+    path?: string,
+    err?: Error,
+    info: string,
     timestamp: number
 }
 

@@ -367,8 +367,18 @@ export const directoryTree = (path: string, skipCache: boolean = false, location
                         }
                     }
                 }
-                catch(e){
+                catch(e: any){
                     log.error(e)
+
+                    ipc.addSyncIssue({
+                        uuid: uuidv4(),
+                        type: "warning",
+                        where: "local",
+                        path: item.fullPath,
+                        err: e,
+                        info: "Could not read " + item.fullPath,
+                        timestamp: new Date().getTime()
+                    }).catch(console.error)
 
                     if(readdirFallback.has(readdirFallbackKey)){
                         const fallback = readdirFallback.get(readdirFallbackKey)

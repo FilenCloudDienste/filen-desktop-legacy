@@ -1,5 +1,5 @@
-import React, { memo, useState, useEffect, useCallback, useRef } from "react"
-import { Flex, Text, Link, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, Switch, Box, Spinner, Select, Tooltip, Avatar, Progress, Badge, Input, useToast, Kbd } from "@chakra-ui/react"
+import React, { memo, useState, useEffect, useCallback, useRef, useMemo } from "react"
+import { Flex, Text, Link, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, Switch, Box, Spinner, Select, Tooltip, Avatar, Progress, Input, useToast, Kbd } from "@chakra-ui/react"
 import useDarkMode from "../../lib/hooks/useDarkMode"
 import useLang from "../../lib/hooks/useLang"
 import usePlatform from "../../lib/hooks/usePlatform"
@@ -29,12 +29,12 @@ import { BsKeyboard, BsFillFolderFill } from "react-icons/bs"
 import List from "react-virtualized/dist/commonjs/List"
 import { debounce } from "lodash"
 import { sendToAllPorts } from "../../lib/worker/ipc"
-import type { Location, SyncIssue } from "../../../types"
+import { Location } from "../../../types"
+import useSyncIssues from "../../lib/hooks/useSyncIssues"
 
 const log = window.require("electron-log")
 const { shell, ipcRenderer } = window.require("electron")
 const pathModule = window.require("path")
-const fs = window.require("fs-extra")
 
 const STARTING_ROUTE_URL_PARAMS = new URLSearchParams(window.location.search)
 const STARTING_ROUTE = typeof STARTING_ROUTE_URL_PARAMS.get("page") == "string" ? STARTING_ROUTE_URL_PARAMS.get("page") : "general"
@@ -2212,8 +2212,7 @@ const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }: { darkM
 })
 
 const SettingsWindowIssues = memo(({ darkMode, lang, platform }: { darkMode: boolean, lang: string, platform: string }) => {
-    const syncIssues: SyncIssue[] = useDb("syncIssues", [])
-
+    const syncIssues = useSyncIssues()
     const [clearIssuesModalOpen, setClearIssuesModalOpen] = useState(false)
 
     return (
@@ -2251,21 +2250,6 @@ const SettingsWindowIssues = memo(({ darkMode, lang, platform }: { darkMode: boo
                                                 borderBottom={"1px solid " + colors(platform, darkMode, "borderPrimary")}
                                             >
                                                 <Flex 
-                                                    flexDirection="column" 
-                                                    justifyContent="flex-start" 
-                                                    paddingTop="8px"
-                                                >
-                                                    <Badge 
-                                                        colorScheme="gray" 
-                                                        height="20px" 
-                                                        borderRadius="10px" 
-                                                        paddingLeft="5px" 
-                                                        paddingRight="5px"
-                                                    >
-                                                        {new Date(issue.timestamp).toLocaleString()}
-                                                    </Badge>
-                                                </Flex>
-                                                <Flex 
                                                     flexDirection="row" 
                                                     paddingTop="4px"
                                                 >
@@ -2276,7 +2260,7 @@ const SettingsWindowIssues = memo(({ darkMode, lang, platform }: { darkMode: boo
                                                         width="100%" 
                                                         wordBreak="break-all"
                                                     >
-                                                        {issue.message}
+                                                        {issue.info}
                                                     </Text>
                                                 </Flex>
                                             </Flex>
@@ -2342,14 +2326,43 @@ const SettingsWindowIssues = memo(({ darkMode, lang, platform }: { darkMode: boo
                             {i18n(lang, "clearSyncIssuesInfo")}
                         </Text>
                     </ModalBody>
-                    <ModalFooter>
+                    <ModalFooter
+                        alignItems="center"
+                    >
+                        <Link 
+                            color={colors(platform, darkMode, "textSecondary")} 
+                            textDecoration="none" 
+                            _hover={{ textDecoration: "none" }}
+                            onClick={() => setClearIssuesModalOpen(false)}
+                        >
+                            {i18n(lang, "close")}
+                        </Link>
                         <Link 
                             color={colors(platform, darkMode, "link")} 
                             textDecoration="none" 
                             _hover={{ textDecoration: "none" }} 
                             marginLeft="10px" 
                             onClick={async () => {
-                                db.set("syncIssues", []).catch(log.error)
+                                try{
+                                    await ipc.clearSyncIssues()
+
+                                    const userId = await db.get("userId")
+                                    let currentSyncLocations: Location[] | null = await db.get("syncLocations:" + userId)
+
+                                    if(!Array.isArray(currentSyncLocations)){
+                                        currentSyncLocations = []
+                                    }
+
+                                    for(let i = 0; i < currentSyncLocations.length; i++){
+                                        await Promise.all([
+                                            db.set("localDataChanged:" + currentSyncLocations[i].uuid, true),
+                                            db.set("remoteDataChanged:" + currentSyncLocations[i].uuid, true)
+                                        ])
+                                    }
+                                }
+                                catch(e){
+                                    log.error(e)
+                                }
 
                                 setClearIssuesModalOpen(false)
                             }}
@@ -2921,7 +2934,7 @@ const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }: { darkMode: b
     )
 })
 
-const SettingsSelectionButton = memo(({ darkMode, lang, platform, selection, setSelection, type, title }: { darkMode: boolean, lang: string, platform: string, selection: any, setSelection: any, type: string, title: string }) => {
+const SettingsSelectionButton = memo(({ darkMode, lang, platform, selection, setSelection, type, title, color }: { darkMode: boolean, lang: string, platform: string, selection: any, setSelection: any, type: string, title: string, color?: string }) => {
     return (
         <Flex 
             minWidth="80px"
@@ -2979,7 +2992,7 @@ const SettingsSelectionButton = memo(({ darkMode, lang, platform, selection, set
                     type == "issues" && (
                         <GoIssueReopened 
                             size={20} 
-                            color={darkMode ? "white" : "gray"} 
+                            color={typeof color == "string" ? color : darkMode ? "white" : "gray"} 
                         />
                     )
                 }
@@ -3013,6 +3026,16 @@ const SettingsSelectionButton = memo(({ darkMode, lang, platform, selection, set
 })
 
 const SettingsSelection = memo(({ darkMode, lang, platform, selection, setSelection }: { darkMode: boolean, lang: string, platform: string, selection: any, setSelection: any }) => {
+    const syncIssues = useSyncIssues()
+
+
+    const [filteredSyncIssues, syncIssuesIncludesCritical] = useMemo(() => {
+        const filtered = syncIssues.filter(issue => ["critical", "conflict", "warning"].includes(issue.type))
+        const includesCritical = filtered.filter(issue => issue.type == "critical").length > 0
+
+        return [filtered, includesCritical]
+    }, [syncIssues])
+    
     return (
         <Flex 
             flexDirection="row" 
@@ -3072,7 +3095,8 @@ const SettingsSelection = memo(({ darkMode, lang, platform, selection, setSelect
                     selection={selection} 
                     setSelection={setSelection} 
                     type="issues" 
-                    title={i18n(lang, "settingsIssues")} 
+                    title={i18n(lang, "settingsIssues")}
+                    color={syncIssues.length > 0 ? syncIssuesIncludesCritical ? "rgba(255, 69, 58, 1)" : "rgba(255, 149, 0, 1)" : undefined}
                 />
                 <SettingsSelectionButton 
                     darkMode={darkMode} 

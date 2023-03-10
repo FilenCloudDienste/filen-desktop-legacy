@@ -17,7 +17,6 @@ import {
     onlyGetBaseParentMove,
     onlyGetBaseParentDelete,
     sortMoveRenameTasks,
-    addToSyncIssues,
     updateLocationBusyStatus,
     emitSyncTask,
     emitSyncStatus,
@@ -732,8 +731,16 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
                                 log.error("renameInRemote task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
-    
-                                //addToSyncIssues("syncTask", "Could not rename " + pathModule.normalize(location.local + "/" + task.path) + " remotely: " + lastErr.toString())
+
+                                ipc.addSyncIssue({
+                                    uuid: uuidv4(),
+                                    type: "conflict",
+                                    where: "remote",
+                                    path: pathModule.normalize(location.local + "/" + task.path),
+                                    err: lastErr,
+                                    info: "Could not rename " + pathModule.normalize(location.local + "/" + task.path) + " remotely",
+                                    timestamp: new Date().getTime()
+                                }).catch(console.error)
     
                                 emitSyncTask("renameInRemote", {
                                     status: "err",
@@ -832,8 +839,16 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
                                 log.error("renameInLocal task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
-    
-                                //addToSyncIssues("syncTask", "Could not rename " + pathModule.normalize(location.local + "/" + task.path) + " locally: " + lastErr.toString())
+
+                                ipc.addSyncIssue({
+                                    uuid: uuidv4(),
+                                    type: "conflict",
+                                    where: "local",
+                                    path: pathModule.normalize(location.local + "/" + task.path),
+                                    err: lastErr,
+                                    info: "Could not rename " + pathModule.normalize(location.local + "/" + task.path) + " locally",
+                                    timestamp: new Date().getTime()
+                                }).catch(console.error)
     
                                 emitSyncTask("renameInLocal", {
                                     status: "err",
@@ -980,8 +995,16 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
                                 log.error("moveInRemote task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
-    
-                                //addToSyncIssues("syncTask", "Could not move " + pathModule.normalize(location.remote + "/" + task.path) + " remotely: " + lastErr.toString())
+
+                                ipc.addSyncIssue({
+                                    uuid: uuidv4(),
+                                    type: "conflict",
+                                    where: "remote",
+                                    path: pathModule.normalize(location.local + "/" + task.path),
+                                    err: lastErr,
+                                    info: "Could not move " + pathModule.normalize(location.local + "/" + task.path) + " remotely",
+                                    timestamp: new Date().getTime()
+                                }).catch(console.error)
     
                                 emitSyncTask("moveInRemote", {
                                     status: "err",
@@ -1080,8 +1103,16 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
                                 log.error("moveInLocal task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
-    
-                                //addToSyncIssues("syncTask", "Could not move " + pathModule.normalize(location.local + "/" + task.path) + " locally: " + lastErr.toString())
+
+                                ipc.addSyncIssue({
+                                    uuid: uuidv4(),
+                                    type: "conflict",
+                                    where: "local",
+                                    path: pathModule.normalize(location.local + "/" + task.path),
+                                    err: lastErr,
+                                    info: "Could not move " + pathModule.normalize(location.local + "/" + task.path) + " locally",
+                                    timestamp: new Date().getTime()
+                                }).catch(console.error)
     
                                 emitSyncTask("moveInLocal", {
                                     status: "err",
@@ -1228,8 +1259,16 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
                                 log.error("deleteInRemote task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
-    
-                                //addToSyncIssues("syncTask", "Could not delete " + pathModule.normalize(location.remote + "/" + task.path) + " remotely: " + lastErr.toString())
+
+                                ipc.addSyncIssue({
+                                    uuid: uuidv4(),
+                                    type: "conflict",
+                                    where: "remote",
+                                    path: pathModule.normalize(location.local + "/" + task.path),
+                                    err: lastErr,
+                                    info: "Could not delete " + pathModule.normalize(location.local + "/" + task.path) + " remotely",
+                                    timestamp: new Date().getTime()
+                                }).catch(console.error)
     
                                 emitSyncTask("deleteInRemote", {
                                     status: "err",
@@ -1323,7 +1362,15 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                 log.error("deleteInLocal task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
     
-                                //addToSyncIssues("syncTask", "Could not delete " + pathModule.normalize(location.local + "/" + task.path) + " locally: " + lastErr.toString())
+                                ipc.addSyncIssue({
+                                    uuid: uuidv4(),
+                                    type: "conflict",
+                                    where: "local",
+                                    path: pathModule.normalize(location.local + "/" + task.path),
+                                    err: lastErr,
+                                    info: "Could not delete " + pathModule.normalize(location.local + "/" + task.path) + " locally",
+                                    timestamp: new Date().getTime()
+                                }).catch(console.error)
             
                                 emitSyncTask("deleteInLocal", {
                                     status: "err",
@@ -1456,8 +1503,16 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
 
                                 log.error("uploadToRemote task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
-    
-                                //addToSyncIssues("syncTask", "Could not upload " + pathModule.normalize(location.local + "/" + task.path) + ": " + lastErr.toString())
+
+                                ipc.addSyncIssue({
+                                    uuid: uuidv4(),
+                                    type: "conflict",
+                                    where: "remote",
+                                    path: pathModule.normalize(location.local + "/" + task.path),
+                                    err: lastErr,
+                                    info: "Could not upload " + pathModule.normalize(location.local + "/" + task.path),
+                                    timestamp: new Date().getTime()
+                                }).catch(console.error)
     
                                 emitSyncTask("uploadToRemote", {
                                     status: "err",
@@ -1609,8 +1664,16 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                 
                                 log.error("downloadFromRemote task failed: " + JSON.stringify(task))
                                 log.error(lastErr)
-    
-                                //addToSyncIssues("syncTask", "Could not download " + pathModule.normalize(location.local + "/" + task.path) + ": " + lastErr.toString())
+
+                                ipc.addSyncIssue({
+                                    uuid: uuidv4(),
+                                    type: "conflict",
+                                    where: "local",
+                                    path: pathModule.normalize(location.local + "/" + task.path),
+                                    err: lastErr,
+                                    info: "Could not download " + pathModule.normalize(location.local + "/" + task.path),
+                                    timestamp: new Date().getTime()
+                                }).catch(console.error)
     
                                 emitSyncTask("downloadFromRemote", {
                                     status: "err",
@@ -2563,7 +2626,15 @@ const syncLocation = async (location: Location): Promise<boolean> => {
         log.error("Smoke test for location " + location.uuid + " failed")
         log.error(e)
 
-        addToSyncIssues("smokeTest", "Smoke test for location " + location.uuid + " failed: " + e.toString())
+        ipc.addSyncIssue({
+            uuid: uuidv4(),
+            type: "critical",
+            where: "local",
+            path: pathModule.normalize(location.local),
+            err: e,
+            info: "Smoke test for location " + location.uuid + " failed",
+            timestamp: new Date().getTime()
+        }).catch(console.error)
 
         emitSyncStatusLocation("smokeTest", {
             status: "err",
@@ -2587,6 +2658,16 @@ const syncLocation = async (location: Location): Promise<boolean> => {
         }
 
         updateLocationBusyStatus(location.uuid, false)
+
+        ipc.addSyncIssue({
+            uuid: uuidv4(),
+            type: "critical",
+            where: "remote",
+            path: pathModule.normalize(location.local),
+            err: e,
+            info: "Could get remote tree for location " + location.uuid,
+            timestamp: new Date().getTime()
+        }).catch(console.error)
 
         return false
     }
@@ -2614,7 +2695,15 @@ const syncLocation = async (location: Location): Promise<boolean> => {
             log.error("Could not start local directory watcher for location " + location.uuid)
             log.error(e)
 
-            addToSyncIssues("watchDirectory", "Could not start local directory watcher (" + pathModule.normalize(location.local) + "): " + e.toString())
+            ipc.addSyncIssue({
+                uuid: uuidv4(),
+                type: "warning",
+                where: "local",
+                path: pathModule.normalize(location.local),
+                err: e,
+                info: "Could not start local directory watcher at path " + pathModule.normalize(location.local),
+                timestamp: new Date().getTime()
+            }).catch(console.error)
 
             emitSyncStatusLocation("initWatcher", {
                 status: "err",
@@ -2673,7 +2762,15 @@ const syncLocation = async (location: Location): Promise<boolean> => {
             log.error(e)
 
             if(window.navigator.onLine){
-                addToSyncIssues("getTrees", "Could not get directory trees: " + e.toString())
+                ipc.addSyncIssue({
+                    uuid: uuidv4(),
+                    type: "critical",
+                    where: "local",
+                    path: pathModule.normalize(location.local),
+                    err: e,
+                    info: "Could not get directory trees for location " + location.uuid,
+                    timestamp: new Date().getTime()
+                }).catch(console.error)
             }
 
             emitSyncStatusLocation("getTrees", {
@@ -2721,7 +2818,15 @@ const syncLocation = async (location: Location): Promise<boolean> => {
         log.error(e)
 
         if(window.navigator.onLine){
-            addToSyncIssues("getTrees", "Could not get last local/remote tree for location " + location.uuid + ": " + e.toString())
+            ipc.addSyncIssue({
+                uuid: uuidv4(),
+                type: "critical",
+                where: "local",
+                path: pathModule.normalize(location.local),
+                err: e,
+                info: "Could not get last local/remote directory tree for location " + location.uuid,
+                timestamp: new Date().getTime()
+            }).catch(console.error)
         }
 
         emitSyncStatusLocation("getTrees", {
@@ -2784,7 +2889,15 @@ const syncLocation = async (location: Location): Promise<boolean> => {
         log.error("Could not get deltas for location " + location.uuid)
         log.error(e)
 
-        addToSyncIssues("getDeltas", "Could not get deltas: " + e.toString())
+        ipc.addSyncIssue({
+            uuid: uuidv4(),
+            type: "critical",
+            where: "local",
+            path: pathModule.normalize(location.local),
+            err: e,
+            info: "Could not get deltas for location " + location.uuid,
+            timestamp: new Date().getTime()
+        }).catch(console.error)
 
         emitSyncStatusLocation("getDeltas", {
             status: "err",
@@ -2822,7 +2935,15 @@ const syncLocation = async (location: Location): Promise<boolean> => {
         log.error("Could not consume deltas for location " + location.uuid)
         log.error(e)
 
-        addToSyncIssues("consumeDeltas", "Could not consume deltas for location " + location.uuid + ": " + e.toString())
+        ipc.addSyncIssue({
+            uuid: uuidv4(),
+            type: "critical",
+            where: "local",
+            path: pathModule.normalize(location.local),
+            err: e,
+            info: "Could not get consume deltas for location " + location.uuid,
+            timestamp: new Date().getTime()
+        }).catch(console.error)
 
         emitSyncStatusLocation("consumeDeltas", {
             status: "err",
@@ -2860,8 +2981,6 @@ const syncLocation = async (location: Location): Promise<boolean> => {
         log.error("Could not consume tasks for location " + location.uuid)
         log.error(e)
 
-        //addToSyncIssues("consumeTasks", "Could not consume tasks for location " + location.uuid + ": " + e.toString())
-
         emitSyncStatusLocation("consumeTasks", {
             status: "err",
             location,
@@ -2881,10 +3000,10 @@ const syncLocation = async (location: Location): Promise<boolean> => {
     })
 
     try{
-        const syncIssues: SyncIssue[] | null = await db.get("syncIssues")
+        const syncIssues = await ipc.getSyncIssues()
 
-        if(Array.isArray(syncIssues) && syncIssues.length > 10){
-            log.info("Got open sync issues after consume, won't apply anything to saved state")
+        if(syncIssues.filter(issue => issue.type == "critical").length > 0){
+            log.info("Got critical sync issues after consume, won't apply anything to saved state")
 
             updateLocationBusyStatus(location.uuid, false)
 
@@ -2894,8 +3013,6 @@ const syncLocation = async (location: Location): Promise<boolean> => {
     catch(e: any){
         log.error("Could not get sync issues after consume for location " + location.uuid)
         log.error(e)
-
-        //addToSyncIssues("getSyncIssuesAfterConsume", "Could not get sync issues after consume for location " + location.uuid + ": " + e.toString())
 
         updateLocationBusyStatus(location.uuid, false)
 
@@ -2916,7 +3033,15 @@ const syncLocation = async (location: Location): Promise<boolean> => {
         log.error("Could not apply " + doneTasks.length + " done tasks to saved state for location " + location.uuid)
         log.error(e)
 
-        addToSyncIssues("applyDoneTasksToSavedState", "Could not apply " + doneTasks.length + " done tasks to saved state for location " + location.uuid + ": " + e.toString())
+        ipc.addSyncIssue({
+            uuid: uuidv4(),
+            type: "critical",
+            where: "local",
+            path: pathModule.normalize(location.local),
+            err: e,
+            info: "Could not apply " + doneTasks.length + " done tasks to saved state for location " + location.uuid,
+            timestamp: new Date().getTime()
+        }).catch(console.error)
 
         emitSyncStatusLocation("applyDoneTasksToSavedState", {
             status: "err",
@@ -2952,7 +3077,15 @@ const syncLocation = async (location: Location): Promise<boolean> => {
         log.error("Could not save lastLocalTree to DB for location " + location.uuid)
         log.error(e)
 
-        addToSyncIssues("db", "Could not save lastLocalTree to DB for location " + location.uuid + ": " + e.toString())
+        ipc.addSyncIssue({
+            uuid: uuidv4(),
+            type: "critical",
+            where: "local",
+            path: pathModule.normalize(location.local),
+            err: e,
+            info: "Could not save lastLocalTree to DB for location " + location.uuid,
+            timestamp: new Date().getTime()
+        }).catch(console.error)
 
         emitSyncStatusLocation("cleanup", {
             status: "err",
@@ -3010,8 +3143,6 @@ const sync = async (): Promise<any> => {
 
         log.error(e)
 
-        //addToSyncIssues("getIsLoggedIn", "Could not get logged in status: " + e.toString())
-
         return startSyncLoop()
     }
 
@@ -3020,10 +3151,10 @@ const sync = async (): Promise<any> => {
     })
 
     try{
-        var [userId, masterKeys, syncIssues, paused]: [ number | null, string[] | null, SyncIssue[] | null, boolean | null ] = await Promise.all([
+        var [userId, masterKeys, syncIssues, paused]: [ number | null, string[] | null, SyncIssue[], boolean | null ] = await Promise.all([
             db.get("userId"),
             db.get("masterKeys"),
-            db.get("syncIssues"),
+            ipc.getSyncIssues(),
             db.get("paused")
         ])
 
@@ -3037,8 +3168,6 @@ const sync = async (): Promise<any> => {
         log.error("Could not fetch syncLocations from DB")
         log.error(e)
 
-        //addToSyncIssues("getIsLoggedIn", "Could not fetch syncLocations from DB: " + e.toString()).catch(log.error)
-
         emitSyncStatus("init", {
             status: "err",
             err: e
@@ -3047,16 +3176,16 @@ const sync = async (): Promise<any> => {
         return startSyncLoop()
     }
 
-    if(Array.isArray(syncIssues) && syncIssues.length > 10){
+    if(syncIssues.filter(issue => issue.type == "critical").length > 0){
         syncMutex.release()
 
         eventListener.emit("syncLoopDone")
 
-        log.info("Will not continue, got open sync issues, need user intervention")
+        log.info("Will not continue, got critical sync issue, need user intervention")
 
         emitSyncStatus("init", {
             status: "err",
-            err: "Will not continue, got open sync issues, need user intervention"
+            err: "Will not continue, got critical sync issue, need user intervention"
         })
 
         return startSyncLoop()
@@ -3074,8 +3203,6 @@ const sync = async (): Promise<any> => {
             err: "User id not found, instead found: " + typeof userId
         })
 
-        //addToSyncIssues("getUserId", "User id not found, instead found: " + typeof userId).catch(log.error)
-
         return startSyncLoop()
     }
 
@@ -3090,8 +3217,6 @@ const sync = async (): Promise<any> => {
             status: "err",
             err: "Master keys not found, instead found: " + typeof masterKeys
         })
-
-        //addToSyncIssues("getUserId", "User id not found, instead found: " + typeof userId).catch(log.error)
 
         return startSyncLoop()
     }
@@ -3177,8 +3302,6 @@ const sync = async (): Promise<any> => {
             catch(e: any){
                 log.error("Sync task for location " + syncLocations[i].uuid + " failed, reason:")
                 log.error(e)
-
-                //addToSyncIssues("sync", "Could not sync " + syncLocations[i].local + " <-> " + syncLocations[i].remote + ": " + e.toString())
                 
                 emitSyncStatus("sync", {
                     status: "err",
@@ -3216,6 +3339,16 @@ const sync = async (): Promise<any> => {
 
     return startSyncLoop()
 }
+
+ipc.addSyncIssue({
+    uuid: uuidv4(),
+    type: "warning",
+    where: "local",
+    path: "/this/is/aPath",
+    err: new Error("lol"),
+    info:"yajajajaa infooo",
+    timestamp: new Date().getTime()
+}).catch(console.error)
 
 setInterval(startSyncLoop, (SYNC_TIMEOUT * 1.5))
 

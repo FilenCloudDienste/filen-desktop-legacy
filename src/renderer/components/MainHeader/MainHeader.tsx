@@ -1,4 +1,4 @@
-import React, { memo, useState, useEffect, useCallback } from "react"
+import React, { memo, useState, useEffect, useCallback, useMemo } from "react"
 import { Flex, Text, Spinner, Avatar } from "@chakra-ui/react"
 import useDb from "../../lib/hooks/useDb"
 import { formatBytes } from "../../lib/helpers"
@@ -11,6 +11,7 @@ import { GoIssueReopened } from "react-icons/go"
 import MainHeaderMenu from "./MainHeaderMenu"
 import { throttle } from "lodash"
 import { i18n } from "../../lib/i18n"
+import useSyncIssues from "../../lib/hooks/useSyncIssues"
 
 const log = window.require("electron-log")
 
@@ -27,7 +28,7 @@ export interface MainHeaderProps {
 
 const MainHeader = memo(({ userId, email, platform, darkMode, lang, doneTasks, currentUploads, currentDownloads }: MainHeaderProps) => {
     const paused: boolean = useDb("paused", false)
-    const syncIssues: any = useDb("syncIssues", [])
+    const syncIssues = useSyncIssues()
     const [userInfo, setUserInfo] = useState<any>(undefined)
 
     const updateUserUsage = useCallback(throttle(() => {
@@ -37,6 +38,13 @@ const MainHeader = memo(({ userId, email, platform, darkMode, lang, doneTasks, c
             }).catch(log.error)
         }).catch(log.error)
     }, 5000), [])
+
+    const [filteredSyncIssues, syncIssuesIncludesCritical] = useMemo(() => {
+        const filtered = syncIssues.filter(issue => ["critical", "conflict", "warning"].includes(issue.type))
+        const includesCritical = filtered.filter(issue => issue.type == "critical").length > 0
+
+        return [filtered, includesCritical]
+    }, [syncIssues])
 
     useEffect(() => {
         updateUserUsage()
@@ -193,7 +201,7 @@ const MainHeader = memo(({ userId, email, platform, darkMode, lang, doneTasks, c
                     )
                 }
                 {
-                    Array.isArray(syncIssues) && syncIssues.length > 0 && (
+                    filteredSyncIssues.length > 0 && (
                         <Flex 
                             width="32px" 
                             height="32px" 
@@ -210,7 +218,7 @@ const MainHeader = memo(({ userId, email, platform, darkMode, lang, doneTasks, c
                             <GoIssueReopened
                                 size={24}
                                 cursor="pointer" 
-                                color="rgba(255, 69, 58, 1)" 
+                                color={syncIssuesIncludesCritical ? "rgba(255, 69, 58, 1)" : "rgba(255, 149, 0, 1)"} 
                             />
                         </Flex>
                     )

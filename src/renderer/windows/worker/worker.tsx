@@ -12,6 +12,7 @@ import type { Location, SyncIssue } from "../../../types"
 import { listen as socketListen } from "../../lib/worker/socket"
 import { debounce } from "lodash"
 import { initLocalTrashDirs } from "../../lib/fs/local"
+import useSyncIssues from "../../lib/hooks/useSyncIssues"
 
 const log = window.require("electron-log")
 
@@ -24,7 +25,7 @@ export const checkInternet = async () => {
 const WorkerWindow = memo(() => {
     const initDone = useRef<boolean>(false)
     const isOnline: boolean = useIsOnline()
-    const syncIssues: any = useDb("syncIssues", [])
+    const syncIssues = useSyncIssues()
     const paused: boolean = useDb("paused", false)
     const [runningSyncTasks, setRunningSyncTasks] = useState<number>(0)
     const appVersion: string = useAppVersion()
@@ -62,7 +63,6 @@ const WorkerWindow = memo(() => {
             updateKeys().then(() => {
                 Promise.all([
                     db.set("paused", false),
-                    db.set("syncIssues", []),
                     db.set("maxStorageReached", false),
                     db.set("suspend", false),
                     db.set("uploadPaused", false),
@@ -89,52 +89,64 @@ const WorkerWindow = memo(() => {
     const processTray = useCallback(debounce((isLoggedIn: boolean, isOnline: boolean, paused: boolean, syncIssues: SyncIssue[], runningSyncTasks: number) => {
         if(!isLoggedIn){
             updateTray("paused", "Please login")
+
+            return
         }
-        else{
-            if(!isOnline){
-                updateTray("error", "You are offline")
-            }
-            else{
-                if(paused){
-                    updateTray("paused", "Paused")
-                }
-                else{
-                    if(syncIssues.length > 0){
-                        updateTray("error", syncIssues.length + " sync issues")
-                    }
-                    else{
-                        if(runningSyncTasks > 0){
-                            updateTray("sync", "Syncing " + runningSyncTasks + " items")
+        
+        if(!isOnline){
+            updateTray("error", "You are offline")
+
+            return
+        }
+        
+        if(paused){
+            updateTray("paused", "Paused")
+
+            return
+        }
+        
+        if(syncIssues.filter(issue => issue.type == "critical").length > 0){
+            updateTray("error", syncIssues.length + " sync issues")
+
+            return
+        }
+        
+        if(runningSyncTasks > 0){
+            updateTray("sync", "Syncing " + runningSyncTasks + " items")
+
+            return
+        }
+        
+        db.get("userId").then((userId: number) => {
+            db.get("syncLocations:" + userId).then((syncLocations: any) => {
+                if(Array.isArray(syncLocations) && syncLocations.length > 0){
+                    if(syncLocations.filter(item => typeof item.remoteUUID == "string").length > 0){
+                        const warnings = syncIssues.filter(issue => issue.type == "conflict" || issue.type == "warning").length
+
+                        if(warnings > 0){
+                            updateTray("paused", warnings + " warnings")
                         }
                         else{
-                            db.get("userId").then((userId: number) => {
-                                db.get("syncLocations:" + userId).then((syncLocations: any) => {
-                                    if(Array.isArray(syncLocations) && syncLocations.length > 0){
-                                        if(syncLocations.filter(item => typeof item.remoteUUID == "string").length > 0){
-                                            updateTray("normal", "Everything synced")
-                                        }
-                                        else{
-                                            updateTray("paused", "No sync remote locations setup yet")
-                                        }
-                                    }
-                                    else{
-                                        updateTray("paused", "No sync locations setup yet")
-                                    }
-                                }).catch((err) => {
-                                    log.error(err)
-
-                                    updateTray("normal", "Everything synced")
-                                })
-                            }).catch((err) => {
-                                log.error(err)
-
-                                updateTray("normal", "Everything synced")         
-                            })
+                            updateTray("normal", "Everything synced")
                         }
                     }
+                    else{
+                        updateTray("paused", "No sync remote locations setup yet")
+                    }
                 }
-            }
-        }
+                else{
+                    updateTray("paused", "No sync locations setup yet")
+                }
+            }).catch((err) => {
+                log.error(err)
+
+                updateTray("normal", "Everything synced")
+            })
+        }).catch((err) => {
+            log.error(err)
+
+            updateTray("normal", "Everything synced")         
+        })
     }, 250), [appVersion])
 
     useEffect(() => {
