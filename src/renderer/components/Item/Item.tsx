@@ -13,7 +13,7 @@ import { copyToClipboard } from "../../lib/helpers"
 import { decryptFolderLinkKey } from "../../lib/crypto"
 import db from "../../lib/db"
 import { v4 as uuidv4 } from "uuid"
-import type { ItemProps } from "../../../types"
+import { ItemProps } from "../../../types"
 import { createLocalTrashDirs } from "../../lib/fs/local"
 
 const pathModule = window.require("path")

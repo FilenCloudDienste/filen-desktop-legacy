@@ -23,11 +23,10 @@ import { showToast } from "../../components/Toast"
 import { encryptData, encryptMetadata, hashFn } from "../../lib/crypto"
 import useDb from "../../lib/hooks/useDb"
 import { AiOutlinePauseCircle } from "react-icons/ai"
-import type { Stats } from "fs-extra"
+import { Stats } from "fs-extra"
 
 const log = window.require("electron-log")
 const pathModule = window.require("path")
-const fs = window.require("fs-extra")
 const mimeTypes = window.require("mime-types")
 const readdirp = window.require("readdirp")
 const { ipcRenderer } = window.require("electron")
@@ -86,8 +85,12 @@ const uploadFile = (path: string, parent: string): Promise<boolean> => {
             db.get("apiKey"),
             db.get("masterKeys")
         ]).then(([apiKey, masterKeys]) => {
-            fsLocal.smokeTest(absolutePath).then(() => {
-                fsLocal.gracefulLStat(absolutePath).then(async (stat: Stats) => {
+            fsLocal.canReadAtPath(absolutePath).then((canRead) => {
+                if(!canRead){
+                    return reject(new Error("Cannot read file, permission denied: " + absolutePath))
+                }
+
+                fsLocal.gracefulLStat(absolutePath).then(async (stat) => {
                     const size = parseInt(stat.size.toString())
                     const lastModified =  Math.floor(stat.mtimeMs)
                     const mime = mimeTypes.lookup(name) || ""
@@ -310,7 +313,7 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number, email:
                 try{
                     const stat = await fsLocal.gracefulLStat(pathModule.normalize(files[i]))
 
-                    if(!stat.isDirectory()){
+                    if(!stat.isDir){
                         if(stat.size > 0){
                             filesToUpload.push(files[i])
     
@@ -357,12 +360,16 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number, email:
                         const folders: any = {}
                         const files: any = {}
     
-                        fsLocal.gracefulLStat(basePath).then((stat: any) => {
-                            if(!stat.isDirectory()){
+                        fsLocal.gracefulLStat(basePath).then((stat) => {
+                            if(!stat.isDir){
                                 return reject(pathModule.basename(basePath) + " is not a directory")
                             }
             
-                            fsLocal.smokeTest(basePath).then(() => {
+                            fsLocal.canReadAtPath(basePath).then((canRead) => {
+                                if(!canRead){
+                                    return reject(pathModule.basename(basePath) + " cannot read, permission denied")
+                                }
+
                                 let statting = 0
 
                                 const dirStream = readdirp(basePath, {
@@ -382,8 +389,8 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number, email:
 
                                         item.stats = await fsLocal.gracefulLStat(item.fullPath)
                         
-                                        if(!item.stats.isSymbolicLink()){
-                                            if(item.stats.isDirectory()){
+                                        if(!item.stats.isLink){
+                                            if(item.stats.isDir){
                                                 folders[item.path] = {
                                                     name: item.basename,
                                                     lastModified: convertTimestampToMs(parseInt(item.stats.mtimeMs.toString())) //.toString() because of BigInt

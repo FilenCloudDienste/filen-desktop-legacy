@@ -7,8 +7,6 @@ import useDb from "./lib/hooks/useDb"
 const startingRoute = window.location.hash.replace("#", "").split("/")
 const getParams = new URLSearchParams(window.location.search)
 
-const log = window.require("electron-log")
-
 console.log(startingRoute[0])
 
 const customTheme = {

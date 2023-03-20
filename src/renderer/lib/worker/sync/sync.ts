@@ -29,7 +29,7 @@ import {
     clearApplyDoneTasks
 } from "./sync.utils"
 import { sendToAllPorts } from "../ipc"
-import type { SemaphoreInterface, Delta, Location, SyncIssue } from "../../../../types"
+import { SemaphoreInterface, Delta, Location, SyncIssue } from "../../../../types"
 import { checkInternet } from "../../../windows/worker/worker"
 import ipc from "../../ipc"
 import eventListener from "../../eventListener"
@@ -1733,7 +1733,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                                         
                                     }
                                     
-                                    const promise = task.type == "folder" ? fsLocal.mkdir(task.path, location, task) : fsLocal.download(task.path, location, task)
+                                    const promise = task.type == "folder" ? fsLocal.mkdir(task.path, location) : fsLocal.download(task.path, location, task)
     
                                     promise.then((result) => {
                                         emitSyncTask("downloadFromRemote", {

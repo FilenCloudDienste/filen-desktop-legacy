@@ -2,16 +2,15 @@ import { folderPresent, dirTree, createFolder, folderExists, uploadChunk, markUp
 import db from "../../db"
 import { decryptFolderName, decryptFileMetadata, hashFn, encryptMetadata, encryptData } from "../../crypto"
 import { convertTimestampToMs, pathIsFileOrFolderNameIgnoredByDefault, generateRandomString, Semaphore, isFolderPathExcluded, pathValidation, isPathOverMaxLength, isNameOverMaxLength, pathIncludesDot } from "../../helpers"
-import { normalizePath, smokeTest as smokeTestLocal, readChunk, checkLastModified, gracefulLStat} from "../local"
+import { normalizePath, canReadAtPath, readChunk, checkLastModified, gracefulLStat, exists } from "../local"
 import { chunkSize, maxUploadThreads } from "../../constants"
 import { v4 as uuidv4 } from "uuid"
 import { sendToAllPorts } from "../../worker/ipc"
 import { remoteStorageLeft } from "../../user/info"
 import { isSyncLocationPaused } from "../../worker/sync/sync.utils"
-import { exists } from "../local"
 import memoryCache from "../../memoryCache"
-import type { RemoteItem, RemoteUUIDs, RemoteDirectoryTreeResult } from "../../../../types"
-import type { Stats } from "fs-extra"
+import { RemoteItem, RemoteUUIDs, RemoteDirectoryTreeResult } from "../../../../types"
+import { Stats } from "fs-extra"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
@@ -541,7 +540,11 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
             db.get("masterKeys"),
             remoteStorageLeft()
         ]).then(([apiKey, masterKeys, remoteStorageFree]) => {
-            smokeTestLocal(absolutePath).then(() => {
+            canReadAtPath(absolutePath).then((canRead) => {
+                if(!canRead){
+                    return reject(new Error("Cannot read file, permission denied: " + absolutePath))
+                }
+
                 checkLastModified(absolutePath).then((checkLastModifiedRes) => {
                     const size = parseInt(task.item.size.toString())
 

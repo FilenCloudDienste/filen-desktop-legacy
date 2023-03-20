@@ -1,11 +1,10 @@
 import { defaultIgnored, speedMultiplier } from "../constants"
-import { memoize } from "lodash"
-import type { SemaphoreInterface } from "../../../types"
+import { SemaphoreInterface } from "../../../types"
 
 const pathModule = window.require("path")
 const is = window.require("electron-is")
 
-export const isPathOverMaxLength = memoize((path: string) => {
+export const isPathOverMaxLength = (path: string) => {
 	if(is.linux()){
 		return path.length > 4095
 	}
@@ -17,9 +16,9 @@ export const isPathOverMaxLength = memoize((path: string) => {
 	}
 
 	return path.length > 399
-})
+}
 
-export const isNameOverMaxLength = memoize((name: string) => {
+export const isNameOverMaxLength = (name: string) => {
 	if(is.linux()){
 		return name.length > 255
 	}
@@ -31,30 +30,30 @@ export const isNameOverMaxLength = memoize((name: string) => {
 	}
 
 	return name.length > 255
-})
+}
 
-export const pathIncludesDot = memoize((path: string) => {
-  	return (path.indexOf("/.") !== -1 || path.startsWith("."))
-})
+export const pathIncludesDot = (path: string) => {
+	return (path.indexOf("/.") !== -1 || path.startsWith("."))
+}
 
-export const isSubdir = memoize((parent: string, path: string) => {
+export const isSubdir = (parent: string, path: string) => {
 	const relative = pathModule.relative(parent, path)
 	const isSubdir = relative && !relative.startsWith("..") && !pathModule.isAbsolute(relative)
 
 	return isSubdir
-}, (parent: string, path: string) => parent + ":" + path)
+}
 
-export const normalizePlatform = memoize((platform: string) => {
+export const normalizePlatform = (platform: string) => {
 	if(platform == "darwin"){
 		return "mac"
 	}
-	else if(platform == "linux"){
+	
+	if(platform == "linux"){
 		return "linux"
 	}
-	else{
-		return "windows"
-	}
-})
+	
+	return "windows"
+}
 
 export const getRandomArbitrary = (min: number, max: number) => {
     return Math.floor(Math.random() * (max - min) + min)
@@ -64,7 +63,7 @@ export const sleep = (ms: number = 1000) => {
     return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-export const fileAndFolderNameValidation = memoize((name: string) => {
+export const fileAndFolderNameValidation = (name: string) => {
 	const regex = /[<>:"\/\\|?*\x00-\x1F]|^(?:aux|con|clock\$|nul|prn|com[1-9]|lpt[1-9])$/i
 
 	if(regex.test(name)){
@@ -72,9 +71,9 @@ export const fileAndFolderNameValidation = memoize((name: string) => {
 	}
 
 	return true
-})
+}
 
-export const pathValidation = memoize((path: string) => {
+export const pathValidation = (path: string) => {
 	if(path.indexOf("/") == -1){
 		return fileAndFolderNameValidation(path)
 	}
@@ -88,9 +87,9 @@ export const pathValidation = memoize((path: string) => {
 	}
 
 	return true
-})
+}
 
-export const compareVersions = memoize((current: string, got: string) => {
+export const compareVersions = (current: string, got: string) => {
 	function compare(a: string, b: string) {
 		if (a === b) {
 		   return 0;
@@ -130,7 +129,7 @@ export const compareVersions = memoize((current: string, got: string) => {
 	else{
 		return "ok"
 	}
-})
+}
 
 export const formatBytes = (bytes: number, decimals: number = 2) => {
 	if(bytes == 0){
@@ -179,17 +178,17 @@ export const arrayBufferToHex = (buffer: any) => {
     return [...new Uint8Array(buffer)].map(x => x.toString(16).padStart(2, "0")).join("")
 }
 
-export const getParentFromURL = memoize((url: string) => {
+export const getParentFromURL = (url: string) => {
 	const ex = url.split("/")
 
 	return ex[ex.length - 1].trim()
-})
+}
 
-export const getParentFromParentFromURL = memoize((url: string) => {
+export const getParentFromParentFromURL = (url: string) => {
 	const ex = url.split("/")
 
 	return ex[ex.length - 2].trim()
-})
+}
 
 export const base64ToArrayBuffer = (base64: string) => {
     const binary_string = window.atob(base64)
@@ -339,7 +338,7 @@ export const Semaphore = function(this: SemaphoreInterface, max: number) {
     }
 } as any as { new (max: number): SemaphoreInterface; };
 
-export const convertTimestampToMs = memoize((timestamp: number): number => {
+export const convertTimestampToMs = (timestamp: number): number => {
 	const date = new Date(timestamp * 1000)
 
 	if(date.getFullYear() > 2100){
@@ -348,9 +347,9 @@ export const convertTimestampToMs = memoize((timestamp: number): number => {
 	else{
 		return Math.floor(timestamp * 1000)
 	}
-})
+}
 
-export const isSystemPathExcluded = memoize((path: string): boolean => {
+export const isSystemPathExcluded = (path: string): boolean => {
 	const real = path
 
 	path = path.toLowerCase()
@@ -365,9 +364,9 @@ export const isSystemPathExcluded = memoize((path: string): boolean => {
 	}
 
   	return false
-})
+}
 
-export const isFolderPathExcluded = memoize((path: string): boolean => {
+export const isFolderPathExcluded = (path: string): boolean => {
 	const real = path
 
 	path = path.toLowerCase()
@@ -382,9 +381,9 @@ export const isFolderPathExcluded = memoize((path: string): boolean => {
 	}
 
   	return false
-})
+}
 
-export const isFileOrFolderNameIgnoredByDefault = memoize((name: string): boolean => {
+export const isFileOrFolderNameIgnoredByDefault = (name: string): boolean => {
 	if(typeof name !== "string"){
 		return true
 	}
@@ -452,9 +451,9 @@ export const isFileOrFolderNameIgnoredByDefault = memoize((name: string): boolea
 	}
 
 	return false
-})
+}
 
-export const pathIsFileOrFolderNameIgnoredByDefault = memoize((path: string) => {
+export const pathIsFileOrFolderNameIgnoredByDefault = (path: string) => {
 	if(path.indexOf("/") == -1){
 		return isFileOrFolderNameIgnoredByDefault(path)
 	}
@@ -468,9 +467,9 @@ export const pathIsFileOrFolderNameIgnoredByDefault = memoize((path: string) => 
 	}
 
 	return false
-})
+}
 
-export const pathToLowerCaseExtFileName = memoize((path: string) => {
+export const pathToLowerCaseExtFileName = (path: string) => {
 	if(path.indexOf(".") == -1){
 		return path
 	}
@@ -495,9 +494,9 @@ export const pathToLowerCaseExtFileName = memoize((path: string) => {
 	const fileNameWithLowerCaseEnding = pathEx.join("/") + "/" + fileNameEx.join(".") + "." + lowerCaseFileEnding
 
 	return fileNameWithLowerCaseEnding
-})
+}
 
-export const fileNameToLowerCaseExt = memoize((name: string) => {
+export const fileNameToLowerCaseExt = (name: string) => {
 	if(name.indexOf(".") == -1){
 		return name
 	}
@@ -510,7 +509,7 @@ export const fileNameToLowerCaseExt = memoize((name: string) => {
 	const fileNameWithLowerCaseEnding = fileNameEx.join(".") + "." + lowerCaseFileEnding
 
 	return fileNameWithLowerCaseEnding
-})
+}
 
 export const bpsToReadable = (bps: number) => {
 	if(!(bps > 0 && bps < (1024 * 1024 * 1024 * 1024))){
@@ -602,17 +601,13 @@ export function timeSince(ts: number, lang: string = "en") {
 	return Math.floor(seconds) + " seconds ago";
 }
 
-export const copyToClipboard = (text: string): Promise<boolean> => {
-	return new Promise((resolve, reject) => {
-		try{
-			navigator.clipboard.writeText(text)
-
-			return resolve(true)
-		}
-		catch(e){
-			return reject(e)
-		}
-	})
+export const copyToClipboard = async (text: string) => {
+	try{
+		navigator.clipboard.writeText(text)
+	}
+	catch(e){
+		throw e
+	}
 }
 
 export const calcSpeed = (now: number, started: number, bytes: number): number => {
@@ -632,6 +627,6 @@ export const calcTimeLeft = (loadedBytes: number, totalBytes: number, started: n
 	return remaining > 0 ? remaining : 0
 }
 
-export const windowsPathToUnixStyle = memoize((path: string) => {
-  	return path.split("\\").join("/")
-})
+export const windowsPathToUnixStyle = (path: string) => {
+	return path.split("\\").join("/")
+}

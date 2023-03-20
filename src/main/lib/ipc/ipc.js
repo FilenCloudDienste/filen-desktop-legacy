@@ -521,6 +521,112 @@ ipcMain.handle("clearSyncIssues", async () => {
     return true
 })
 
+ipcMain.handle("fsNormalizePath", async (_, path) => {
+    return require("../fs/local").normalizePath(path)
+})
+
+ipcMain.handle("fsGetTempDir", async () => {
+    return require("../fs/local").getTempDir()
+})
+
+ipcMain.handle("fsGracefulLStat", async (_, path) => {
+    return await require("../fs/local").gracefulLStat(path)
+})
+
+ipcMain.handle("fsExists", async (_, path) => {
+    return await require("../fs/local").exists(path)
+})
+
+ipcMain.handle("fsDoesExistLocally", async (_, path) => {
+    return await require("../fs/local").doesExistLocally(path)
+})
+
+ipcMain.handle("fsCanReadWriteAtPath", async (_, path) => {
+    return await require("../fs/local").canReadWriteAtPath(path)
+})
+
+ipcMain.handle("fsSmokeTest", async (_, path) => {
+    return await require("../fs/local").smokeTest(path)
+})
+
+ipcMain.handle("fsReadChunk", async (_, { path, offset, length }) => {
+    return await require("../fs/local").readChunk(path, offset, length)
+})
+
+ipcMain.handle("fsRm", async (_, { path, location }) => {
+    return await require("../fs/local").rm(path, location)
+})
+
+ipcMain.handle("fsRmPermanent", async (_, path) => {
+    return await require("../fs/local").rmPermanent(path)
+})
+
+ipcMain.handle("fsMkdir", async (_, { path, location }) => {
+    return await require("../fs/local").mkdir(path, location)
+})
+
+ipcMain.handle("fsMove", async (_, { before, after, overwrite }) => {
+    return await require("../fs/local").move(before, after, overwrite)
+})
+
+ipcMain.handle("fsRename", async (_, { before, after }) => {
+    return await require("../fs/local").rename(before, after)
+})
+
+ipcMain.handle("fsCreateLocalTrashDirs", async () => {
+    return await require("../fs/local").createLocalTrashDirs()
+})
+
+ipcMain.handle("fsClearLocalTrashDirs", async (_, clearNow) => {
+    return await require("../fs/local").clearLocalTrashDirs(clearNow)
+})
+
+ipcMain.handle("fsInitLocalTrashDirs", async (_, interval) => {
+    require("../fs/local").initLocalTrashDirs(interval)
+
+    return true
+})
+
+ipcMain.handle("fsCheckLastModified", async (_, path) => {
+    return await require("../fs/local").checkLastModified(path)
+})
+
+ipcMain.handle("fsCanReadAtPath", async (_, path) => {
+    return await require("../fs/local").canReadAtPath(path)
+})
+
+ipcMain.handle("fsIsFileBusy", async (_, path) => {
+    return await require("../fs/local").isFileBusy(path)
+})
+
+ipcMain.handle("fsDirectoryTree", async (_, { path, skipCache, location }) => {
+    return await require("../fs/local").directoryTree(path, skipCache, location)
+})
+
+ipcMain.handle("fsUnlink", async (_, path) => {
+    return await require("../fs/local").unlink(path)
+})
+
+ipcMain.handle("fsUtimes", async (_, { path, atime, mtime }) => {
+    return await require("../fs/local").utimes(path, atime, mtime)
+})
+
+ipcMain.handle("fsRemove", async (_, path) => {
+    return await require("../fs/local").remove(path)
+})
+
+ipcMain.handle("fsMkdirNormal", async (_, { path, options }) => {
+    return await require("../fs/local").mkdirNormal(path, options)
+})
+
+ipcMain.handle("fsAccess", async (_, { path, mode }) => {
+    return await require("../fs/local").access(path, mode)
+})
+
+ipcMain.handle("fsAppendFile", async (_, { path, data, options }) => {
+    return await require("../fs/local").appendFile(path, data, options)
+})
+
 const updateKeybinds = () => {
     return new Promise((resolve, reject) => {
         require("../db").get("keybinds").then((keybinds) => {
@@ -650,8 +756,13 @@ const listen = () => {
     })
 }
 
+const addSyncIssue = (issue) => {
+    syncIssues.push(issue)
+}
+
 module.exports = {
     listen,
     emitGlobal,
-    updateKeybinds
+    updateKeybinds,
+    addSyncIssue
 }

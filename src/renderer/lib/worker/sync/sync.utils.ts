@@ -3,7 +3,7 @@ import { sendToAllPorts } from "../ipc"
 import { memoize } from "lodash"
 import { isSubdir, Semaphore } from "../../helpers"
 import ipc from "../../ipc"
-import type { Location, SyncModes } from "../../../../types"
+import { Location, SyncModes } from "../../../../types"
 
 const log = window.require("electron-log")
 const gitignoreParser = window.require("@gerhobbelt/gitignore-parser")

@@ -144,7 +144,7 @@ const downloadFile = (absolutePath: string, file: any) => {
                     })
                 }
                 catch(e){
-                    fs.unlink(fileTmpPath)
+                    fsLocal.unlink(fileTmpPath).catch(log.error)
 
                     return reject(e)
                 }
@@ -154,7 +154,7 @@ const downloadFile = (absolutePath: string, file: any) => {
                 const utimesLastModified = typeof lastModified == "number" && lastModified > 0 && now > lastModified ? lastModified : (now - 60000)
 
                 fsLocal.move(fileTmpPath, absolutePath).then(() => {
-                    fs.utimes(absolutePath, new Date(utimesLastModified), new Date(utimesLastModified)).then(() => {
+                    fsLocal.utimes(absolutePath, new Date(utimesLastModified).getTime(), new Date(utimesLastModified).getTime()).then(() => {
                         fsLocal.checkLastModified(absolutePath).then(() => {
                             fsLocal.gracefulLStat(absolutePath).then((stat: any) => {
                                 if(stat.size <= 0){
@@ -387,9 +387,8 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }: 
 
                     fsLocal.smokeTest(pathModule.normalize(pathModule.join(baseDownloadPath, ".."))).then(() => {
                         fsLocal.rmPermanent(baseDownloadPath).then(() => {
-                            fs.mkdir(baseDownloadPath, {
-                                recursive: true,
-                                overwrite: true
+                            fsLocal.mkdirNormal(baseDownloadPath, {
+                                recursive: true
                             }).then(async () => {
                                 setIsDownloading(true)
                                 setIsGettingTree(false)
@@ -398,9 +397,8 @@ const DownloadFolder = memo(({ userId, email, platform, darkMode, lang, args }: 
 
                                 for(const path in obj.folders){
                                     try{
-                                        await fs.mkdir(pathModule.normalize(pathModule.join(baseDownloadPath, path)), {
-                                            recursive: true,
-                                            overwrite: true
+                                        await fsLocal.mkdirNormal(pathModule.normalize(pathModule.join(baseDownloadPath, path)), {
+                                            recursive: true
                                         })
 
                                         foldersCreated += 1
@@ -812,7 +810,7 @@ const DownloadFile = memo(({ userId, email, platform, darkMode, lang, args }: { 
         setIsDownloading(true)
 
         fsLocal.smokeTest(downloadPath).then(() => {
-            fs.remove(downloadPath).then(() => {
+            fsLocal.remove(downloadPath).then(() => {
                 downloadFile(downloadPath, args.file).then(() => {
                     setIsDownloading(false)
                 }).catch((err: any) => {

@@ -1,7 +1,7 @@
 import memoryCache from "../memoryCache"
 import { arrayBufferToHex, base64ToArrayBuffer, arrayBufferToBase64, generateRandomString, convertArrayBufferToBinaryString, convertWordArrayToArrayBuffer } from "../helpers"
 import striptags from "striptags"
-import type { RemoteFileMetadata } from "../../../types"
+import { RemoteFileMetadata } from "../../../types"
 
 const CryptoJS = window.require("crypto-js")
 const md2 = window.require("js-md2")
