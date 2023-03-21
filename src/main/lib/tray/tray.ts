@@ -1,8 +1,11 @@
-const { Tray, nativeImage } = require("electron")
-const path = require("path")
-const log = require("electron-log")
-const trayWindowPositioner = require("electron-traywindow-positioner")
-const { exec } = require("child_process")
+import { Tray, nativeImage, BrowserWindow } from "electron"
+import path from "path"
+import log from "electron-log"
+// @ts-ignore
+import trayWindowPositioner from "electron-traywindow-positioner"
+import { exec } from "child_process"
+import memoryCache from "../memoryCache"
+import { buildMenu, createMenu } from "../trayMenu/trayMenu"
 
 const TRAY_ICON_NORMAL = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/normal@2x.png")).resize({ width: 16, height: 16 })
 const TRAY_ICON_SYNC = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/sync@2x.png")).resize({ width: 16, height: 16 })
@@ -10,9 +13,9 @@ const TRAY_ICON_PAUSED = nativeImage.createFromPath(path.join(__dirname, "../../
 const TRAY_ICON_ISSUE = nativeImage.createFromPath(path.join(__dirname, "../../../../src/assets/icons/tray/issue@2x.png")).resize({ width: 16, height: 16 })
 
 // XFCE etc.
-const linuxCheckStatusNotifierPlugin = () => {
+export const linuxCheckStatusNotifierPlugin = (): Promise<boolean> => {
     return new Promise((resolve, reject) => {
-        exec("/sbin/ldconfig -p | grep statusnotifier-plugin", (err, stdout, stderr) => {
+        exec("/sbin/ldconfig -p | grep statusnotifier-plugin", (err, _, stderr) => {
             if(err){
                 return reject(err)
             }
@@ -27,9 +30,9 @@ const linuxCheckStatusNotifierPlugin = () => {
 }
 
 // Default
-const linuxCheckLibAppIndicator = () => {
+export const linuxCheckLibAppIndicator = (): Promise<boolean> => {
     return new Promise((resolve, reject) => {
-        exec("/sbin/ldconfig -p | grep appindicator", (err, stdout, stderr) => {
+        exec("/sbin/ldconfig -p | grep appindicator", (err, _, stderr) => {
             if(err || stderr){
                 return linuxCheckStatusNotifierPlugin().then(resolve).catch(reject)
             }
@@ -39,54 +42,47 @@ const linuxCheckLibAppIndicator = () => {
     })
 }
 
-const positionWindow = () => {
-    if(!require("../shared").get("trayAvailable")){
-        return true
+export const positionWindow = () => {
+    if(!memoryCache.has("trayAvailable")){
+        return
     }
 
     try{
-        positionWindowAtTray(require("../shared").get("MAIN_WINDOW"), require("../shared").get("TRAY"))
+        positionWindowAtTray(memoryCache.get("MAIN_WINDOW"), memoryCache.get("TRAY"))
     }
     catch(e){
         log.error(e)
     }
-
-    return true
 }
 
-const toggleMainWindow = () => {
+export const toggleMainWindow = () => {
     try{
-        if(typeof require("../shared").get("MAIN_WINDOW") !== "undefined"){
-            require("../shared").get("MAIN_WINDOW").show()
+        if(memoryCache.has("MAIN_WINDOW")){
+            memoryCache.get("MAIN_WINDOW").show()
         }
     }
     catch(e){
         log.error(e)
     }
-
-    return true
 }
 
-const onClick = () => {
+export const onClick = () => {
     positionWindow()
-
-    return toggleMainWindow()
+    toggleMainWindow()
 }
 
-const onRightClick = () => {
+export const onRightClick = () => {
     positionWindow()
-
-    return true
 }
 
-const createTray = () => {
-    if(!require("../shared").get("trayAvailable")){
+export const createTray = () => {
+    if(!memoryCache.has("trayAvailable")){
         return undefined
     }
 
     try{
-        if(typeof require("../shared").get("TRAY") !== "undefined"){
-            return require("../shared").get("TRAY")
+        if(memoryCache.has("TRAY")){
+            return memoryCache.get("TRAY")
         }
     
         const tray = new Tray(TRAY_ICON_NORMAL)
@@ -97,9 +93,9 @@ const createTray = () => {
         tray.on("click", onClick)
         tray.on("right-click", onRightClick)
 
-        tray.setContextMenu(require("../trayMenu").createMenu())
+        tray.setContextMenu(createMenu())
     
-        require("../shared").set("TRAY", tray)
+        memoryCache.set("TRAY", tray)
 
         positionWindow()
     
@@ -112,9 +108,9 @@ const createTray = () => {
     }
 }
 
-const positionWindowAtTray = (window, tray) => {
-    if(typeof window == "undefined" || typeof tray == "undefined" || !require("../shared").get("trayAvailable")){
-        return false
+export const positionWindowAtTray = (window: BrowserWindow, tray: Tray) => {
+    if(typeof window == "undefined" || typeof tray == "undefined" || !memoryCache.has("trayAvailable")){
+        return
     }
 
     try{
@@ -124,19 +120,17 @@ const positionWindowAtTray = (window, tray) => {
         log.error("Could not position window at tray")
         log.error(e)
     }
-
-    return true
 }
 
-const updateTrayIcon = (type) => {
-    if(!require("../shared").get("trayAvailable")){
-        return false
+export const updateTrayIcon = (type: string) => {
+    if(!memoryCache.has("trayAvailable")){
+        return
     }
 
     try{
-        const tray = require("../shared").get("TRAY")
+        const tray = memoryCache.get("TRAY")
 
-        if(typeof tray !== "undefined"){
+        if(tray){
             if(typeof tray.setImage == "function"){
                 switch(type){
                     case "sync":
@@ -160,17 +154,17 @@ const updateTrayIcon = (type) => {
     }
 }
 
-const updateTrayMenu = (type = "default") => {
-    if(!require("../shared").get("trayAvailable")){
-        return false
+export const updateTrayMenu = () => {
+    if(!memoryCache.has("trayAvailable")){
+        return
     }
 
     try{
-        const tray = require("../shared").get("TRAY")
+        const tray = memoryCache.get("TRAY")
 
-        if(typeof tray !== "undefined"){
-            if(typeof tray.setContextMenu == "function" && typeof text == "string"){
-                tray.setContextMenu(require("../trayMenu").buildMenu(type))
+        if(tray){
+            if(typeof tray.setContextMenu == "function"){
+                tray.setContextMenu(buildMenu())
             }
         }
     }
@@ -179,15 +173,15 @@ const updateTrayMenu = (type = "default") => {
     }
 }
 
-const updateTrayTooltip = (text = "Filen") => {
-    if(!require("../shared").get("trayAvailable")){
-        return false
+export const updateTrayTooltip = (text = "Filen") => {
+    if(!memoryCache.has("trayAvailable")){
+        return
     }
 
     try{
-        const tray = require("../shared").get("TRAY")
+        const tray = memoryCache.get("TRAY")
 
-        if(typeof tray !== "undefined"){
+        if(tray){
             if(typeof tray.setToolTip == "function" && typeof text == "string"){
                 tray.setToolTip(text)
             }
@@ -196,19 +190,4 @@ const updateTrayTooltip = (text = "Filen") => {
     catch(e){
         log.error(e)
     }
-}
-
-module.exports = {
-    createTray,
-    positionWindowAtTray,
-    TRAY_ICON_NORMAL,
-    TRAY_ICON_SYNC,
-    TRAY_ICON_PAUSED,
-    TRAY_ICON_ISSUE,
-    updateTrayIcon,
-    updateTrayMenu,
-    updateTrayTooltip,
-    positionWindow,
-    toggleMainWindow,
-    linuxCheckLibAppIndicator
 }

@@ -15,7 +15,7 @@ import db from "../../lib/db"
 import { markUploadAsDone, checkIfItemParentIsShared, uploadChunk } from "../../lib/api"
 import { convertTimestampToMs, getTimeRemaining, bpsToReadable, Semaphore, generateRandomString } from "../../lib/helpers"
 import { v4 as uuidv4 } from "uuid"
-import { maxUploadThreads, chunkSize, maxConcurrentUploads, sizeOverheadMultiplier, speedMultiplier } from "../../lib/constants"
+import constants from "../../../constants.json"
 import eventListener from "../../lib/eventListener"
 import { throttle } from "lodash"
 import { AiOutlineCheckCircle } from "react-icons/ai"
@@ -35,8 +35,8 @@ const UPLOAD_VERSION = 2
 const FROM_ID = "upload-" + uuidv4()
 const params = new URLSearchParams(window.location.search)
 const passedArgs = typeof params.get("args") == "string" ? JSON.parse(Base64.decode(decodeURIComponent(params.get("args") as string))) : undefined
-const uploadSemaphore = new Semaphore(maxConcurrentUploads)
-const uploadThreadsSemaphore = new Semaphore(maxUploadThreads)
+const uploadSemaphore = new Semaphore(constants.maxConcurrentUploads)
+const uploadThreadsSemaphore = new Semaphore(constants.maxUploadThreads)
 
 const uploadFile = (path: string, parent: string): Promise<boolean> => {
     return new Promise(async (resolve, reject) => {
@@ -100,7 +100,7 @@ const uploadFile = (path: string, parent: string): Promise<boolean> => {
 
                     while(dummyOffset < size){
                         fileChunks += 1
-                        dummyOffset += chunkSize
+                        dummyOffset += constants.chunkSize
                     }
 
                     try{
@@ -155,7 +155,7 @@ const uploadFile = (path: string, parent: string): Promise<boolean> => {
                                 }
                             }
 
-                            fsLocal.readChunk(absolutePath, (index * chunkSize), chunkSize).then((data) => {
+                            fsLocal.readChunk(absolutePath, (index * constants.chunkSize), constants.chunkSize).then((data) => {
                                 encryptData(data, key).then((encrypted) => {
                                     uploadChunk({
                                         queryParams: new URLSearchParams({
@@ -526,7 +526,7 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number, email:
         now = new Date().getTime() - 1000
 
         const secondsDiff = ((now - started) / 1000)
-        const bps = Math.floor((bytes / secondsDiff) * speedMultiplier)
+        const bps = Math.floor((bytes / secondsDiff) * constants.speedMultiplier)
 
         return bps > 0 ? bps : 0
     }
@@ -541,11 +541,11 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number, email:
 
     const throttleUpdates = useCallback(throttle(() => {
         setSpeed(calcSpeed(new Date().getTime(), started.current, bytes.current))
-        setPercent(Math.round((bytes.current / (totalBytes.current * sizeOverheadMultiplier)) * 100))
+        setPercent(Math.round((bytes.current / (totalBytes.current * constants.sizeOverheadMultiplier)) * 100))
     }, 250), [])
 
     const throttleTimeLeft = useCallback(throttle(() => {
-        setTimeLeft(calcTimeLeft(bytes.current, (totalBytes.current * sizeOverheadMultiplier), started.current))
+        setTimeLeft(calcTimeLeft(bytes.current, (totalBytes.current * constants.sizeOverheadMultiplier), started.current))
     }, 1000), [])
 
     useEffect(() => {

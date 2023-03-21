@@ -8,8 +8,8 @@ const { ipcRenderer } = window.require("electron")
 const log = window.require("electron-log")
 
 const MESSAGE_SENDER: string = uuidv4()
-const resolves: any = {}
-const rejects: any = {}
+const resolves: Record<string, (value: any) => void> = {}
+const rejects: Record<string, (reason?: any) => void> = {}
 let DEBOUNCE_WATCHER_EVENT: any = {}
 
 ipcRenderer.on("global-message", (_: any, data: any) => {
@@ -137,7 +137,7 @@ const handleGlobalMessage = (data: any) => {
 
 const ipc = {
     ping: () => {
-        return new Promise((resolve, reject): Promise<any> => {
+        return new Promise((resolve, reject) => {
             const messageId = uuidv4()
 
             resolves[messageId] = resolve
@@ -199,17 +199,16 @@ const ipc = {
     selectFolder: (): Promise<any> => {
         return ipcRenderer.invoke("selectFolder")
     },
-    openSelectFolderRemoteWindow: (windowId: string = uuidv4()): Promise<any> => {
-        return ipcRenderer.invoke("openSelectFolderRemoteWindow", {
-            windowId
-        })
+    selectRemoteFolder: (): Promise<any> => {
+        return ipcRenderer.invoke("selectRemoteFolder")
     },
-    selectRemoteFolder: (windowId = uuidv4()): Promise<any> => {
-        return ipcRenderer.invoke("selectRemoteFolder", {
-            windowId
-        })
-    },
-    remoteFolderSelected: (data: any): Promise<any> => {
+    remoteFolderSelected: (data: {
+        uuid: string,
+        path: string,
+        name: string,
+        canceled: boolean,
+        windowId: number
+    }) => {
         return ipcRenderer.send("remoteFolderSelected", data)
     },
     decryptFolderName: (name: string): Promise<any> => {
@@ -495,10 +494,8 @@ const ipc = {
             type
         })
     },
-    updateTrayMenu: (type: string = "default"): Promise<any> => {
-        return ipcRenderer.invoke("updateTrayMenu", {
-            type
-        })
+    updateTrayMenu: (): Promise<void> => {
+        return ipcRenderer.invoke("updateTrayMenu")
     },
     updateTrayTooltip: (text: string = "Filen"): Promise<any> => {
         return ipcRenderer.invoke("updateTrayTooltip", {
@@ -520,10 +517,10 @@ const ipc = {
             name
         })
     },
-    quitApp: (): Promise<any> => {
+    quitApp: (): Promise<void> => {
         return ipcRenderer.invoke("quitApp")
     },
-    exitApp: (): Promise<any> => {
+    exitApp: (): Promise<void> => {
         return ipcRenderer.invoke("exitApp")
     },
     openDownloadWindow: (args: any): Promise<any> => {
@@ -632,13 +629,13 @@ const ipc = {
             })
         })
     },
-    updateKeybinds: (): Promise<any> => {
+    updateKeybinds: (): Promise<void> => {
         return ipcRenderer.invoke("updateKeybinds")
     },
-    disableKeybinds: (): Promise<any> => {
+    disableKeybinds: (): Promise<void> => {
         return ipcRenderer.invoke("disableKeybinds")
     },
-    restartApp: (): Promise<any> => {
+    restartApp: (): Promise<void> => {
         return ipcRenderer.invoke("restartApp")
     },
     openUploadWindow: (type: string = "files"): Promise<any> => {
@@ -646,7 +643,7 @@ const ipc = {
             type
         })
     },
-    installUpdate: (): Promise<any> => {
+    installUpdate: (): Promise<void> => {
         return ipcRenderer.invoke("installUpdate")
     },
     getFileKey: (uuid: string): Promise<string> => {
@@ -669,7 +666,7 @@ const ipc = {
     trayAvailable: (): Promise<boolean> => {
         return ipcRenderer.invoke("trayAvailable")
     },
-    initWatcher: (path: string, locationUUID: string): Promise<boolean> => {
+    initWatcher: (path: string, locationUUID: string): Promise<void> => {
         return ipcRenderer.invoke("initWatcher", {
             path,
             locationUUID
@@ -678,17 +675,17 @@ const ipc = {
     getSyncIssues: (): Promise<SyncIssue[]> => {
         return ipcRenderer.invoke("getSyncIssues")
     },
-    addSyncIssue: (syncIssue: SyncIssue): Promise<boolean> => {
+    addSyncIssue: (syncIssue: SyncIssue): Promise<void> => {
         return ipcRenderer.invoke("addSyncIssue", {
             syncIssue
         })
     },
-    removeSyncIssue: (uuid: string): Promise<boolean> => {
+    removeSyncIssue: (uuid: string): Promise<void> => {
         return ipcRenderer.invoke("removeSyncIssue", {
             uuid
         })
     },
-    clearSyncIssues: (): Promise<boolean> => {
+    clearSyncIssues: (): Promise<void> => {
         return ipcRenderer.invoke("clearSyncIssues")
     }
 }

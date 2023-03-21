@@ -2,13 +2,7 @@ import * as fsLocal from "../../fs/local"
 import * as fsRemote from "../../fs/remote"
 import db from "../../db"
 import { v4 as uuidv4 } from "uuid"
-import {
-    maxRetrySyncTask,
-    retrySyncTaskTimeout,
-    maxConcurrentDownloads as maxConcurrentDownloadsPreset,
-    maxConcurrentUploads as maxConcurrentUploadsPreset,
-    maxConcurrentSyncTasks
-} from "../../constants"
+import constants from "../../../../constants.json"
 import { Semaphore } from "../../helpers"
 import {
     isSyncLocationPaused,
@@ -43,9 +37,9 @@ const SYNC_TIMEOUT: number = 5000
 let NEXT_SYNC: number = new Date().getTime() - SYNC_TIMEOUT
 const IS_FIRST_REQUEST: { [key: string]: boolean } = {}
 const WATCHERS: { [key: string]: boolean } = {}
-const maxConcurrentUploadsSemaphore: SemaphoreInterface = new Semaphore(maxConcurrentUploadsPreset)
-const maxConcurrentDownloadsSemaphore: SemaphoreInterface = new Semaphore(maxConcurrentDownloadsPreset)
-const maxSyncTasksSemaphore: SemaphoreInterface = new Semaphore(maxConcurrentSyncTasks)
+const maxConcurrentUploadsSemaphore: SemaphoreInterface = new Semaphore(constants.maxConcurrentUploads)
+const maxConcurrentDownloadsSemaphore: SemaphoreInterface = new Semaphore(constants.maxConcurrentDownloads)
+const maxSyncTasksSemaphore: SemaphoreInterface = new Semaphore(constants.maxConcurrentSyncTasks)
 const syncMutex = new Semaphore(1)
 
 const getDeltas = (type: "local" | "remote", before: any, now: any): Promise<{ folders: Delta, files: Delta }> => {
@@ -726,7 +720,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                         let currentTries = 0
     
                         const doTask = (lastErr?: any) => {
-                            if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                            if(currentTries >= constants.maxRetrySyncTask && typeof lastErr !== "undefined"){
                                 maxSyncTasksSemaphore.release()
 
                                 log.error("renameInRemote task failed: " + JSON.stringify(task))
@@ -789,7 +783,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                                 return setTimeout(() => {
                                     doTask(err)
-                                }, retrySyncTaskTimeout)
+                                }, constants.retrySyncTaskTimeout)
                             })
                         }
     
@@ -834,7 +828,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                         let currentTries = 0
     
                         const doTask = (lastErr?: any) => {
-                            if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                            if(currentTries >= constants.maxRetrySyncTask && typeof lastErr !== "undefined"){
                                 maxSyncTasksSemaphore.release()
 
                                 log.error("renameInLocal task failed: " + JSON.stringify(task))
@@ -945,7 +939,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                                 return setTimeout(() => {
                                     doTask(err)
-                                }, retrySyncTaskTimeout)
+                                }, constants.retrySyncTaskTimeout)
                             })
                         }
     
@@ -990,7 +984,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                         let currentTries = 0
     
                         const doTask = (lastErr?: any) => {
-                            if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                            if(currentTries >= constants.maxRetrySyncTask && typeof lastErr !== "undefined"){
                                 maxSyncTasksSemaphore.release()
 
                                 log.error("moveInRemote task failed: " + JSON.stringify(task))
@@ -1053,7 +1047,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                                 return setTimeout(() => {
                                     doTask(err)
-                                }, retrySyncTaskTimeout)
+                                }, constants.retrySyncTaskTimeout)
                             })
                         }
     
@@ -1098,7 +1092,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                         let currentTries = 0
     
                         const doTask = (lastErr?: any) => {
-                            if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                            if(currentTries >= constants.maxRetrySyncTask && typeof lastErr !== "undefined"){
                                 maxSyncTasksSemaphore.release()
 
                                 log.error("moveInLocal task failed: " + JSON.stringify(task))
@@ -1209,7 +1203,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                                 return setTimeout(() => {
                                     doTask(err)
-                                }, retrySyncTaskTimeout)
+                                }, constants.retrySyncTaskTimeout)
                             })
                         }
     
@@ -1254,7 +1248,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                         let currentTries = 0
     
                         const doTask = (lastErr?: any) => {
-                            if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                            if(currentTries >= constants.maxRetrySyncTask && typeof lastErr !== "undefined"){
                                 maxSyncTasksSemaphore.release()
 
                                 log.error("deleteInRemote task failed: " + JSON.stringify(task))
@@ -1317,7 +1311,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                                 return setTimeout(() => {
                                     doTask(err)
-                                }, retrySyncTaskTimeout)
+                                }, constants.retrySyncTaskTimeout)
                             })
                         }
     
@@ -1356,7 +1350,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                         let currentTries = 0
     
                         const doTask = (lastErr?: any) => {
-                            if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                            if(currentTries >= constants.maxRetrySyncTask && typeof lastErr !== "undefined"){
                                 maxSyncTasksSemaphore.release()
 
                                 log.error("deleteInLocal task failed: " + JSON.stringify(task))
@@ -1453,7 +1447,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                                 return setTimeout(() => {
                                     doTask(err)
-                                }, retrySyncTaskTimeout)
+                                }, constants.retrySyncTaskTimeout)
                             })
                         }
     
@@ -1498,7 +1492,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                         let currentTries = 0
     
                         const doTask = (lastErr?: any) => {
-                            if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                            if(currentTries >= constants.maxRetrySyncTask && typeof lastErr !== "undefined"){
                                 maxSyncTasksSemaphore.release()
 
                                 log.error("uploadToRemote task failed: " + JSON.stringify(task))
@@ -1618,7 +1612,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                                     return setTimeout(() => {
                                         doTask(err)
-                                    }, retrySyncTaskTimeout)
+                                    }, constants.retrySyncTaskTimeout)
                                 })
                             })
                         }
@@ -1659,7 +1653,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
                         let currentTries = 0
     
                         const doTask = (lastErr?: any) => {
-                            if(currentTries >= maxRetrySyncTask && typeof lastErr !== "undefined"){
+                            if(currentTries >= constants.maxRetrySyncTask && typeof lastErr !== "undefined"){
                                 maxSyncTasksSemaphore.release()
                                 
                                 log.error("downloadFromRemote task failed: " + JSON.stringify(task))
@@ -1777,7 +1771,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
         
                                         return setTimeout(() => {
                                             doTask(err)
-                                        }, retrySyncTaskTimeout)
+                                        }, constants.retrySyncTaskTimeout)
                                     })
                                 }).catch((err) => {
                                     maxConcurrentDownloadsSemaphore.release()
@@ -1786,7 +1780,7 @@ const consumeTasks = ({ uploadToRemote, downloadFromRemote, renameInLocal, renam
     
                                     return setTimeout(() => {
                                         doTask(err)
-                                    }, retrySyncTaskTimeout)
+                                    }, constants.retrySyncTaskTimeout)
                                 })
                             })
                         }

@@ -1,24 +1,25 @@
-const pathModule = require("path")
-const log = require("electron-log")
-const nodeWatch = require("node-watch")
-const is = require("electron-is")
-const { powerMonitor } = require("electron")
+import pathModule from "path"
+import log from "electron-log"
+import nodeWatch from "node-watch"
+import is from "electron-is"
+import { powerMonitor } from "electron"
+import { emitGlobal } from "../ipc"
 
 const LINUX_EVENT_EMIT_TIMER = 60000
-const SUBS = {}
-const SUBS_INFO = {}
-const linuxWatchUpdateTimeout = {}
-const lastEvent = {}
-const didCloseDueToResume = {}
+const SUBS: Record<string, ReturnType<typeof nodeWatch>> = {}
+const SUBS_INFO: Record<string, string> = {}
+const linuxWatchUpdateTimeout: Record<string, NodeJS.Timer> = {}
+const lastEvent: Record<string, number> = {}
+const didCloseDueToResume: Record<string, boolean> = {}
 
-const emitToWorker = (data) => {
-    require("../ipc").emitGlobal("global-message", {
+export const emitToWorker = (data: any) => {
+    emitGlobal("global-message", {
         type: "watcher-event",
         data
     })
 }
 
-const resumeWatchers = () => {
+export const resumeWatchers = () => {
     if(is.linux()){
         return
     }
@@ -49,7 +50,7 @@ powerMonitor.on("resume", () => resumeWatchers())
 powerMonitor.on("unlock-screen", () => resumeWatchers())
 powerMonitor.on("user-did-become-active", () => resumeWatchers())
 
-const watch = (path, locationUUID) => {
+export const watch = (path: string, locationUUID: string) => {
     return new Promise((resolve, reject) => {
         if(is.linux()){
             clearInterval(linuxWatchUpdateTimeout[path])
@@ -67,7 +68,9 @@ const watch = (path, locationUUID) => {
         }
 
         if(typeof SUBS[path] !== "undefined"){
-            return resolve(SUBS[path])
+            resolve(SUBS[path])
+
+            return
         }
 
         try{
@@ -114,17 +117,15 @@ const watch = (path, locationUUID) => {
             SUBS[path].on("ready", () => {
                 SUBS_INFO[path] = locationUUID
 
-                return resolve(SUBS[path])
+                resolve(SUBS[path])
             })
         }
         catch(e){
             log.error(e)
 
-            return reject(e)
+            reject(e)
+
+            return
         }
     })
-}
-
-module.exports = {
-    watch
 }

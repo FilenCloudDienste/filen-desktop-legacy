@@ -1,36 +1,47 @@
-const fs = require("fs-extra")
-const pathModule = require("path")
-const readdirp = require("readdirp")
-const log = require("electron-log")
-const is = require("electron-is")
-const { app } = require("electron")
-const constantsJSON = require("../../../../constants.json")
+import fs from "fs-extra"
+import pathModule from "path"
+import readdirp from "readdirp"
+import log from "electron-log"
+import is from "electron-is"
+import { app } from "electron"
+import constants from "../../../../constants.json"
+import { Location } from "../../../../types"
+import db from "../../db"
+import { windowsPathToUnixStyle, pathIncludesDot, isFolderPathExcluded, pathValidation, pathIsFileOrFolderNameIgnoredByDefault, isSystemPathExcluded, isNameOverMaxLength, isPathOverMaxLength } from "../../helpers"
+import { addSyncIssue } from "../../ipc"
+import { v4 as uuidv4 } from "uuid"
 
 const FS_RETRIES = 8
 const FS_RETRY_TIMEOUT = 100
 const FS_RETRY_CODES = ["EAGAIN", "EBUSY", "ECANCELED", "EBADF", "EINTR", "EIO", "EMFILE", "ENFILE", "ENOMEM", "EPIPE", "ETXTBSY", "ESPIPE", "EAI_SYSTEM", "EAI_CANCELED"]
 const FS_NORETRY_CODES = ["ENOENT", "ENODEV", "EACCES", "EPERM", "EINVAL", "ENAMETOOLONG", "ENOBUFS", "ENOSPC", "EROFS"]
-let LOCAL_TRASH_DIRS_CLEAN_INTERVAL
+let LOCAL_TRASH_DIRS_CLEAN_INTERVAL: NodeJS.Timer
 const cache = new Map()
 
-const normalizePath = (path) => {
+export const normalizePath = (path: string) => {
     return pathModule.normalize(path)
 }
 
-const getTempDir = () => {
+export const getTempDir = () => {
     const tmpDirRes = app.getPath("temp")
     const tmpDir = normalizePath(tmpDirRes)
 
     return tmpDir
 }
 
-const gracefulLStat = (path) => {
+export interface Stats extends fs.Stats {
+    isLink: boolean,
+    isDir: boolean,
+    file: boolean
+}
+
+export const gracefulLStat = (path: string): Promise<Stats> => {
     return new Promise((resolve, reject) => {
         path = normalizePath(path)
 
         const cacheKey = "gracefulLStat:" + path
         let currentTries = 0
-        let lastErr = undefined
+        let lastErr: Error
 
         const req = () => {
             if(currentTries > FS_RETRIES){
@@ -45,11 +56,11 @@ const gracefulLStat = (path) => {
                     isLink: stats.isSymbolicLink(),
                     isDir: stats.isDirectory(),
                     file: stats.isFile()
-                }
+                } as Stats
 
                 cache.set(cacheKey, stats)
 
-                return resolve(stats)
+                return resolve(stats as Stats)
             }).catch((err) => {
                 if(err.code == "EPERM" && cache.has(cacheKey)){
                     return resolve(cache.get(cacheKey))
@@ -69,7 +80,7 @@ const gracefulLStat = (path) => {
     })
 }
 
-const exists = (fullPath) => {
+export const exists = (fullPath: string) => {
     return new Promise((resolve) => {
         const path = normalizePath(fullPath)
 
@@ -83,7 +94,7 @@ const exists = (fullPath) => {
     })
 }
 
-const doesExistLocally = async (path) => {
+export const doesExistLocally = async (path: string) => {
     try{
         await exists(normalizePath(path))
 
@@ -94,11 +105,11 @@ const doesExistLocally = async (path) => {
     }
 }
 
-const canReadWriteAtPath = (fullPath) => {
+export const canReadWriteAtPath = (fullPath: string) => {
     return new Promise((resolve) => {
         fullPath = normalizePath(fullPath)
 
-        const req = (path) => {
+        const req = (path: string) => {
             fs.access(path, fs.constants.W_OK | fs.constants.R_OK, (err) => {
                 if(err){
                     if(err.code){
@@ -131,11 +142,11 @@ const canReadWriteAtPath = (fullPath) => {
     })
 }
 
-const canReadAtPath = (fullPath) => {
+export const canReadAtPath = (fullPath: string) => {
     return new Promise((resolve) => {
         fullPath = normalizePath(fullPath)
 
-        const req = (path) => {
+        const req = (path: string) => {
             fs.access(path, fs.constants.R_OK, (err) => {
                 if(err){
                     if(err.code){
@@ -168,7 +179,7 @@ const canReadAtPath = (fullPath) => {
     })
 }
 
-const smokeTest = async (path) => {
+export const smokeTest = async (path: string) => {
     path = normalizePath(path)
 
     const tmpDir = getTempDir()
@@ -187,12 +198,12 @@ const smokeTest = async (path) => {
     ])
 }
 
-const readChunk = (path, offset, length) => {
+export const readChunk = (path: string, offset: number, length: number) => {
     return new Promise((resolve, reject) => {
         path = normalizePath(path)
 
         let currentTries = 0
-        let lastErr = undefined
+        let lastErr: Error
 
         const req = () => {
             if(currentTries > FS_RETRIES){
@@ -205,7 +216,7 @@ const readChunk = (path, offset, length) => {
                 if(err){
                     lastErr = err
             
-                    if(FS_RETRY_CODES.includes(err.code)){
+                    if(err.code && FS_RETRY_CODES.includes(err.code)){
                         return setTimeout(req, FS_RETRY_TIMEOUT)
                     }
                     
@@ -218,14 +229,14 @@ const readChunk = (path, offset, length) => {
                     if(err){
                         lastErr = err
             
-                        if(FS_RETRY_CODES.includes(err.code)){
+                        if(err.code && FS_RETRY_CODES.includes(err.code)){
                             return setTimeout(req, FS_RETRY_TIMEOUT)
                         }
                         
                         return reject(err)
                     }
     
-                    let data = undefined
+                    let data: Buffer
     
                     if(read < length){
                         data = buffer.slice(0, read)
@@ -238,7 +249,7 @@ const readChunk = (path, offset, length) => {
                         if(err){
                             lastErr = err
             
-                            if(FS_RETRY_CODES.includes(err.code)){
+                            if(err.code && FS_RETRY_CODES.includes(err.code)){
                                 return setTimeout(req, FS_RETRY_TIMEOUT)
                             }
                             
@@ -255,7 +266,7 @@ const readChunk = (path, offset, length) => {
     })
 }
 
-const rm = async (path, location) => {
+export const rm = async (path: string, location: Location) => {
     path = normalizePath(path)
 
     const trashDirPath = normalizePath(pathModule.join(location.local, ".filen.trash.local"))
@@ -276,7 +287,7 @@ const rm = async (path, location) => {
     try{
         await move(path, normalizePath(pathModule.join(trashDirPath, basename)))
     }
-    catch(e){
+    catch(e: any){
         if(e.code && e.code == "ENOENT"){
             cache.delete("gracefulLStat:" + path)
 
@@ -289,7 +300,7 @@ const rm = async (path, location) => {
     cache.delete("gracefulLStat:" + path)
 }
 
-const rmPermanent = (path) => {
+export const rmPermanent = (path: string): Promise<void> => {
     return new Promise(async (resolve, reject) => {
         path = normalizePath(path)
 
@@ -306,7 +317,7 @@ const rmPermanent = (path) => {
         try{
             var stats = await gracefulLStat(path)
         }
-        catch(e){
+        catch(e: any){
             if(e.code && e.code == "ENOENT"){
                 cache.delete("gracefulLStat:" + normalizePath(path))
 
@@ -317,7 +328,7 @@ const rmPermanent = (path) => {
         }
 
         let currentTries = 0
-        let lastErr = undefined
+        let lastErr: Error
 
         const req = async () => {
             if(currentTries > FS_RETRIES){
@@ -332,16 +343,16 @@ const rmPermanent = (path) => {
 
                     cache.delete("gracefulLStat:" + normalizePath(path))
                 }
-                catch(e){
+                catch(e: any){
                     lastErr = e
 
-                    if(e.code == "ENOENT"){
+                    if(e.code && e.code == "ENOENT"){
                         cache.delete("gracefulLStat:" + normalizePath(path))
 
                         return resolve()
                     }
 
-                    if(FS_RETRY_CODES.includes(e.code)){
+                    if(e.code && FS_RETRY_CODES.includes(e.code)){
                         return setTimeout(req, FS_RETRY_TIMEOUT)
                     }
                     
@@ -354,16 +365,16 @@ const rmPermanent = (path) => {
 
                     cache.delete("gracefulLStat:" + normalizePath(path))
                 }
-                catch(e){
+                catch(e: any){
                     lastErr = e
 
-                    if(e.code == "ENOENT"){
+                    if(e.code && e.code == "ENOENT"){
                         cache.delete("gracefulLStat:" + normalizePath(path))
 
                         return resolve()
                     }
 
-                    if(FS_RETRY_CODES.includes(e.code)){
+                    if(e.code && FS_RETRY_CODES.includes(e.code)){
                         return setTimeout(req, FS_RETRY_TIMEOUT)
                     }
                     
@@ -378,11 +389,11 @@ const rmPermanent = (path) => {
     })
 }
 
-const mkdir = (path, location) => {
+export const mkdir = (path: string, location: Location) => {
     return new Promise((resolve, reject) => {
         const absolutePath = normalizePath(pathModule.join(location.local, path))
         let currentTries = 0
-        let lastErr = undefined
+        let lastErr: Error
 
         const req = () => {
             if(currentTries > FS_RETRIES){
@@ -395,7 +406,7 @@ const mkdir = (path, location) => {
                 gracefulLStat(absolutePath).then(resolve).catch((err) => {
                     lastErr = err
     
-                    if(FS_RETRY_CODES.includes(err.code)){
+                    if(err.code && FS_RETRY_CODES.includes(err.code)){
                         return setTimeout(req, FS_RETRY_TIMEOUT)
                     }
 
@@ -404,7 +415,7 @@ const mkdir = (path, location) => {
             }).catch((err) => {
                 lastErr = err
 
-                if(FS_RETRY_CODES.includes(err.code)){
+                if(err.code && FS_RETRY_CODES.includes(err.code)){
                     return setTimeout(req, FS_RETRY_TIMEOUT)
                 }
                 
@@ -416,7 +427,7 @@ const mkdir = (path, location) => {
     })
 }
 
-const move = (before, after, overwrite = true) => {
+export const move = (before: string, after: string, overwrite = true) => {
     return new Promise(async (resolve, reject) => {
         try{
             before = normalizePath(before)
@@ -435,7 +446,7 @@ const move = (before, after, overwrite = true) => {
         }
 
         let currentTries = 0
-        let lastErr = undefined
+        let lastErr: Error
 
         const req = () => {
             if(currentTries > FS_RETRIES){
@@ -449,7 +460,7 @@ const move = (before, after, overwrite = true) => {
             }).then(resolve).catch((err) => {
                 lastErr = err
 
-                if(FS_RETRY_CODES.includes(err.code)){
+                if(err.code && FS_RETRY_CODES.includes(err.code)){
                     return setTimeout(req, FS_RETRY_TIMEOUT)
                 }
                 
@@ -461,7 +472,7 @@ const move = (before, after, overwrite = true) => {
     })
 }
 
-const rename = (before, after) => {
+export const rename = (before: string, after: string) => {
     return new Promise(async (resolve, reject) => {
         try{
             before = normalizePath(before)
@@ -480,7 +491,7 @@ const rename = (before, after) => {
         }
 
         let currentTries = 0
-        let lastErr = undefined
+        let lastErr: Error
 
         const req = () => {
             if(currentTries > FS_RETRIES){
@@ -492,7 +503,7 @@ const rename = (before, after) => {
             fs.rename(before, after).then(resolve).catch((err) => {
                 lastErr = err
 
-                if(FS_RETRY_CODES.includes(err.code)){
+                if(err.code && FS_RETRY_CODES.includes(err.code)){
                     return setTimeout(req, FS_RETRY_TIMEOUT)
                 }
 
@@ -504,14 +515,14 @@ const rename = (before, after) => {
     })
 }
 
-const createLocalTrashDirs = async () => {
-    const userId = await require("../../db").get("userId")
+export const createLocalTrashDirs = async () => {
+    const userId = await db.get("userId")
 
     if(!userId || !Number.isInteger(userId)){
         return
     }
 
-    const syncLocations = await require("../../db").get("syncLocations:" + userId)
+    const syncLocations = await db.get("syncLocations:" + userId)
 
     if(!syncLocations || !Array.isArray(syncLocations)){
         return
@@ -522,15 +533,15 @@ const createLocalTrashDirs = async () => {
     ])
 }
 
-const clearLocalTrashDirs = (clearNow = false) => {
+export const clearLocalTrashDirs = (clearNow = false): Promise<void> => {
     return new Promise((resolve, reject) => {
-        require("../../db").get("userId").then((userId) => {
+        db.get("userId").then((userId) => {
             if(!userId || !Number.isInteger(userId)){
                 return
             }
     
             Promise.all([
-                require("../../db").get("syncLocations:" + userId),
+                db.get("syncLocations:" + userId),
                 createLocalTrashDirs()
             ]).then(([syncLocations, _]) => {
                 if(!syncLocations || !Array.isArray(syncLocations)){
@@ -538,7 +549,7 @@ const clearLocalTrashDirs = (clearNow = false) => {
                 }
         
                 Promise.allSettled([
-                    ...syncLocations.map(location => new Promise((resolve, reject) => {
+                    ...syncLocations.map(location => new Promise<void>((resolve, reject) => {
                         const path = normalizePath(pathModule.join(location.local, ".filen.trash.local"))
         
                         const dirStream = readdirp(path, {
@@ -549,7 +560,7 @@ const clearLocalTrashDirs = (clearNow = false) => {
                         })
         
                         let statting = 0
-                        const pathsToTrash = []
+                        const pathsToTrash: string[] = []
                         const now = new Date().getTime()
                         let dirSize = 0
                         
@@ -592,7 +603,7 @@ const clearLocalTrashDirs = (clearNow = false) => {
                         })
                         
                         dirStream.on("end", async () => {
-                            await new Promise((resolve) => {
+                            await new Promise<void>((resolve) => {
                                 if(statting <= 0){
                                     return resolve()
                                 }
@@ -611,11 +622,11 @@ const clearLocalTrashDirs = (clearNow = false) => {
                             dirStream.destroy()
     
                             await Promise.allSettled([
-                                require("../../db").set("localTrashDirSize:" + location.uuid, clearNow ? 0 : dirSize),
+                                db.set("localTrashDirSize:" + location.uuid, clearNow ? 0 : dirSize),
                                 ...pathsToTrash.map(pathToTrash => rmPermanent(pathToTrash))
                             ])
     
-                            return resolve()
+                            resolve()
                         })
                     }))
                 ]).then(() => resolve())
@@ -624,17 +635,17 @@ const clearLocalTrashDirs = (clearNow = false) => {
     })
 }
 
-const initLocalTrashDirs = (interval) => {
+export const initLocalTrashDirs = () => {
     clearLocalTrashDirs().catch(log.error)
 
     clearInterval(LOCAL_TRASH_DIRS_CLEAN_INTERVAL)
 
     LOCAL_TRASH_DIRS_CLEAN_INTERVAL = setInterval(() => {
         clearLocalTrashDirs().catch(log.error)
-    }, interval)
+    }, constants.clearLocalTrashDirsInterval)
 }
 
-const checkLastModified = (path) => {
+export const checkLastModified = (path: string) => {
     return new Promise((resolve, reject) => {
         path = normalizePath(path)
 
@@ -653,7 +664,7 @@ const checkLastModified = (path) => {
             const mtimeMs = lastModified.getTime()
             
             let currentTries = 0
-            let lastErr = undefined
+            let lastErr: Error
 
             const req = () => {
                 if(currentTries > FS_RETRIES){
@@ -670,7 +681,7 @@ const checkLastModified = (path) => {
                 }).catch((err) => {
                     lastErr = err
 
-                    if(FS_RETRY_CODES.includes(err.code)){
+                    if(err.code && FS_RETRY_CODES.includes(err.code)){
                         return setTimeout(req, FS_RETRY_TIMEOUT)
                     }
                     
@@ -683,14 +694,14 @@ const checkLastModified = (path) => {
     })
 }
 
-const isFileBusy = (path) => {
+export const isFileBusy = (path: string): Promise<boolean> => {
     return new Promise((resolve, reject) => {
         path = normalizePath(path)
 
         let currentTries = -1
         const maxTries = 30
         const timeout = 1000
-        let lastErr = undefined
+        let lastErr: any
 
         const req = () => {
             currentTries += 1
@@ -724,196 +735,14 @@ const isFileBusy = (path) => {
     })
 }
 
-const windowsPathToUnixStyle = (path) => {
-	return path.split("\\").join("/")
-}
-
-const pathIncludesDot = (path) => {
-	return (path.indexOf("/.") !== -1 || path.startsWith("."))
-}
-
-const isFolderPathExcluded = (path) => {
-	const real = path
-
-	path = path.toLowerCase()
-
-	for(let i = 0; i < constantsJSON.defaultIgnored.folders.length; i++){
-		if(
-			path.indexOf(constantsJSON.defaultIgnored.folders[i].toLowerCase()) !== -1
-			|| real.indexOf(constantsJSON.defaultIgnored.folders[i]) !== -1
-		){
-			return true
-		}
-	}
-
-  	return false
-}
-
-const fileAndFolderNameValidation = (name) => {
-	const regex = /[<>:"\/\\|?*\x00-\x1F]|^(?:aux|con|clock\$|nul|prn|com[1-9]|lpt[1-9])$/i
-
-	if(regex.test(name)){
-		return false
-	}
-
-	return true
-}
-
-const pathValidation = (path) => {
-	if(path.indexOf("/") == -1){
-		return fileAndFolderNameValidation(path)
-	}
-	
-	const ex = path.split("/")
-
-	for(let i = 0; i < ex.length; i++){
-		if(!fileAndFolderNameValidation(ex[i].trim())){
-			return false
-		}
-	}
-
-	return true
-}
-
-const isFileOrFolderNameIgnoredByDefault = (name) => {
-	if(typeof name !== "string"){
-		return true
-	}
-
-	name = name.toLowerCase().trim()
-
-	if(name.length <= 0){
-		return true
-	}
-
-	if(name.length >= 256){
-		return true
-	}
-
-	if(name.substring(0, 1) == " "){
-		return true
-	}
-
-	if(name.slice(-1) == " "){
-		return true
-	}
-
-	if(name.indexOf("\n") !== -1){
-		return true
-	}
-
-	if(name.indexOf("\r") !== -1){
-		return true
-	}
-
-	if(constantsJSON.defaultIgnored.names.includes(name)){
-		return true
-	}
-
-	if(name.substring(0, 7) == ".~lock."){
-		return true
-	}
-
-	if(name.substring(0, 2) == "~$"){
-		return true
-	}
-
-	if(name.substring(name.length - 4) == ".tmp"){
-		return true
-	}
-
-	if(name.substring(name.length - 5) == ".temp"){
-		return true
-	}
-
-	let ext = name.split(".")
-
-	if(ext.length >= 2){
-		ext = ext[ext.length - 1]
-
-		if(typeof ext == "string"){
-			ext = ext.trim()
-
-			if(ext.length > 0){
-				if(constantsJSON.defaultIgnored.extensions.includes(ext)){
-					return true
-				}
-			}
-		}
-	}
-
-	return false
-}
-
-const pathIsFileOrFolderNameIgnoredByDefault = (path) => {
-	if(path.indexOf("/") == -1){
-		return isFileOrFolderNameIgnoredByDefault(path)
-	}
-	
-	const ex = path.split("/")
-
-	for(let i = 0; i < ex.length; i++){
-		if(isFileOrFolderNameIgnoredByDefault(ex[i].trim())){
-			return true
-		}
-	}
-
-	return false
-}
-
-const isSystemPathExcluded = (path) => {
-	const real = path
-
-	path = path.toLowerCase()
-
-	for(let i = 0; i < constantsJSON.defaultIgnored.system.length; i++){
-		if(
-			path.indexOf(constantsJSON.defaultIgnored.system[i].toLowerCase()) !== -1
-			|| real.indexOf(constantsJSON.defaultIgnored.system[i]) !== -1
-		){
-			return true
-		}
-	}
-
-  	return false
-}
-
-const isPathOverMaxLength = (path) => {
-	if(is.linux()){
-		return path.length > 4095
-	}
-	else if(is.macOS()){
-		return path.length > 1023
-	}
-	else if(is.windows()){
-		return path.length > 399
-	}
-
-	return path.length > 399
-}
-
-const isNameOverMaxLength = (name) => {
-	if(is.linux()){
-		return name.length > 255
-	}
-	else if(is.macOS()){
-		return name.length > 255
-	}
-	else if(is.windows()){
-		return name.length > 255
-	}
-
-	return name.length > 255
-}
-
-const directoryTree = (path, skipCache = false, location) => {
+export const directoryTree = (path: string, skipCache = false, location: Location): Promise<{ changed: boolean, data: any }> => {
     return new Promise((resolve, reject) => {
         const cacheKey = "directoryTreeLocal:" + location.uuid
 
         Promise.all([
-            require("../../db").get("localDataChanged:" + location.uuid),
-            require("../../db").get(cacheKey),
-            require("../../db").get("excludeDot")
+            db.get("localDataChanged:" + location.uuid),
+            db.get(cacheKey),
+            db.get("excludeDot")
         ]).then(async ([localDataChanged, cachedLocalTree, excludeDot]) => {
             if(excludeDot == null){
                 excludeDot = true
@@ -928,9 +757,9 @@ const directoryTree = (path, skipCache = false, location) => {
 
             path = normalizePath(path)
 
-            const files = {}
-            const folders = {}
-            const ino = {}
+            const files: Record<string, { name: string, size: number, lastModified: number, ino: number }> = {}
+            const folders: Record<string, { name: string, size: number, lastModified: number, ino: number }> = {}
+            const ino: Record<number, { type: "folder" | "file", path: string }> = {}
             const windows = is.windows()
             let statting = 0
 
@@ -1004,10 +833,10 @@ const directoryTree = (path, skipCache = false, location) => {
                         }
                     }
                 }
-                catch(e){
+                catch(e: any){
                     log.error(e)
 
-                    require("../../ipc").addSyncIssue({
+                    addSyncIssue({
                         uuid: uuidv4(),
                         type: "warning",
                         where: "local",
@@ -1034,7 +863,7 @@ const directoryTree = (path, skipCache = false, location) => {
             })
             
             dirStream.on("end", async () => {
-                await new Promise((resolve) => {
+                await new Promise<void>((resolve) => {
                     if(statting <= 0){
                         return resolve()
                     }
@@ -1060,8 +889,8 @@ const directoryTree = (path, skipCache = false, location) => {
 
                 try{
                     await Promise.all([
-                        require("../../db").set(cacheKey, obj),
-                        require("../../db").set("localDataChanged:" + location.uuid, false)
+                        db.set(cacheKey, obj),
+                        db.set("localDataChanged:" + location.uuid, false)
                     ])
                 }
                 catch(e){
@@ -1077,31 +906,31 @@ const directoryTree = (path, skipCache = false, location) => {
     })
 }
 
-const utimes = async (path, atime, mtime) => {
+export const utimes = async (path: string, atime: number, mtime: number) => {
     path = normalizePath(path)
 
     return await fs.utimes(path, atime, mtime)
 }
 
-const unlink = async (path) => {
+export const unlink = async (path: string) => {
     path = normalizePath(path)
 
     return await fs.unlink(path)
 }
 
-const remove = async (path) => {
+export const remove = async (path: string) => {
     path = normalizePath(path)
 
     return await fs.remove(path)
 }
 
-const mkdirNormal = async (path, options = { recursive: true }) => {
+export const mkdirNormal = async (path: string, options = { recursive: true }) => {
     path = normalizePath(path)
 
     return await fs.mkdir(path, options)
 }
 
-const access = (path, mode) => {
+export const access = (path: string, mode: number): Promise<void> => {
     return new Promise((resolve, reject) => {
         path = normalizePath(path)
 
@@ -1115,37 +944,8 @@ const access = (path, mode) => {
     })
 }
 
-const appendFile = async (path, data, options = undefined) => {
+export const appendFile = async (path: string, data: Buffer | string, options = undefined) => {
     path = normalizePath(path)
 
     return await fs.appendFile(path, data, options)
-}
-
-module.exports = {
-    normalizePath,
-    getTempDir,
-    gracefulLStat,
-    exists,
-    doesExistLocally,
-    canReadWriteAtPath,
-    smokeTest,
-    readChunk,
-    rm,
-    rmPermanent,
-    mkdir,
-    move,
-    rename,
-    createLocalTrashDirs,
-    clearLocalTrashDirs,
-    initLocalTrashDirs,
-    checkLastModified,
-    canReadAtPath,
-    isFileBusy,
-    directoryTree,
-    utimes,
-    unlink,
-    remove,
-    mkdirNormal,
-    access,
-    appendFile
 }

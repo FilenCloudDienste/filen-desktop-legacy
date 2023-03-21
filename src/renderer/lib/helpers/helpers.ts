@@ -1,4 +1,4 @@
-import { defaultIgnored, speedMultiplier } from "../constants"
+import constants from "../../../constants.json"
 import { SemaphoreInterface } from "../../../types"
 
 const pathModule = window.require("path")
@@ -354,10 +354,10 @@ export const isSystemPathExcluded = (path: string): boolean => {
 
 	path = path.toLowerCase()
 
-	for(let i = 0; i < defaultIgnored.system.length; i++){
+	for(let i = 0; i < constants.defaultIgnored.system.length; i++){
 		if(
-			path.indexOf(defaultIgnored.system[i].toLowerCase()) !== -1
-			|| real.indexOf(defaultIgnored.system[i]) !== -1
+			path.indexOf(constants.defaultIgnored.system[i].toLowerCase()) !== -1
+			|| real.indexOf(constants.defaultIgnored.system[i]) !== -1
 		){
 			return true
 		}
@@ -371,10 +371,10 @@ export const isFolderPathExcluded = (path: string): boolean => {
 
 	path = path.toLowerCase()
 
-	for(let i = 0; i < defaultIgnored.folders.length; i++){
+	for(let i = 0; i < constants.defaultIgnored.folders.length; i++){
 		if(
-			path.indexOf(defaultIgnored.folders[i].toLowerCase()) !== -1
-			|| real.indexOf(defaultIgnored.folders[i]) !== -1
+			path.indexOf(constants.defaultIgnored.folders[i].toLowerCase()) !== -1
+			|| real.indexOf(constants.defaultIgnored.folders[i]) !== -1
 		){
 			return true
 		}
@@ -414,7 +414,7 @@ export const isFileOrFolderNameIgnoredByDefault = (name: string): boolean => {
 		return true
 	}
 
-	if(defaultIgnored.names.includes(name)){
+	if(constants.defaultIgnored.names.includes(name)){
 		return true
 	}
 
@@ -443,7 +443,7 @@ export const isFileOrFolderNameIgnoredByDefault = (name: string): boolean => {
 			ext = ext.trim()
 
 			if(ext.length > 0){
-				if(defaultIgnored.extensions.includes(ext)){
+				if(constants.defaultIgnored.extensions.includes(ext)){
 					return true
 				}
 			}
@@ -614,7 +614,7 @@ export const calcSpeed = (now: number, started: number, bytes: number): number =
 	now = new Date().getTime() - 1000
 
 	const secondsDiff: number = ((now - started) / 1000)
-	const bps: number = Math.floor((bytes / secondsDiff) * speedMultiplier)
+	const bps: number = Math.floor((bytes / secondsDiff) * constants.speedMultiplier)
 
 	return bps > 0 ? bps : 0
 }

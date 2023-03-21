@@ -11,7 +11,7 @@ import MainFooter from "../../components/MainFooter"
 import MainList from "../../components/MainList"
 import MainHeader from "../../components/MainHeader"
 import { throttle, debounce } from "lodash"
-import { sizeOverheadMultiplier } from "../../lib/constants"
+import constants from "../../../constants.json"
 import UpdateModal from "../../components/UpdateModal"
 import MaxStorageModal from "../../components/MaxStorageModal"
 import useIsOnline from "../../lib/hooks/useIsOnline"
@@ -129,7 +129,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
                             }
                         }
 
-                        allBytes.current += Math.floor((task.task.item.size || 0) * sizeOverheadMultiplier)
+                        allBytes.current += Math.floor((task.task.item.size || 0) * constants.sizeOverheadMultiplier)
 
                         setCurrentUploads((prev: any) => ({
                             ...prev,
@@ -290,11 +290,11 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number, email: s
                 ...prev,
                 [data.uuid]: {
                     ...prev[data.uuid],
-                    percent: ((prev[data.uuid].bytes + data.bytes) / Math.floor((prev[data.uuid].item.size || 0) * sizeOverheadMultiplier)) * 100,
+                    percent: ((prev[data.uuid].bytes + data.bytes) / Math.floor((prev[data.uuid].item.size || 0) * constants.sizeOverheadMultiplier)) * 100,
                     lastBps: calcSpeed(now, prev[data.uuid].started, (prev[data.uuid].bytes + data.bytes)),
                     lastTime: now,
                     bytes: prev[data.uuid].bytes + data.bytes,
-                    timeLeft: calcTimeLeft((prev[data.uuid].bytes + data.bytes), Math.floor((prev[data.uuid].item.size || 0) * sizeOverheadMultiplier), prev[data.uuid].started)
+                    timeLeft: calcTimeLeft((prev[data.uuid].bytes + data.bytes), Math.floor((prev[data.uuid].item.size || 0) * constants.sizeOverheadMultiplier), prev[data.uuid].started)
                 }
             }) : prev)
 

@@ -418,7 +418,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number, email: 
                                                                             path: remotePath,
                                                                             name: folderNames[selectedFolder.uuid],
                                                                             canceled: false,
-                                                                            windowId
+                                                                            windowId: parseInt(windowId)
                                                                         })
                                                                     }
                                                                 }}

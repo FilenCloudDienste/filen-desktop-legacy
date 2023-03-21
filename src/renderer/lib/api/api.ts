@@ -1,4 +1,4 @@
-import { apiServers, uploadServers, downloadServers, maxRetryAPIRequest, retryAPIRequestTimeout, maxRetryUpload, maxRetryDownload, retryUploadTimeout, retryDownloadTimeout, maxConcurrentAPIRequest, maxConcurrentUploads, maxConcurrentDownloads } from "../constants"
+import constants from "../../../constants.json"
 import { getRandomArbitrary, Semaphore, nodeBufferToArrayBuffer, generateRandomString } from "../helpers"
 import { hashFn, encryptMetadata, encryptMetadataPublicKey, decryptFolderLinkKey, decryptFileMetadata, decryptFolderName } from "../crypto"
 import db from "../db"
@@ -21,32 +21,32 @@ export const throttleGroupDownload = new ThrottleGroup({ rate: 1024 * 1024 * 102
 
 const httpsAPIAgent = new https.Agent({
     keepAlive: true,
-    maxSockets: maxConcurrentAPIRequest,
+    maxSockets: constants.maxConcurrentAPIRequest,
     timeout: 86400000
 })
 
 const httpsUploadAgent = new https.Agent({
     keepAlive: true,
-    maxSockets: maxConcurrentUploads,
+    maxSockets: constants.maxConcurrentUploads,
     timeout: 86400000
 })
 
 const httpsDownloadAgent = new https.Agent({
     keepAlive: true,
-    maxSockets: maxConcurrentDownloads,
+    maxSockets: constants.maxConcurrentDownloads,
     timeout: 86400000
 })
 
 export const getAPIServer = () => {
-    return apiServers[getRandomArbitrary(0, (apiServers.length - 1))]
+    return constants.apiServers[getRandomArbitrary(0, (constants.apiServers.length - 1))]
 }
 
 export const getUploadServer = () => {
-    return uploadServers[getRandomArbitrary(0, (uploadServers.length - 1))]
+    return constants.uploadServers[getRandomArbitrary(0, (constants.uploadServers.length - 1))]
 }
 
 export const getDownloadServer = () => {
-    return downloadServers[getRandomArbitrary(0, (downloadServers.length - 1))]
+    return constants.downloadServers[getRandomArbitrary(0, (constants.downloadServers.length - 1))]
 }
 
 export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, timeout = 500000, includeRaw = false }): Promise<any> => {
@@ -55,11 +55,11 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
 
         const doRequest = (): any => {
             if(!window.navigator.onLine){
-                return setTimeout(doRequest, retryAPIRequestTimeout)
+                return setTimeout(doRequest, constants.retryAPIRequestTimeout)
             }
 
-            if(currentTries >= maxRetryAPIRequest){
-                return reject(new Error("Maximum retries (" + maxRetryAPIRequest + ") reached for API request: " + JSON.stringify({
+            if(currentTries >= constants.maxRetryAPIRequest){
+                return reject(new Error("Maximum retries (" + constants.maxRetryAPIRequest + ") reached for API request: " + JSON.stringify({
                     method,
                     endpoint,
                     data,
@@ -84,7 +84,7 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
                 if(response.statusCode !== 200){
                     log.error(new Error("API response " + response.statusCode + ", method: " + method.toUpperCase() + ", endpoint: " + endpoint + ", data: " + JSON.stringify(data)))
 
-                    return setTimeout(doRequest, retryAPIRequestTimeout) 
+                    return setTimeout(doRequest, constants.retryAPIRequestTimeout) 
                 }
 
                 const res: Buffer[] = []
@@ -132,7 +132,7 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
             req.on("error", (err: any) => {
                 log.error(err)
 
-                return setTimeout(doRequest, retryAPIRequestTimeout)
+                return setTimeout(doRequest, constants.retryAPIRequestTimeout)
             })
 
             req.on("timeout", () => {
@@ -140,7 +140,7 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
 
                 req.destroy()
 
-                return setTimeout(doRequest, retryAPIRequestTimeout)
+                return setTimeout(doRequest, constants.retryAPIRequestTimeout)
             })
 
             req.write(JSON.stringify(data))
@@ -1440,10 +1440,10 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
 
             const doRequest = async (): Promise<any> => {
                 if(!window.navigator.onLine){
-                    return setTimeout(doRequest, retryUploadTimeout)
+                    return setTimeout(doRequest, constants.retryUploadTimeout)
                 }
 
-                if(currentTries >= maxRetryUpload){
+                if(currentTries >= constants.maxRetryUpload){
                     return reject(new Error("Max retries reached for upload " + uuid))
                 }
 
@@ -1489,7 +1489,7 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
 
                         throttle.destroy()
 
-                        return setTimeout(doRequest, retryUploadTimeout)
+                        return setTimeout(doRequest, constants.retryUploadTimeout)
                     }
 
                     const res: Buffer[] = []
@@ -1663,10 +1663,10 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync", loca
 
             const doRequest = async (): Promise<any> => {
                 if(!window.navigator.onLine){
-                    return setTimeout(doRequest, retryDownloadTimeout)
+                    return setTimeout(doRequest, constants.retryDownloadTimeout)
                 }
 
-                if(currentTries >= maxRetryDownload){
+                if(currentTries >= constants.maxRetryDownload){
                     return reject(new Error("Max retries reached for /" + region + "/" + bucket + "/" + uuid + "/" + index))
                 }
 
@@ -1692,7 +1692,7 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync", loca
 
                         throttle.destroy()
 
-                        return setTimeout(doRequest, retryDownloadTimeout)
+                        return setTimeout(doRequest, constants.retryDownloadTimeout)
                     }
 
                     const res: Buffer[] = []
@@ -1702,7 +1702,7 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync", loca
 
                         throttle.destroy()
 
-                        return setTimeout(doRequest, retryDownloadTimeout)
+                        return setTimeout(doRequest, constants.retryDownloadTimeout)
                     })
 
                     response.pipe(throttle).on("data", (chunk: Buffer) => {
@@ -1735,7 +1735,7 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync", loca
 
                     throttle.destroy()
 
-                    return setTimeout(doRequest, retryDownloadTimeout)
+                    return setTimeout(doRequest, constants.retryDownloadTimeout)
                 })
 
                 request.on("timeout", () => {
@@ -1744,7 +1744,7 @@ export const downloadChunk = ({ region, bucket, uuid, index, from = "sync", loca
                     throttle.destroy()
                     request.destroy()
 
-                    return setTimeout(doRequest, retryDownloadTimeout)
+                    return setTimeout(doRequest, constants.retryDownloadTimeout)
                 })
         
                 request.end()

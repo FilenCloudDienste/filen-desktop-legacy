@@ -15,7 +15,7 @@ import db from "../../lib/db"
 import { apiRequest, downloadChunk } from "../../lib/api"
 import { convertTimestampToMs, bpsToReadable, getTimeRemaining, Semaphore } from "../../lib/helpers"
 import { v4 as uuidv4 } from "uuid"
-import { maxDownloadThreads, maxConcurrentDownloads } from "../../lib/constants"
+import constants from "../../../constants.json"
 import eventListener from "../../lib/eventListener"
 import { throttle } from "lodash"
 import { AiOutlineCheckCircle } from "react-icons/ai"
@@ -32,8 +32,8 @@ const { shell, ipcRenderer } = window.require("electron")
 const FROM_ID: string = "download-" + uuidv4()
 const params: URLSearchParams = new URLSearchParams(window.location.search)
 const passedArgs = typeof params.get("args") == "string" ? JSON.parse(Base64.decode(decodeURIComponent(params.get("args") as string))) : undefined
-const downloadSemaphore = new Semaphore(maxConcurrentDownloads)
-const downloadThreadsSemaphore = new Semaphore(maxDownloadThreads)
+const downloadSemaphore = new Semaphore(constants.maxConcurrentDownloads)
+const downloadThreadsSemaphore = new Semaphore(constants.maxDownloadThreads)
 
 const downloadFile = (absolutePath: string, file: any) => {
     return new Promise((resolve, reject) => {

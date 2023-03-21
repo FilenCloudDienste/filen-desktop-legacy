@@ -1,0 +1,185 @@
+import { memoize } from "lodash"
+import crypto from "crypto"
+import constants from "../../../constants.json"
+import is from "electron-is"
+import pathModule from "path"
+
+export const hashKey = memoize((key: string) => {
+    const hash = crypto.createHash("sha256").update(key).digest("hex")
+
+    return hash
+})
+
+export const getRandomArbitrary = (min: number, max: number) => {
+    return Math.floor(Math.random() * (max - min) + min)
+}
+
+export const windowsPathToUnixStyle = (path: string) => {
+	return path.split("\\").join("/")
+}
+
+export const pathIncludesDot = (path: string) => {
+	return (path.indexOf("/.") !== -1 || path.startsWith("."))
+}
+
+export const isFolderPathExcluded = (path: string) => {
+	const real = path
+
+	path = path.toLowerCase()
+
+	for(let i = 0; i < constants.defaultIgnored.folders.length; i++){
+		if(
+			path.indexOf(constants.defaultIgnored.folders[i].toLowerCase()) !== -1
+			|| real.indexOf(constants.defaultIgnored.folders[i]) !== -1
+		){
+			return true
+		}
+	}
+
+  	return false
+}
+
+export const fileAndFolderNameValidation = (name: string) => {
+	const regex = /[<>:"\/\\|?*\x00-\x1F]|^(?:aux|con|clock\$|nul|prn|com[1-9]|lpt[1-9])$/i
+
+	if(regex.test(name)){
+		return false
+	}
+
+	return true
+}
+
+export const pathValidation = (path: string) => {
+	if(path.indexOf("/") == -1){
+		return fileAndFolderNameValidation(path)
+	}
+	
+	const ex = path.split("/")
+
+	for(let i = 0; i < ex.length; i++){
+		if(!fileAndFolderNameValidation(ex[i].trim())){
+			return false
+		}
+	}
+
+	return true
+}
+
+export const isFileOrFolderNameIgnoredByDefault = (name: string) => {
+	name = name.toLowerCase().trim()
+
+	if(name.length <= 0){
+		return true
+	}
+
+	if(name.length >= 256){
+		return true
+	}
+
+	if(name.substring(0, 1) == " "){
+		return true
+	}
+
+	if(name.slice(-1) == " "){
+		return true
+	}
+
+	if(name.indexOf("\n") !== -1){
+		return true
+	}
+
+	if(name.indexOf("\r") !== -1){
+		return true
+	}
+
+	if(constants.defaultIgnored.names.includes(name)){
+		return true
+	}
+
+	if(name.substring(0, 7) == ".~lock."){
+		return true
+	}
+
+	if(name.substring(0, 2) == "~$"){
+		return true
+	}
+
+	if(name.substring(name.length - 4) == ".tmp"){
+		return true
+	}
+
+	if(name.substring(name.length - 5) == ".temp"){
+		return true
+	}
+
+	if(name.indexOf(".") !== -1){
+		const ext = pathModule.extname(name).split(".").join("")
+
+		if(constants.defaultIgnored.extensions.includes(ext)){
+			return true
+		}
+	}
+
+	return false
+}
+
+export const pathIsFileOrFolderNameIgnoredByDefault = (path: string) => {
+	if(path.indexOf("/") == -1){
+		return isFileOrFolderNameIgnoredByDefault(path)
+	}
+	
+	const ex = path.split("/")
+
+	for(let i = 0; i < ex.length; i++){
+		if(isFileOrFolderNameIgnoredByDefault(ex[i].trim())){
+			return true
+		}
+	}
+
+	return false
+}
+
+export const isSystemPathExcluded = (path: string) => {
+	const real = path
+
+	path = path.toLowerCase()
+
+	for(let i = 0; i < constants.defaultIgnored.system.length; i++){
+		if(
+			path.indexOf(constants.defaultIgnored.system[i].toLowerCase()) !== -1
+			|| real.indexOf(constants.defaultIgnored.system[i]) !== -1
+		){
+			return true
+		}
+	}
+
+  	return false
+}
+
+export const isPathOverMaxLength = (path: string) => {
+	if(is.linux()){
+		return path.length > 4095
+	}
+	else if(is.macOS()){
+		return path.length > 1023
+	}
+	else if(is.windows()){
+		return path.length > 399
+	}
+
+	return path.length > 399
+}
+
+export const isNameOverMaxLength = (name: string) => {
+	if(is.linux()){
+		return name.length > 255
+	}
+	else if(is.macOS()){
+		return name.length > 255
+	}
+	else if(is.windows()){
+		return name.length > 255
+	}
+
+	return name.length > 255
+}

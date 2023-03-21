@@ -1,4 +1,33 @@
 {
+    "apiServers": [
+        "api.filen.io"
+    ],
+    "uploadServers": [
+        "up.filen.io"
+    ],
+    "downloadServers": [
+        "down.filen.io"
+    ],
+    "chunkSize": 1048576,
+    "maxConcurrentUploads": 8,
+    "maxConcurrentDownloads": 10,
+    "maxDownloadThreads": 128,
+    "maxUploadThreads": 10,
+    "maxConcurrentTransfers": 20,
+    "maxRetryAPIRequest": 32,
+    "retryAPIRequestTimeout": 1000,
+    "maxRetrySyncTask": 8,
+    "retrySyncTaskTimeout": 1000,
+    "maxRetryUpload": 8,
+    "retryUploadTimeout": 1000,
+    "maxRetryDownload": 8,
+    "retryDownloadTimeout": 1000,
+    "sizeOverheadMultiplier": 1,
+    "speedMultiplier": 1,
+    "maxConcurrentSyncTasks": 128,
+    "maxConcurrentAPIRequest": 128,
+    "clearLocalTrashDirsInterval": 900000,
+    "deleteFromLocalTrashAfter": 2592000000,
     "defaultIgnored": {
         "names": [
             ".ds_store",

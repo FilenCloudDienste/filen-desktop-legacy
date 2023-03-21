@@ -1,10 +1,14 @@
+// @ts-ignore
 process.noAsar = true
 
-const { app, BrowserWindow, powerMonitor, Menu } = require("electron")
-const log = require("electron-log")
-const is = require("electron-is")
-const { autoUpdater } = require("electron-updater")
-const { v4: uuidv4 } = require("uuid")
+import { app, BrowserWindow, powerMonitor, Menu } from "electron"
+import log from "electron-log"
+import is from "electron-is"
+import { autoUpdater } from "electron-updater"
+import { linuxCheckLibAppIndicator, positionWindow, toggleMainWindow } from "./lib/tray"
+import { createWindows, createUpdate } from "./lib/windows"
+import { emitGlobal, updateKeybinds } from "./lib/ipc"
+import memoryCache from "./lib/memoryCache"
 
 app.disableHardwareAcceleration()
 //app.commandLine.appendSwitch("wm-window-animations-disabled")
@@ -19,7 +23,7 @@ if(is.dev()){
 	app.commandLine.appendSwitch("allow-insecure-localhost", "true")
 }
 
-let CHECK_UPDATE_INTERVAL = undefined
+let CHECK_UPDATE_INTERVAL: NodeJS.Timer
 let UPDATE_WINDOW_SHOWN = false
 
 autoUpdater.logger = log
@@ -32,21 +36,21 @@ const initWindows = async () => {
 
 	if(is.linux()){
 		try{
-			const trayAvailable = await require("./lib/tray").linuxCheckLibAppIndicator()
+			const trayAvailable = await linuxCheckLibAppIndicator()
 
-			require("./lib/shared").set("trayAvailable", trayAvailable)
+			memoryCache.set("trayAvailable", trayAvailable)
 		}
 		catch(e){
 			log.error(e)
 
-			require("./lib/shared").set("trayAvailable", false)
+			memoryCache.set("trayAvailable", false)
 		}
 	}
 	else{
-		require("./lib/shared").set("trayAvailable", true)
+		memoryCache.set("trayAvailable", true)
 	}
 
-	require("./lib/windows").createWindows().then(() => {
+	createWindows().then(() => {
 		log.info("Init startup windows done")
 	}).catch((err) => {
 		log.error("Startup windows error")
@@ -57,37 +61,37 @@ const initWindows = async () => {
 autoUpdater.on("checking-for-update", () => {
 	log.info("Checking if an update is available")
 
-	require("./lib/ipc").emitGlobal("checkingForUpdate")
+	emitGlobal("checkingForUpdate", {})
 })
 
 autoUpdater.on("update-available", (info) => {
 	log.info("Update available:", info)
 
-	require("./lib/ipc").emitGlobal("updateAvailable", info)
+	emitGlobal("updateAvailable", info)
 })
 
 autoUpdater.on("update-not-available", (info) => {
 	//log.info("No update available:", info)
 
-	require("./lib/ipc").emitGlobal("updateNotAvailable", info)
+	emitGlobal("updateNotAvailable", info)
 })
 
 autoUpdater.on("error", (err) => {
 	log.info(err)
 
-	require("./lib/ipc").emitGlobal("updateError", err)
+	emitGlobal("updateError", err)
 })
 
 autoUpdater.on("download-progress", (progress) => {
 	log.info("Downloading update:", progress)
 
-	require("./lib/ipc").emitGlobal("updateDownloadProgress", progress)
+	emitGlobal("updateDownloadProgress", progress)
 })
 
 autoUpdater.on("update-downloaded", (info) => {
 	log.info("Update downloaded:", info)
 
-	require("./lib/ipc").emitGlobal("updateDownloaded", info)
+	emitGlobal("updateDownloaded", info)
 
 	if(!UPDATE_WINDOW_SHOWN){
 		UPDATE_WINDOW_SHOWN = true
@@ -95,7 +99,7 @@ autoUpdater.on("update-downloaded", (info) => {
 		autoUpdater.autoInstallOnAppQuit = false
 
 		setTimeout(() => {
-			require("./lib/windows").createUpdate(uuidv4(), info.version).catch((err) => {
+			createUpdate(info.version).catch((err) => {
 				log.error(err)
 	
 				UPDATE_WINDOW_SHOWN = false
@@ -117,8 +121,8 @@ app.on("activate", () => {
 })
 
 app.on("second-instance", () => {
-	require("./lib/tray").positionWindow()
-	require("./lib/tray").toggleMainWindow()
+	positionWindow()
+	toggleMainWindow()
 })
 
 powerMonitor.on("shutdown", () => {
@@ -137,8 +141,7 @@ else{
 				label: "Application",
 				submenu: [
 					{
-						label: "About Application",
-						selector: "orderFrontStandardAboutPanel:"
+						label: "About Application"
 					},
 					{
 						type: "separator"
@@ -157,36 +160,30 @@ else{
 				submenu: [
 					{
 						label: "Undo",
-						accelerator: "CmdOrCtrl+Z",
-						selector: "undo:"
+						accelerator: "CmdOrCtrl+Z"
 					},
 					{
 						label: "Redo",
-						accelerator: "Shift+CmdOrCtrl+Z",
-						selector: "redo:"
+						accelerator: "Shift+CmdOrCtrl+Z"
 					},
 					{
 						type: "separator"
 					},
 					{
 						label: "Cut",
-						accelerator: "CmdOrCtrl+X",
-						selector: "cut:"
+						accelerator: "CmdOrCtrl+X"
 					},
 					{
 						label: "Copy",
-						accelerator: "CmdOrCtrl+C",
-						selector: "copy:"
+						accelerator: "CmdOrCtrl+C"
 					},
 					{
 						label: "Paste",
-						accelerator: "CmdOrCtrl+V",
-						selector: "paste:"
+						accelerator: "CmdOrCtrl+V"
 					},
 					{
 						label: "Select All",
-						accelerator: "CmdOrCtrl+A",
-						selector: "selectAll:"
+						accelerator: "CmdOrCtrl+A"
 					}
 				]
 			}
@@ -202,6 +199,6 @@ else{
 	
 		initWindows()
 		
-		require("./lib/ipc").updateKeybinds().catch(log.error)
+		updateKeybinds().catch(log.error)
 	})
 }

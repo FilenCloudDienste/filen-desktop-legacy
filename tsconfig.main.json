@@ -1,0 +1,30 @@
+{
+    "compilerOptions": {
+        "rootDir": "src",
+        "outDir": "prod",
+        "lib": [
+            "ES2020"
+        ],
+        "module": "commonjs",
+        "target": "ES2017",
+        "strict": true,
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "moduleResolution": "node",
+        "sourceMap": false,
+        "skipDefaultLibCheck": true,
+        "skipLibCheck": true,
+        "allowJs": true,
+        "incremental": false,
+        "resolveJsonModule": true
+    },
+    "include": [
+        "./src/main",
+        "./src/types"
+    ],
+    "exclude": [
+        "node_modules",
+		"dist",
+		"prod"
+    ]
+}

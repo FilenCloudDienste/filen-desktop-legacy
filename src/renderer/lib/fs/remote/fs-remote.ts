@@ -3,7 +3,7 @@ import db from "../../db"
 import { decryptFolderName, decryptFileMetadata, hashFn, encryptMetadata, encryptData } from "../../crypto"
 import { convertTimestampToMs, pathIsFileOrFolderNameIgnoredByDefault, generateRandomString, Semaphore, isFolderPathExcluded, pathValidation, isPathOverMaxLength, isNameOverMaxLength, pathIncludesDot } from "../../helpers"
 import { normalizePath, canReadAtPath, readChunk, checkLastModified, gracefulLStat, exists } from "../local"
-import { chunkSize, maxUploadThreads } from "../../constants"
+import constants from "../../../../constants.json"
 import { v4 as uuidv4 } from "uuid"
 import { sendToAllPorts } from "../../worker/ipc"
 import { remoteStorageLeft } from "../../user/info"
@@ -18,7 +18,7 @@ const mimeTypes = window.require("mime-types")
 
 const findOrCreateParentDirectorySemaphore = new Semaphore(1)
 const createDirectorySemaphore = new Semaphore(1)
-const uploadThreadsSemaphore = new Semaphore(maxUploadThreads)
+const uploadThreadsSemaphore = new Semaphore(constants.maxUploadThreads)
 const folderPathUUID = new Map<string, string>()
 
 const UPLOAD_VERSION: number = 2
@@ -561,7 +561,7 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
     
                         while(dummyOffset < size){
                             fileChunks += 1
-                            dummyOffset += chunkSize
+                            dummyOffset += constants.chunkSize
                         }
     
                         try{
@@ -614,7 +614,7 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
                                     }
                                 }
 
-                                readChunk(absolutePath, (index * chunkSize), chunkSize).then((data) => {
+                                readChunk(absolutePath, (index * constants.chunkSize), constants.chunkSize).then((data) => {
                                     try{
                                         // @ts-ignore
                                         var queryParams = new URLSearchParams({
