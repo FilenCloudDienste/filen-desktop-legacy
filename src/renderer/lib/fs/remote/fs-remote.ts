@@ -9,7 +9,7 @@ import { sendToAllPorts } from "../../worker/ipc"
 import { remoteStorageLeft } from "../../user/info"
 import { isSyncLocationPaused } from "../../worker/sync/sync.utils"
 import memoryCache from "../../memoryCache"
-import { RemoteItem, RemoteUUIDs, RemoteDirectoryTreeResult } from "../../../../types"
+import { RemoteItem, RemoteUUIDs, RemoteDirectoryTreeResult, Location } from "../../../../types"
 import { Stats } from "fs-extra"
 
 const pathModule = window.require("path")
@@ -22,19 +22,19 @@ const uploadThreadsSemaphore = new Semaphore(constants.maxUploadThreads)
 const folderPathUUID = new Map<string, string>()
 
 const UPLOAD_VERSION: number = 2
-const previousDatasets: { [key: string]: string } = {}
+const previousDatasets: Record<string, string> = {}
 
-export const smokeTest = async (uuid: string = ""): Promise<boolean> => {
+export const smokeTest = async (uuid: string): Promise<boolean> => {
     const response = await folderPresent({ apiKey: await db.get("apiKey"), uuid })
 
     if(!response.present || response.trash){
-        throw new Error("Remote folder " + uuid + " is not present: " + JSON.stringify(response))
+        return false
     }
 
     return true
 }
 
-export const directoryTree = (uuid: string = "", skipCache: boolean = false, location: any): Promise<RemoteDirectoryTreeResult> => {
+export const directoryTree = (uuid: string, skipCache: boolean = false, location: Location): Promise<RemoteDirectoryTreeResult> => {
     return new Promise((resolve, reject) => {
         Promise.all([
             db.get("deviceId"),
@@ -479,6 +479,11 @@ export const mkdir = async (path: string, remoteTreeNow: any, location: any, tas
     }
 
     const parent = await findOrCreateParentDirectory(path, location.remoteUUID, remoteTreeNow, normalizePath(location.local + "/" + path))
+
+    if(!(await smokeTest(parent))){
+        throw "parentMissing"
+    }
+
     const createdUUID = await createDirectory(uuid, name, parent)
 
     return {
@@ -510,14 +515,9 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
             return getPausedStatus()
         })
 
-        try{
-            var absolutePath = normalizePath(pathModule.join(location.local, path))
-            var name = pathModule.basename(absolutePath)
-            var nameHashed = hashFn(name.toLowerCase())
-        }
-        catch(e){
-            return reject(e)
-        }
+        const absolutePath = normalizePath(pathModule.join(location.local, path))
+        const name = pathModule.basename(absolutePath)
+        const nameHashed = hashFn(name.toLowerCase())
 
         if(typeof name !== "string"){
             return reject(new Error("Could not upload file: Name invalid: " + name))
@@ -697,6 +697,10 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
                                 || origStats.mtimeMs !== stats.mtimeMs
                             ){
                                 return reject("deletedLocally")
+                            }
+
+                            if(!(await smokeTest(parent))){
+                                return reject("parentMissing")
                             }
 
                             await markUploadAsDone({ uuid, uploadKey })

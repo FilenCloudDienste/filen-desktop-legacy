@@ -16,12 +16,8 @@ const TRAY_ICON_ISSUE = nativeImage.createFromPath(path.join(__dirname, "../../.
 export const linuxCheckStatusNotifierPlugin = (): Promise<boolean> => {
     return new Promise((resolve, reject) => {
         exec("/sbin/ldconfig -p | grep statusnotifier-plugin", (err, _, stderr) => {
-            if(err){
-                return reject(err)
-            }
-
-            if(stderr){
-                return reject(new Error(stderr))
+            if(err || stderr){
+                return resolve(false)
             }
 
             return resolve(true)

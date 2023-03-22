@@ -225,6 +225,10 @@ const uploadFile = (path: string, parent: string): Promise<boolean> => {
                             return reject("deletedLocally")
                         }
 
+                        if(!(await fsRemote.smokeTest(parent))){
+                            return reject("parentMissing")
+                        }
+
                         await markUploadAsDone({ uuid, uploadKey })
                     }
                     catch(e: any){

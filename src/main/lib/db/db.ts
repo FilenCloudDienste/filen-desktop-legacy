@@ -2,9 +2,10 @@ import pathModule from "path"
 import { app } from "electron"
 import fs from "fs-extra"
 import writeFileAtomic from "write-file-atomic"
-import { getRandomArbitrary, hashKey } from "../helpers"
+import { getRandomArbitrary, hashKey, Semaphore } from "../helpers"
 import memoryCache from "../memoryCache"
 import { emitGlobal } from "../ipc"
+import { SemaphoreInterface } from "../../../types"
 
 const DB_VERSION = 1
 const DB_PATH = pathModule.join(app.getPath("userData"), "db_v" + DB_VERSION)
@@ -12,6 +13,7 @@ const USE_MEMORY_CACHE = false
 const MEMORY_CACHE_KEY = "db:"
 const MAX_RETRIES = 30
 const RETRY_TIMEOUT = 500
+const writeMutexes: Record<string, SemaphoreInterface> = {}
 
 export const get = async (key: string) => {
     if(USE_MEMORY_CACHE){
@@ -51,7 +53,13 @@ export const get = async (key: string) => {
 }
 
 export const set = (key: string, value: any) => {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
+        if(!writeMutexes[key]){
+            writeMutexes[key] = new Semaphore(1)
+        }
+
+        await writeMutexes[key].acquire()
+
         try{
             var val = JSON.stringify({
                 key,
@@ -60,6 +68,8 @@ export const set = (key: string, value: any) => {
         }
         catch(e){
             reject(e)
+
+            writeMutexes[key].release()
 
             return
         }
@@ -72,6 +82,8 @@ export const set = (key: string, value: any) => {
         const write = () => {
             if(tries > MAX_RETRIES){
                 reject(new Error(lastErr))
+
+                writeMutexes[key].release()
 
                 return
             }
@@ -93,6 +105,8 @@ export const set = (key: string, value: any) => {
                         }
                     })
 
+                    writeMutexes[key].release()
+
                     resolve(true)
                 }).catch((err) => {
                     lastErr = err
@@ -111,7 +125,13 @@ export const set = (key: string, value: any) => {
 }
 
 export const remove = (key: string) => {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
+        if(!writeMutexes[key]){
+            writeMutexes[key] = new Semaphore(1)
+        }
+
+        await writeMutexes[key].acquire()
+
         const keyHash = hashKey(key)
 
         let tries = 0
@@ -120,6 +140,8 @@ export const remove = (key: string) => {
         const write = () => {
             if(tries > MAX_RETRIES){
                 reject(new Error(lastErr))
+
+                writeMutexes[key].release()
 
                 return
             }
@@ -141,6 +163,8 @@ export const remove = (key: string) => {
     
                     resolve(true)
 
+                    writeMutexes[key].release()
+
                     return
                 }
 
@@ -155,6 +179,8 @@ export const remove = (key: string) => {
                             key
                         }
                     })
+
+                    writeMutexes[key].release()
     
                     resolve(true)
                 }).catch((err) => {
@@ -169,6 +195,8 @@ export const remove = (key: string) => {
                                 key
                             }
                         })
+
+                        writeMutexes[key].release()
         
                         resolve(true)
 
@@ -187,23 +215,40 @@ export const remove = (key: string) => {
 }
 
 export const clear = async () => {
-    const dir = await fs.readdir(DB_PATH)
-
-    for(const entry of dir){
-        await fs.unlink(pathModule.join(DB_PATH, entry))
+    for(const mutex in writeMutexes){
+        await writeMutexes[mutex].acquire()
     }
 
-    if(USE_MEMORY_CACHE){
-        memoryCache.cache.forEach((_, key) => {
-            if(key.startsWith(MEMORY_CACHE_KEY)){
-                memoryCache.delete(key)
-            }
+    try{
+        const dir = await fs.readdir(DB_PATH)
+
+        for(const entry of dir){
+            await fs.unlink(pathModule.join(DB_PATH, entry))
+        }
+
+        if(USE_MEMORY_CACHE){
+            memoryCache.cache.forEach((_, key) => {
+                if(key.startsWith(MEMORY_CACHE_KEY)){
+                    memoryCache.delete(key)
+                }
+            })
+        }
+
+        emitGlobal("global-message", {
+            type: "dbClear"
         })
+
+        for(const mutex in writeMutexes){
+            writeMutexes[mutex].release()
+        }
+    }
+    catch(e){
+        throw e
     }
 
-    emitGlobal("global-message", {
-        type: "dbClear"
-    })
+    for(const mutex in writeMutexes){
+        writeMutexes[mutex].release()
+    }
 }
 
 export const keys = async () => {

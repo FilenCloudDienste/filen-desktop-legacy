@@ -4,13 +4,28 @@ import nodeWatch from "node-watch"
 import is from "electron-is"
 import { powerMonitor } from "electron"
 import { emitGlobal } from "../ipc"
+import { getRandomArbitrary } from "../helpers"
+import fs from "fs-extra"
 
-const LINUX_EVENT_EMIT_TIMER = 60000
+const POLLING_TIME = 60000
 const SUBS: Record<string, ReturnType<typeof nodeWatch>> = {}
 const SUBS_INFO: Record<string, string> = {}
-const linuxWatchUpdateTimeout: Record<string, NodeJS.Timer> = {}
+const pollingTimeout: Record<string, NodeJS.Timer> = {}
 const lastEvent: Record<string, number> = {}
 const didCloseDueToResume: Record<string, boolean> = {}
+
+export const isNetworkPath = (path: string): boolean => { // Not reliable on linux or mac
+    try{
+        const realPath = fs.realpathSync(path)
+    
+        return realPath.startsWith("\\\\") || realPath.startsWith("//")
+    }
+    catch(e){
+        log.error(e)
+
+        return false
+    }
+}
 
 export const emitToWorker = (data: any) => {
     emitGlobal("global-message", {
@@ -25,6 +40,10 @@ export const resumeWatchers = () => {
     }
 
     for(const path in SUBS_INFO){
+        if(isNetworkPath(path)){
+            continue
+        }
+
         const locationUUID = SUBS_INFO[path]
 
         try{
@@ -46,23 +65,47 @@ export const resumeWatchers = () => {
     }
 }
 
+export const restartWatcher = (path: string, locationUUID: string) => {
+    if(is.linux() || isNetworkPath(path)){
+        return
+    }
+
+    setTimeout(() => {
+        if(typeof didCloseDueToResume[path] == "undefined"){
+            delete SUBS[path]
+            delete SUBS_INFO[path]
+
+            emitToWorker({
+                event: "dummy",
+                name: "dummy",
+                watchPath: path,
+                locationUUID
+            })
+
+            watch(path, locationUUID).catch(log.error)
+        }
+
+        delete didCloseDueToResume[path]
+    }, 5000)
+}
+
 powerMonitor.on("resume", () => resumeWatchers())
 powerMonitor.on("unlock-screen", () => resumeWatchers())
 powerMonitor.on("user-did-become-active", () => resumeWatchers())
 
 export const watch = (path: string, locationUUID: string) => {
     return new Promise((resolve, reject) => {
-        if(is.linux()){
-            clearInterval(linuxWatchUpdateTimeout[path])
+        if(is.linux() || isNetworkPath(path)){
+            clearInterval(pollingTimeout[path])
 
-            linuxWatchUpdateTimeout[path] = setInterval(() => {
+            pollingTimeout[path] = setInterval(() => {
                 emitToWorker({
                     event: "dummy",
                     name: "dummy",
                     watchPath: path,
                     locationUUID
                 })
-            }, LINUX_EVENT_EMIT_TIMER)
+            }, getRandomArbitrary(Math.floor(POLLING_TIME - 15000), POLLING_TIME))
 
             return
         }
@@ -92,26 +135,12 @@ export const watch = (path: string, locationUUID: string) => {
                 delete didCloseDueToResume[path]
                 delete SUBS[path]
                 delete SUBS_INFO[path]
+
+                restartWatcher(path, locationUUID)
             })
 
             SUBS[path].on("close", () => {
-                setTimeout(() => {
-                    if(typeof didCloseDueToResume[path] == "undefined"){
-                        delete SUBS[path]
-                        delete SUBS_INFO[path]
-
-                        emitToWorker({
-                            event: "dummy",
-                            name: "dummy",
-                            watchPath: path,
-                            locationUUID
-                        })
-    
-                        watch(path, locationUUID).catch(log.error)
-                    }
-
-                    delete didCloseDueToResume[path]
-                }, 5000)
+                restartWatcher(path, locationUUID)
             })
     
             SUBS[path].on("ready", () => {

@@ -7,11 +7,7 @@ const USE_MEMORY_CACHE: boolean = true
 const MEMORY_CACHE_KEY: string = "db:"
 
 if(USE_MEMORY_CACHE){
-    eventListener.on("dbSet", ({ key }: { key: string }) => {
-        if(memoryCache.has(MEMORY_CACHE_KEY + key)){
-            memoryCache.delete(MEMORY_CACHE_KEY + key)
-        }
-    })
+    eventListener.on("dbSet", ({ key }: { key: string }) => memoryCache.delete(MEMORY_CACHE_KEY + key))
     
     eventListener.on("dbClear", () => {
         memoryCache.cache.forEach((_, key) => {
@@ -21,105 +17,73 @@ if(USE_MEMORY_CACHE){
         })
     })
     
-    eventListener.on("dbRemove", ({ key }: { key: string }) => {
+    eventListener.on("dbRemove", ({ key }: { key: string }) => memoryCache.delete(MEMORY_CACHE_KEY + key))
+}
+
+export const get = async (key: string): Promise<any> => {
+    if(USE_MEMORY_CACHE){
         if(memoryCache.has(MEMORY_CACHE_KEY + key)){
-            memoryCache.delete(MEMORY_CACHE_KEY + key)
+            return memoryCache.get(MEMORY_CACHE_KEY + key)
+        }
+    }
+
+    const value = await ipc.db("get", key)
+
+    if(USE_MEMORY_CACHE && value !== null){
+        memoryCache.set(MEMORY_CACHE_KEY + key, value)
+    }
+
+    return value
+}
+
+export const set = async (key: string, value: any): Promise<void> => {
+    await ipc.db("set", key, value)
+
+    if(USE_MEMORY_CACHE){
+        memoryCache.set(MEMORY_CACHE_KEY + key, value)
+    }
+
+    sendToAllPorts({
+        type: "dbSet",
+        data: {
+            key
         }
     })
 }
 
-const get = (key: string): Promise<any> => {
-    return new Promise((resolve, reject) => {
-        if(typeof key !== "string"){
-            return reject(new Error("Invalid key type, expected string, got " + typeof key))
+export const remove = async (key: string): Promise<void> => {
+    await ipc.db("remove", key)
+
+    if(USE_MEMORY_CACHE){
+        memoryCache.delete(MEMORY_CACHE_KEY + key)
+    }
+
+    sendToAllPorts({
+        type: "dbRemove",
+        data: {
+            key
         }
+    })
+}
 
-        if(USE_MEMORY_CACHE){
-            if(memoryCache.has(MEMORY_CACHE_KEY + key)){
-                return resolve(memoryCache.get(MEMORY_CACHE_KEY + key))
+export const clear = async (): Promise<void> => {
+    await ipc.db("clear")
+
+    if(USE_MEMORY_CACHE){
+        memoryCache.cache.forEach((_, key) => {
+            if(key.startsWith(MEMORY_CACHE_KEY)){
+                memoryCache.delete(key)
             }
-        }
-
-        ipc.db("get", key).then((value) => {
-            if(USE_MEMORY_CACHE && value !== null){
-                memoryCache.set(MEMORY_CACHE_KEY + key, value)
-            }
-
-            return resolve(value)
         })
+    }
+
+    sendToAllPorts({
+        type: "dbclear"
     })
 }
 
-const set = (key: string, value: any): Promise<boolean> => {
-    return new Promise((resolve, reject) => {
-        if(typeof key !== "string"){
-            return reject(new Error("Invalid key type, expected string, got " + typeof key))
-        }
-
-        ipc.db("set", key, value).then(() => {
-            if(USE_MEMORY_CACHE){
-                memoryCache.set(MEMORY_CACHE_KEY + key, value)
-            }
-
-            sendToAllPorts({
-                type: "dbSet",
-                data: {
-                    key
-                }
-            })
-
-            return resolve(true)
-        }).catch(reject)
-    })
-}
-
-const remove = (key: string): Promise<boolean> => {
-    return new Promise((resolve, reject) => {
-        if(typeof key !== "string"){
-            return reject(new Error("Invalid key type, expected string, got " + typeof key))
-        }
-
-        ipc.db("remove", key).then(() => {
-            if(USE_MEMORY_CACHE){
-                if(memoryCache.has(MEMORY_CACHE_KEY + key)){
-                    memoryCache.delete(MEMORY_CACHE_KEY + key)
-                }
-            }
-
-            sendToAllPorts({
-                type: "dbRemove",
-                data: {
-                    key
-                }
-            })
-
-            return resolve(true)
-        }).catch(reject)
-    })
-}
-
-const clear = (): Promise<boolean> => {
-    return new Promise((resolve, reject) => {
-        ipc.db("clear").then(() => {
-            if(USE_MEMORY_CACHE){
-                memoryCache.cache.forEach((_, key) => {
-                    if(key.startsWith(MEMORY_CACHE_KEY)){
-                        memoryCache.delete(key)
-                    }
-                })
-            }
-
-            sendToAllPorts({
-                type: "dbclear"
-            })
-
-            return resolve(true)
-        }).catch(reject)
-    })
-}
-
-const keys = (): Promise<any> => {
-    return ipc.db("keys")
+export const keys = async (): Promise<string[]> => {
+    return await ipc.db("keys")
 }
 
 const db = {

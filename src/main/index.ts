@@ -35,16 +35,9 @@ const initWindows = async () => {
 	log.info("Initializing startup windows")
 
 	if(is.linux()){
-		try{
-			const trayAvailable = await linuxCheckLibAppIndicator()
+		const trayAvailable = await linuxCheckLibAppIndicator()
 
-			memoryCache.set("trayAvailable", trayAvailable)
-		}
-		catch(e){
-			log.error(e)
-
-			memoryCache.set("trayAvailable", false)
-		}
+		memoryCache.set("trayAvailable", trayAvailable)
 	}
 	else{
 		memoryCache.set("trayAvailable", true)

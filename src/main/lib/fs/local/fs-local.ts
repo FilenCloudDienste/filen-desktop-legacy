@@ -278,10 +278,6 @@ export const rm = async (path: string, location: Location) => {
         return
     }
 
-    if((await isFileBusy(path))){
-        throw new Error("EBUSY: " + path)
-    }
-
     await fs.ensureDir(trashDirPath)
     
     try{
@@ -308,10 +304,6 @@ export const rmPermanent = (path: string): Promise<void> => {
             cache.delete("gracefulLStat:" + normalizePath(path))
 
             return resolve()
-        }
-
-        if((await isFileBusy(path))){
-            return reject(new Error("EBUSY: " + path))
         }
 
         try{
@@ -441,10 +433,6 @@ export const move = (before: string, after: string, overwrite = true) => {
             return resolve(true)
         }
 
-        if((await isFileBusy(before))){
-            return reject(new Error("EBUSY: " + before))
-        }
-
         let currentTries = 0
         let lastErr: Error
 
@@ -484,10 +472,6 @@ export const rename = (before: string, after: string) => {
 
         if(!(await doesExistLocally(before))){
             return resolve(true)
-        }
-
-        if((await isFileBusy(before))){
-            return reject(new Error("EBUSY: " + before))
         }
 
         let currentTries = 0
@@ -654,10 +638,6 @@ export const checkLastModified = (path: string) => {
                 return resolve({
                     changed: false
                 })
-            }
-
-            if((await isFileBusy(path))){
-                return reject(new Error("EBUSY: " + path))
             }
 
             const lastModified = new Date(new Date().getTime() - 60000)

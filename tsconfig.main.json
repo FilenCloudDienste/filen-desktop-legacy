@@ -20,7 +20,8 @@
     },
     "include": [
         "./src/main",
-        "./src/types"
+        "./src/types",
+        "./src/renderer/lib/i18n",
     ],
     "exclude": [
         "node_modules",

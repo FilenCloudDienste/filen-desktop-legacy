@@ -3,6 +3,7 @@ import crypto from "crypto"
 import constants from "../../../constants.json"
 import is from "electron-is"
 import pathModule from "path"
+import { SemaphoreInterface } from "../../../types"
 
 export const hashKey = memoize((key: string) => {
     const hash = crypto.createHash("sha256").update(key).digest("hex")
@@ -183,3 +184,56 @@ export const isNameOverMaxLength = (name: string) => {
 
 	return name.length > 255
 }
+
+export const Semaphore = function(this: SemaphoreInterface, max: number) {
+    var counter = 0;
+    var waiting: any = [];
+    var maxCount = max || 1
+    
+    var take = function() {
+      if (waiting.length > 0 && counter < maxCount){
+        counter++;
+        let promise = waiting.shift();
+        promise.resolve();
+      }
+    }
+    
+    this.acquire = function() {
+      if(counter < maxCount) {
+        counter++
+        return new Promise(resolve => {
+        resolve(true);
+      });
+      } else {
+        return new Promise((resolve, err) => {
+          waiting.push({resolve: resolve, err: err});
+        });
+      }
+    }
+      
+    this.release = function() {
+     counter--;
+     take();
+    }
+
+    this.count = function() {
+      return counter
+    }
+
+    this.setMax = function(newMax: number) {
+        maxCount = newMax
+    }
+    
+    this.purge = function() {
+      let unresolved = waiting.length;
+    
+      for (let i = 0; i < unresolved; i++) {
+        waiting[i].err('Task has been purged.');
+      }
+    
+      counter = 0;
+      waiting = [];
+      
+      return unresolved;
+    }
+} as any as { new (max: number): SemaphoreInterface; };

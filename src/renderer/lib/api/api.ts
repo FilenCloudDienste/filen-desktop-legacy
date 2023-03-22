@@ -22,19 +22,19 @@ export const throttleGroupDownload = new ThrottleGroup({ rate: 1024 * 1024 * 102
 const httpsAPIAgent = new https.Agent({
     keepAlive: true,
     maxSockets: constants.maxConcurrentAPIRequest,
-    timeout: 86400000
+    timeout: 3600000
 })
 
 const httpsUploadAgent = new https.Agent({
     keepAlive: true,
     maxSockets: constants.maxConcurrentUploads,
-    timeout: 86400000
+    timeout: 3600000
 })
 
 const httpsDownloadAgent = new https.Agent({
     keepAlive: true,
     maxSockets: constants.maxConcurrentDownloads,
-    timeout: 86400000
+    timeout: 3600000
 })
 
 export const getAPIServer = () => {
@@ -144,6 +144,7 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
             })
 
             req.write(JSON.stringify(data))
+            
             req.end()
         }
 

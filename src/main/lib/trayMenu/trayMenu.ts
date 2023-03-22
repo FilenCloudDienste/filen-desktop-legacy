@@ -3,6 +3,7 @@ import log from "electron-log"
 import memoryCache from "../memoryCache"
 import { createCloud, createUpload, createSettings } from "../windows"
 import { emitGlobal } from "../ipc"
+import { i18n } from "../../../renderer/lib/i18n"
 
 export const upload = (type = "folders") => {
     let selectWindow = BrowserWindow.getFocusedWindow()
