@@ -29,7 +29,7 @@ export default class MainHeaderMenu extends React.Component<Props> {
     }
 
     render(){
-        const { platform, darkMode, lang, email, userId } = this.props
+        const { platform, darkMode, lang } = this.props
 
         return (
             <Flex
@@ -132,6 +132,7 @@ export default class MainHeaderMenu extends React.Component<Props> {
                             paddingTop="5px"
                             paddingBottom="5px"
                             icon={<IoGlobeOutline size={17} color={colors(platform, darkMode, "textPrimary")} />}
+                            backgroundColor={colors(platform, darkMode, "backgroundPrimary")}
                             _hover={{
                                 backgroundColor: colors(platform, darkMode, "backgroundSecondary")
                             }}
@@ -155,6 +156,7 @@ export default class MainHeaderMenu extends React.Component<Props> {
                             paddingTop="5px"
                             paddingBottom="5px"
                             icon={<IoMdClose size={17} color={colors(platform, darkMode, "textPrimary")} />}
+                            backgroundColor={colors(platform, darkMode, "backgroundPrimary")}
                             _hover={{
                                 backgroundColor: colors(platform, darkMode, "backgroundSecondary")
                             }}

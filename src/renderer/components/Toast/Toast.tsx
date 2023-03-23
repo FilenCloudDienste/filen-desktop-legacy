@@ -3,7 +3,7 @@ import { createStandaloneToast, Box, Text } from "@chakra-ui/react"
 import useDarkMode from "../../lib/hooks/useDarkMode"
 
 export const showToast = ({ title = "", description = "", message = "", status = "info", duration = 5000, isClosable = false }: { title?: string, description?: string, message?: string, status?: string, duration?: number, isClosable?: boolean }) => {
-    const toast = createStandaloneToast()
+    const { toast } = createStandaloneToast()
 
     toast({
         title,

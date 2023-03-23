@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 import React, { memo, lazy, Suspense } from "react"
 import { ChakraProvider, theme } from "@chakra-ui/react"
 import useDb from "./lib/hooks/useDb"
@@ -29,7 +27,7 @@ if(startingRoute[0] == "worker"){
 					<></>
 				}
 			>
-				<WorkerWindow windowId={getParams.get("id")} />
+				<WorkerWindow />
 			</Suspense>
 		)
 	})
@@ -39,13 +37,17 @@ else if(startingRoute[0] == "auth"){
 	
 	App = memo(() => {
 		return (
-			<ChakraProvider theme={customTheme}>
+			<ChakraProvider
+				theme={customTheme}
+			>
 				<Suspense
 					fallback={
 						<></>
 					}
 				>
-					<AuthWindow windowId={getParams.get("id")} />
+					<AuthWindow
+						windowId={getParams.get("id")!}
+					/>
 				</Suspense>
 			</ChakraProvider>
 		)
@@ -63,13 +65,19 @@ else if(startingRoute[0] == "main"){
 		}
 
 		return (
-			<ChakraProvider theme={customTheme}>
+			<ChakraProvider
+				theme={customTheme}
+			>
 				<Suspense
 					fallback={
 						<></>
 					}
 				>
-					<MainWindow userId={userId} email={email} windowId={getParams.get("id")} />
+					<MainWindow
+						userId={userId}
+						email={email}
+						windowId={getParams.get("id")!}
+					/>
 				</Suspense>
 			</ChakraProvider>
 		)
@@ -87,8 +95,15 @@ else if(startingRoute[0] == "settings"){
 		}
 
 		return (
-			<ChakraProvider theme={customTheme}>
-				<SettingsWindow startingRoute={startingRoute} userId={userId} email={email} windowId={getParams.get("id")} />
+			<ChakraProvider
+				theme={customTheme}
+			>
+				<SettingsWindow
+					startingRoute={startingRoute}
+					userId={userId}
+					email={email}
+					windowId={getParams.get("id")!}
+				/>
 			</ChakraProvider>
 		)
 	})
@@ -105,13 +120,19 @@ else if(startingRoute[0] == "download"){
 		}
 
 		return (
-			<ChakraProvider theme={customTheme}>
+			<ChakraProvider
+				theme={customTheme}
+			>
 				<Suspense
 					fallback={
 						<></>
 					}
 				>
-					<DownloadWindow userId={userId} email={email} windowId={getParams.get("id")} />
+					<DownloadWindow
+						userId={userId}
+						email={email}
+						windowId={getParams.get("id")!}
+					/>
 				</Suspense>
 			</ChakraProvider>
 		)
@@ -129,13 +150,19 @@ else if(startingRoute[0] == "upload"){
 		}
 
 		return (
-			<ChakraProvider theme={customTheme}>
+			<ChakraProvider
+				theme={customTheme}
+			>
 				<Suspense
 					fallback={
 						<></>
 					}
 				>
-					<UploadWindow userId={userId} email={email} windowId={getParams.get("id")} />
+					<UploadWindow
+						userId={userId}
+						email={email}
+						windowId={getParams.get("id")!}
+					/>
 				</Suspense>
 			</ChakraProvider>
 		)
@@ -153,13 +180,19 @@ else if(startingRoute[0] == "selectiveSync"){
 		}
 
 		return (
-			<ChakraProvider theme={customTheme}>
+			<ChakraProvider
+				theme={customTheme}
+			>
 				<Suspense
 					fallback={
 						<></>
 					}
 				>
-					<SelectiveSyncWindow userId={userId} email={email} windowId={getParams.get("id")} />
+					<SelectiveSyncWindow
+						userId={userId}
+						email={email}
+						windowId={getParams.get("id")!}
+					/>
 				</Suspense>
 			</ChakraProvider>
 		)
@@ -177,13 +210,19 @@ else if(startingRoute[0] == "cloud"){
 		}
 
 		return (
-			<ChakraProvider theme={customTheme}>
+			<ChakraProvider
+				theme={customTheme}
+			>
 				<Suspense
 					fallback={
 						<></>
 					}
 				>
-					<CloudWindow userId={userId} email={email} windowId={getParams.get("id")} />
+					<CloudWindow
+						userId={userId}
+						email={email}
+						windowId={getParams.get("id")!}
+					/>
 				</Suspense>
 			</ChakraProvider>
 		)
@@ -195,13 +234,18 @@ else if(startingRoute[0] == "update"){
 
 	App = memo(() => {
 		return (
-			<ChakraProvider theme={customTheme}>
+			<ChakraProvider
+				theme={customTheme}
+			>
 				<Suspense
 					fallback={
 						<></>
 					}
 				>
-					<UpdateWindow windowId={getParams.get("id")} toVersion={getParams.get("toVersion")} />
+					<UpdateWindow
+						windowId={getParams.get("id")!}
+						toVersion={getParams.get("toVersion")!}
+						/>
 				</Suspense>
 			</ChakraProvider>
 		)
