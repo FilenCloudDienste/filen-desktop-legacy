@@ -2,7 +2,7 @@ import eventListener from "../eventListener"
 import { v4 as uuidv4 } from "uuid"
 import db from "../db"
 import { sendToAllPorts } from "../worker/ipc"
-import { SyncIssue } from "../../../types"
+import { SyncIssue, Location } from "../../../types"
 
 const { ipcRenderer } = window.require("electron")
 const log = window.require("electron-log")
@@ -558,10 +558,8 @@ const ipc = {
             args
         })
     },
-    openSelectiveSyncWindow: (args: any): Promise<any> => {
-        return invokeProxy("openSelectiveSyncWindow", {
-            args
-        })
+    openSelectiveSyncWindow: (location: Location): Promise<any> => {
+        return invokeProxy("openSelectiveSyncWindow", location)
     },
     uploadChunk: ({ queryParams, data, timeout = 86400000, from = "sync" }: { queryParams: any, data: any, timeout: number, from: string }): Promise<any> => {
         return new Promise((resolve, reject) => {

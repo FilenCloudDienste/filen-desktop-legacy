@@ -19,6 +19,7 @@ import ipc from "../../lib/ipc"
 import { IoFolder, IoFolderOpen } from "react-icons/io5"
 import { BsFileEarmarkFill } from "react-icons/bs"
 import { AiOutlineCaretRight, AiOutlineCaretDown } from "react-icons/ai"
+import { Location } from "../../../types"
 
 const log = window.require("electron-log")
 const { ipcRenderer } = window.require("electron")
@@ -319,34 +320,32 @@ const SelectiveSyncWindow = memo(({ userId, email, windowId }: { userId: number,
     const darkMode: boolean = useDarkMode()
     const lang: string = useLang()
     const platform: string = usePlatform()
-    const args: any = useRef(JSON.parse(Base64.decode(decodeURIComponent(new URLSearchParams(window.location.search).get("args") as string)))).current
+    const location: Location = useRef(JSON.parse(Base64.decode(decodeURIComponent(new URLSearchParams(window.location.search).get("args") as string)))).current
     const [ready, setReady] = useState<boolean>(false)
     const [rootItemsLength, setRootItemsLength] = useState<number>(0)
-    const excluded: any = useDb("selectiveSync:remote:" + (args.currentSyncLocation.uuid || ""), {})
+    const excluded: any = useDb("selectiveSync:remote:" + location.uuid, {})
 
     useEffect(() => {
-        if(typeof args.currentSyncLocation !== "undefined"){
-            Promise.all([
-                updateKeys(),
-                db.get("apiKey")
-            ]).then(([_, apiKey]) => {
-                folderContent({
-                    apiKey,
-                    uuid: args.currentSyncLocation.remoteUUID
-                }).then((response) => {
-                    setRootItemsLength(response.folders.length + response.uploads.length)
-                    setReady(true)
-                }).catch((err) => {
-                    showToast({ message: err.toString(), status: "error" })
-
-                    log.error(err)
-                })
+        Promise.all([
+            updateKeys(),
+            db.get("apiKey")
+        ]).then(([_, apiKey]) => {
+            folderContent({
+                apiKey,
+                uuid: location.remoteUUID!
+            }).then((response) => {
+                setRootItemsLength(response.folders.length + response.uploads.length)
+                setReady(true)
             }).catch((err) => {
                 showToast({ message: err.toString(), status: "error" })
 
                 log.error(err)
             })
-        }
+        }).catch((err) => {
+            showToast({ message: err.toString(), status: "error" })
+
+            log.error(err)
+        })
 
         ipcRenderer.send("window-ready", windowId)
     }, [])
@@ -400,8 +399,8 @@ const SelectiveSyncWindow = memo(({ userId, email, windowId }: { userId: number,
                                         darkMode={darkMode} 
                                         lang={lang} 
                                         platform={platform} 
-                                        parent={args.currentSyncLocation.remoteUUID} 
-                                        location={args.currentSyncLocation}
+                                        parent={location.remoteUUID!} 
+                                        location={location}
                                         excluded={excluded}
                                         currentPath=""
                                     />

@@ -1,7 +1,7 @@
 import React, { memo, useState, useEffect, useCallback } from "react"
 import { Flex, Text, Link, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, Switch, Spinner, Select, Tooltip, useToast } from "@chakra-ui/react"
 import { i18n } from "../../lib/i18n"
-import { HiOutlineCog, HiOutlineSave, HiOutlineTrash } from "react-icons/hi"
+import { HiOutlineCog, HiOutlineSave } from "react-icons/hi"
 import { AiOutlineSync, AiOutlinePauseCircle, AiOutlineInfoCircle } from "react-icons/ai"
 import useDb from "../../lib/hooks/useDb"
 import ipc from "../../lib/ipc"
@@ -13,7 +13,6 @@ import colors from "../../styles/colors"
 import CodeMirror from "@uiw/react-codemirror"
 import { createCodeMirrorTheme } from "../../styles/codeMirror"
 import { isSubdir } from "../../lib/helpers"
-import { BsFillFolderFill } from "react-icons/bs"
 // @ts-ignore
 import List from "react-virtualized/dist/commonjs/List"
 import { debounce } from "lodash"
@@ -208,7 +207,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
         db.set("filenIgnore:" + uuid, value).catch(log.error)
     }, 1000), [])
 
-    const toggleSyncPauseStatus = async (location: Location, paused: boolean) => {
+    const toggleSyncPauseStatus = useCallback(async (location: Location, paused: boolean) => {
         try{
             let currentSyncLocations: Location[] = await db.get("syncLocations:" + userId)
 
@@ -231,7 +230,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
         catch(e){
             log.error(e)
         }
-    }
+    }, [userId])
 
     useEffect(() => {
         if(typeof currentSyncLocation !== "undefined"){
@@ -476,7 +475,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                 }
                                             </Flex>
                                             <Flex 
-                                                width="32%" 
+                                                width="40%" 
                                                 flexDirection="row" 
                                                 justifyContent="flex-end" 
                                                 alignItems="center"
@@ -529,8 +528,8 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                                                 if(typeof currentSyncLocations[i].remote == "string"){
                                                                                     if(
                                                                                         currentSyncLocations[i].remote == path
-                                                                                        || isSubdir(currentSyncLocations[i].remote as string, path)
-                                                                                        || isSubdir(path, currentSyncLocations[i].remote as string)
+                                                                                        || isSubdir(currentSyncLocations[i].remote!, path)
+                                                                                        || isSubdir(path, currentSyncLocations[i].remote!)
                                                                                     ){
                                                                                         found = true
                                                                                     }
@@ -605,7 +604,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                 }
                                             </Flex>
                                             <Flex 
-                                                width="13%" 
+                                                width="5%" 
                                                 flexDirection="row" 
                                                 justifyContent="space-between" 
                                                 alignItems="center"
@@ -622,30 +621,6 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                     onClick={() => {
                                                         setCurrentSyncLocation(location)
                                                         setSyncSettingsModalOpen(true)
-                                                    }}
-                                                />
-                                                <BsFillFolderFill 
-                                                    color={colors(platform, darkMode, "textPrimary")} 
-                                                    size={15} 
-                                                    cursor="pointer" 
-                                                    pointerEvents="all"
-                                                    style={{
-                                                        flexShrink: 0
-                                                    }}
-                                                    onClick={() => shell.openPath(pathModule.normalize(location.local)).catch(log.error)}
-                                                />
-                                                <HiOutlineTrash
-                                                    color={colors(platform, darkMode, "textPrimary")} 
-                                                    size={15} 
-                                                    cursor="pointer" 
-                                                    pointerEvents="all"
-                                                    style={{
-                                                        flexShrink: 0
-                                                    }}
-                                                    onClick={() => {
-                                                        fsLocal.createLocalTrashDirs().then(() => {
-                                                            shell.openPath(pathModule.normalize(pathModule.join(location.local, ".filen.trash.local"))).catch(log.error)
-                                                        }).catch(log.error)
                                                     }}
                                                 />
                                             </Flex>
@@ -919,7 +894,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                     
                                                     setSyncSettingsModalOpen(false)
                                                     
-                                                    ipc.openSelectiveSyncWindow({ currentSyncLocation })
+                                                    ipc.openSelectiveSyncWindow(currentSyncLocation)
                                                 }}
                                             >
                                                 {i18n(lang, "configure")}
@@ -1023,6 +998,48 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                             />
                                         </Flex>
                                     </Flex>
+                                    {
+                                        typeof currentSyncLocation !== "undefined" && typeof currentSyncLocation.remoteUUID == "string" && (
+                                            <>
+                                                <Flex 
+                                                    width="100%" 
+                                                    height="auto" 
+                                                    justifyContent="space-between" 
+                                                    alignItems="center" 
+                                                    marginTop="25px"
+                                                >
+                                                    <Link 
+                                                        color={colors(platform, darkMode, "link")} 
+                                                        textDecoration="none" 
+                                                        _hover={{ textDecoration: "none" }} 
+                                                        fontSize={13} 
+                                                        onClick={() => shell.openPath(pathModule.normalize(currentSyncLocation.local)).catch(log.error)}
+                                                        marginRight="15px"
+                                                    >
+                                                        {i18n(lang, "openLocalFolder")}
+                                                    </Link>
+                                                </Flex>
+                                                <Flex 
+                                                    width="100%" 
+                                                    height="auto" 
+                                                    justifyContent="space-between" 
+                                                    alignItems="center" 
+                                                    marginTop="10px"
+                                                >
+                                                    <Link 
+                                                        color={colors(platform, darkMode, "link")} 
+                                                        textDecoration="none" 
+                                                        _hover={{ textDecoration: "none" }} 
+                                                        fontSize={13} 
+                                                        onClick={() => shell.openPath(pathModule.normalize(currentSyncLocation.local)).catch(log.error)}
+                                                        marginRight="15px"
+                                                    >
+                                                        {i18n(lang, "openLocalTrash")}
+                                                    </Link>
+                                                </Flex>
+                                            </>
+                                        )
+                                    }
                                     {
                                         typeof currentSyncLocation !== "undefined" && (
                                             <Flex 

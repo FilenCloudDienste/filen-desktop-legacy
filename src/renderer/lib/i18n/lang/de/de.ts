@@ -167,7 +167,9 @@ const de: {
     trayMenuUploadFolders: "Ordner hochladen",
     trayMenuUploadFiles: "Dateien hochladen",
     trayMenuSettings: "Einstellungen",
-    trayMenuQuit: "Filen beenden"
+    trayMenuQuit: "Filen beenden",
+    openLocalFolder: "Lokalen Ordner öffnen",
+    openLocalTrash: "Lokalen Papierkorb öffnen"
 }
 
 export default de

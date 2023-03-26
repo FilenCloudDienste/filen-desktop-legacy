@@ -8,6 +8,7 @@ import memoryCache from "../memoryCache"
 import { positionWindow, createTray } from "../tray"
 import { listen } from "../ipc"
 import db from "../db"
+import { Location } from "../../../types"
 
 const STATIC_PATH = is.dev() ? "http://localhost:3000/" : "file://" + path.join(__dirname, "../../../../build/index.html")
 const DEV_TOOLS = is.dev() ? true : false
@@ -537,7 +538,7 @@ export const createCloud = async (mode: string = "selectFolder"): Promise<Browse
     return window
 }
 
-export const createSelectiveSync = async (args: Record<string, any> = {}): Promise<BrowserWindow> => {
+export const createSelectiveSync = async (location: Location): Promise<BrowserWindow> => {
     const window = new BrowserWindow({
         width: 700,
         height: 600,
@@ -567,7 +568,7 @@ export const createSelectiveSync = async (args: Record<string, any> = {}): Promi
 
     const windowId = window.id
 
-    window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "&args=" + encodeURIComponent(Base64.encode(JSON.stringify(args))) + "#selectiveSync")
+    window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "&args=" + encodeURIComponent(Base64.encode(JSON.stringify(location))) + "#selectiveSync")
 
     if(DEV_TOOLS){
         window.webContents.openDevTools({ mode: "detach" })
@@ -618,7 +619,7 @@ export const createSelectiveSync = async (args: Record<string, any> = {}): Promi
 
     let selectiveSyncWindows = memoryCache.get("SELECTIVE_SYNC_WINDOWS")
 
-    if(typeof selectiveSyncWindows == "object"){
+    if(selectiveSyncWindows){
         selectiveSyncWindows[windowId] = window
     }
     else{

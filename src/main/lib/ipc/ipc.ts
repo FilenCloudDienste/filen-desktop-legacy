@@ -473,8 +473,8 @@ handlerProxy("openDownloadWindow", async (_, { args }) => {
     await createDownload(args)
 })
 
-handlerProxy("openSelectiveSyncWindow", async (_, { args }) => {
-    await createSelectiveSync(args)
+handlerProxy("openSelectiveSyncWindow", async (_, location) => {
+    await createSelectiveSync(location)
 })
 
 handlerProxy("updateKeybinds", async () => {

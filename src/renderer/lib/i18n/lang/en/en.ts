@@ -168,7 +168,9 @@ const en: {
     trayMenuUploadFolders: "Upload folders",
     trayMenuUploadFiles: "Upload files",
     trayMenuSettings: "Settings",
-    trayMenuQuit: "Quit Filen"
+    trayMenuQuit: "Quit Filen",
+    openLocalFolder: "Open local folder",
+    openLocalTrash: "Open local trash folder"
 }
 
 export default en
