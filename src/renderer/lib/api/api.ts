@@ -3,7 +3,7 @@ import { getRandomArbitrary, Semaphore, nodeBufferToArrayBuffer, generateRandomS
 import { hashFn, encryptMetadata, encryptMetadataPublicKey, decryptFolderLinkKey, decryptFileMetadata, decryptFolderName, bufferToHash } from "../crypto"
 import db from "../db"
 import { sendToAllPorts } from "../worker/ipc"
-import { logout } from "../../windows/settings/settings"
+import { logout } from "../../windows/settings/account"
 import striptags from "striptags"
 import { isSyncLocationPaused } from "../worker/sync/sync.utils"
 import memoryCache from "../memoryCache"

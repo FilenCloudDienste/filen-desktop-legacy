@@ -869,15 +869,9 @@ const syncLocation = async (location: Location): Promise<void> => {
         await Promise.all([
             db.set("lastLocalTree:" + location.uuid, doneTasks.length > 0 ? localTreeNowApplied : localTreeNow),
             db.set("lastRemoteTree:" + location.uuid, doneTasks.length > 0 ? remoteTreeNowApplied : remoteTreeNow),
-            ipc.clearApplyDoneTasks(location.uuid)
+            ipc.clearApplyDoneTasks(location.uuid),
+            ...(resync ? [db.set("localDataChanged:" + location.uuid, true), db.set("remoteDataChanged:" + location.uuid, true)] : [])
         ])
-
-        if(resync){
-            await Promise.all([
-                db.set("localDataChanged:" + location.uuid, true),
-                db.set("remoteDataChanged:" + location.uuid, true)
-            ])
-        }
     }
     catch(e: any){
         log.error("Could not save lastLocalTree to DB for location " + location.uuid)
