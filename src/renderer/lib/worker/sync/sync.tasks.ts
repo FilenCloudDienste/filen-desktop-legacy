@@ -339,7 +339,40 @@ export const sortTasks = async ({ uploadToRemote, downloadFromRemote, renameInLo
     }
 }
 
-export const consumeTasks = async ({ uploadToRemote, downloadFromRemote, renameInLocal, renameInRemote, moveInLocal, moveInRemote, deleteInLocal, deleteInRemote, lastLocalTree, lastRemoteTree, localTreeNow, remoteTreeNow, location }: { uploadToRemote: any, downloadFromRemote: any, renameInLocal: any, renameInRemote: any, moveInLocal: any, moveInRemote: any, deleteInLocal: any, deleteInRemote: any, lastLocalTree: any, lastRemoteTree: any, localTreeNow: any, remoteTreeNow: any, location: Location }): Promise<any> => {
+export const consumeTasks = async (
+    {
+        uploadToRemote,
+        downloadFromRemote,
+        renameInLocal,
+        renameInRemote,
+        moveInLocal,
+        moveInRemote,
+        deleteInLocal,
+        deleteInRemote,
+        lastLocalTree,
+        lastRemoteTree,
+        localTreeNow,
+        remoteTreeNow,
+        location 
+    }: {
+        uploadToRemote: any,
+        downloadFromRemote: any,
+        renameInLocal: any,
+        renameInRemote: any,
+        moveInLocal: any,
+        moveInRemote: any,
+        deleteInLocal: any,
+        deleteInRemote: any,
+        lastLocalTree: any,
+        lastRemoteTree: any,
+        localTreeNow: any,
+        remoteTreeNow: any,
+        location: Location
+    }
+): Promise<{
+    doneTasks: any[],
+    resync: boolean
+}> => {
     const {
         uploadToRemoteTasks,
         downloadFromRemoteTasks,
@@ -370,6 +403,7 @@ export const consumeTasks = async ({ uploadToRemote, downloadFromRemote, renameI
     log.info("uploadToRemote", uploadToRemoteTasks.length)
     log.info("downloadFromRemote", downloadFromRemoteTasks.length)
 
+    let resync = false
     const doneTasks: any[] = []
     let syncTasksToDo: number = (renameInRemoteTasks.length + renameInLocalTasks.length + moveInRemoteTasks.length +  moveInLocalTasks.length + deleteInRemoteTasks.length + deleteInLocalTasks.length + uploadToRemoteTasks.length + downloadFromRemoteTasks.length)
 
@@ -593,6 +627,8 @@ export const consumeTasks = async ({ uploadToRemote, downloadFromRemote, renameI
 
                                 updateSyncTasksToDo()
 
+                                resync = true
+
                                 return resolve(true)
                             }
 
@@ -600,6 +636,8 @@ export const consumeTasks = async ({ uploadToRemote, downloadFromRemote, renameI
                                 updateSyncTasksToDo()
 
                                 maxSyncTasksSemaphore.release()
+
+                                resync = true
 
                                 return resolve(true)
                             }
@@ -828,6 +866,8 @@ export const consumeTasks = async ({ uploadToRemote, downloadFromRemote, renameI
 
                                 updateSyncTasksToDo()
 
+                                resync = true
+
                                 return resolve(true)
                             }
 
@@ -835,6 +875,8 @@ export const consumeTasks = async ({ uploadToRemote, downloadFromRemote, renameI
                                 updateSyncTasksToDo()
 
                                 maxSyncTasksSemaphore.release()
+
+                                resync = true
 
                                 return resolve(true)
                             }
@@ -1063,6 +1105,8 @@ export const consumeTasks = async ({ uploadToRemote, downloadFromRemote, renameI
 
                                 updateSyncTasksToDo()
 
+                                resync = true
+
                                 return resolve(true)
                             }
 
@@ -1214,6 +1258,8 @@ export const consumeTasks = async ({ uploadToRemote, downloadFromRemote, renameI
                                     maxSyncTasksSemaphore.release()
 
                                     updateSyncTasksToDo()
+
+                                    resync = true
 
                                     return resolve(true)
                                 }
@@ -1412,5 +1458,5 @@ export const consumeTasks = async ({ uploadToRemote, downloadFromRemote, renameI
         data: 0
     })
 
-    return { doneTasks }
+    return { doneTasks, resync }
 }

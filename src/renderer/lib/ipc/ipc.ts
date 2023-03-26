@@ -12,6 +12,26 @@ const resolves: Record<string, (value: any) => void> = {}
 const rejects: Record<string, (reason?: any) => void> = {}
 let DEBOUNCE_WATCHER_EVENT: any = {}
 
+export const decodeError = ({ name, message, extra }: { name: string, message: string, extra: any }) => {
+    const e = new Error(message)
+
+    e.name = name
+
+    Object.assign(e, extra)
+
+    return e
+}
+
+export const invokeProxy = async <T>(channel: string, ...args: any[]): Promise<T> => {
+    const { error, result } = await ipcRenderer.invoke(channel, ...args)
+
+    if(error){
+        throw decodeError(error)
+    }
+
+    return result
+}
+
 ipcRenderer.on("global-message", (_: any, data: any) => {
     return handleGlobalMessage(data)
 })
@@ -161,12 +181,12 @@ const ipc = {
         })
     },
     getAppPath: (path: string): Promise<string> => {
-        return ipcRenderer.invoke("getAppPath", {
+        return invokeProxy("getAppPath", {
             path
         })
     },
     db: (action: string, key?: string, value?: any): Promise<any> => {
-        return ipcRenderer.invoke("db", {
+        return invokeProxy("db", {
             action,
             key,
             value
@@ -193,24 +213,24 @@ const ipc = {
         })
     },
     closeAuthWindow: (): Promise<any> => {
-        return ipcRenderer.invoke("closeAuthWindow")
+        return invokeProxy("closeAuthWindow")
     },
     createMainWindow: (): Promise<any> => {
-        return ipcRenderer.invoke("createMainWindow")
+        return invokeProxy("createMainWindow")
     },
     loginDone: (): Promise<any> => {
-        return ipcRenderer.invoke("loginDone")
+        return invokeProxy("loginDone")
     },
     openSettingsWindow: (page: string = "general"): Promise<any> => {
-        return ipcRenderer.invoke("openSettingsWindow", {
+        return invokeProxy("openSettingsWindow", {
             page
         })
     },
     selectFolder: (): Promise<any> => {
-        return ipcRenderer.invoke("selectFolder")
+        return invokeProxy("selectFolder")
     },
     selectRemoteFolder: (): Promise<any> => {
-        return ipcRenderer.invoke("selectRemoteFolder")
+        return invokeProxy("selectRemoteFolder")
     },
     remoteFolderSelected: (data: {
         uuid: string,
@@ -456,13 +476,13 @@ const ipc = {
         })
     },
     minimizeWindow: (window: string = "settings", windowId: string = uuidv4()): Promise<any> => {
-        return ipcRenderer.invoke("minimizeWindow", {
+        return invokeProxy("minimizeWindow", {
             window,
             windowId
         })
     },
     closeWindow: (window: string = "settings", windowId: string = uuidv4()): Promise<any> => {
-        return ipcRenderer.invoke("closeWindow", {
+        return invokeProxy("closeWindow", {
             window,
             windowId
         })
@@ -486,60 +506,60 @@ const ipc = {
         })
     },
     setOpenOnStartup: (open: boolean = true): Promise<boolean> => {
-        return ipcRenderer.invoke("setOpenOnStartup", {
+        return invokeProxy("setOpenOnStartup", {
             open
         })
     },
     getOpenOnStartup: (): Promise<boolean> => {
-        return ipcRenderer.invoke("getOpenOnStartup")
+        return invokeProxy("getOpenOnStartup")
     },
     getVersion: (): Promise<string> => {
-        return ipcRenderer.invoke("getVersion")
+        return invokeProxy("getVersion")
     },
     saveLogs: (): Promise<boolean> => {
-        return ipcRenderer.invoke("saveLogs")
+        return invokeProxy("saveLogs")
     },
     updateTrayIcon: (type: string = "normal"): Promise<boolean> => {
-        return ipcRenderer.invoke("updateTrayIcon", {
+        return invokeProxy("updateTrayIcon", {
             type
         })
     },
     updateTrayMenu: (): Promise<void> => {
-        return ipcRenderer.invoke("updateTrayMenu")
+        return invokeProxy("updateTrayMenu")
     },
     updateTrayTooltip: (text: string = "Filen"): Promise<any> => {
-        return ipcRenderer.invoke("updateTrayTooltip", {
+        return invokeProxy("updateTrayTooltip", {
             text
         })
     },
     getFileIcon: (path: string): Promise<string> => {
-        return ipcRenderer.invoke("getFileIcon", {
+        return invokeProxy("getFileIcon", {
             path
         })
     },
     getFileIconExt: (ext: string = ""): Promise<string> => {
-        return ipcRenderer.invoke("getFileIconExt", {
+        return invokeProxy("getFileIconExt", {
             ext
         })
     },
     getFileIconName: (name: string = "name"): Promise<string> => {
-        return ipcRenderer.invoke("getFileIconName", {
+        return invokeProxy("getFileIconName", {
             name
         })
     },
     quitApp: (): Promise<void> => {
-        return ipcRenderer.invoke("quitApp")
+        return invokeProxy("quitApp")
     },
     exitApp: (): Promise<void> => {
-        return ipcRenderer.invoke("exitApp")
+        return invokeProxy("exitApp")
     },
     openDownloadWindow: (args: any): Promise<any> => {
-        return ipcRenderer.invoke("openDownloadWindow", {
+        return invokeProxy("openDownloadWindow", {
             args
         })
     },
     openSelectiveSyncWindow: (args: any): Promise<any> => {
-        return ipcRenderer.invoke("openSelectiveSyncWindow", {
+        return invokeProxy("openSelectiveSyncWindow", {
             args
         })
     },
@@ -640,21 +660,21 @@ const ipc = {
         })
     },
     updateKeybinds: (): Promise<void> => {
-        return ipcRenderer.invoke("updateKeybinds")
+        return invokeProxy("updateKeybinds")
     },
     disableKeybinds: (): Promise<void> => {
-        return ipcRenderer.invoke("disableKeybinds")
+        return invokeProxy("disableKeybinds")
     },
     restartApp: (): Promise<void> => {
-        return ipcRenderer.invoke("restartApp")
+        return invokeProxy("restartApp")
     },
     openUploadWindow: (type: string = "files"): Promise<any> => {
-        return ipcRenderer.invoke("openUploadWindow", {
+        return invokeProxy("openUploadWindow", {
             type
         })
     },
     installUpdate: (): Promise<void> => {
-        return ipcRenderer.invoke("installUpdate")
+        return invokeProxy("installUpdate")
     },
     getFileKey: (uuid: string): Promise<string> => {
         return new Promise((resolve, reject) => {
@@ -674,44 +694,44 @@ const ipc = {
         })
     },
     trayAvailable: (): Promise<boolean> => {
-        return ipcRenderer.invoke("trayAvailable")
+        return invokeProxy("trayAvailable")
     },
     initWatcher: (path: string, locationUUID: string): Promise<void> => {
-        return ipcRenderer.invoke("initWatcher", {
+        return invokeProxy("initWatcher", {
             path,
             locationUUID
         })
     },
     getSyncIssues: (): Promise<SyncIssue[]> => {
-        return ipcRenderer.invoke("getSyncIssues")
+        return invokeProxy("getSyncIssues")
     },
     addSyncIssue: (syncIssue: SyncIssue): Promise<void> => {
-        return ipcRenderer.invoke("addSyncIssue", {
+        return invokeProxy("addSyncIssue", {
             syncIssue
         })
     },
     removeSyncIssue: (uuid: string): Promise<void> => {
-        return ipcRenderer.invoke("removeSyncIssue", {
+        return invokeProxy("removeSyncIssue", {
             uuid
         })
     },
     clearSyncIssues: (): Promise<void> => {
-        return ipcRenderer.invoke("clearSyncIssues")
+        return invokeProxy("clearSyncIssues")
     },
     emitGlobal: (channel: string, data: any): Promise<void> => {
-        return ipcRenderer.invoke("emitGlobal", {
+        return invokeProxy("emitGlobal", {
             channel,
             data
         })
     },
     loadApplyDoneTasks: (locationUUID: string): Promise<any[]> => {
-        return ipcRenderer.invoke("loadApplyDoneTasks", locationUUID)
+        return invokeProxy("loadApplyDoneTasks", locationUUID)
     },
     clearApplyDoneTasks: (locationUUID: string): Promise<void> => {
-        return ipcRenderer.invoke("clearApplyDoneTasks", locationUUID)
+        return invokeProxy("clearApplyDoneTasks", locationUUID)
     },
     addToApplyDoneTasks: (locationUUID: string, task: any): Promise<void> => {
-        return ipcRenderer.invoke("addToApplyDoneTasks", {
+        return invokeProxy("addToApplyDoneTasks", {
             locationUUID,
             task
         })

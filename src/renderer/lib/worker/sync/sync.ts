@@ -782,7 +782,7 @@ const syncLocation = async (location: Location): Promise<void> => {
     })
 
     try{
-        var { doneTasks } = await consumeTasks({ uploadToRemote, downloadFromRemote, renameInLocal, renameInRemote, moveInLocal, moveInRemote, deleteInLocal, deleteInRemote, lastLocalTree, lastRemoteTree, localTreeNow, remoteTreeNow, location })
+        var { doneTasks, resync } = await consumeTasks({ uploadToRemote, downloadFromRemote, renameInLocal, renameInRemote, moveInLocal, moveInRemote, deleteInLocal, deleteInRemote, lastLocalTree, lastRemoteTree, localTreeNow, remoteTreeNow, location })
     }
     catch(e: any){
         log.error("Could not consume tasks for location " + location.uuid)
@@ -871,6 +871,13 @@ const syncLocation = async (location: Location): Promise<void> => {
             db.set("lastRemoteTree:" + location.uuid, doneTasks.length > 0 ? remoteTreeNowApplied : remoteTreeNow),
             ipc.clearApplyDoneTasks(location.uuid)
         ])
+
+        if(resync){
+            await Promise.all([
+                db.set("localDataChanged:" + location.uuid, true),
+                db.set("remoteDataChanged:" + location.uuid, true)
+            ])
+        }
     }
     catch(e: any){
         log.error("Could not save lastLocalTree to DB for location " + location.uuid)

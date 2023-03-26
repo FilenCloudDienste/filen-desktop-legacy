@@ -22,7 +22,32 @@ const autoLauncher = new AutoLaunch({
 
 let syncIssues: SyncIssue[] = []
 
-ipcMain.handle("db", async (_, { action, key, value }) => {
+export const encodeError = (e: any) => {
+    return {
+        name: e.name,
+        message: e.message,
+        extra: {
+            ...e
+        }
+    }
+}
+
+export const handlerProxy = (channel: string, handler: (event: Electron.IpcMainInvokeEvent, ...args: any[]) => any) => {
+    ipcMain.handle(channel, async (...args) => {
+        try{
+            return {
+                result: await Promise.resolve(handler(...args))
+            }
+        }
+        catch(e){
+            return {
+                error: encodeError(e)
+            }
+        }
+    })
+}
+
+handlerProxy("db", async (_, { action, key, value }) => {
     if(action == "get"){
         return await db.get(key)
     }
@@ -43,15 +68,15 @@ ipcMain.handle("db", async (_, { action, key, value }) => {
     }
 })
 
-ipcMain.handle("ping", async () => {
+handlerProxy("ping", async () => {
     return "pong"
 })
 
-ipcMain.handle("getAppPath", async (_, { path }) => {
+handlerProxy("getAppPath", async (_, { path }) => {
     return app.getPath(path)
 })
 
-ipcMain.handle("closeAuthWindow", async () => {
+handlerProxy("closeAuthWindow", async () => {
     if(!memoryCache.has("AUTH_WINDOW")){
         return
     }
@@ -64,7 +89,7 @@ ipcMain.handle("closeAuthWindow", async () => {
     }
 })
 
-ipcMain.handle("createMainWindow", async () => {
+handlerProxy("createMainWindow", async () => {
     if(memoryCache.has("MAIN_WINDOW")){
         return
     }
@@ -72,7 +97,7 @@ ipcMain.handle("createMainWindow", async () => {
     await createMain(true)
 })
 
-ipcMain.handle("loginDone", async () => {
+handlerProxy("loginDone", async () => {
     if(memoryCache.has("MAIN_WINDOW")){
         try{
             memoryCache.get("MAIN_WINDOW").close()
@@ -96,11 +121,11 @@ ipcMain.handle("loginDone", async () => {
     return true
 })
 
-ipcMain.handle("openSettingsWindow", async (_, { page }) => {
+handlerProxy("openSettingsWindow", async (_, { page }) => {
     await createSettings(page)
 })
 
-ipcMain.handle("selectFolder", async () => {
+handlerProxy("selectFolder", async () => {
     let selectWindow = BrowserWindow.getFocusedWindow()
 
     if(!selectWindow){
@@ -120,7 +145,7 @@ ipcMain.handle("selectFolder", async () => {
     })
 })
 
-ipcMain.handle("selectRemoteFolder", async () => {
+handlerProxy("selectRemoteFolder", async () => {
     const window = await createCloud("selectFolder")
     const windowId = window.id
 
@@ -145,12 +170,12 @@ ipcMain.handle("selectRemoteFolder", async () => {
     })
 })
 
-ipcMain.handle("restartApp", async () => {
+handlerProxy("restartApp", async () => {
     app.relaunch()
     app.exit()
 })
 
-ipcMain.handle("minimizeWindow", async (_, { window, windowId }) => {
+handlerProxy("minimizeWindow", async (_, { window, windowId }) => {
     if(window == "settings"){
         const windows = memoryCache.get("SETTINGS_WINDOWS")
 
@@ -234,7 +259,7 @@ ipcMain.handle("minimizeWindow", async (_, { window, windowId }) => {
     return true
 })
 
-ipcMain.handle("closeWindow", async (_, { window, windowId }) => {
+handlerProxy("closeWindow", async (_, { window, windowId }) => {
     if(window == "settings"){
         const windows = memoryCache.get("SETTINGS_WINDOWS")
 
@@ -313,7 +338,7 @@ ipcMain.handle("closeWindow", async (_, { window, windowId }) => {
     return true
 })
 
-ipcMain.handle("setOpenOnStartup", async (_, { open }) => {
+handlerProxy("setOpenOnStartup", async (_, { open }) => {
     const promise = open ? autoLauncher.enable() : autoLauncher.disable()
 
     await promise
@@ -321,15 +346,15 @@ ipcMain.handle("setOpenOnStartup", async (_, { open }) => {
     return true
 })
 
-ipcMain.handle("getOpenOnStartup", async () => {
+handlerProxy("getOpenOnStartup", async () => {
     return await autoLauncher.isEnabled()
 })
 
-ipcMain.handle("getVersion", async () => {
+handlerProxy("getVersion", async () => {
     return app.getVersion()
 })
 
-ipcMain.handle("saveLogs", async () => {
+handlerProxy("saveLogs", async () => {
     let selectWindow = BrowserWindow.getFocusedWindow()
 
     if(selectWindow == null){
@@ -373,19 +398,19 @@ ipcMain.handle("saveLogs", async () => {
     })
 })
 
-ipcMain.handle("updateTrayIcon", async (_, { type }) => {
+handlerProxy("updateTrayIcon", async (_, { type }) => {
     updateTrayIcon(type)
 })
 
-ipcMain.handle("updateTrayMenu", async () => {
+handlerProxy("updateTrayMenu", async () => {
     await updateTrayMenu()
 })
 
-ipcMain.handle("updateTrayTooltip", async (_, { text }) => {
+handlerProxy("updateTrayTooltip", async (_, { text }) => {
     updateTrayTooltip(text)
 })
 
-ipcMain.handle("getFileIcon", async (_, { path }) => {
+handlerProxy("getFileIcon", async (_, { path }) => {
     if(memoryCache.has("fileIcon:" + path)){
         return memoryCache.get("fileIcon:" + path)
     }
@@ -398,7 +423,7 @@ ipcMain.handle("getFileIcon", async (_, { path }) => {
     return dataURL
 })
 
-ipcMain.handle("getFileIconExt", async (_, { ext }) => {
+handlerProxy("getFileIconExt", async (_, { ext }) => {
     if(memoryCache.has("fileIconExt:" + ext)){
         return memoryCache.get("fileIconExt:" + ext)
     }
@@ -417,7 +442,7 @@ ipcMain.handle("getFileIconExt", async (_, { ext }) => {
     return dataURL
 })
 
-ipcMain.handle("getFileIconName", async (_, { name }) => {
+handlerProxy("getFileIconName", async (_, { name }) => {
     if(memoryCache.has("getFileIconName:" + name)){
         return memoryCache.get("getFileIconName:" + name)
     }
@@ -436,35 +461,35 @@ ipcMain.handle("getFileIconName", async (_, { name }) => {
     return dataURL
 })
 
-ipcMain.handle("quitApp", async () => {
+handlerProxy("quitApp", async () => {
     app.exit(0)
 })
 
-ipcMain.handle("exitApp", async () => {
+handlerProxy("exitApp", async () => {
     app.exit(0)
 })
 
-ipcMain.handle("openDownloadWindow", async (_, { args }) => {
+handlerProxy("openDownloadWindow", async (_, { args }) => {
     await createDownload(args)
 })
 
-ipcMain.handle("openSelectiveSyncWindow", async (_, { args }) => {
+handlerProxy("openSelectiveSyncWindow", async (_, { args }) => {
     await createSelectiveSync(args)
 })
 
-ipcMain.handle("updateKeybinds", async () => {
+handlerProxy("updateKeybinds", async () => {
     return await updateKeybinds()
 })
 
-ipcMain.handle("disableKeybinds", async () => {
+handlerProxy("disableKeybinds", async () => {
     globalShortcut.unregisterAll()
 })
 
-ipcMain.handle("openUploadWindow", async (_, { type }) => {
+handlerProxy("openUploadWindow", async (_, { type }) => {
     upload(type)
 })
 
-ipcMain.handle("installUpdate", async () => {
+handlerProxy("installUpdate", async () => {
     await new Promise((resolve) => {
         setTimeout(() => {
             try{
@@ -495,7 +520,7 @@ ipcMain.handle("installUpdate", async () => {
     return true
 })
 
-ipcMain.handle("trayAvailable", async () => {
+handlerProxy("trayAvailable", async () => {
     const trayAvailable = memoryCache.get("trayAvailable")
 
     if(typeof trayAvailable == "boolean"){
@@ -505,147 +530,147 @@ ipcMain.handle("trayAvailable", async () => {
     return false
 })
 
-ipcMain.handle("initWatcher", async (_, { path, locationUUID }) => {
+handlerProxy("initWatcher", async (_, { path, locationUUID }) => {
     await watch(path, locationUUID)
 })
 
-ipcMain.handle("addSyncIssue", async (_, { syncIssue }) => {
+handlerProxy("addSyncIssue", async (_, { syncIssue }) => {
     syncIssues.push(syncIssue)
 })
 
-ipcMain.handle("removeSyncIssue", async (_, { uuid }) => {
+handlerProxy("removeSyncIssue", async (_, { uuid }) => {
     syncIssues = syncIssues.filter(issue => issue.uuid !== uuid)
 })
 
-ipcMain.handle("getSyncIssues", async () => {
+handlerProxy("getSyncIssues", async () => {
     return syncIssues
 })
 
-ipcMain.handle("clearSyncIssues", async () => {
+handlerProxy("clearSyncIssues", async () => {
     syncIssues = []
 })
 
-ipcMain.handle("fsNormalizePath", async (_, path) => {
+handlerProxy("fsNormalizePath", async (_, path) => {
     return fsLocal.normalizePath(path)
 })
 
-ipcMain.handle("fsGetTempDir", async () => {
+handlerProxy("fsGetTempDir", async () => {
     return fsLocal.getTempDir()
 })
 
-ipcMain.handle("fsGracefulLStat", async (_, path) => {
+handlerProxy("fsGracefulLStat", async (_, path) => {
     return await fsLocal.gracefulLStat(path)
 })
 
-ipcMain.handle("fsExists", async (_, path) => {
+handlerProxy("fsExists", async (_, path) => {
     return await fsLocal.exists(path)
 })
 
-ipcMain.handle("fsDoesExistLocally", async (_, path) => {
+handlerProxy("fsDoesExistLocally", async (_, path) => {
     return await fsLocal.doesExistLocally(path)
 })
 
-ipcMain.handle("fsCanReadWriteAtPath", async (_, path) => {
+handlerProxy("fsCanReadWriteAtPath", async (_, path) => {
     return await fsLocal.canReadWriteAtPath(path)
 })
 
-ipcMain.handle("fsSmokeTest", async (_, path) => {
+handlerProxy("fsSmokeTest", async (_, path) => {
     return await fsLocal.smokeTest(path)
 })
 
-ipcMain.handle("fsReadChunk", async (_, { path, offset, length }) => {
+handlerProxy("fsReadChunk", async (_, { path, offset, length }) => {
     return await fsLocal.readChunk(path, offset, length)
 })
 
-ipcMain.handle("fsRm", async (_, { path, location }) => {
+handlerProxy("fsRm", async (_, { path, location }) => {
     return await fsLocal.rm(path, location)
 })
 
-ipcMain.handle("fsRmPermanent", async (_, path) => {
+handlerProxy("fsRmPermanent", async (_, path) => {
     return await fsLocal.rmPermanent(path)
 })
 
-ipcMain.handle("fsMkdir", async (_, { path, location }) => {
+handlerProxy("fsMkdir", async (_, { path, location }) => {
     return await fsLocal.mkdir(path, location)
 })
 
-ipcMain.handle("fsMove", async (_, { before, after, overwrite }) => {
+handlerProxy("fsMove", async (_, { before, after, overwrite }) => {
     return await fsLocal.move(before, after, overwrite)
 })
 
-ipcMain.handle("fsRename", async (_, { before, after }) => {
+handlerProxy("fsRename", async (_, { before, after }) => {
     return await fsLocal.rename(before, after)
 })
 
-ipcMain.handle("fsCreateLocalTrashDirs", async () => {
+handlerProxy("fsCreateLocalTrashDirs", async () => {
     return await fsLocal.createLocalTrashDirs()
 })
 
-ipcMain.handle("fsClearLocalTrashDirs", async (_, clearNow) => {
+handlerProxy("fsClearLocalTrashDirs", async (_, clearNow) => {
     return await fsLocal.clearLocalTrashDirs(clearNow)
 })
 
-ipcMain.handle("fsInitLocalTrashDirs", async () => {
+handlerProxy("fsInitLocalTrashDirs", async () => {
     fsLocal.initLocalTrashDirs()
 })
 
-ipcMain.handle("fsCheckLastModified", async (_, path) => {
+handlerProxy("fsCheckLastModified", async (_, path) => {
     return await fsLocal.checkLastModified(path)
 })
 
-ipcMain.handle("fsCanReadAtPath", async (_, path) => {
+handlerProxy("fsCanReadAtPath", async (_, path) => {
     return await fsLocal.canReadAtPath(path)
 })
 
-ipcMain.handle("fsIsFileBusy", async (_, path) => {
+handlerProxy("fsIsFileBusy", async (_, path) => {
     return await fsLocal.isFileBusy(path)
 })
 
-ipcMain.handle("fsDirectoryTree", async (_, { path, skipCache, location }) => {
+handlerProxy("fsDirectoryTree", async (_, { path, skipCache, location }) => {
     return await fsLocal.directoryTree(path, skipCache, location)
 })
 
-ipcMain.handle("fsUnlink", async (_, path) => {
+handlerProxy("fsUnlink", async (_, path) => {
     return await fsLocal.unlink(path)
 })
 
-ipcMain.handle("fsUtimes", async (_, { path, atime, mtime }) => {
+handlerProxy("fsUtimes", async (_, { path, atime, mtime }) => {
     return await fsLocal.utimes(path, atime, mtime)
 })
 
-ipcMain.handle("fsRemove", async (_, path) => {
+handlerProxy("fsRemove", async (_, path) => {
     return await fsLocal.remove(path)
 })
 
-ipcMain.handle("fsMkdirNormal", async (_, { path, options }) => {
+handlerProxy("fsMkdirNormal", async (_, { path, options }) => {
     return await fsLocal.mkdirNormal(path, options)
 })
 
-ipcMain.handle("fsAccess", async (_, { path, mode }) => {
+handlerProxy("fsAccess", async (_, { path, mode }) => {
     return await fsLocal.access(path, mode)
 })
 
-ipcMain.handle("fsAppendFile", async (_, { path, data, options }) => {
+handlerProxy("fsAppendFile", async (_, { path, data, options }) => {
     return await fsLocal.appendFile(path, data, options)
 })
 
-ipcMain.handle("fsEnsureDir", async (_, path) => {
+handlerProxy("fsEnsureDir", async (_, path) => {
     return await fsLocal.ensureDir(path)
 })
 
-ipcMain.handle("emitGlobal", async (_, { channel, data }) => {
+handlerProxy("emitGlobal", async (_, { channel, data }) => {
     emitGlobal(channel, data)
 })
 
-ipcMain.handle("loadApplyDoneTasks", async (_, locationUUID) => {
+handlerProxy("loadApplyDoneTasks", async (_, locationUUID) => {
     return await fsLocal.loadApplyDoneTasks(locationUUID)
 })
 
-ipcMain.handle("clearApplyDoneTasks", async (_, locationUUID) => {
+handlerProxy("clearApplyDoneTasks", async (_, locationUUID) => {
     return await fsLocal.clearApplyDoneTasks(locationUUID)
 })
 
-ipcMain.handle("addToApplyDoneTasks", async (_, { locationUUID, task }) => {
+handlerProxy("addToApplyDoneTasks", async (_, { locationUUID, task }) => {
     return await fsLocal.addToApplyDoneTasks(locationUUID, task)
 })
 

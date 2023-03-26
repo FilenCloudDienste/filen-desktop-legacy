@@ -9,10 +9,10 @@ import constants from "../../../../constants.json"
 import { isSyncLocationPaused } from "../../worker/sync/sync.utils"
 import { Stats } from "fs-extra"
 import { LocalDirectoryTreeResult, Location } from "../../../../types"
+import { invokeProxy } from "../../ipc/ipc"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
-const { ipcRenderer } = window.require("electron")
 
 const downloadThreadsSemaphore = new Semaphore(constants.maxDownloadThreads)
 
@@ -21,7 +21,7 @@ export const normalizePath = (path: string): string => {
 }
 
 export const checkLastModified = async (path: string): Promise<{ changed: boolean, mtimeMs?: number }> => {
-    return await ipcRenderer.invoke("fsCheckLastModified", path)
+    return await invokeProxy("fsCheckLastModified", path)
 }
 
 export const getTempDir = async (): Promise<string> => {
@@ -38,7 +38,7 @@ export const getTempDir = async (): Promise<string> => {
 }
 
 export const smokeTest = async (path: string): Promise<void> => {
-    return await ipcRenderer.invoke("fsSmokeTest", path)
+    return await invokeProxy("fsSmokeTest", path)
 }
 
 export interface StatsIPC extends Stats {
@@ -48,23 +48,23 @@ export interface StatsIPC extends Stats {
 }
 
 export const gracefulLStat = async (path: string): Promise<StatsIPC> => {
-    return await ipcRenderer.invoke("fsGracefulLStat", path)
+    return await invokeProxy("fsGracefulLStat", path)
 }
 
 export const exists = async (path: string): Promise<boolean> => {
-    return await ipcRenderer.invoke("fsExists", path)
+    return await invokeProxy("fsExists", path)
 }
 
 export const canReadWriteAtPath = async (path: string): Promise<boolean> => {
-    return await ipcRenderer.invoke("fsCanReadWriteAtPath", path)
+    return await invokeProxy("fsCanReadWriteAtPath", path)
 }
 
 export const canReadAtPath = async (path: string): Promise<boolean> => {
-    return await ipcRenderer.invoke("fsCanReadAtPath", path)
+    return await invokeProxy("fsCanReadAtPath", path)
 }
 
 export const directoryTree = async (path: string, skipCache: boolean = false, location: Location): Promise<LocalDirectoryTreeResult> => {
-    return await ipcRenderer.invoke("fsDirectoryTree", {
+    return await invokeProxy("fsDirectoryTree", {
         path,
         skipCache,
         location
@@ -72,7 +72,7 @@ export const directoryTree = async (path: string, skipCache: boolean = false, lo
 }
 
 export const readChunk = async (path: string, offset: number, length: number): Promise<Buffer> => {
-    return await ipcRenderer.invoke("fsReadChunk", {
+    return await invokeProxy("fsReadChunk", {
         path,
         offset,
         length
@@ -80,25 +80,25 @@ export const readChunk = async (path: string, offset: number, length: number): P
 }
 
 export const rm = async (path: string, location: Location): Promise<void> => {
-    return await ipcRenderer.invoke("fsRm", {
+    return await invokeProxy("fsRm", {
         path,
         location
     })
 }
 
 export const rmPermanent = async (path: string): Promise<void> => {
-    return await ipcRenderer.invoke("fsRmPermanent", path)
+    return await invokeProxy("fsRmPermanent", path)
 }
 
 export const mkdir = async (path: string, location: any): Promise<any> => {
-    return await ipcRenderer.invoke("fsMkdir", {
+    return await invokeProxy("fsMkdir", {
         path,
         location
     })
 }
 
 export const utimes = async (path: string, atime: Date, mtime: Date): Promise<void> => {
-    return await ipcRenderer.invoke("fsUtimes", {
+    return await invokeProxy("fsUtimes", {
         path,
         atime,
         mtime
@@ -106,11 +106,11 @@ export const utimes = async (path: string, atime: Date, mtime: Date): Promise<vo
 }
 
 export const unlink = async (path: string): Promise<void> => {
-    return await ipcRenderer.invoke("fsUnlink", path)
+    return await invokeProxy("fsUnlink", path)
 }
 
 export const remove = async (path: string): Promise<void> => {
-    return await ipcRenderer.invoke("fsRemove", path)
+    return await invokeProxy("fsRemove", path)
 }
 
 export const download = (path: string, location: any, task: any): Promise<any> => {
@@ -265,7 +265,7 @@ export const download = (path: string, location: any, task: any): Promise<any> =
 }
 
 export const move = async (before: string, after: string, overwrite: boolean = true): Promise<void> => {
-    return await ipcRenderer.invoke("fsMove", {
+    return await invokeProxy("fsMove", {
         before,
         after,
         overwrite
@@ -273,44 +273,44 @@ export const move = async (before: string, after: string, overwrite: boolean = t
 }
 
 export const rename = async (before: string, after: string): Promise<void> => {
-    return await ipcRenderer.invoke("fsRename", {
+    return await invokeProxy("fsRename", {
         before,
         after
     })
 }
 
 export const createLocalTrashDirs = async (): Promise<void> => {
-    return await ipcRenderer.invoke("fsCreateLocalTrashDirs")
+    return await invokeProxy("fsCreateLocalTrashDirs")
 }
 
 export const clearLocalTrashDirs = async (clearNow: boolean = false): Promise<void> => {
-    return await ipcRenderer.invoke("fsClearLocalTrashDirs", clearNow)
+    return await invokeProxy("fsClearLocalTrashDirs", clearNow)
 }
 
 export const initLocalTrashDirs = () => {
-    ipcRenderer.invoke("fsInitLocalTrashDirs", constants.clearLocalTrashDirsInterval).catch(console.error)
+    invokeProxy("fsInitLocalTrashDirs", constants.clearLocalTrashDirsInterval).catch(console.error)
 }
 
 export const isFileBusy = async (path: string): Promise<boolean> => {
-    return await ipcRenderer.invoke("fsIsFileBusy", path)
+    return await invokeProxy("fsIsFileBusy", path)
 }
 
 export const mkdirNormal = async (path: string, options = { recursive: true }): Promise<void> => {
-    return await ipcRenderer.invoke("fsMkdirNormal", {
+    return await invokeProxy("fsMkdirNormal", {
         path,
         options
     })
 }
 
 export const access = async (path: string, mode: any): Promise<void> => {
-    return await ipcRenderer.invoke("fsAccess", {
+    return await invokeProxy("fsAccess", {
         path,
         mode
     })
 }
 
 export const appendFile = async (path: string, data: Buffer | string, options: any = undefined): Promise<void> => {
-    return await ipcRenderer.invoke("fsAppendFile", {
+    return await invokeProxy("fsAppendFile", {
         path,
         data,
         options
@@ -318,5 +318,5 @@ export const appendFile = async (path: string, data: Buffer | string, options: a
 }
 
 export const ensureDir = async (path: string) => {
-    return await ipcRenderer.invoke("fsEnsureDir", path)
+    return await invokeProxy("fsEnsureDir", path)
 }
