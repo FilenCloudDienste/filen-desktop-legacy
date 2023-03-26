@@ -8,11 +8,13 @@ import ipc from "../../lib/ipc"
 import useDb from "../../lib/hooks/useDb"
 import eventListener from "../../lib/eventListener"
 import useAppVersion from "../../lib/hooks/useAppVersion"
-import { Location, SyncIssue } from "../../../types"
+import { SyncIssue } from "../../../types"
 import { listen as socketListen } from "../../lib/worker/socket"
 import { debounce } from "lodash"
 import { initLocalTrashDirs } from "../../lib/fs/local"
 import useSyncIssues from "../../lib/hooks/useSyncIssues"
+import { i18n } from "../../lib/i18n"
+import useLang from "../../lib/hooks/useLang"
 
 const log = window.require("electron-log")
 
@@ -30,6 +32,7 @@ const WorkerWindow = memo(() => {
     const [runningSyncTasks, setRunningSyncTasks] = useState<number>(0)
     const appVersion: string = useAppVersion()
     const isLoggedIn: boolean = useDb("isLoggedIn", false)
+    const lang = useLang()
 
     const init = async (): Promise<any> => {
         if(initDone.current){
@@ -88,31 +91,31 @@ const WorkerWindow = memo(() => {
 
     const processTray = useCallback(debounce((isLoggedIn: boolean, isOnline: boolean, paused: boolean, syncIssues: SyncIssue[], runningSyncTasks: number) => {
         if(!isLoggedIn){
-            updateTray("paused", "Please login")
+            updateTray("paused", i18n(lang, "pleaseLogin"))
 
             return
         }
         
         if(!isOnline){
-            updateTray("error", "You are offline")
+            updateTray("error", i18n(lang, "youAreOffline"))
 
             return
         }
         
         if(paused){
-            updateTray("paused", "Paused")
+            updateTray("paused", i18n(lang, "paused"))
 
             return
         }
         
         if(syncIssues.filter(issue => issue.type == "critical").length > 0){
-            updateTray("error", syncIssues.length + " sync issues")
+            updateTray("error", i18n(lang, "traySyncIssues", true, ["__NUM__"], [syncIssues.length.toString()]))
 
             return
         }
         
         if(runningSyncTasks > 0){
-            updateTray("sync", "Syncing " + runningSyncTasks + " items")
+            updateTray("sync", i18n(lang, "traySyncing", true, ["__NUM__"], [runningSyncTasks.toString()]))
 
             return
         }
@@ -124,58 +127,41 @@ const WorkerWindow = memo(() => {
                         const warnings = syncIssues.filter(issue => issue.type == "conflict" || issue.type == "warning").length
 
                         if(warnings > 0){
-                            updateTray("paused", warnings + " warnings")
+                            updateTray("paused", i18n(lang, "trayWarnings", true, ["__NUM__"], [warnings.toString()]))
                         }
                         else{
-                            updateTray("normal", "Everything synced")
+                            updateTray("normal", i18n(lang, "everythingSynced"))
                         }
                     }
                     else{
-                        updateTray("paused", "No sync remote locations setup yet")
+                        updateTray("paused", i18n(lang, "trayNoSyncRemoteSetup"))
                     }
                 }
                 else{
-                    updateTray("paused", "No sync locations setup yet")
+                    updateTray("paused", i18n(lang, "trayNoSyncSetup"))
                 }
             }).catch((err) => {
                 log.error(err)
 
-                updateTray("normal", "Everything synced")
+                updateTray("normal", i18n(lang, "everythingSynced"))
             })
         }).catch((err) => {
             log.error(err)
 
-            updateTray("normal", "Everything synced")         
+            updateTray("normal", i18n(lang, "everythingSynced"))         
         })
-    }, 250), [appVersion])
+    }, 250), [appVersion, lang])
 
     useEffect(() => {
         processTray(isLoggedIn, isOnline, paused, syncIssues, runningSyncTasks)
     }, [isLoggedIn, isOnline, paused, syncIssues, runningSyncTasks])
 
     useEffect(() => {
-        (async () => {
-            if(!paused){
-                try{
-                    const userId: number | null = await db.get("userId")
-                    let currentSyncLocations: Location[] | null = await db.get("syncLocations:" + userId)
-    
-                    if(!Array.isArray(currentSyncLocations)){
-                        currentSyncLocations = []
-                    }
-    
-                    for(let i = 0; i < currentSyncLocations.length; i++){
-                        await Promise.all([
-                            db.set("localDataChanged:" + currentSyncLocations[i].uuid, true),
-                            db.set("remoteDataChanged:" + currentSyncLocations[i].uuid, true)
-                        ])
-                    }
-                }
-                catch(e){
-                    log.error(e)
-                }
-            }
-        })()
+        if(!paused){
+            ipc.emitGlobal("global-message", {
+                type: "forceSync"
+            }).catch(log.error)
+        }
     }, [paused])
 
     useEffect(() => {

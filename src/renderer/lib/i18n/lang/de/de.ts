@@ -148,7 +148,26 @@ const de: {
     copied: "Kopiert",
     publicLinkCopied: "Öffentlicher Link in die Zwischenablage kopiert",
     clearLocalTrashDirs: "Lokale Papierkörbe leeren",
-    clearLocalTrashDirsInfo: "Das Leeren der lokalen Papierkörbe kann nicht rückgängig gemacht werden! Bist du dir sicher?"
+    clearLocalTrashDirsInfo: "Das Leeren der lokalen Papierkörbe kann nicht rückgängig gemacht werden! Bist du dir sicher?",
+    pleaseLogin: "Bitte logge Dich ein",
+    traySyncIssues: "__NUM__ Synchronisierungsfehler",
+    traySyncing: "Synchronisiere __NUM__ Dateien",
+    everythingSynced: "Alles synchronisiert",
+    trayWarnings: "__NUM__ Warnungen",
+    trayNoSyncSetup: "Noch keine Synchronisierungsorte eingerichtet",
+    trayNoSyncRemoteSetup: "Noch keine Cloud Synchronisierungsorte eingerichtet",
+    timeSinceSeconds: "Vor __TIME__ Sekunden",
+    timeSinceMinutes: "Vor __TIME__ Minuten",
+    timeSinceHours: "Vor __TIME__ Stunden",
+    timeSinceDays: "Vor __TIME__ Tagen",
+    timeSinceMonths: "Vor __TIME__ Monaten",
+    timeSinceYears: "Vor __TIME__ Jahren",
+    trayMenuShow: "Öffnen",
+    trayMenuForceSync: "Synchronisierung erzwingen",
+    trayMenuUploadFolders: "Ordner hochladen",
+    trayMenuUploadFiles: "Dateien hochladen",
+    trayMenuSettings: "Einstellungen",
+    trayMenuQuit: "Filen beenden"
 }
 
 export default de

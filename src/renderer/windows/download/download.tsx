@@ -49,13 +49,6 @@ const downloadFile = (absolutePath: string, file: any) => {
                 fsLocal.rmPermanent(absolutePath),
                 fsLocal.rmPermanent(fileTmpPath)
             ]).then(async () => {
-                try{
-                    var stream = fs.createWriteStream(fileTmpPath)
-                }
-                catch(e){
-                    return reject(e)
-                }
-
                 const fileChunks = file.chunks
                 let currentWriteIndex = 0
 
@@ -85,17 +78,17 @@ const downloadFile = (absolutePath: string, file: any) => {
                         }, 10)
                     }
 
-                    stream.write(data, (err: any) => {
-                        if(err){
-                            return reject(err)
-                        }
-
+                    fsLocal.appendFile(fileTmpPath, data).then(() => {
                         currentWriteIndex += 1
+                    }).catch((err) => {
+                        downloadThreadsSemaphore.purge()
+
+                        reject(err)
                     })
                 }
 
                 try{
-                    await new Promise((resolve, reject) => {
+                    await new Promise<void>((resolve, reject) => {
                         let done = 0
 
                         for(let i = 0; i < fileChunks; i++){
@@ -108,7 +101,7 @@ const downloadFile = (absolutePath: string, file: any) => {
                                     downloadThreadsSemaphore.release()
 
                                     if(done >= fileChunks){
-                                        return resolve(true)
+                                        return resolve()
                                     }
                                 }).catch((err) => {
                                     downloadThreadsSemaphore.release()
@@ -119,28 +112,18 @@ const downloadFile = (absolutePath: string, file: any) => {
                         }
                     })
 
-                    await new Promise((resolve) => {
+                    await new Promise<void>((resolve) => {
                         if(currentWriteIndex >= fileChunks){
-                            return resolve(true)
+                            return resolve()
                         }
 
                         const wait = setInterval(() => {
                             if(currentWriteIndex >= fileChunks){
                                 clearInterval(wait)
 
-                                return resolve(true)
+                                return resolve()
                             }
                         }, 10)
-                    })
-
-                    await new Promise((resolve, reject) => {
-                        stream.close((err: any) => {
-                            if(err){
-                                return reject(err)
-                            }
-
-                            return resolve(true)
-                        })
                     })
                 }
                 catch(e){
@@ -154,7 +137,7 @@ const downloadFile = (absolutePath: string, file: any) => {
                 const utimesLastModified = typeof lastModified == "number" && lastModified > 0 && now > lastModified ? lastModified : (now - 60000)
 
                 fsLocal.move(fileTmpPath, absolutePath).then(() => {
-                    fsLocal.utimes(absolutePath, new Date(utimesLastModified).getTime(), new Date(utimesLastModified).getTime()).then(() => {
+                    fsLocal.utimes(absolutePath, new Date(utimesLastModified), new Date(utimesLastModified)).then(() => {
                         fsLocal.checkLastModified(absolutePath).then(() => {
                             fsLocal.gracefulLStat(absolutePath).then((stat: any) => {
                                 if(stat.size <= 0){

@@ -336,32 +336,37 @@ export const directoryTree = (uuid: string, skipCache: boolean = false, location
     })
 }
 
-export const createDirectory = (uuid: string, name: string, parent: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        createDirectorySemaphore.acquire().then(() => {
-            folderExists({ name, parent }).then(({ exists, existsUUID }) => {
-                if(exists){
-                    createDirectorySemaphore.release()
+export const createDirectory = async (uuid: string, name: string, parent: string): Promise<string> => {
+    await createDirectorySemaphore.acquire()
 
-                    return resolve(existsUUID)
-                }
-    
-                createFolder({ uuid, name, parent }).then(() => {
-                    createDirectorySemaphore.release()
+    try{
+        const { exists, existsUUID } = await folderExists({ name, parent })
 
-                    return resolve(uuid)
-                }).catch((err) => {
-                    createDirectorySemaphore.release()
+        if(exists){
+            createDirectorySemaphore.release()
 
-                    return reject(err)
-                })
-            }).catch((err) => {
-                createDirectorySemaphore.release()
+            return existsUUID
+        }
 
-                return reject(err)
-            })
-        }).catch(reject)
-    })
+        const parentExists = await smokeTest(parent)
+
+        if(!parentExists){
+            createDirectorySemaphore.release()
+
+            throw "parentMissing"
+        }
+
+        await createFolder({ uuid, name, parent })
+
+        createDirectorySemaphore.release()
+
+        return uuid
+    }
+    catch(e){
+        createDirectorySemaphore.release()
+
+        throw e
+    }
 }
 
 export const doesExistLocally = async (path: string): Promise<boolean> => {
@@ -479,11 +484,6 @@ export const mkdir = async (path: string, remoteTreeNow: any, location: any, tas
     }
 
     const parent = await findOrCreateParentDirectory(path, location.remoteUUID, remoteTreeNow, normalizePath(location.local + "/" + path))
-
-    if(!(await smokeTest(parent))){
-        throw "parentMissing"
-    }
-
     const createdUUID = await createDirectory(uuid, name, parent)
 
     return {
@@ -492,7 +492,7 @@ export const mkdir = async (path: string, remoteTreeNow: any, location: any, tas
     }
 }
 
-export const upload = (path: string, remoteTreeNow: any, location: any, task: any, uuid: string): Promise<any> => {
+export const upload = (path: string, remoteTreeNow: any, location: Location, task: any, uuid: string): Promise<any> => {
     return new Promise(async (resolve, reject) => {
         await new Promise((resolve) => {
             const getPausedStatus = () => {
@@ -521,6 +521,10 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
 
         if(typeof name !== "string"){
             return reject(new Error("Could not upload file: Name invalid: " + name))
+        }
+
+        if(typeof location.remoteUUID !== "string"){
+            return reject("parentMissing")
         }
         
         if(name.length <= 0){
@@ -552,7 +556,7 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
                         return reject("Not enough remote storage left to upload " + absolutePath)
                     }
 
-                    findOrCreateParentDirectory(path, location.remoteUUID, remoteTreeNow, absolutePath).then(async (parent) => {
+                    findOrCreateParentDirectory(path, location.remoteUUID!, remoteTreeNow, absolutePath).then(async (parent) => {
                         const lastModified = checkLastModifiedRes.changed ? Math.floor(checkLastModifiedRes.mtimeMs as number) : Math.floor(task.item.lastModified)
                         const mime = mimeTypes.lookup(name) || ""
                         const expire = "never"
@@ -699,7 +703,12 @@ export const upload = (path: string, remoteTreeNow: any, location: any, task: an
                                 return reject("deletedLocally")
                             }
 
-                            if(!(await smokeTest(parent))){
+                            const [parentSmokeTest, syncLocationSmokeTest] = await Promise.all([
+                                smokeTest(parent),
+                                smokeTest(location.remoteUUID!)
+                            ])
+
+                            if(!parentSmokeTest || !syncLocationSmokeTest){
                                 return reject("parentMissing")
                             }
 

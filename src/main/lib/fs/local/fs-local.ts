@@ -7,9 +7,10 @@ import { app } from "electron"
 import constants from "../../../../constants.json"
 import { Location } from "../../../../types"
 import db from "../../db"
-import { windowsPathToUnixStyle, pathIncludesDot, isFolderPathExcluded, pathValidation, pathIsFileOrFolderNameIgnoredByDefault, isSystemPathExcluded, isNameOverMaxLength, isPathOverMaxLength } from "../../helpers"
+import { windowsPathToUnixStyle, pathIncludesDot, isFolderPathExcluded, pathValidation, pathIsFileOrFolderNameIgnoredByDefault, isSystemPathExcluded, isNameOverMaxLength, isPathOverMaxLength, Semaphore } from "../../helpers"
 import { addSyncIssue } from "../../ipc"
 import { v4 as uuidv4 } from "uuid"
+import readline from "readline"
 
 const FS_RETRIES = 8
 const FS_RETRY_TIMEOUT = 100
@@ -17,6 +18,9 @@ const FS_RETRY_CODES = ["EAGAIN", "EBUSY", "ECANCELED", "EBADF", "EINTR", "EIO",
 const FS_NORETRY_CODES = ["ENOENT", "ENODEV", "EACCES", "EPERM", "EINVAL", "ENAMETOOLONG", "ENOBUFS", "ENOSPC", "EROFS"]
 let LOCAL_TRASH_DIRS_CLEAN_INTERVAL: NodeJS.Timer
 const cache = new Map()
+let APPLY_DONE_TASKS_PATH: Record<string, string> = {}
+const APPLY_DONE_TASKS_VERSION: number = 1
+const applyDoneTasksSemaphore = new Semaphore(1)
 
 export const normalizePath = (path: string) => {
     return pathModule.normalize(path)
@@ -886,7 +890,7 @@ export const directoryTree = (path: string, skipCache = false, location: Locatio
     })
 }
 
-export const utimes = async (path: string, atime: number, mtime: number) => {
+export const utimes = async (path: string, atime: Date, mtime: Date) => {
     path = normalizePath(path)
 
     return await fs.utimes(path, atime, mtime)
@@ -928,4 +932,139 @@ export const appendFile = async (path: string, data: Buffer | string, options = 
     path = normalizePath(path)
 
     return await fs.appendFile(path, data, options)
+}
+
+export const ensureDir = async (path: string) => {
+    path = normalizePath(path)
+
+    return await fs.ensureDir(path)
+}
+
+export const getApplyDoneTaskPath = async (locationUUID: string) => {
+    if(typeof APPLY_DONE_TASKS_PATH[locationUUID] == "string" && APPLY_DONE_TASKS_PATH[locationUUID].length > 0){
+        return APPLY_DONE_TASKS_PATH[locationUUID]
+    }
+
+    const userDataPath: string = app.getPath("userData")
+
+    await fs.ensureDir(pathModule.join(userDataPath, "data", "v" + APPLY_DONE_TASKS_VERSION))
+
+    const path: string = pathModule.join(userDataPath, "data", "v" + APPLY_DONE_TASKS_VERSION, "applyDoneTasks_" + locationUUID)
+
+    APPLY_DONE_TASKS_PATH[locationUUID] = path
+
+    return path
+}
+
+export const loadApplyDoneTasks = async (locationUUID: string) => {
+    return new Promise(async (resolve, reject) => {
+        await applyDoneTasksSemaphore.acquire()
+
+        try{
+            var path = await getApplyDoneTaskPath(locationUUID)
+        }
+        catch(e: any){
+            applyDoneTasksSemaphore.release()
+
+            if(e.code == "ENOENT"){
+                return resolve(true)
+            }
+
+            return reject(e)
+        }
+
+        try{
+            await fs.access(path, fs.constants.F_OK)
+        }
+        catch(e){
+            applyDoneTasksSemaphore.release()
+            
+            return resolve([])
+        }
+    
+        try{
+            const reader = readline.createInterface({
+                input: fs.createReadStream(path, {
+                    flags: "r"
+                }),
+                crlfDelay: Infinity
+            })
+
+            const tasks: any[] = []
+    
+            reader.on("line", (line: string) => {
+                if(typeof line !== "string"){
+                    return
+                }
+
+                if(line.length < 4){
+                    return
+                }
+
+                try{
+                    const parsed = JSON.parse(line)
+    
+                    tasks.push(parsed)
+                }
+                catch(e){
+                    log.error(e)
+                }
+            })
+    
+            reader.on("error", (err: any) => {
+                applyDoneTasksSemaphore.release()
+
+                return reject(err)
+            })
+
+            reader.on("close", () => {
+                applyDoneTasksSemaphore.release()
+
+                return resolve(tasks)
+            })
+        }
+        catch(e){
+            applyDoneTasksSemaphore.release()
+
+            return reject(e)
+        }
+    })
+}
+
+export const addToApplyDoneTasks = async (locationUUID: string, task: any) => {
+    await applyDoneTasksSemaphore.acquire()
+
+    try{
+        const path = await getApplyDoneTaskPath(locationUUID)
+
+        await appendFile(path, JSON.stringify(task) + "\n")
+    }
+    catch(e){
+        log.error(e)
+    }
+
+    applyDoneTasksSemaphore.release()
+
+    return true
+}
+
+export const clearApplyDoneTasks = async (locationUUID: string) => {
+    await applyDoneTasksSemaphore.acquire()
+
+    try{
+        var path = await getApplyDoneTaskPath(locationUUID)
+
+        await fs.access(path, fs.constants.F_OK)
+    }
+    catch(e){
+        applyDoneTasksSemaphore.release()
+
+        return true
+    }
+
+    await fs.unlink(path).catch(log.error)
+
+    applyDoneTasksSemaphore.release()
+
+    return true
 }

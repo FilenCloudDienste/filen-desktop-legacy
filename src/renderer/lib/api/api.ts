@@ -1,6 +1,6 @@
 import constants from "../../../constants.json"
 import { getRandomArbitrary, Semaphore, nodeBufferToArrayBuffer, generateRandomString } from "../helpers"
-import { hashFn, encryptMetadata, encryptMetadataPublicKey, decryptFolderLinkKey, decryptFileMetadata, decryptFolderName } from "../crypto"
+import { hashFn, encryptMetadata, encryptMetadataPublicKey, decryptFolderLinkKey, decryptFileMetadata, decryptFolderName, bufferToHash } from "../crypto"
 import db from "../db"
 import { sendToAllPorts } from "../worker/ipc"
 import { logout } from "../../windows/settings/settings"
@@ -1367,8 +1367,9 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
     return new Promise((resolve, reject) => {
         Promise.all([
             db.get("networkingSettings"),
-            db.get("maxStorageReached")
-        ]).then(async ([networkingSettings, maxStorageReached]) => {
+            db.get("maxStorageReached"),
+            bufferToHash(data.byteLength > 0 ? data : new Uint8Array([1]), "SHA-1")
+        ]).then(async ([networkingSettings, maxStorageReached, chunkHash]) => {
             if(maxStorageReached){
                 return reject(new Error("Max storage reached"))
             }
@@ -1423,6 +1424,10 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
 
                 return getPausedStatus()
             })
+
+            if(data.byteLength > 0){
+                queryParams = queryParams + "&chunkHash=" + encodeURIComponent(chunkHash)
+            }
 
             const urlParams = new URLSearchParams(queryParams)
             const uuid = urlParams.get("uuid") || ""

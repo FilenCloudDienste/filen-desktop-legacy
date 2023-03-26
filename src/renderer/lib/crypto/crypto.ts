@@ -649,3 +649,11 @@ export const generateKeypair = (): Promise<{ publicKey: string, privateKey: stri
         }).catch(reject)
     })
 }
+
+export const bufferToHash = async (buffer: Uint8Array | ArrayBuffer, algorithm: "SHA-1" | "SHA-256" | "SHA-512" | "SHA-384"): Promise<string> => {
+	const digest = await globalThis.crypto.subtle.digest(algorithm, buffer)
+	const hashArray = Array.from(new Uint8Array(digest))
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("")
+
+	return hashHex
+}

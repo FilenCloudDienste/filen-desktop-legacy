@@ -10,7 +10,6 @@ import { isSyncLocationPaused } from "../../worker/sync/sync.utils"
 import { Stats } from "fs-extra"
 import { LocalDirectoryTreeResult, Location } from "../../../../types"
 
-const fs = window.require("fs-extra")
 const pathModule = window.require("path")
 const log = window.require("electron-log")
 const { ipcRenderer } = window.require("electron")
@@ -98,7 +97,7 @@ export const mkdir = async (path: string, location: any): Promise<any> => {
     })
 }
 
-export const utimes = async (path: string, atime: number, mtime: number): Promise<void> => {
+export const utimes = async (path: string, atime: Date, mtime: Date): Promise<void> => {
     return await ipcRenderer.invoke("fsUtimes", {
         path,
         atime,
@@ -157,13 +156,6 @@ export const download = (path: string, location: any, task: any): Promise<any> =
                 rmPermanent(absolutePath),
                 rmPermanent(fileTmpPath)
             ]).then(async () => {
-                try{
-                    var stream = fs.createWriteStream(fileTmpPath)
-                }
-                catch(e){
-                    return reject(e)
-                }
-
                 const fileChunks = file.chunks
                 let currentWriteIndex = 0
 
@@ -194,19 +186,17 @@ export const download = (path: string, location: any, task: any): Promise<any> =
                         }, 10)
                     }
 
-                    stream.write(data, (err: any) => {
-                        if(err){
-                            return reject(err)
-                        }
-
+                    appendFile(fileTmpPath, data).then(() => {
                         currentWriteIndex += 1
+                    }).catch((err) => {
+                        downloadThreadsSemaphore.purge()
 
-                        return true
+                        reject(err)
                     })
                 }
 
                 try{
-                    await new Promise((resolve, reject) => {
+                    await new Promise<void>((resolve, reject) => {
                         let done = 0
 
                         for(let i = 0; i < fileChunks; i++){
@@ -219,7 +209,7 @@ export const download = (path: string, location: any, task: any): Promise<any> =
                                     downloadThreadsSemaphore.release()
 
                                     if(done >= fileChunks){
-                                        return resolve(true)
+                                        return resolve()
                                     }
                                 }).catch((err) => {
                                     downloadThreadsSemaphore.release()
@@ -230,28 +220,18 @@ export const download = (path: string, location: any, task: any): Promise<any> =
                         }
                     })
 
-                    await new Promise((resolve) => {
+                    await new Promise<void>((resolve) => {
                         if(currentWriteIndex >= fileChunks){
-                            return resolve(true)
+                            return resolve()
                         }
 
                         const wait = setInterval(() => {
                             if(currentWriteIndex >= fileChunks){
                                 clearInterval(wait)
 
-                                return resolve(true)
+                                return resolve()
                             }
                         }, 10)
-                    })
-
-                    await new Promise((resolve, reject) => {
-                        stream.close((err: any) => {
-                            if(err){
-                                return reject(err)
-                            }
-
-                            return resolve(true)
-                        })
                     })
                 }
                 catch(e){
@@ -265,7 +245,7 @@ export const download = (path: string, location: any, task: any): Promise<any> =
                 const utimesLastModified = typeof lastModified == "number" && lastModified > 0 && now > lastModified ? lastModified : (now - 60000)
 
                 move(fileTmpPath, absolutePath).then(() => {
-                    utimes(absolutePath, new Date(utimesLastModified).getTime(), new Date(utimesLastModified).getTime()).then(() => {
+                    utimes(absolutePath, new Date(utimesLastModified), new Date(utimesLastModified)).then(() => {
                         checkLastModified(absolutePath).then(() => {
                             gracefulLStat(absolutePath).then((stat: any) => {
                                 if(stat.size <= 0){
@@ -335,4 +315,8 @@ export const appendFile = async (path: string, data: Buffer | string, options: a
         data,
         options
     })
+}
+
+export const ensureDir = async (path: string) => {
+    return await ipcRenderer.invoke("fsEnsureDir", path)
 }

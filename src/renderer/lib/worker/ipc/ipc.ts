@@ -247,5 +247,5 @@ export const listen = () => {
 }
 
 export const sendToAllPorts = (data: any) => {
-    return ipcRenderer.send("proxy-global-message", data)
+    ipcRenderer.send("proxy-global-message", data)
 }

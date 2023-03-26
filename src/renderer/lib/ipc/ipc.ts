@@ -83,20 +83,30 @@ const handleGlobalMessage = (data: any) => {
         db.get("userId").then((userId) => {
             db.get("syncLocations:" + userId).then((syncLocations) => {
                 if(Array.isArray(syncLocations)){
-                    for(let i = 0; i < syncLocations.length; i++){
-                        new Promise((resolve) => {
-                            const sub = eventListener.on("syncLoopDone", () => {
-                                sub.remove()
-            
-                                return resolve(true)
-                            })
-                        }).then(() => {
+                    new Promise<void>((resolve) => {
+                        const sub = eventListener.on("syncLoopDone", () => {
+                            sub.remove()
+        
+                            return resolve()
+                        })
+                    }).then(() => {
+                        for(let i = 0; i < syncLocations.length; i++){
                             Promise.all([
                                 db.set("localDataChanged:" + syncLocations[i].uuid, true),
                                 db.set("remoteDataChanged:" + syncLocations[i].uuid, true)
-                            ]).catch(console.error)
-                        })
-                    }
+                            ]).then(() => {
+                                sendToAllPorts({
+                                    type: "syncStatus",
+                                    data: {
+                                        type: "dataChanged",
+                                        data: {
+                                            locationUUID: syncLocations[i].uuid
+                                        }
+                                    }
+                                })
+                            }).catch(console.error)
+                        }  
+                    })
                 }
             }).catch(console.error)
         }).catch(console.error)
@@ -110,11 +120,11 @@ const handleGlobalMessage = (data: any) => {
         clearTimeout(DEBOUNCE_WATCHER_EVENT[locationUUID])
 
         DEBOUNCE_WATCHER_EVENT[locationUUID] = setTimeout(() => {
-            new Promise((resolve) => {
+            new Promise<void>((resolve) => {
                 const sub = eventListener.on("syncLoopDone", () => {
                     sub.remove()
 
-                    return resolve(true)
+                    return resolve()
                 })
             }).then(() => {
                 db.set("localDataChanged:" + locationUUID, true).then(() => {
@@ -687,6 +697,24 @@ const ipc = {
     },
     clearSyncIssues: (): Promise<void> => {
         return ipcRenderer.invoke("clearSyncIssues")
+    },
+    emitGlobal: (channel: string, data: any): Promise<void> => {
+        return ipcRenderer.invoke("emitGlobal", {
+            channel,
+            data
+        })
+    },
+    loadApplyDoneTasks: (locationUUID: string): Promise<any[]> => {
+        return ipcRenderer.invoke("loadApplyDoneTasks", locationUUID)
+    },
+    clearApplyDoneTasks: (locationUUID: string): Promise<void> => {
+        return ipcRenderer.invoke("clearApplyDoneTasks", locationUUID)
+    },
+    addToApplyDoneTasks: (locationUUID: string, task: any): Promise<void> => {
+        return ipcRenderer.invoke("addToApplyDoneTasks", {
+            locationUUID,
+            task
+        })
     }
 }
 

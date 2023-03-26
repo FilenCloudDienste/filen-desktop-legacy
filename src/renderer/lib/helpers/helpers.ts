@@ -1,5 +1,6 @@
 import constants from "../../../constants.json"
 import { SemaphoreInterface } from "../../../types"
+import { i18n } from "../i18n"
 
 const pathModule = window.require("path")
 const is = window.require("electron-is")
@@ -571,34 +572,34 @@ export function timeSince(ts: number, lang: string = "en") {
 	var interval = seconds / 31536000;
 
 	if (interval > 1) {
-		return Math.floor(interval) + " years ago";
+		return i18n(lang, "timeSinceYears", true, ["__TIME__"], [Math.floor(interval).toString()])
 	}
 
 	interval = seconds / 2592000;
 
 	if (interval > 1) {
-		return Math.floor(interval) + " months ago";
+		return i18n(lang, "timeSinceMonths", true, ["__TIME__"], [Math.floor(interval).toString()])
 	}
 
 	interval = seconds / 86400;
 
 	if (interval > 1) {
-		return Math.floor(interval) + " days ago";
+		return i18n(lang, "timeSinceDays", true, ["__TIME__"], [Math.floor(interval).toString()])
 	}
 
 	interval = seconds / 3600;
 
 	if (interval > 1) {
-		return Math.floor(interval) + " hours ago";
+		return i18n(lang, "timeSinceHours", true, ["__TIME__"], [Math.floor(interval).toString()])
 	}
 
 	interval = seconds / 60;
 	
 	if (interval > 1) {
-		return Math.floor(interval) + " minutes ago";
+		return i18n(lang, "timeSinceMinutes", true, ["__TIME__"], [Math.floor(interval).toString()])
 	}
 
-	return Math.floor(seconds) + " seconds ago";
+	return i18n(lang, "timeSinceSeconds", true, ["__TIME__"], [Math.floor(interval).toString()])
 }
 
 export const copyToClipboard = async (text: string) => {

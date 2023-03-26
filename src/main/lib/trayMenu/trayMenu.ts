@@ -4,6 +4,7 @@ import memoryCache from "../memoryCache"
 import { createCloud, createUpload, createSettings } from "../windows"
 import { emitGlobal } from "../ipc"
 import { i18n } from "../../../renderer/lib/i18n"
+import db from "../db"
 
 export const upload = (type = "folders") => {
     let selectWindow = BrowserWindow.getFocusedWindow()
@@ -59,10 +60,19 @@ export const upload = (type = "folders") => {
     }).catch(log.error)
 }
 
-export const buildMenu = () => {
+export const buildMenu = async () => {
+    let lang = "en"
+
+    try{
+        lang = await db.get("lang")
+    }
+    catch(e){
+        log.error(e)
+    }
+
     return [
         {
-            label: "Show",
+            label: i18n(lang, "trayMenuShow"),
             click: () => {
                 if(memoryCache.has("MAIN_WINDOW")){
                     memoryCache.get("MAIN_WINDOW").show()
@@ -74,7 +84,7 @@ export const buildMenu = () => {
             type: "separator"
         },
         {
-            label: "Force sync",
+            label: i18n(lang, "trayMenuForceSync"),
             click: () => {
                 emitGlobal("global-message", {
                     type: "forceSync"
@@ -82,19 +92,19 @@ export const buildMenu = () => {
             }
         },
         {
-            label: "Upload folders",
+            label: i18n(lang, "trayMenuUploadFolders"),
             click: () => {
                 upload("folders")
             }
         },
         {
-            label: "Upload files",
+            label: i18n(lang, "trayMenuUploadFiles"),
             click: () => {
                 upload("files")
             }
         },
         {
-            label: "Settings",
+            label: i18n(lang, "trayMenuSettings"),
             click: () => {
                 createSettings().catch(log.error)
             }
@@ -104,7 +114,7 @@ export const buildMenu = () => {
             type: "separator"
         },
         {
-            label: "Quit Filen",
+            label: i18n(lang, "trayMenuQuit"),
             click: () => {
                 app.exit(0)
             }
@@ -112,8 +122,9 @@ export const buildMenu = () => {
     ]
 }
 
-export const createMenu = () => {
-    const menu = Menu.buildFromTemplate(buildMenu() as any)
+export const createMenu = async () => {
+    const builtMenu = await buildMenu() as any
+    const menu = Menu.buildFromTemplate(builtMenu)
     
     memoryCache.set("TRAY_MENU", menu)
 

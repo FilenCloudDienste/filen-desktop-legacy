@@ -71,7 +71,7 @@ export const onRightClick = () => {
     positionWindow()
 }
 
-export const createTray = () => {
+export const createTray = async () => {
     if(!memoryCache.has("trayAvailable")){
         return undefined
     }
@@ -89,7 +89,7 @@ export const createTray = () => {
         tray.on("click", onClick)
         tray.on("right-click", onRightClick)
 
-        tray.setContextMenu(createMenu())
+        tray.setContextMenu(await createMenu())
     
         memoryCache.set("TRAY", tray)
 
@@ -112,10 +112,7 @@ export const positionWindowAtTray = (window: BrowserWindow, tray: Tray) => {
     try{
         trayWindowPositioner.position(window, tray.getBounds())
     }
-    catch(e){
-        log.error("Could not position window at tray")
-        log.error(e)
-    }
+    catch{}
 }
 
 export const updateTrayIcon = (type: string) => {
@@ -150,7 +147,7 @@ export const updateTrayIcon = (type: string) => {
     }
 }
 
-export const updateTrayMenu = () => {
+export const updateTrayMenu = async () => {
     if(!memoryCache.has("trayAvailable")){
         return
     }
@@ -160,7 +157,7 @@ export const updateTrayMenu = () => {
 
         if(tray){
             if(typeof tray.setContextMenu == "function"){
-                tray.setContextMenu(buildMenu())
+                tray.setContextMenu(await buildMenu())
             }
         }
     }

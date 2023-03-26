@@ -149,7 +149,26 @@ const en: {
     publicLinkCopied: "Public link copied to clipboard",
     clearLocalTrashDirs: "Clear local trash bins",
     clearLocalTrashDirsInfo: "Clearing the local trash bins cannot be undone! Are you sure?",
-    updateWindowInfo3: "The client will exit and start the update flow in the background. It will restart itself when it is done. Please do not interrupt this process."
+    updateWindowInfo3: "The client will exit and start the update flow in the background. It will restart itself when it is done. Please do not interrupt this process.",
+    pleaseLogin: "Please login",
+    traySyncIssues: "__NUM__ sync issues",
+    traySyncing: "Syncing __NUM__ items",
+    everythingSynced: "Everything synced",
+    trayWarnings: "__NUM__ warnings",
+    trayNoSyncSetup: "No sync locations setup yet",
+    trayNoSyncRemoteSetup: "No remote sync locations setup yet",
+    timeSinceSeconds: "__TIME__ seconds ago",
+    timeSinceMinutes: "__TIME__ minutes ago",
+    timeSinceHours: "__TIME__ hours ago",
+    timeSinceDays: "__TIME__ days ago",
+    timeSinceMonths: "__TIME__ months ago",
+    timeSinceYears: "__TIME__ years ago",
+    trayMenuShow: "Show",
+    trayMenuForceSync: "Force sync",
+    trayMenuUploadFolders: "Upload folders",
+    trayMenuUploadFiles: "Upload files",
+    trayMenuSettings: "Settings",
+    trayMenuQuit: "Quit Filen"
 }
 
 export default en

@@ -28,17 +28,17 @@ task.running !== "undefined" -> active move/rename/delete
 task.done !== "undefined" -> done task
 */
 
-const ItemTimeSince = memo(({ task }: { task: any }) => {
-    const [itemTimeSince, setItemTimeSince] = useState<string>(timeSince(typeof task.timestamp == "number" ? task.timestamp : new Date().getTime()))
+const ItemTimeSince = memo(({ task, lang }: { task: any, lang: string }) => {
+    const [itemTimeSince, setItemTimeSince] = useState<string>(timeSince(typeof task.timestamp == "number" ? task.timestamp : new Date().getTime(), lang))
     const timeSinceInterval = useRef<NodeJS.Timer>()
 
     const startTimeSinceInterval = useCallback(() => {
         clearInterval(timeSinceInterval.current)
 
-        setItemTimeSince(timeSince(typeof task.timestamp == "number" ? task.timestamp : new Date().getTime()))
+        setItemTimeSince(timeSince(typeof task.timestamp == "number" ? task.timestamp : new Date().getTime(), lang))
 
         timeSinceInterval.current = setInterval(() => {
-            setItemTimeSince(timeSince(typeof task.timestamp == "number" ? task.timestamp : new Date().getTime()))
+            setItemTimeSince(timeSince(typeof task.timestamp == "number" ? task.timestamp : new Date().getTime(), lang))
         }, 1000)
     }, [])
 
@@ -456,6 +456,7 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
                                                 &nbsp;
                                                 <ItemTimeSince
                                                     task={task}
+                                                    lang={lang}
                                                 />
                                             </Text>
                                         )

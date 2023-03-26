@@ -84,7 +84,7 @@ export const createMain = async (show: boolean = false): Promise<BrowserWindow> 
         window.setMenuBarVisibility(false)
     }
 
-    createTray()
+    createTray().catch(log.error)
 
     window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "#main")
 

@@ -887,17 +887,9 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                 }
                             })
 
-                            await Promise.all([
-                                db.set("localDataChanged:" + uuid, true),
-                                db.set("remoteDataChanged:" + uuid, true)
-                            ])
-
-                            setTimeout(() => {
-                                Promise.all([
-                                    db.set("localDataChanged:" + uuid, true),
-                                    db.set("remoteDataChanged:" + uuid, true)
-                                ]).catch(log.error)
-                            }, 5000)
+                            ipc.emitGlobal("global-message", {
+                                type: "forceSync"
+                            }).catch(log.error)
                         }
                     }
                     catch(e){
@@ -945,22 +937,14 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
             for(let i = 0; i < currentSyncLocations.length; i++){
                 if(currentSyncLocations[i].uuid == location.uuid){
                     currentSyncLocations[i].paused = paused
-
-                    await Promise.all([
-                        db.set("localDataChanged:" + currentSyncLocations[i].uuid, true),
-                        db.set("remoteDataChanged:" + currentSyncLocations[i].uuid, true)
-                    ])
-
-                    setTimeout(() => {
-                        Promise.all([
-                            db.set("localDataChanged:" + currentSyncLocations[i].uuid, true),
-                            db.set("remoteDataChanged:" + currentSyncLocations[i].uuid, true)
-                        ])
-                    }, 5000)
                 }
             }
 
             await db.set("syncLocations:" + userId, currentSyncLocations)
+
+            ipc.emitGlobal("global-message", {
+                type: "forceSync"
+            }).catch(log.error)
         }
         catch(e){
             log.error(e)
@@ -1541,15 +1525,14 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                         for(let i = 0; i < currentSyncLocations.length; i++){
                                                             if(currentSyncLocations[i].uuid == currentSyncLocation.uuid){
                                                                 currentSyncLocations[i].type = type
-
-                                                                await Promise.all([
-                                                                    db.set("localDataChanged:" + currentSyncLocations[i].uuid, true),
-                                                                    db.set("remoteDataChanged:" + currentSyncLocations[i].uuid, true)
-                                                                ])
                                                             }
                                                         }
 
                                                         await db.set("syncLocations:" + userId, currentSyncLocations)
+
+                                                        ipc.emitGlobal("global-message", {
+                                                            type: "forceSync"
+                                                        }).catch(log.error)
                                                     }
                                                     catch(e){
                                                         log.error(e)
@@ -1742,24 +1725,14 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                                         for(let i = 0; i < currentSyncLocations.length; i++){
                                                             if(currentSyncLocations[i].uuid == currentSyncLocation.uuid){
                                                                 currentSyncLocations[i].paused = paused
-
-                                                                if(!paused){
-                                                                    await Promise.all([
-                                                                        db.set("localDataChanged:" + currentSyncLocations[i].uuid, true),
-                                                                        db.set("remoteDataChanged:" + currentSyncLocations[i].uuid, true)
-                                                                    ])
-
-                                                                    setTimeout(() => {
-                                                                        Promise.all([
-                                                                            db.set("localDataChanged:" + currentSyncLocations[i].uuid, true),
-                                                                            db.set("remoteDataChanged:" + currentSyncLocations[i].uuid, true)
-                                                                        ])
-                                                                    }, 5000)
-                                                                }
                                                             }
                                                         }
 
                                                         await db.set("syncLocations:" + userId, currentSyncLocations)
+
+                                                        ipc.emitGlobal("global-message", {
+                                                            type: "forceSync"
+                                                        }).catch(log.error)
                                                     }
                                                     catch(e){
                                                         log.error(e)
@@ -2346,19 +2319,9 @@ const SettingsWindowIssues = memo(({ darkMode, lang, platform }: { darkMode: boo
                                 try{
                                     await ipc.clearSyncIssues()
 
-                                    const userId = await db.get("userId")
-                                    let currentSyncLocations: Location[] | null = await db.get("syncLocations:" + userId)
-
-                                    if(!Array.isArray(currentSyncLocations)){
-                                        currentSyncLocations = []
-                                    }
-
-                                    for(let i = 0; i < currentSyncLocations.length; i++){
-                                        await Promise.all([
-                                            db.set("localDataChanged:" + currentSyncLocations[i].uuid, true),
-                                            db.set("remoteDataChanged:" + currentSyncLocations[i].uuid, true)
-                                        ])
-                                    }
+                                    ipc.emitGlobal("global-message", {
+                                        type: "forceSync"
+                                    }).catch(log.error)
                                 }
                                 catch(e){
                                     log.error(e)

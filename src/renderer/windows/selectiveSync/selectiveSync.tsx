@@ -72,11 +72,11 @@ const TreeItem = memo(({ darkMode, lang, platform, item, location, excluded }: {
                 currentExcluded[item.path] = true
             }
 
-            await Promise.all([
-                db.set("selectiveSync:remote:" + location.uuid, currentExcluded),
-                db.set("localDataChanged:" + location.uuid, true),
-                db.set("remoteDataChanged:" + location.uuid, true)
-            ])
+            await db.set("selectiveSync:remote:" + location.uuid, currentExcluded)
+
+            ipc.emitGlobal("global-message", {
+                type: "forceSync"
+            }).catch(log.error)
         }
         catch(e){
             log.error(e)

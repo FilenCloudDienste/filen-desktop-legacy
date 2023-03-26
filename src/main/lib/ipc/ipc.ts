@@ -375,20 +375,14 @@ ipcMain.handle("saveLogs", async () => {
 
 ipcMain.handle("updateTrayIcon", async (_, { type }) => {
     updateTrayIcon(type)
-
-    return true
 })
 
 ipcMain.handle("updateTrayMenu", async () => {
-    updateTrayMenu()
-
-    return true
+    await updateTrayMenu()
 })
 
 ipcMain.handle("updateTrayTooltip", async (_, { text }) => {
     updateTrayTooltip(text)
-
-    return true
 })
 
 ipcMain.handle("getFileIcon", async (_, { path }) => {
@@ -633,6 +627,26 @@ ipcMain.handle("fsAccess", async (_, { path, mode }) => {
 
 ipcMain.handle("fsAppendFile", async (_, { path, data, options }) => {
     return await fsLocal.appendFile(path, data, options)
+})
+
+ipcMain.handle("fsEnsureDir", async (_, path) => {
+    return await fsLocal.ensureDir(path)
+})
+
+ipcMain.handle("emitGlobal", async (_, { channel, data }) => {
+    emitGlobal(channel, data)
+})
+
+ipcMain.handle("loadApplyDoneTasks", async (_, locationUUID) => {
+    return await fsLocal.loadApplyDoneTasks(locationUUID)
+})
+
+ipcMain.handle("clearApplyDoneTasks", async (_, locationUUID) => {
+    return await fsLocal.clearApplyDoneTasks(locationUUID)
+})
+
+ipcMain.handle("addToApplyDoneTasks", async (_, { locationUUID, task }) => {
+    return await fsLocal.addToApplyDoneTasks(locationUUID, task)
 })
 
 export const updateKeybinds = () => {
