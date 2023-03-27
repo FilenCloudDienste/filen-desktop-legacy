@@ -516,8 +516,6 @@ handlerProxy("installUpdate", async () => {
             }
         }, 1000)
     })
-
-    return true
 })
 
 handlerProxy("trayAvailable", async () => {
@@ -534,11 +532,11 @@ handlerProxy("initWatcher", async (_, { path, locationUUID }) => {
     await watch(path, locationUUID)
 })
 
-handlerProxy("addSyncIssue", async (_, { syncIssue }) => {
+handlerProxy("addSyncIssue", async (_, syncIssue) => {
     syncIssues.push(syncIssue)
 })
 
-handlerProxy("removeSyncIssue", async (_, { uuid }) => {
+handlerProxy("removeSyncIssue", async (_, uuid) => {
     syncIssues = syncIssues.filter(issue => issue.uuid !== uuid)
 })
 
@@ -674,47 +672,38 @@ handlerProxy("addToApplyDoneTasks", async (_, { locationUUID, task }) => {
     return await fsLocal.addToApplyDoneTasks(locationUUID, task)
 })
 
-export const updateKeybinds = () => {
-    return new Promise((resolve, reject) => {
-        db.get("keybinds").then((keybinds) => {
-            if(!Array.isArray(keybinds)){
-                keybinds = []
+export const updateKeybinds = async (): Promise<void> => {
+    let keybinds = await db.get("keybinds")
+
+    if(!Array.isArray(keybinds)){
+        keybinds = []
+    }
+
+    globalShortcut.unregisterAll()
+
+    for(let i = 0; i < keybinds.length; i++){
+        if(typeof keybinds[i].keybind !== "string"){
+            continue
+        }
+
+        globalShortcut.register(keybinds[i].keybind, () => {
+            if(keybinds[i].type == "uploadFolders"){
+                upload("folders")
             }
-
-            try{
-                globalShortcut.unregisterAll()
-
-                for(let i = 0; i < keybinds.length; i++){
-                    if(typeof keybinds[i].keybind !== "string"){
-                        continue
-                    }
-
-                    globalShortcut.register(keybinds[i].keybind, () => {
-                        if(keybinds[i].type == "uploadFolders"){
-                            upload("folders")
-                        }
-                        else if(keybinds[i].type == "uploadFiles"){
-                            upload("files")
-                        }
-                        else if(keybinds[i].type == "openSettings"){
-                            createSettings().catch(log.error)
-                        }
-                        else if(keybinds[i].type == "pauseSync"){
-                            db.set("paused", true).catch(log.error)
-                        }
-                        else if(keybinds[i].type == "resumeSync"){
-                            db.set("paused", false).catch(log.error)
-                        }
-                    })
-                }
-
-                return resolve(true)
+            else if(keybinds[i].type == "uploadFiles"){
+                upload("files")
             }
-            catch(e){
-                return reject(e)
+            else if(keybinds[i].type == "openSettings"){
+                createSettings().catch(log.error)
             }
-        }).catch(reject)
-    })
+            else if(keybinds[i].type == "pauseSync"){
+                db.set("paused", true).catch(log.error)
+            }
+            else if(keybinds[i].type == "resumeSync"){
+                db.set("paused", false).catch(log.error)
+            }
+        })
+    }
 }
 
 export const emitGlobal = (channel: string = "global-message", data: any) => {

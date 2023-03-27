@@ -704,14 +704,10 @@ const ipc = {
         return invokeProxy("getSyncIssues")
     },
     addSyncIssue: (syncIssue: SyncIssue): Promise<void> => {
-        return invokeProxy("addSyncIssue", {
-            syncIssue
-        })
+        return invokeProxy("addSyncIssue", syncIssue)
     },
     removeSyncIssue: (uuid: string): Promise<void> => {
-        return invokeProxy("removeSyncIssue", {
-            uuid
-        })
+        return invokeProxy("removeSyncIssue", uuid)
     },
     clearSyncIssues: (): Promise<void> => {
         return invokeProxy("clearSyncIssues")

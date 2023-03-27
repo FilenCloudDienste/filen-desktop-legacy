@@ -51,7 +51,7 @@ const MaxStorageModal = memo(({ lang, darkMode, platform }: { lang: string, dark
                             color={colors(platform, darkMode, "textPrimary")}
                         />
                         <Text
-                            color={colors(platform, darkMode, "textPrimary")}
+                            color={colors(platform, darkMode, "textSecondary")}
                             marginTop="15px"
                         >
                             {i18n(lang, "maxStorageReached")}

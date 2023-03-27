@@ -1136,15 +1136,17 @@ const sync = async (): Promise<any> => {
     return startSyncLoop()
 }
 
-ipc.addSyncIssue({
-    uuid: uuidv4(),
-    type: "warning",
-    where: "local",
-    path: "/this/is/aPath",
-    err: new Error("lol"),
-    info:"yajajajaa infooo",
-    timestamp: new Date().getTime()
-}).catch(console.error)
+window.require("fs-extra").stat("C:\\thisdsdsdssdsd").catch((err: any) => {
+    ipc.addSyncIssue({
+        uuid: uuidv4(),
+        type: "warning",
+        where: "local",
+        path: "C:\\thisdsdsdssdsd",
+        err,
+        info: err.message,
+        timestamp: new Date().getTime()
+    }).catch(console.error)
+})
 
 setInterval(startSyncLoop, (SYNC_TIMEOUT * 1.5))
 

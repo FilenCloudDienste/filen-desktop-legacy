@@ -212,24 +212,15 @@ const SettingsWindowAccount = memo(({ darkMode, lang, platform, email }: { darkM
                                     {i18n(lang, "logout")}
                                 </ModalHeader>
                                 <ModalBody>
-                                    <Text color={colors(platform, darkMode, "textPrimary")}>
+                                    <Text color={colors(platform, darkMode, "textSecondary")}>
                                         {i18n(lang, "confirmLogout")}
                                     </Text>
                                 </ModalBody>
                                 <ModalFooter>
                                     <Link 
-                                        color="gray" 
-                                        textDecoration="none" 
-                                        _hover={{ textDecoration: "none" }} 
-                                        onClick={() => setLogoutAlertOpen(false)}
-                                    >
-                                        {i18n(lang, "close")}
-                                    </Link>
-                                    <Link 
                                         color={colors(platform, darkMode, "link")} 
                                         textDecoration="none"
-                                        _hover={{ textDecoration: "none" }} 
-                                        marginLeft="10px" 
+                                        _hover={{ textDecoration: "none" }}
                                         onClick={() => logout()}
                                     >
                                         {i18n(lang, "logout")}
@@ -365,7 +356,7 @@ const SettingsWindowIssues = memo(({ darkMode, lang, platform }: { darkMode: boo
                     </ModalHeader>
                     <ModalBody>
                         <Text 
-                            color={colors(platform, darkMode, "textPrimary")} 
+                            color={colors(platform, darkMode, "textSecondary")} 
                             fontSize={14}
                         >
                             {i18n(lang, "clearSyncIssuesInfo")}
@@ -375,18 +366,9 @@ const SettingsWindowIssues = memo(({ darkMode, lang, platform }: { darkMode: boo
                         alignItems="center"
                     >
                         <Link 
-                            color={colors(platform, darkMode, "textSecondary")} 
-                            textDecoration="none" 
-                            _hover={{ textDecoration: "none" }}
-                            onClick={() => setClearIssuesModalOpen(false)}
-                        >
-                            {i18n(lang, "close")}
-                        </Link>
-                        <Link 
                             color={colors(platform, darkMode, "link")} 
                             textDecoration="none" 
-                            _hover={{ textDecoration: "none" }} 
-                            marginLeft="10px" 
+                            _hover={{ textDecoration: "none" }}
                             onClick={async () => {
                                 try{
                                     await ipc.clearSyncIssues()

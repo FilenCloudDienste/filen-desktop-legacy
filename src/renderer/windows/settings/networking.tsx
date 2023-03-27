@@ -282,7 +282,7 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }: { darkMode:
                                         marginTop="25px"
                                     >
                                         <Text 
-                                            color={colors(platform, darkMode, "textPrimary")} 
+                                            color={colors(platform, darkMode, "textSecondary")} 
                                             fontSize={11}
                                         >
                                             {i18n(lang, "disableThrottlingInfo")}

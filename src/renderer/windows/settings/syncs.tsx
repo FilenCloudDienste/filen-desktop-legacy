@@ -1116,7 +1116,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                 </Flex>
                             ) : (
                                 <Text 
-                                    color={colors(platform, darkMode, "textPrimary")} 
+                                    color={colors(platform, darkMode, "textSecondary")} 
                                     fontSize={14}
                                 >
                                     {i18n(lang, "confirmDeleteSyncLocation")}
@@ -1125,21 +1125,6 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                         }
                     </ModalBody>
                     <ModalFooter>
-                        <Link 
-                            color={isDeletingSyncLocation ? "gray" : colors(platform, darkMode, "link")} 
-                            textDecoration="none" 
-                            _hover={{ textDecoration: "none" }} 
-                            onClick={() => {
-                                if(isDeletingSyncLocation){
-                                    return false
-                                }
-
-                                setConfirmDeleteModalOpen(false)
-                            }} 
-                            marginRight="15px"
-                        >
-                            {i18n(lang, "close")}
-                        </Link>
                         <Link 
                             color={isDeletingSyncLocation ? "gray" : colors(platform, darkMode, "danger")} 
                             textDecoration="none" 
@@ -1196,7 +1181,9 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                     backgroundColor={colors(platform, darkMode, "backgroundPrimary")} 
                     borderRadius="10px"
                 >
-                    <ModalBody padding="0px">
+                    <ModalBody
+                        padding="0px"
+                    >
                         <Flex 
                             width="100%" 
                             height={window.innerHeight} 
@@ -1214,6 +1201,7 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                                     color={colors(platform, darkMode, "textPrimary")} 
                                     fontSize={14}
                                     paddingBottom="5px"
+                                    paddingTop="10px"
                                 >
                                     {i18n(lang, "filenignoreHeader")}
                                 </Text>
@@ -1221,9 +1209,9 @@ const SettingsWindowSyncs = memo(({ darkMode, lang, platform, userId }: { darkMo
                             <CodeMirror
                                 value={currentSyncLocationIgnored}
                                 width="100%"
-                                height="490px"
+                                height="480px"
                                 placeholder={"ignored/folder\nignoredFile.txt"}
-                                autoFocus
+                                autoFocus={true}
                                 theme={createCodeMirrorTheme({ platform, darkMode })}
                                 onChange={async (value, _) => {
                                     if(typeof currentSyncLocation == "undefined"){

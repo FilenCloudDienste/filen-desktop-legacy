@@ -587,7 +587,7 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
                             alignItems="center"
                         >
                             <Text
-                                color={colors(platform, darkMode, "textPrimary")}
+                                color={colors(platform, darkMode, "textSecondary")}
                                 fontSize={15}
                             >
                                 {i18n(lang, "clearLocalEventLogInfo")}
@@ -596,18 +596,9 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
                     </ModalBody>
                     <ModalFooter>
                         <Link 
-                            color="gray" 
-                            textDecoration="none" 
-                            _hover={{ textDecoration: "none" }} 
-                            onClick={() => setClearLocalEventLogModalOpen(false)}
-                        >
-                            {i18n(lang, "close")}
-                        </Link>
-                        <Link 
                             color="red.500"
                             textDecoration="none" 
-                            _hover={{ textDecoration: "none" }} 
-                            marginLeft="10px" 
+                            _hover={{ textDecoration: "none" }}
                             onClick={() => {
                                 db.get("userId").then((userId) => {
                                     db.set("doneTasks:" + userId, []).then(() => {
@@ -651,7 +642,7 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
                             alignItems="center"
                         >
                             <Text
-                                color={colors(platform, darkMode, "textPrimary")}
+                                color={colors(platform, darkMode, "textSecondary")}
                                 fontSize={15}
                             >
                                 {i18n(lang, "clearLocalTrashDirsInfo")}
@@ -664,18 +655,9 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
                             alignItems="center"
                         >
                             <Link 
-                                color="gray" 
-                                textDecoration="none" 
-                                _hover={{ textDecoration: "none" }} 
-                                onClick={() => setClearLocalTrashDirsModalOpen(false)}
-                            >
-                                {i18n(lang, "close")}
-                            </Link>
-                            <Link 
                                 color="red.500"
                                 textDecoration="none" 
-                                _hover={{ textDecoration: "none" }} 
-                                marginLeft="10px"
+                                _hover={{ textDecoration: "none" }}
                                 cursor={clearingLocalTrashDirs ? "not-allowed" : "pointer"}
                                 onClick={() => {
                                     if(clearingLocalTrashDirs){

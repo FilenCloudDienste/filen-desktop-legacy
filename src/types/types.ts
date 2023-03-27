@@ -124,7 +124,7 @@ export interface SyncIssue {
     type: "critical" | "conflict" | "info" | "warning",
     where: "remote" | "local",
     path?: string,
-    err?: Error,
+    err?: any,
     info: string,
     timestamp: number
 }

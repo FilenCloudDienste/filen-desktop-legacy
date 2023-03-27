@@ -220,18 +220,9 @@ const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }: { darkMode: b
                     </ModalBody>
                     <ModalFooter>
                         <Link 
-                            color="gray" 
-                            textDecoration="none" 
-                            _hover={{ textDecoration: "none" }} 
-                            onClick={() => setChangeKeybindModalOpen(false)}
-                        >
-                            {i18n(lang, "close")}
-                        </Link>
-                        <Link 
                             color={colors(platform, darkMode, "link")} 
                             textDecoration="none" 
-                            _hover={{ textDecoration: "none" }} 
-                            marginLeft="10px" 
+                            _hover={{ textDecoration: "none" }}
                             onClick={() => {
                                 if(keybindToChange.length == 0 || currentKeybind.length == 0){
                                     return setChangeKeybindModalOpen(false)

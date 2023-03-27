@@ -311,7 +311,7 @@ const AuthWindow = memo(({ windowId }: { windowId: string }) => {
                     userSelect="none" 
                     backgroundColor={colors(platform, darkMode, "backgroundSecondary")}
                     _hover={{
-                        backgroundColor: colors(platform, darkMode, "backgroundPrimary")
+                        backgroundColor: colors(platform, darkMode, "backgroundSecondary")
                     }}
                     _focus={{ boxShadow: "none" }} 
                     style={{

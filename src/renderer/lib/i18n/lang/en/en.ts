@@ -170,7 +170,15 @@ const en: {
     trayMenuSettings: "Settings",
     trayMenuQuit: "Quit Filen",
     openLocalFolder: "Open local folder",
-    openLocalTrash: "Open local trash folder"
+    openLocalTrash: "Open local trash folder",
+    help: "Help",
+    possibleSolution: "Possible solution",
+    possibleSolutionEPERM: "Please make sure that the client has all permissions needed to read and write to the above path.",
+    possibleSolutionENOENT: "Please make sure the above path exists on your system.",
+    possibleSolutionEBUSY: "The client could not access the above path. Please check if other programs are actively using it or locking it.",
+    possibleSolutionEMFILE: "Not enough file descriptors or space left on your system.",
+    issue: "Issue",
+    path: "Path"
 }
 
 export default en
