@@ -1593,7 +1593,7 @@ export const markUploadAsDone = ({ uuid, uploadKey }: { uuid: string, uploadKey:
                     return reject(response.message)
                 }
     
-                return resolve(true)
+                return resolve(response.data)
             }).catch(reject)
         }
 

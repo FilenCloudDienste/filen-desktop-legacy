@@ -712,7 +712,11 @@ export const upload = (path: string, remoteTreeNow: any, location: Location, tas
                                 return reject("parentMissing")
                             }
 
-                            await markUploadAsDone({ uuid, uploadKey })
+                            const doneRes = await markUploadAsDone({ uuid, uploadKey })
+
+                            if(doneRes.data && doneRes.data.chunks){
+                                fileChunks = doneRes.data.chunks
+                            }
                         }
                         catch(e: any){
                             if(!(await doesExistLocally(absolutePath))){
