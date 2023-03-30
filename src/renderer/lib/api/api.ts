@@ -1368,7 +1368,7 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
         Promise.all([
             db.get("networkingSettings"),
             db.get("maxStorageReached"),
-            bufferToHash(data.byteLength > 0 ? data : new Uint8Array([1]), "SHA-1")
+            bufferToHash(data.byteLength > 0 ? data : new Uint8Array([1]), "SHA-512")
         ]).then(async ([networkingSettings, maxStorageReached, chunkHash]) => {
             if(maxStorageReached){
                 return reject(new Error("Max storage reached"))
@@ -1426,7 +1426,7 @@ export const uploadChunk = ({ queryParams, data, timeout = 86400000, from = "syn
             })
 
             if(data.byteLength > 0){
-                queryParams = queryParams + "&chunkHash=" + encodeURIComponent(chunkHash)
+                queryParams = queryParams + "&hash=" + encodeURIComponent(chunkHash)
             }
 
             const urlParams = new URLSearchParams(queryParams)
