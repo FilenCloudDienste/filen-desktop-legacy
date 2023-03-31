@@ -188,7 +188,7 @@ else{
 	
 		CHECK_UPDATE_INTERVAL = setInterval(() => {
 			autoUpdater.checkForUpdates().catch(log.error)
-		}, 3600000)
+		}, (3600000 * 6))
 	
 		initWindows()
 		
