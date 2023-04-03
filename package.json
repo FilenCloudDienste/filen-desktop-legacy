@@ -12,7 +12,8 @@
 		"url": "https://github.com/FilenCloudDienste/filen-desktop"
 	},
 	"dependencies": {
-		"@chakra-ui/react": "^2.5.3",
+		"@chakra-ui/react": "^2.5.5",
+		"@chakra-ui/system": "^2.5.5",
 		"@emotion/react": "^11.10.6",
 		"@emotion/styled": "^11.10.6",
 		"@gerhobbelt/gitignore-parser": "0.2.0-9",
@@ -72,7 +73,7 @@
 		"electronmon": "1.1.2",
 		"react-scripts": "5.0.1",
 		"ts-node": "^10.9.1",
-		"typescript": "4.7.4",
+		"typescript": "^4.9.5",
 		"wait-on": "5.3.0"
 	},
 	"scripts": {

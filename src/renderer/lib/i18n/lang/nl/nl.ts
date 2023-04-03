@@ -1,5 +1,5 @@
 const nl: {
-  	[key: string]: string
+	[key: string]: string
 } = {
 	loginEmailPlaceholder: "E-mailadres",
 	loginPasswordPlaceholder: "Wachtwoord",
@@ -57,7 +57,8 @@ const nl: {
 	saveLogs: "Logs opslaan",
 	cannotCreateSyncLocation: "Kan synchronisatie locatie niet maken",
 	cannotCreateSyncLocationSubdir: "U moet ten minste één subfolder selecteren",
-	cannotCreateSyncLocationLoop: "Het lokale pad dat u hebt geselecteerd is al een geconfigureerde synchronisatie locatie. Dit kan leiden tot eindeloze synchronisatie lussen",
+	cannotCreateSyncLocationLoop:
+		"Het lokale pad dat u hebt geselecteerd is al een geconfigureerde synchronisatie locatie. Dit kan leiden tot eindeloze synchronisatie lussen",
 	cannotCreateSyncLocationAccess: "Kon geen toegang krijgen tot de lokale folder. Misschien heeft u geen rechten?",
 	selectRemoteLocation: "Selecteer cloud locatie",
 	syncMode: "Synchronisatie modus",
@@ -85,7 +86,8 @@ const nl: {
 	resumeSyncing: "Synchronisatie hervatten",
 	noSyncIssues: "Geen synchronisatie problemen",
 	clearSyncIssues: "Wis synchronisatie problemen",
-	clearSyncIssuesInfo: "Na het wissen van de getoonde problemen zal de client opnieuw proberen te synchroniseren. Zorg ervoor dat u alle problemen oplost voordat u deze wist.",
+	clearSyncIssuesInfo:
+		"Na het wissen van de getoonde problemen zal de client opnieuw proberen te synchroniseren. Zorg ervoor dat u alle problemen oplost voordat u deze wist.",
 	clear: "Wis",
 	uploadBandwidthThrottling: "Upload bandbreedte beperking",
 	unlimited: "Onbeperkt",
@@ -118,7 +120,8 @@ const nl: {
 	keybinds_openWebsite: "Open website",
 	keybindNotBound: "Niet gebonden",
 	syncing: "Synchroniseren..",
-	maxStorageReached: "U hebt het maximale opslagvolume van uw account bereikt. Om te kunnen blijven synchroniseren, raden wij u aan een upgrade uit te voeren.",
+	maxStorageReached:
+		"U hebt het maximale opslagvolume van uw account bereikt. Om te kunnen blijven synchroniseren, raden wij u aan een upgrade uit te voeren.",
 	syncTaskDownloadFromRemote: "Gedownload uit de cloud",
 	syncTaskUploadToRemote: "Geüpload naar de cloud",
 	syncTaskRenameInRemote: "Hernoemd in de cloud",
@@ -137,7 +140,8 @@ const nl: {
 	syncModeLocalBackupInfo: "Upload alleen bestanden naar de cloud, verwijder nooit iets & negeer wijzigingen in de cloud",
 	syncModeCloudBackupInfo: "Download alleen bestanden van de cloud, verwijder nooit iets & negeer wijzigingen in de lokale map",
 	cancel: "Annuleer",
-	cannotCreateSyncLocationLoop2: "De cloud locatie die u hebt geselecteerd is al een geconfigureerde synchronisatie locatie. Dit kan leiden tot eindeloze synchronisatie lussen."
+	cannotCreateSyncLocationLoop2:
+		"De cloud locatie die u hebt geselecteerd is al een geconfigureerde synchronisatie locatie. Dit kan leiden tot eindeloze synchronisatie lussen."
 }
 
 export default nl

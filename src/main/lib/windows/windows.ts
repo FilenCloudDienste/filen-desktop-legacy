@@ -10,886 +10,942 @@ import { listen } from "../ipc"
 import db from "../db"
 import { Location } from "../../../types"
 
-const STATIC_PATH = is.dev() ? "http://localhost:3000/" : "file://" + path.join(__dirname, "../../../../build/index.html")
+const STATIC_PATH = is.dev()
+	? "http://localhost:3000/"
+	: "file://" + path.join(__dirname, "../../../../build/index.html")
 const DEV_TOOLS = is.dev() ? true : false
-let activeWindows: { id: number, type: string }[] = []
+let activeWindows: { id: number; type: string }[] = []
 
 export const wasOpenedAtSystemStart = (): boolean => {
-    try{
-        if(is.macOS()){
-            const loginSettings = app.getLoginItemSettings()
+	try {
+		if (is.macOS()) {
+			const loginSettings = app.getLoginItemSettings()
 
-            return loginSettings.wasOpenedAtLogin
-        }
+			return loginSettings.wasOpenedAtLogin
+		}
 
-        return app.commandLine.hasSwitch("hidden")
-    }
-    catch(e){
-        log.error(e)
+		return app.commandLine.hasSwitch("hidden")
+	} catch (e) {
+		log.error(e)
 
-        return false
-    }
+		return false
+	}
 }
 
 export const createMain = async (show: boolean = false): Promise<BrowserWindow> => {
-    if(!memoryCache.has("trayAvailable")){
-        show = true
-    }
+	if (!memoryCache.has("trayAvailable")) {
+		show = true
+	}
 
-    if(wasOpenedAtSystemStart()){
-        show = false
-    }
+	if (wasOpenedAtSystemStart()) {
+		show = false
+	}
 
-    if(memoryCache.has("MAIN_WINDOW")){
-        try{
-            memoryCache.get("MAIN_WINDOW").close()
-        }
-        catch(e){
-            log.error(e)
-        }
-    }
+	if (memoryCache.has("MAIN_WINDOW")) {
+		try {
+			memoryCache.get("MAIN_WINDOW").close()
+		} catch (e) {
+			log.error(e)
+		}
+	}
 
-    const window = new BrowserWindow({
-        width: 370,
-        height: 550,
-        webPreferences: {
-            nodeIntegration: true,
-            backgroundThrottling: false,
-            contextIsolation: false
-        },
-        frame: false,
-        transparent: true,
-        resizable: false,
-        titleBarStyle: is.macOS() ? "default" : "hidden",
-        skipTaskbar: (is.macOS() || is.windows()) ? true : false,
-        fullscreenable: false,
-        maximizable: false,
-        minimizable: true,
-        hasShadow: false,
-        show,
-        backgroundColor: "rgba(0, 0, 0, 0)",
-        ...(
-            (is.linux() && !is.dev()) ? { icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png")) }
-            : (is.windows() && !is.dev()) ? { icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico") }
-            : { icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns") }
-        )
-    })
+	const window = new BrowserWindow({
+		width: 370,
+		height: 550,
+		webPreferences: {
+			nodeIntegration: true,
+			backgroundThrottling: false,
+			contextIsolation: false
+		},
+		frame: false,
+		transparent: true,
+		resizable: false,
+		titleBarStyle: is.macOS() ? "default" : "hidden",
+		skipTaskbar: is.macOS() || is.windows() ? true : false,
+		fullscreenable: false,
+		maximizable: false,
+		minimizable: true,
+		hasShadow: false,
+		show,
+		backgroundColor: "rgba(0, 0, 0, 0)",
+		...(is.linux() && !is.dev()
+			? {
+					icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png"))
+			  }
+			: is.windows() && !is.dev()
+			? {
+					icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico")
+			  }
+			: {
+					icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns")
+			  })
+	})
 
-    const windowId = window.id
+	const windowId = window.id
 
-    window.setResizable(false)
-    window.setMenu(null)
-    
-    if((is.macOS() || is.windows())){
-        window.setAlwaysOnTop(true, "pop-up-menu")
-        window.setMenuBarVisibility(false)
-    }
+	window.setResizable(false)
+	window.setMenu(null)
 
-    createTray().catch(log.error)
+	if (is.macOS() || is.windows()) {
+		window.setAlwaysOnTop(true, "pop-up-menu")
+		window.setMenuBarVisibility(false)
+	}
 
-    window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "#main")
+	createTray().catch(log.error)
 
-    if(DEV_TOOLS){
-        window.webContents.openDevTools({ mode: "detach" })
-    }
+	window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "#main")
 
-    window.on("close", (e) => {
-        e.preventDefault()
-        
-        window.hide()
-    })
+	if (DEV_TOOLS) {
+		window.webContents.openDevTools({ mode: "detach" })
+	}
 
-    window.once("closed", () => {
-        memoryCache.delete("MAIN_WINDOW")
+	window.on("close", e => {
+		e.preventDefault()
 
-        activeWindows = activeWindows.filter(w => w.id !== windowId)
-    })
+		window.hide()
+	})
 
-    window.once("show", () => {
-        positionWindow()
-        
-        setTimeout(() => {
-            window.on("blur", () => {
-                if(!memoryCache.has("trayAvailable")){
-                    return
-                }
+	window.once("closed", () => {
+		memoryCache.delete("MAIN_WINDOW")
 
-                window.hide()
-            })
-        }, 1000)
+		activeWindows = activeWindows.filter(w => w.id !== windowId)
+	})
 
-        setTimeout(() => window.focus(), 250)
-    })
+	window.once("show", () => {
+		positionWindow()
 
-    ipcMain.once("window-ready", (_, id) => {
-        positionWindow()
+		setTimeout(() => {
+			window.on("blur", () => {
+				if (!memoryCache.has("trayAvailable")) {
+					return
+				}
 
-        if(parseInt(id) == windowId && show){
-            window.show()
-        }
-    })
+				window.hide()
+			})
+		}, 1000)
 
-    memoryCache.set("MAIN_WINDOW", window)
-    
-    activeWindows.push({ id: windowId, type: "MAIN_WINDOW" })
+		setTimeout(() => window.focus(), 250)
+	})
 
-    positionWindow()
+	ipcMain.once("window-ready", (_, id) => {
+		positionWindow()
 
-    return window
+		if (parseInt(id) == windowId && show) {
+			window.show()
+		}
+	})
+
+	memoryCache.set("MAIN_WINDOW", window)
+
+	activeWindows.push({ id: windowId, type: "MAIN_WINDOW" })
+
+	positionWindow()
+
+	return window
 }
 
 export const createSettings = async (page: string = "general"): Promise<BrowserWindow> => {
-    const currentSettingsWindows = memoryCache.get("SETTINGS_WINDOWS")
+	const currentSettingsWindows = memoryCache.get("SETTINGS_WINDOWS")
 
-    if(currentSettingsWindows){
-        for(const id in currentSettingsWindows){
-            try{
-                currentSettingsWindows[id].close()
-            }
-            catch(e){
-                log.error(e)
-            }
-        }
-    }
+	if (currentSettingsWindows) {
+		for (const id in currentSettingsWindows) {
+			try {
+				currentSettingsWindows[id].close()
+			} catch (e) {
+				log.error(e)
+			}
+		}
+	}
 
-    const window = new BrowserWindow({
-        width: 700,
-        height: 600,
-        webPreferences: {
-            nodeIntegration: true,
-            backgroundThrottling: false,
-            contextIsolation: false
-        },
-        frame: false,
-        transparent: true,
-        titleBarStyle: is.macOS() ? "hidden" : "default",
-        titleBarOverlay: true,
-        resizable: false,
-        skipTaskbar: false,
-        fullscreenable: false,
-        maximizable: false,
-        minimizable: true,
-        hasShadow: false,
-        title: "Settings",
-        show: false,
-        backgroundColor: "rgba(0, 0, 0, 0)",
-        ...(
-            (is.linux() && !is.dev()) ? { icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png")) }
-            : (is.windows() && !is.dev()) ? { icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico") }
-            : { icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns") }
-        )
-    })
+	const window = new BrowserWindow({
+		width: 700,
+		height: 600,
+		webPreferences: {
+			nodeIntegration: true,
+			backgroundThrottling: false,
+			contextIsolation: false
+		},
+		frame: false,
+		transparent: true,
+		titleBarStyle: is.macOS() ? "hidden" : "default",
+		titleBarOverlay: true,
+		resizable: false,
+		skipTaskbar: false,
+		fullscreenable: false,
+		maximizable: false,
+		minimizable: true,
+		hasShadow: false,
+		title: "Settings",
+		show: false,
+		backgroundColor: "rgba(0, 0, 0, 0)",
+		...(is.linux() && !is.dev()
+			? {
+					icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png"))
+			  }
+			: is.windows() && !is.dev()
+			? {
+					icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico")
+			  }
+			: {
+					icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns")
+			  })
+	})
 
-    const windowId = window.id
+	const windowId = window.id
 
-    window.loadURL(STATIC_PATH + "?page=" + page + "&id=" + encodeURIComponent(windowId) + "#settings")
+	window.loadURL(STATIC_PATH + "?page=" + page + "&id=" + encodeURIComponent(windowId) + "#settings")
 
-    if(DEV_TOOLS){
-        window.webContents.openDevTools({ mode: "detach" })
-    }
+	if (DEV_TOOLS) {
+		window.webContents.openDevTools({ mode: "detach" })
+	}
 
-    window.once("closed", () => {
-        const settingsWindows = memoryCache.get("SETTINGS_WINDOWS")
+	window.once("closed", () => {
+		const settingsWindows = memoryCache.get("SETTINGS_WINDOWS")
 
-        if(settingsWindows){
-            for(const id in settingsWindows){
-                if(parseInt(id) == windowId){
-                    delete settingsWindows[id]
-                }
-            }
+		if (settingsWindows) {
+			for (const id in settingsWindows) {
+				if (parseInt(id) == windowId) {
+					delete settingsWindows[id]
+				}
+			}
 
-            memoryCache.set("SETTINGS_WINDOWS", settingsWindows)
-        }
+			memoryCache.set("SETTINGS_WINDOWS", settingsWindows)
+		}
 
-        activeWindows = activeWindows.filter(w => w.id !== windowId)
+		activeWindows = activeWindows.filter(w => w.id !== windowId)
 
-        if(is.macOS()){
-            const active = JSON.stringify(activeWindows.map(w => w.type))
+		if (is.macOS()) {
+			const active = JSON.stringify(activeWindows.map(w => w.type))
 
-            if(
-                JSON.stringify(["MAIN_WINDOW", "WORKER_WINDOW"]) == active
-                || JSON.stringify(["WORKER_WINDOW", "MAIN_WINDOW"]) == active
-                || JSON.stringify(["MAIN_WINDOW"]) == active
-                || JSON.stringify(["WORKER_WINDOW"]) == active
-            ){
-                app.dock.hide()
-            }
-        }
-    })
+			if (
+				JSON.stringify(["MAIN_WINDOW", "WORKER_WINDOW"]) == active ||
+				JSON.stringify(["WORKER_WINDOW", "MAIN_WINDOW"]) == active ||
+				JSON.stringify(["MAIN_WINDOW"]) == active ||
+				JSON.stringify(["WORKER_WINDOW"]) == active
+			) {
+				app.dock.hide()
+			}
+		}
+	})
 
-    window.once("show", () => setTimeout(() => window.focus(), 250))
-    
-    ipcMain.once("window-ready", (_, id) => {
-        if(parseInt(id) == windowId){
-            window.show()
-        }
-    })
+	window.once("show", () => setTimeout(() => window.focus(), 250))
 
-    if(is.macOS()){
-        window.once("show", () => {
-            app.dock.show().catch(log.error)
-        })
-    }
+	ipcMain.once("window-ready", (_, id) => {
+		if (parseInt(id) == windowId) {
+			window.show()
+		}
+	})
 
-    let settingsWindows = memoryCache.get("SETTINGS_WINDOWS")
+	if (is.macOS()) {
+		window.once("show", () => {
+			app.dock.show().catch(log.error)
+		})
+	}
 
-    if(settingsWindows){
-        settingsWindows[windowId] = window
-    }
-    else{
-        settingsWindows = {}
-        settingsWindows[windowId] = window
-    }
+	let settingsWindows = memoryCache.get("SETTINGS_WINDOWS")
 
-    memoryCache.set("SETTINGS_WINDOWS", settingsWindows)
+	if (settingsWindows) {
+		settingsWindows[windowId] = window
+	} else {
+		settingsWindows = {}
+		settingsWindows[windowId] = window
+	}
 
-    activeWindows.push({ id: windowId, type: "SETTINGS_WINDOWS" })
+	memoryCache.set("SETTINGS_WINDOWS", settingsWindows)
 
-    return window
+	activeWindows.push({ id: windowId, type: "SETTINGS_WINDOWS" })
+
+	return window
 }
 
 export const createUpload = async (args: Record<string, unknown> = {}): Promise<BrowserWindow> => {
-    const window = new BrowserWindow({
-        width: 500,
-        height: 400,
-        webPreferences: {
-            nodeIntegration: true,
-            backgroundThrottling: false,
-            contextIsolation: false
-        },
-        frame: false,
-        transparent: true,
-        titleBarStyle: is.macOS() ? "hidden" : "default",
-        titleBarOverlay: true,
-        resizable: false,
-        skipTaskbar: false,
-        fullscreenable: false,
-        maximizable: false,
-        minimizable: true,
-        hasShadow: false,
-        title: "Upload",
-        show: false,
-        backgroundColor: "rgba(0, 0, 0, 0)",
-        ...(
-            (is.linux() && !is.dev()) ? { icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png")) }
-            : (is.windows() && !is.dev()) ? { icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico") }
-            : { icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns") }
-        )
-    })
+	const window = new BrowserWindow({
+		width: 500,
+		height: 400,
+		webPreferences: {
+			nodeIntegration: true,
+			backgroundThrottling: false,
+			contextIsolation: false
+		},
+		frame: false,
+		transparent: true,
+		titleBarStyle: is.macOS() ? "hidden" : "default",
+		titleBarOverlay: true,
+		resizable: false,
+		skipTaskbar: false,
+		fullscreenable: false,
+		maximizable: false,
+		minimizable: true,
+		hasShadow: false,
+		title: "Upload",
+		show: false,
+		backgroundColor: "rgba(0, 0, 0, 0)",
+		...(is.linux() && !is.dev()
+			? {
+					icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png"))
+			  }
+			: is.windows() && !is.dev()
+			? {
+					icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico")
+			  }
+			: {
+					icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns")
+			  })
+	})
 
-    const windowId = window.id
+	const windowId = window.id
 
-    window.loadURL(STATIC_PATH + "?args=" + encodeURIComponent(Base64.encode(JSON.stringify(args))) + "&id=" + encodeURIComponent(windowId) + "#upload")
+	window.loadURL(
+		STATIC_PATH +
+			"?args=" +
+			encodeURIComponent(Base64.encode(JSON.stringify(args))) +
+			"&id=" +
+			encodeURIComponent(windowId) +
+			"#upload"
+	)
 
-    if(DEV_TOOLS){
-        window.webContents.openDevTools({ mode: "detach" })
-    }
+	if (DEV_TOOLS) {
+		window.webContents.openDevTools({ mode: "detach" })
+	}
 
-    window.once("closed", () => {
-        const currentUploadWindows = memoryCache.get("UPLOAD_WINDOWS")
+	window.once("closed", () => {
+		const currentUploadWindows = memoryCache.get("UPLOAD_WINDOWS")
 
-        if(currentUploadWindows){
-            for(const id in currentUploadWindows){
-                if(parseInt(id) == windowId){
-                    delete currentUploadWindows[id]
-                }
-            }
+		if (currentUploadWindows) {
+			for (const id in currentUploadWindows) {
+				if (parseInt(id) == windowId) {
+					delete currentUploadWindows[id]
+				}
+			}
 
-            memoryCache.set("UPLOAD_WINDOWS", currentUploadWindows)
-        }
+			memoryCache.set("UPLOAD_WINDOWS", currentUploadWindows)
+		}
 
-        activeWindows = activeWindows.filter(w => w.id !== windowId)
+		activeWindows = activeWindows.filter(w => w.id !== windowId)
 
-        if(is.macOS()){
-            const active = JSON.stringify(activeWindows.map(w => w.type))
+		if (is.macOS()) {
+			const active = JSON.stringify(activeWindows.map(w => w.type))
 
-            if(
-                JSON.stringify(["MAIN_WINDOW", "WORKER_WINDOW"]) == active
-                || JSON.stringify(["WORKER_WINDOW", "MAIN_WINDOW"]) == active
-                || JSON.stringify(["MAIN_WINDOW"]) == active
-                || JSON.stringify(["WORKER_WINDOW"]) == active
-            ){
-                app.dock.hide()
-            }
-        }
-    })
+			if (
+				JSON.stringify(["MAIN_WINDOW", "WORKER_WINDOW"]) == active ||
+				JSON.stringify(["WORKER_WINDOW", "MAIN_WINDOW"]) == active ||
+				JSON.stringify(["MAIN_WINDOW"]) == active ||
+				JSON.stringify(["WORKER_WINDOW"]) == active
+			) {
+				app.dock.hide()
+			}
+		}
+	})
 
-    window.once("show", () => setTimeout(() => window.focus(), 250))
-    
-    ipcMain.once("window-ready", (_, id) => {
-        if(parseInt(id) == windowId){
-            window.show()
-        }
-    })
+	window.once("show", () => setTimeout(() => window.focus(), 250))
 
-    if(is.macOS()){
-        window.once("show", () => {
-            app.dock.show().catch(log.error)
-        })
-    }
+	ipcMain.once("window-ready", (_, id) => {
+		if (parseInt(id) == windowId) {
+			window.show()
+		}
+	})
 
-    let uploadWindows = memoryCache.get("UPLOAD_WINDOWS")
+	if (is.macOS()) {
+		window.once("show", () => {
+			app.dock.show().catch(log.error)
+		})
+	}
 
-    if(uploadWindows){
-        uploadWindows[windowId] = window
-    }
-    else{
-        uploadWindows = {}
-        uploadWindows[windowId] = window
-    }
+	let uploadWindows = memoryCache.get("UPLOAD_WINDOWS")
 
-    memoryCache.set("UPLOAD_WINDOWS", uploadWindows)
+	if (uploadWindows) {
+		uploadWindows[windowId] = window
+	} else {
+		uploadWindows = {}
+		uploadWindows[windowId] = window
+	}
 
-    activeWindows.push({ id: windowId, type: "UPLOAD_WINDOWS" })
+	memoryCache.set("UPLOAD_WINDOWS", uploadWindows)
 
-    return window
+	activeWindows.push({ id: windowId, type: "UPLOAD_WINDOWS" })
+
+	return window
 }
 
 export const createDownload = async (args: Record<string, unknown> = {}): Promise<BrowserWindow> => {
-    const window = new BrowserWindow({
-        width: 500,
-        height: 400,
-        webPreferences: {
-            nodeIntegration: true,
-            backgroundThrottling: false,
-            contextIsolation: false
-        },
-        frame: false,
-        transparent: true,
-        titleBarStyle: is.macOS() ? "hidden" : "default",
-        titleBarOverlay: true,
-        resizable: false,
-        skipTaskbar: false,
-        fullscreenable: false,
-        maximizable: false,
-        minimizable: true,
-        hasShadow: false,
-        title: "Download",
-        show: false,
-        backgroundColor: "rgba(0, 0, 0, 0)",
-        ...(
-            (is.linux() && !is.dev()) ? { icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png")) }
-            : (is.windows() && !is.dev()) ? { icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico") }
-            : { icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns") }
-        )
-    })
+	const window = new BrowserWindow({
+		width: 500,
+		height: 400,
+		webPreferences: {
+			nodeIntegration: true,
+			backgroundThrottling: false,
+			contextIsolation: false
+		},
+		frame: false,
+		transparent: true,
+		titleBarStyle: is.macOS() ? "hidden" : "default",
+		titleBarOverlay: true,
+		resizable: false,
+		skipTaskbar: false,
+		fullscreenable: false,
+		maximizable: false,
+		minimizable: true,
+		hasShadow: false,
+		title: "Download",
+		show: false,
+		backgroundColor: "rgba(0, 0, 0, 0)",
+		...(is.linux() && !is.dev()
+			? {
+					icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png"))
+			  }
+			: is.windows() && !is.dev()
+			? {
+					icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico")
+			  }
+			: {
+					icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns")
+			  })
+	})
 
-    const windowId = window.id
+	const windowId = window.id
 
-    window.loadURL(STATIC_PATH + "?args=" + encodeURIComponent(Base64.encode(JSON.stringify(args))) + "&id=" + encodeURIComponent(windowId) + "#download")
+	window.loadURL(
+		STATIC_PATH +
+			"?args=" +
+			encodeURIComponent(Base64.encode(JSON.stringify(args))) +
+			"&id=" +
+			encodeURIComponent(windowId) +
+			"#download"
+	)
 
-    if(DEV_TOOLS){
-        window.webContents.openDevTools({ mode: "detach" })
-    }
+	if (DEV_TOOLS) {
+		window.webContents.openDevTools({ mode: "detach" })
+	}
 
-    window.once("closed", () => {
-        const currentDownloadWindows = memoryCache.get("DOWNLOAD_WINDOWS")
+	window.once("closed", () => {
+		const currentDownloadWindows = memoryCache.get("DOWNLOAD_WINDOWS")
 
-        if(currentDownloadWindows){
-            for(const id in currentDownloadWindows){
-                if(parseInt(id) == windowId){
-                    delete currentDownloadWindows[id]
-                }
-            }
+		if (currentDownloadWindows) {
+			for (const id in currentDownloadWindows) {
+				if (parseInt(id) == windowId) {
+					delete currentDownloadWindows[id]
+				}
+			}
 
-            memoryCache.set("DOWNLOAD_WINDOWS", currentDownloadWindows)
-        }
+			memoryCache.set("DOWNLOAD_WINDOWS", currentDownloadWindows)
+		}
 
-        activeWindows = activeWindows.filter(w => w.id !== windowId)
+		activeWindows = activeWindows.filter(w => w.id !== windowId)
 
-        if(is.macOS()){
-            const active = JSON.stringify(activeWindows.map(w => w.type))
+		if (is.macOS()) {
+			const active = JSON.stringify(activeWindows.map(w => w.type))
 
-            if(
-                JSON.stringify(["MAIN_WINDOW", "WORKER_WINDOW"]) == active
-                || JSON.stringify(["WORKER_WINDOW", "MAIN_WINDOW"]) == active
-                || JSON.stringify(["MAIN_WINDOW"]) == active
-                || JSON.stringify(["WORKER_WINDOW"]) == active
-            ){
-                app.dock.hide()
-            }
-        }
-    })
+			if (
+				JSON.stringify(["MAIN_WINDOW", "WORKER_WINDOW"]) == active ||
+				JSON.stringify(["WORKER_WINDOW", "MAIN_WINDOW"]) == active ||
+				JSON.stringify(["MAIN_WINDOW"]) == active ||
+				JSON.stringify(["WORKER_WINDOW"]) == active
+			) {
+				app.dock.hide()
+			}
+		}
+	})
 
-    window.once("show", () => setTimeout(() => window.focus(), 250))
-    
-    ipcMain.once("window-ready", (_, id) => {
-        if(parseInt(id) == windowId){
-            window.show()
-        }
-    })
+	window.once("show", () => setTimeout(() => window.focus(), 250))
 
-    if(is.macOS()){
-        window.once("show", () => {
-            app.dock.show().catch(log.error)
-        })
-    }
+	ipcMain.once("window-ready", (_, id) => {
+		if (parseInt(id) == windowId) {
+			window.show()
+		}
+	})
 
-    let downloadWindows = memoryCache.get("DOWNLOAD_WINDOWS")
+	if (is.macOS()) {
+		window.once("show", () => {
+			app.dock.show().catch(log.error)
+		})
+	}
 
-    if(downloadWindows){
-        downloadWindows[windowId] = window
-    }
-    else{
-        downloadWindows = {}
-        downloadWindows[windowId] = window
-    }
+	let downloadWindows = memoryCache.get("DOWNLOAD_WINDOWS")
 
-    memoryCache.set("DOWNLOAD_WINDOWS", downloadWindows)
+	if (downloadWindows) {
+		downloadWindows[windowId] = window
+	} else {
+		downloadWindows = {}
+		downloadWindows[windowId] = window
+	}
 
-    activeWindows.push({ id: windowId, type: "DOWNLOAD_WINDOWS" })
+	memoryCache.set("DOWNLOAD_WINDOWS", downloadWindows)
 
-    return window
+	activeWindows.push({ id: windowId, type: "DOWNLOAD_WINDOWS" })
+
+	return window
 }
 
 export const createCloud = async (mode: string = "selectFolder"): Promise<BrowserWindow> => {
-    const window = new BrowserWindow({
-        width: 700,
-        height: 600,
-        webPreferences: {
-            nodeIntegration: true,
-            backgroundThrottling: false,
-            contextIsolation: false
-        },
-        frame: false,
-        transparent: true,
-        titleBarStyle: is.macOS() ? "hidden" : "default",
-        resizable: false,
-        skipTaskbar: false,
-        fullscreenable: false,
-        maximizable: false,
-        minimizable: true,
-        hasShadow: false,
-        title: "Cloud",
-        show: false,
-        backgroundColor: "rgba(0, 0, 0, 0)",
-        ...(
-            (is.linux() && !is.dev()) ? { icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png")) }
-            : (is.windows() && !is.dev()) ? { icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico") }
-            : { icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns") }
-        )
-    })
+	const window = new BrowserWindow({
+		width: 700,
+		height: 600,
+		webPreferences: {
+			nodeIntegration: true,
+			backgroundThrottling: false,
+			contextIsolation: false
+		},
+		frame: false,
+		transparent: true,
+		titleBarStyle: is.macOS() ? "hidden" : "default",
+		resizable: false,
+		skipTaskbar: false,
+		fullscreenable: false,
+		maximizable: false,
+		minimizable: true,
+		hasShadow: false,
+		title: "Cloud",
+		show: false,
+		backgroundColor: "rgba(0, 0, 0, 0)",
+		...(is.linux() && !is.dev()
+			? {
+					icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png"))
+			  }
+			: is.windows() && !is.dev()
+			? {
+					icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico")
+			  }
+			: {
+					icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns")
+			  })
+	})
 
-    const windowId = window.id
+	const windowId = window.id
 
-    window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "&mode=" + mode + "#cloud")
+	window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "&mode=" + mode + "#cloud")
 
-    if(DEV_TOOLS){
-        window.webContents.openDevTools({ mode: "detach" })
-    }
+	if (DEV_TOOLS) {
+		window.webContents.openDevTools({ mode: "detach" })
+	}
 
-    window.once("closed", () => {
-        const cloudWindows = memoryCache.get("CLOUD_WINDOWS")
+	window.once("closed", () => {
+		const cloudWindows = memoryCache.get("CLOUD_WINDOWS")
 
-        if(cloudWindows){
-            for(const id in cloudWindows){
-                if(parseInt(id) == windowId){
-                    delete cloudWindows[id]
-                }
-            }
+		if (cloudWindows) {
+			for (const id in cloudWindows) {
+				if (parseInt(id) == windowId) {
+					delete cloudWindows[id]
+				}
+			}
 
-            memoryCache.set("CLOUD_WINDOWS", cloudWindows)
-        }
+			memoryCache.set("CLOUD_WINDOWS", cloudWindows)
+		}
 
-        activeWindows = activeWindows.filter(w => w.id !== windowId)
+		activeWindows = activeWindows.filter(w => w.id !== windowId)
 
-        if(is.macOS()){
-            const active = JSON.stringify(activeWindows.map(w => w.type))
+		if (is.macOS()) {
+			const active = JSON.stringify(activeWindows.map(w => w.type))
 
-            if(
-                JSON.stringify(["MAIN_WINDOW", "WORKER_WINDOW"]) == active
-                || JSON.stringify(["WORKER_WINDOW", "MAIN_WINDOW"]) == active
-                || JSON.stringify(["MAIN_WINDOW"]) == active
-                || JSON.stringify(["WORKER_WINDOW"]) == active
-            ){
-                app.dock.hide()
-            }
-        }
-    })
+			if (
+				JSON.stringify(["MAIN_WINDOW", "WORKER_WINDOW"]) == active ||
+				JSON.stringify(["WORKER_WINDOW", "MAIN_WINDOW"]) == active ||
+				JSON.stringify(["MAIN_WINDOW"]) == active ||
+				JSON.stringify(["WORKER_WINDOW"]) == active
+			) {
+				app.dock.hide()
+			}
+		}
+	})
 
-    window.once("show", () => setTimeout(() => window.focus(), 250))
-    
-    ipcMain.once("window-ready", (_, id) => {
-        if(parseInt(id) == windowId){
-            window.show()
-        }
-    })
+	window.once("show", () => setTimeout(() => window.focus(), 250))
 
-    if(is.macOS()){
-        window.once("show", () => {
-            app.dock.show().catch(log.error)
-        })
-    }
+	ipcMain.once("window-ready", (_, id) => {
+		if (parseInt(id) == windowId) {
+			window.show()
+		}
+	})
 
-    let cloudWindows = memoryCache.get("CLOUD_WINDOWS")
+	if (is.macOS()) {
+		window.once("show", () => {
+			app.dock.show().catch(log.error)
+		})
+	}
 
-    if(cloudWindows){
-        cloudWindows[windowId] = window
-    }
-    else{
-        cloudWindows = {}
-        cloudWindows[windowId] = window
-    }
+	let cloudWindows = memoryCache.get("CLOUD_WINDOWS")
 
-    memoryCache.set("CLOUD_WINDOWS", cloudWindows)
+	if (cloudWindows) {
+		cloudWindows[windowId] = window
+	} else {
+		cloudWindows = {}
+		cloudWindows[windowId] = window
+	}
 
-    activeWindows.push({ id: windowId, type: "CLOUD_WINDOWS" })
+	memoryCache.set("CLOUD_WINDOWS", cloudWindows)
 
-    return window
+	activeWindows.push({ id: windowId, type: "CLOUD_WINDOWS" })
+
+	return window
 }
 
 export const createSelectiveSync = async (location: Location): Promise<BrowserWindow> => {
-    const window = new BrowserWindow({
-        width: 700,
-        height: 600,
-        webPreferences: {
-            nodeIntegration: true,
-            backgroundThrottling: false,
-            contextIsolation: false
-        },
-        frame: false,
-        transparent: true,
-        titleBarStyle: is.macOS() ? "hidden" : "default",
-        resizable: false,
-        skipTaskbar: false,
-        fullscreenable: false,
-        maximizable: false,
-        minimizable: true,
-        hasShadow: false,
-        title: "Selective sync",
-        show: false,
-        backgroundColor: "rgba(0, 0, 0, 0)",
-        ...(
-            (is.linux() && !is.dev()) ? { icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png")) }
-            : (is.windows() && !is.dev()) ? { icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico") }
-            : { icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns") }
-        )
-    })
+	const window = new BrowserWindow({
+		width: 700,
+		height: 600,
+		webPreferences: {
+			nodeIntegration: true,
+			backgroundThrottling: false,
+			contextIsolation: false
+		},
+		frame: false,
+		transparent: true,
+		titleBarStyle: is.macOS() ? "hidden" : "default",
+		resizable: false,
+		skipTaskbar: false,
+		fullscreenable: false,
+		maximizable: false,
+		minimizable: true,
+		hasShadow: false,
+		title: "Selective sync",
+		show: false,
+		backgroundColor: "rgba(0, 0, 0, 0)",
+		...(is.linux() && !is.dev()
+			? {
+					icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png"))
+			  }
+			: is.windows() && !is.dev()
+			? {
+					icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico")
+			  }
+			: {
+					icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns")
+			  })
+	})
 
-    const windowId = window.id
+	const windowId = window.id
 
-    window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "&args=" + encodeURIComponent(Base64.encode(JSON.stringify(location))) + "#selectiveSync")
+	window.loadURL(
+		STATIC_PATH +
+			"?id=" +
+			encodeURIComponent(windowId) +
+			"&args=" +
+			encodeURIComponent(Base64.encode(JSON.stringify(location))) +
+			"#selectiveSync"
+	)
 
-    if(DEV_TOOLS){
-        window.webContents.openDevTools({ mode: "detach" })
-    }
+	if (DEV_TOOLS) {
+		window.webContents.openDevTools({ mode: "detach" })
+	}
 
-    window.once("closed", () => {
-        const selectiveSyncWindows = memoryCache.get("SELECTIVE_SYNC_WINDOWS")
+	window.once("closed", () => {
+		const selectiveSyncWindows = memoryCache.get("SELECTIVE_SYNC_WINDOWS")
 
-        if(selectiveSyncWindows){
-            for(const id in selectiveSyncWindows){
-                if(parseInt(id) == windowId){
-                    delete selectiveSyncWindows[id]
-                }
-            }
+		if (selectiveSyncWindows) {
+			for (const id in selectiveSyncWindows) {
+				if (parseInt(id) == windowId) {
+					delete selectiveSyncWindows[id]
+				}
+			}
 
-            memoryCache.set("SELECTIVE_SYNC_WINDOWS", selectiveSyncWindows)
-        }
+			memoryCache.set("SELECTIVE_SYNC_WINDOWS", selectiveSyncWindows)
+		}
 
-        activeWindows = activeWindows.filter(w => w.id !== windowId)
+		activeWindows = activeWindows.filter(w => w.id !== windowId)
 
-        if(is.macOS()){
-            const active = JSON.stringify(activeWindows.map(w => w.type))
+		if (is.macOS()) {
+			const active = JSON.stringify(activeWindows.map(w => w.type))
 
-            if(
-                JSON.stringify(["MAIN_WINDOW", "WORKER_WINDOW"]) == active
-                || JSON.stringify(["WORKER_WINDOW", "MAIN_WINDOW"]) == active
-                || JSON.stringify(["MAIN_WINDOW"]) == active
-                || JSON.stringify(["WORKER_WINDOW"]) == active
-            ){
-                app.dock.hide()
-            }
-        }
-    })
+			if (
+				JSON.stringify(["MAIN_WINDOW", "WORKER_WINDOW"]) == active ||
+				JSON.stringify(["WORKER_WINDOW", "MAIN_WINDOW"]) == active ||
+				JSON.stringify(["MAIN_WINDOW"]) == active ||
+				JSON.stringify(["WORKER_WINDOW"]) == active
+			) {
+				app.dock.hide()
+			}
+		}
+	})
 
-    window.once("show", () => setTimeout(() => window.focus(), 250))
-    
-    ipcMain.once("window-ready", (_, id) => {
-        if(parseInt(id) == windowId){
-            window.show()
-        }
-    })
+	window.once("show", () => setTimeout(() => window.focus(), 250))
 
-    if(is.macOS()){
-        window.once("show", () => {
-            app.dock.show().catch(log.error)
-        })
-    }
+	ipcMain.once("window-ready", (_, id) => {
+		if (parseInt(id) == windowId) {
+			window.show()
+		}
+	})
 
-    let selectiveSyncWindows = memoryCache.get("SELECTIVE_SYNC_WINDOWS")
+	if (is.macOS()) {
+		window.once("show", () => {
+			app.dock.show().catch(log.error)
+		})
+	}
 
-    if(selectiveSyncWindows){
-        selectiveSyncWindows[windowId] = window
-    }
-    else{
-        selectiveSyncWindows = {}
-        selectiveSyncWindows[windowId] = window
-    }
+	let selectiveSyncWindows = memoryCache.get("SELECTIVE_SYNC_WINDOWS")
 
-    memoryCache.set("SELECTIVE_SYNC_WINDOWS", selectiveSyncWindows)
+	if (selectiveSyncWindows) {
+		selectiveSyncWindows[windowId] = window
+	} else {
+		selectiveSyncWindows = {}
+		selectiveSyncWindows[windowId] = window
+	}
 
-    activeWindows.push({ id: windowId, type: "SELECTIVE_SYNC_WINDOWS" })
+	memoryCache.set("SELECTIVE_SYNC_WINDOWS", selectiveSyncWindows)
 
-    return window
+	activeWindows.push({ id: windowId, type: "SELECTIVE_SYNC_WINDOWS" })
+
+	return window
 }
 
 export const createAuth = async (): Promise<BrowserWindow> => {
-    if(memoryCache.has("AUTH_WINDOW")){
-        try{
-            memoryCache.get("AUTH_WINDOW").get("AUTH_WINDOW").close()
-        }
-        catch(e){
-            log.error(e)
-        }
-    }
+	if (memoryCache.has("AUTH_WINDOW")) {
+		try {
+			memoryCache.get("AUTH_WINDOW").get("AUTH_WINDOW").close()
+		} catch (e) {
+			log.error(e)
+		}
+	}
 
-    const window = new BrowserWindow({
-        width: 350,
-        height: 500,
-        webPreferences: {
-            nodeIntegration: true,
-            backgroundThrottling: false,
-            contextIsolation: false
-        },
-        frame: false,
-        transparent: true,
-        titleBarStyle: "hidden",
-        resizable: false,
-        skipTaskbar: false,
-        fullscreenable: false,
-        maximizable: false,
-        minimizable: true,
-        hasShadow: false,
-        title: "Login",
-        show: false,
-        backgroundColor: "rgba(0, 0, 0, 0)",
-        ...(
-            (is.linux() && !is.dev()) ? { icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png")) }
-            : (is.windows() && !is.dev()) ? { icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico") }
-            : { icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns") }
-        )
-    })
+	const window = new BrowserWindow({
+		width: 350,
+		height: 500,
+		webPreferences: {
+			nodeIntegration: true,
+			backgroundThrottling: false,
+			contextIsolation: false
+		},
+		frame: false,
+		transparent: true,
+		titleBarStyle: "hidden",
+		resizable: false,
+		skipTaskbar: false,
+		fullscreenable: false,
+		maximizable: false,
+		minimizable: true,
+		hasShadow: false,
+		title: "Login",
+		show: false,
+		backgroundColor: "rgba(0, 0, 0, 0)",
+		...(is.linux() && !is.dev()
+			? {
+					icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png"))
+			  }
+			: is.windows() && !is.dev()
+			? {
+					icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico")
+			  }
+			: {
+					icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns")
+			  })
+	})
 
-    const windowId = window.id
+	const windowId = window.id
 
-    window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "#auth")
+	window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "#auth")
 
-    if(DEV_TOOLS){
-        window.webContents.openDevTools({ mode: "detach" })
-    }
+	if (DEV_TOOLS) {
+		window.webContents.openDevTools({ mode: "detach" })
+	}
 
-    window.once("closed", () => {
-        memoryCache.delete("AUTH_WINDOW")
+	window.once("closed", () => {
+		memoryCache.delete("AUTH_WINDOW")
 
-        setTimeout(() => {
-            if(memoryCache.get("MAIN_WINDOW")){
-                app.quit()
-            }
-        }, 3000)
+		setTimeout(() => {
+			if (memoryCache.get("MAIN_WINDOW")) {
+				app.quit()
+			}
+		}, 3000)
 
-        activeWindows = activeWindows.filter(w => w.id !== windowId)
+		activeWindows = activeWindows.filter(w => w.id !== windowId)
 
-        if(is.macOS()){
-            const active = JSON.stringify(activeWindows.map(w => w.type))
+		if (is.macOS()) {
+			const active = JSON.stringify(activeWindows.map(w => w.type))
 
-            if(
-                JSON.stringify(["MAIN_WINDOW", "WORKER_WINDOW"]) == active
-                || JSON.stringify(["WORKER_WINDOW", "MAIN_WINDOW"]) == active
-                || JSON.stringify(["MAIN_WINDOW"]) == active
-                || JSON.stringify(["WORKER_WINDOW"]) == active
-            ){
-                app.dock.hide()
-            }
-        }
-    })
+			if (
+				JSON.stringify(["MAIN_WINDOW", "WORKER_WINDOW"]) == active ||
+				JSON.stringify(["WORKER_WINDOW", "MAIN_WINDOW"]) == active ||
+				JSON.stringify(["MAIN_WINDOW"]) == active ||
+				JSON.stringify(["WORKER_WINDOW"]) == active
+			) {
+				app.dock.hide()
+			}
+		}
+	})
 
-    window.once("show", () => setTimeout(() => window.focus(), 250))
-    
-    ipcMain.once("window-ready", (_, id) => {
-        if(parseInt(id) == windowId){
-            window.show()
-        }
-    })
+	window.once("show", () => setTimeout(() => window.focus(), 250))
 
-    if(is.macOS()){
-        window.once("show", () => {
-            app.dock.show().catch(log.error)
-        })
-    }
+	ipcMain.once("window-ready", (_, id) => {
+		if (parseInt(id) == windowId) {
+			window.show()
+		}
+	})
 
-    memoryCache.set("AUTH_WINDOW", window)
+	if (is.macOS()) {
+		window.once("show", () => {
+			app.dock.show().catch(log.error)
+		})
+	}
 
-    activeWindows.push({ id: windowId, type: "AUTH_WINDOW" })
+	memoryCache.set("AUTH_WINDOW", window)
 
-    return window
+	activeWindows.push({ id: windowId, type: "AUTH_WINDOW" })
+
+	return window
 }
 
 export const createUpdate = async (toVersion: string = "1"): Promise<BrowserWindow> => {
-    if(memoryCache.has("UPDATE_WINDOW")){
-        try{
-            memoryCache.get("UPDATE_WINDOW").close()
-        }
-        catch(e){
-            log.error(e)
-        }
-    }
+	if (memoryCache.has("UPDATE_WINDOW")) {
+		try {
+			memoryCache.get("UPDATE_WINDOW").close()
+		} catch (e) {
+			log.error(e)
+		}
+	}
 
-    const window = new BrowserWindow({
-        width: 500,
-        height: 400,
-        webPreferences: {
-            nodeIntegration: true,
-            backgroundThrottling: false,
-            contextIsolation: false
-        },
-        frame: false,
-        transparent: true,
-        titleBarStyle: is.macOS() ? "hidden" : "default",
-        titleBarOverlay: true,
-        resizable: false,
-        skipTaskbar: false,
-        fullscreenable: false,
-        maximizable: false,
-        minimizable: true,
-        hasShadow: false,
-        title: "Download",
-        show: false,
-        backgroundColor: "rgba(0, 0, 0, 0)",
-        ...(
-            (is.linux() && !is.dev()) ? { icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png")) }
-            : (is.windows() && !is.dev()) ? { icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico") }
-            : { icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns") }
-        )
-    })
+	const window = new BrowserWindow({
+		width: 500,
+		height: 400,
+		webPreferences: {
+			nodeIntegration: true,
+			backgroundThrottling: false,
+			contextIsolation: false
+		},
+		frame: false,
+		transparent: true,
+		titleBarStyle: is.macOS() ? "hidden" : "default",
+		titleBarOverlay: true,
+		resizable: false,
+		skipTaskbar: false,
+		fullscreenable: false,
+		maximizable: false,
+		minimizable: true,
+		hasShadow: false,
+		title: "Download",
+		show: false,
+		backgroundColor: "rgba(0, 0, 0, 0)",
+		...(is.linux() && !is.dev()
+			? {
+					icon: nativeImage.createFromPath(path.join(__dirname, "../../../../assets/icons/png/1024x1024.png"))
+			  }
+			: is.windows() && !is.dev()
+			? {
+					icon: path.join(__dirname, "../../../../assets/icons/win/icon.ico")
+			  }
+			: {
+					icon: path.join(__dirname, "../../../../assets/icons/mac/icon.icns")
+			  })
+	})
 
-    const windowId = window.id
+	const windowId = window.id
 
-    window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "&toVersion=" + toVersion + "#update")
+	window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "&toVersion=" + toVersion + "#update")
 
-    if(DEV_TOOLS){
-        window.webContents.openDevTools({ mode: "detach" })
-    }
+	if (DEV_TOOLS) {
+		window.webContents.openDevTools({ mode: "detach" })
+	}
 
-    window.once("closed", () => {
-        memoryCache.delete("UPDATE_WINDOW")
+	window.once("closed", () => {
+		memoryCache.delete("UPDATE_WINDOW")
 
-        activeWindows = activeWindows.filter(w => w.id !== windowId)
+		activeWindows = activeWindows.filter(w => w.id !== windowId)
 
-        if(is.macOS()){
-            const active = JSON.stringify(activeWindows.map(w => w.type))
+		if (is.macOS()) {
+			const active = JSON.stringify(activeWindows.map(w => w.type))
 
-            if(
-                JSON.stringify(["MAIN_WINDOW", "WORKER_WINDOW"]) == active
-                || JSON.stringify(["WORKER_WINDOW", "MAIN_WINDOW"]) == active
-                || JSON.stringify(["MAIN_WINDOW"]) == active
-                || JSON.stringify(["WORKER_WINDOW"]) == active
-            ){
-                app.dock.hide()
-            }
-        }
-    })
+			if (
+				JSON.stringify(["MAIN_WINDOW", "WORKER_WINDOW"]) == active ||
+				JSON.stringify(["WORKER_WINDOW", "MAIN_WINDOW"]) == active ||
+				JSON.stringify(["MAIN_WINDOW"]) == active ||
+				JSON.stringify(["WORKER_WINDOW"]) == active
+			) {
+				app.dock.hide()
+			}
+		}
+	})
 
-    window.once("show", () => setTimeout(() => window.focus(), 250))
-    
-    ipcMain.once("window-ready", (_, id) => {
-        if(parseInt(id) == windowId){
-            window.show()
-        }
-    })
+	window.once("show", () => setTimeout(() => window.focus(), 250))
 
-    if(is.macOS()){
-        window.once("show", () => {
-            app.dock.show().catch(log.error)
-        })
-    }
+	ipcMain.once("window-ready", (_, id) => {
+		if (parseInt(id) == windowId) {
+			window.show()
+		}
+	})
 
-    memoryCache.set("UPDATE_WINDOW", window)
+	if (is.macOS()) {
+		window.once("show", () => {
+			app.dock.show().catch(log.error)
+		})
+	}
 
-    return window
+	memoryCache.set("UPDATE_WINDOW", window)
+
+	return window
 }
 
 export const createWorker = async (): Promise<BrowserWindow> => {
-    if(memoryCache.has("WORKER_WINDOW")){
-        try{
-            memoryCache.get("WORKER_WINDOW").close()
-        }
-        catch(e){
-            log.error(e)
-        }
-    }
+	if (memoryCache.has("WORKER_WINDOW")) {
+		try {
+			memoryCache.get("WORKER_WINDOW").close()
+		} catch (e) {
+			log.error(e)
+		}
+	}
 
-    const window = new BrowserWindow({
-        width: 0,
-        height: 0,
-        webPreferences: {
-            nodeIntegration: true,
-            backgroundThrottling: false,
-            contextIsolation: false
-        },
-        frame: false,
-        show: false,
-        skipTaskbar: true,
-        alwaysOnTop: false,
-        transparent: true,
-        opacity: 0
-    })
+	const window = new BrowserWindow({
+		width: 0,
+		height: 0,
+		webPreferences: {
+			nodeIntegration: true,
+			backgroundThrottling: false,
+			contextIsolation: false
+		},
+		frame: false,
+		show: false,
+		skipTaskbar: true,
+		alwaysOnTop: false,
+		transparent: true,
+		opacity: 0
+	})
 
-    const windowId = window.id
+	const windowId = window.id
 
-    await window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "#worker")
-    
-    if(DEV_TOOLS){
-        window.webContents.openDevTools({ mode: "detach" })
-    }
+	await window.loadURL(STATIC_PATH + "?id=" + encodeURIComponent(windowId) + "#worker")
 
-    window.once("closed", () => {
-        memoryCache.delete("WORKER_WINDOW")
-        memoryCache.delete("WORKER_WINDOW_DEBUGGER")
+	if (DEV_TOOLS) {
+		window.webContents.openDevTools({ mode: "detach" })
+	}
 
-        activeWindows = activeWindows.filter(w => w.id !== windowId)
-    })
+	window.once("closed", () => {
+		memoryCache.delete("WORKER_WINDOW")
+		memoryCache.delete("WORKER_WINDOW_DEBUGGER")
 
-    memoryCache.set("WORKER_WINDOW", window)
+		activeWindows = activeWindows.filter(w => w.id !== windowId)
+	})
 
-    activeWindows.push({ id: windowId, type: "WORKER_WINDOW" })
+	memoryCache.set("WORKER_WINDOW", window)
 
-    return window
+	activeWindows.push({ id: windowId, type: "WORKER_WINDOW" })
+
+	return window
 }
 
 export const createWindows = async (): Promise<void> => {
-    await listen()
+	await listen()
 
-    const langSetManually = db.get("langSetManually")
+	const langSetManually = db.get("langSetManually")
 
-    if(!langSetManually){
-        const locale = app.getLocale()
-    
-        if(["en", "de"].includes(locale)){
-           db.set("lang", locale)
-        }
-    }
+	if (!langSetManually) {
+		const locale = app.getLocale()
 
-    const [isLoggedIn, deviceId] = await Promise.all([
-        db.get("isLoggedIn"),
-        db.get("deviceId")
-    ])
+		if (["en", "de"].includes(locale)) {
+			db.set("lang", locale)
+		}
+	}
 
-    await createWorker()
+	const [isLoggedIn, deviceId] = await Promise.all([db.get("isLoggedIn"), db.get("deviceId")])
 
-    if(is.macOS()){
-        app.dock.setIcon(nativeImage.createFromPath(path.join(__dirname, "../src/assets/icons/png/512x512.png")))
-        app.dock.hide()
-    }
+	await createWorker()
 
-    if(!deviceId){
-        await db.set("deviceId", uuidv4())
-    }
+	if (is.macOS()) {
+		app.dock.setIcon(nativeImage.createFromPath(path.join(__dirname, "../src/assets/icons/png/512x512.png")))
+		app.dock.hide()
+	}
 
-    if(isLoggedIn){
-        await createMain(false)
-    }
-    else{
-        await createAuth()
-    }
+	if (!deviceId) {
+		await db.set("deviceId", uuidv4())
+	}
+
+	if (isLoggedIn) {
+		await createMain(false)
+	} else {
+		await createAuth()
+	}
 }

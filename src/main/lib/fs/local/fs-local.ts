@@ -7,14 +7,39 @@ import { app } from "electron"
 import constants from "../../../../constants.json"
 import { Location } from "../../../../types"
 import db from "../../db"
-import { windowsPathToUnixStyle, pathIncludesDot, isFolderPathExcluded, pathValidation, pathIsFileOrFolderNameIgnoredByDefault, isSystemPathExcluded, isNameOverMaxLength, isPathOverMaxLength, Semaphore } from "../../helpers"
+import {
+	windowsPathToUnixStyle,
+	pathIncludesDot,
+	isFolderPathExcluded,
+	pathValidation,
+	pathIsFileOrFolderNameIgnoredByDefault,
+	isSystemPathExcluded,
+	isNameOverMaxLength,
+	isPathOverMaxLength,
+	Semaphore
+} from "../../helpers"
 import { addSyncIssue } from "../../ipc"
 import { v4 as uuidv4 } from "uuid"
 import readline from "readline"
 
 const FS_RETRIES = 8
 const FS_RETRY_TIMEOUT = 100
-const FS_RETRY_CODES = ["EAGAIN", "EBUSY", "ECANCELED", "EBADF", "EINTR", "EIO", "EMFILE", "ENFILE", "ENOMEM", "EPIPE", "ETXTBSY", "ESPIPE", "EAI_SYSTEM", "EAI_CANCELED"]
+const FS_RETRY_CODES = [
+	"EAGAIN",
+	"EBUSY",
+	"ECANCELED",
+	"EBADF",
+	"EINTR",
+	"EIO",
+	"EMFILE",
+	"ENFILE",
+	"ENOMEM",
+	"EPIPE",
+	"ETXTBSY",
+	"ESPIPE",
+	"EAI_SYSTEM",
+	"EAI_CANCELED"
+]
 const FS_NORETRY_CODES = ["ENOENT", "ENODEV", "EACCES", "EPERM", "EINVAL", "ENAMETOOLONG", "ENOBUFS", "ENOSPC", "EROFS"]
 let LOCAL_TRASH_DIRS_CLEAN_INTERVAL: NodeJS.Timer
 const cache = new Map()
@@ -23,1048 +48,1068 @@ const APPLY_DONE_TASKS_VERSION: number = 1
 const applyDoneTasksSemaphore = new Semaphore(1)
 
 export const normalizePath = (path: string) => {
-    return pathModule.normalize(path)
+	return pathModule.normalize(path)
 }
 
 export const getTempDir = () => {
-    const tmpDirRes = app.getPath("temp")
-    const tmpDir = normalizePath(tmpDirRes)
+	const tmpDirRes = app.getPath("temp")
+	const tmpDir = normalizePath(tmpDirRes)
 
-    return tmpDir
+	return tmpDir
 }
 
 export interface Stats extends fs.Stats {
-    isLink: boolean,
-    isDir: boolean,
-    file: boolean
+	isLink: boolean
+	isDir: boolean
+	file: boolean
 }
 
 export const gracefulLStat = (path: string): Promise<Stats> => {
-    return new Promise((resolve, reject) => {
-        path = normalizePath(path)
+	return new Promise((resolve, reject) => {
+		path = normalizePath(path)
 
-        const cacheKey = "gracefulLStat:" + path
-        let currentTries = 0
-        let lastErr: Error
+		const cacheKey = "gracefulLStat:" + path
+		let currentTries = 0
+		let lastErr: Error
 
-        const req = () => {
-            if(currentTries > FS_RETRIES){
-                return reject(lastErr)
-            }
+		const req = () => {
+			if (currentTries > FS_RETRIES) {
+				return reject(lastErr)
+			}
 
-            currentTries += 1
+			currentTries += 1
 
-            fs.lstat(path).then((stats) => {
-                stats = {
-                    ...stats,
-                    isLink: stats.isSymbolicLink(),
-                    isDir: stats.isDirectory(),
-                    file: stats.isFile()
-                } as Stats
+			fs.lstat(path)
+				.then(stats => {
+					stats = {
+						...stats,
+						isLink: stats.isSymbolicLink(),
+						isDir: stats.isDirectory(),
+						file: stats.isFile()
+					} as Stats
 
-                cache.set(cacheKey, stats)
+					cache.set(cacheKey, stats)
 
-                return resolve(stats as Stats)
-            }).catch((err) => {
-                if(err.code == "EPERM" && cache.has(cacheKey)){
-                    return resolve(cache.get(cacheKey))
-                }
+					return resolve(stats as Stats)
+				})
+				.catch(err => {
+					if (err.code == "EPERM" && cache.has(cacheKey)) {
+						return resolve(cache.get(cacheKey))
+					}
 
-                lastErr = err
+					lastErr = err
 
-                if(FS_RETRY_CODES.includes(err.code)){
-                    return setTimeout(req, FS_RETRY_TIMEOUT)
-                }
+					if (FS_RETRY_CODES.includes(err.code)) {
+						return setTimeout(req, FS_RETRY_TIMEOUT)
+					}
 
-                return reject(err)
-            })
-        }
+					return reject(err)
+				})
+		}
 
-        return req()
-    })
+		return req()
+	})
 }
 
 export const exists = (fullPath: string) => {
-    return new Promise((resolve) => {
-        const path = normalizePath(fullPath)
+	return new Promise(resolve => {
+		const path = normalizePath(fullPath)
 
-        fs.access(path, fs.constants.F_OK, (err) => {
-            if(err){
-                return resolve(false)
-            }
+		fs.access(path, fs.constants.F_OK, err => {
+			if (err) {
+				return resolve(false)
+			}
 
-            return resolve(true)
-        })
-    })
+			return resolve(true)
+		})
+	})
 }
 
 export const doesExistLocally = async (path: string) => {
-    try{
-        await exists(normalizePath(path))
+	try {
+		await exists(normalizePath(path))
 
-        return true
-    }
-    catch{
-        return false
-    }
+		return true
+	} catch {
+		return false
+	}
 }
 
 export const canReadWriteAtPath = (fullPath: string) => {
-    return new Promise((resolve) => {
-        fullPath = normalizePath(fullPath)
+	return new Promise(resolve => {
+		fullPath = normalizePath(fullPath)
 
-        const req = (path: string) => {
-            fs.access(path, fs.constants.W_OK | fs.constants.R_OK, (err) => {
-                if(err){
-                    if(err.code){
-                        if(err.code == "EPERM"){
-                            log.error(err)
+		const req = (path: string) => {
+			fs.access(path, fs.constants.W_OK | fs.constants.R_OK, err => {
+				if (err) {
+					if (err.code) {
+						if (err.code == "EPERM") {
+							log.error(err)
 
-                            return resolve(false)
-                        }
-                        else if(err.code == "ENOENT"){
-                            const newPath = pathModule.dirname(path)
+							return resolve(false)
+						} else if (err.code == "ENOENT") {
+							const newPath = pathModule.dirname(path)
 
-                            if(newPath.length > 0){
-                                return setImmediate(() => req(newPath))
-                            }
+							if (newPath.length > 0) {
+								return setImmediate(() => req(newPath))
+							}
 
-                            return resolve(false)
-                        }
-                    }
+							return resolve(false)
+						}
+					}
 
-                    log.error(err)
-    
-                    return resolve(false)
-                }
-    
-                return resolve(true)
-            })
-        }
+					log.error(err)
 
-        return req(fullPath)
-    })
+					return resolve(false)
+				}
+
+				return resolve(true)
+			})
+		}
+
+		return req(fullPath)
+	})
 }
 
 export const canReadAtPath = (fullPath: string) => {
-    return new Promise((resolve) => {
-        fullPath = normalizePath(fullPath)
+	return new Promise(resolve => {
+		fullPath = normalizePath(fullPath)
 
-        const req = (path: string) => {
-            fs.access(path, fs.constants.R_OK, (err) => {
-                if(err){
-                    if(err.code){
-                        if(err.code == "EPERM"){
-                            log.error(err)
+		const req = (path: string) => {
+			fs.access(path, fs.constants.R_OK, err => {
+				if (err) {
+					if (err.code) {
+						if (err.code == "EPERM") {
+							log.error(err)
 
-                            return resolve(false)
-                        }
-                        else if(err.code == "ENOENT"){
-                            const newPath = pathModule.dirname(path)
+							return resolve(false)
+						} else if (err.code == "ENOENT") {
+							const newPath = pathModule.dirname(path)
 
-                            if(newPath.length > 0){
-                                return setImmediate(() => req(newPath))
-                            }
+							if (newPath.length > 0) {
+								return setImmediate(() => req(newPath))
+							}
 
-                            return resolve(false)
-                        }
-                    }
+							return resolve(false)
+						}
+					}
 
-                    log.error(err)
-    
-                    return resolve(false)
-                }
-    
-                return resolve(true)
-            })
-        }
+					log.error(err)
 
-        return req(fullPath)
-    })
+					return resolve(false)
+				}
+
+				return resolve(true)
+			})
+		}
+
+		return req(fullPath)
+	})
 }
 
 export const smokeTest = async (path: string) => {
-    path = normalizePath(path)
+	path = normalizePath(path)
 
-    const tmpDir = getTempDir()
+	const tmpDir = getTempDir()
 
-    if(!(await canReadWriteAtPath(path))){
-        throw new Error("Cannot read/write at path " + path)
-    }
+	if (!(await canReadWriteAtPath(path))) {
+		throw new Error("Cannot read/write at path " + path)
+	}
 
-    if(!(await canReadWriteAtPath(tmpDir))){
-        throw new Error("Cannot read/write at path " + tmpDir)
-    }
+	if (!(await canReadWriteAtPath(tmpDir))) {
+		throw new Error("Cannot read/write at path " + tmpDir)
+	}
 
-    await Promise.all([
-        gracefulLStat(path),
-        gracefulLStat(tmpDir)
-    ])
+	await Promise.all([gracefulLStat(path), gracefulLStat(tmpDir)])
 }
 
 export const readChunk = (path: string, offset: number, length: number) => {
-    return new Promise((resolve, reject) => {
-        path = normalizePath(path)
+	return new Promise((resolve, reject) => {
+		path = normalizePath(path)
 
-        let currentTries = 0
-        let lastErr: Error
+		let currentTries = 0
+		let lastErr: Error
 
-        const req = () => {
-            if(currentTries > FS_RETRIES){
-                return reject(lastErr)
-            }
+		const req = () => {
+			if (currentTries > FS_RETRIES) {
+				return reject(lastErr)
+			}
 
-            currentTries += 1
+			currentTries += 1
 
-            fs.open(path, "r", (err, fd) => {
-                if(err){
-                    lastErr = err
-            
-                    if(err.code && FS_RETRY_CODES.includes(err.code)){
-                        return setTimeout(req, FS_RETRY_TIMEOUT)
-                    }
-                    
-                    return reject(err)
-                }
-    
-                const buffer = Buffer.alloc(length)
-    
-                fs.read(fd, buffer, 0, length, offset, (err, read) => {
-                    if(err){
-                        lastErr = err
-            
-                        if(err.code && FS_RETRY_CODES.includes(err.code)){
-                            return setTimeout(req, FS_RETRY_TIMEOUT)
-                        }
-                        
-                        return reject(err)
-                    }
-    
-                    let data: Buffer
-    
-                    if(read < length){
-                        data = buffer.slice(0, read)
-                    }
-                    else{
-                        data = buffer
-                    }
-    
-                    fs.close(fd, (err) => {
-                        if(err){
-                            lastErr = err
-            
-                            if(err.code && FS_RETRY_CODES.includes(err.code)){
-                                return setTimeout(req, FS_RETRY_TIMEOUT)
-                            }
-                            
-                            return reject(err)
-                        }
-    
-                        return resolve(data)
-                    })
-                })
-            })
-        }
+			fs.open(path, "r", (err, fd) => {
+				if (err) {
+					lastErr = err
 
-        return req()
-    })
+					if (err.code && FS_RETRY_CODES.includes(err.code)) {
+						return setTimeout(req, FS_RETRY_TIMEOUT)
+					}
+
+					return reject(err)
+				}
+
+				const buffer = Buffer.alloc(length)
+
+				fs.read(fd, buffer, 0, length, offset, (err, read) => {
+					if (err) {
+						lastErr = err
+
+						if (err.code && FS_RETRY_CODES.includes(err.code)) {
+							return setTimeout(req, FS_RETRY_TIMEOUT)
+						}
+
+						return reject(err)
+					}
+
+					let data: Buffer
+
+					if (read < length) {
+						data = buffer.slice(0, read)
+					} else {
+						data = buffer
+					}
+
+					fs.close(fd, err => {
+						if (err) {
+							lastErr = err
+
+							if (err.code && FS_RETRY_CODES.includes(err.code)) {
+								return setTimeout(req, FS_RETRY_TIMEOUT)
+							}
+
+							return reject(err)
+						}
+
+						return resolve(data)
+					})
+				})
+			})
+		}
+
+		return req()
+	})
 }
 
 export const rm = async (path: string, location: Location) => {
-    path = normalizePath(path)
+	path = normalizePath(path)
 
-    const trashDirPath = normalizePath(pathModule.join(location.local, ".filen.trash.local"))
-    const basename = pathModule.basename(path)
+	const trashDirPath = normalizePath(pathModule.join(location.local, ".filen.trash.local"))
+	const basename = pathModule.basename(path)
 
-    if(!(await doesExistLocally(path))){
-        cache.delete("gracefulLStat:" + path)
+	if (!(await doesExistLocally(path))) {
+		cache.delete("gracefulLStat:" + path)
 
-        return
-    }
+		return
+	}
 
-    await fs.ensureDir(trashDirPath)
-    
-    try{
-        await move(path, normalizePath(pathModule.join(trashDirPath, basename)))
-    }
-    catch(e: any){
-        if(e.code && e.code == "ENOENT"){
-            cache.delete("gracefulLStat:" + path)
+	await fs.ensureDir(trashDirPath)
 
-            return
-        }
+	try {
+		await move(path, normalizePath(pathModule.join(trashDirPath, basename)))
+	} catch (e: any) {
+		if (e.code && e.code == "ENOENT") {
+			cache.delete("gracefulLStat:" + path)
 
-        throw e
-    }
+			return
+		}
 
-    cache.delete("gracefulLStat:" + path)
+		throw e
+	}
+
+	cache.delete("gracefulLStat:" + path)
 }
 
 export const rmPermanent = (path: string): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-        path = normalizePath(path)
+	return new Promise(async (resolve, reject) => {
+		path = normalizePath(path)
 
-        if(!(await doesExistLocally(path))){
-            cache.delete("gracefulLStat:" + normalizePath(path))
+		if (!(await doesExistLocally(path))) {
+			cache.delete("gracefulLStat:" + normalizePath(path))
 
-            return resolve()
-        }
+			return resolve()
+		}
 
-        try{
-            var stats = await gracefulLStat(path)
-        }
-        catch(e: any){
-            if(e.code && e.code == "ENOENT"){
-                cache.delete("gracefulLStat:" + normalizePath(path))
+		try {
+			var stats = await gracefulLStat(path)
+		} catch (e: any) {
+			if (e.code && e.code == "ENOENT") {
+				cache.delete("gracefulLStat:" + normalizePath(path))
 
-                return resolve()
-            }
+				return resolve()
+			}
 
-            return reject(e)
-        }
+			return reject(e)
+		}
 
-        let currentTries = 0
-        let lastErr: Error
+		let currentTries = 0
+		let lastErr: Error
 
-        const req = async () => {
-            if(currentTries > FS_RETRIES){
-                return reject(lastErr)
-            }
+		const req = async () => {
+			if (currentTries > FS_RETRIES) {
+				return reject(lastErr)
+			}
 
-            currentTries += 1
-        
-            if(stats.isLink){
-                try{
-                    await fs.unlink(path)
+			currentTries += 1
 
-                    cache.delete("gracefulLStat:" + normalizePath(path))
-                }
-                catch(e: any){
-                    lastErr = e
+			if (stats.isLink) {
+				try {
+					await fs.unlink(path)
 
-                    if(e.code && e.code == "ENOENT"){
-                        cache.delete("gracefulLStat:" + normalizePath(path))
+					cache.delete("gracefulLStat:" + normalizePath(path))
+				} catch (e: any) {
+					lastErr = e
 
-                        return resolve()
-                    }
+					if (e.code && e.code == "ENOENT") {
+						cache.delete("gracefulLStat:" + normalizePath(path))
 
-                    if(e.code && FS_RETRY_CODES.includes(e.code)){
-                        return setTimeout(req, FS_RETRY_TIMEOUT)
-                    }
-                    
-                    return reject(e)
-                }
-            }
-            else{
-                try{
-                    await fs.remove(path)
+						return resolve()
+					}
 
-                    cache.delete("gracefulLStat:" + normalizePath(path))
-                }
-                catch(e: any){
-                    lastErr = e
+					if (e.code && FS_RETRY_CODES.includes(e.code)) {
+						return setTimeout(req, FS_RETRY_TIMEOUT)
+					}
 
-                    if(e.code && e.code == "ENOENT"){
-                        cache.delete("gracefulLStat:" + normalizePath(path))
+					return reject(e)
+				}
+			} else {
+				try {
+					await fs.remove(path)
 
-                        return resolve()
-                    }
+					cache.delete("gracefulLStat:" + normalizePath(path))
+				} catch (e: any) {
+					lastErr = e
 
-                    if(e.code && FS_RETRY_CODES.includes(e.code)){
-                        return setTimeout(req, FS_RETRY_TIMEOUT)
-                    }
-                    
-                    return reject(e)
-                }
-            }
-    
-            return resolve()
-        }
+					if (e.code && e.code == "ENOENT") {
+						cache.delete("gracefulLStat:" + normalizePath(path))
 
-        return req()
-    })
+						return resolve()
+					}
+
+					if (e.code && FS_RETRY_CODES.includes(e.code)) {
+						return setTimeout(req, FS_RETRY_TIMEOUT)
+					}
+
+					return reject(e)
+				}
+			}
+
+			return resolve()
+		}
+
+		return req()
+	})
 }
 
 export const mkdir = (path: string, location: Location) => {
-    return new Promise((resolve, reject) => {
-        const absolutePath = normalizePath(pathModule.join(location.local, path))
-        let currentTries = 0
-        let lastErr: Error
+	return new Promise((resolve, reject) => {
+		const absolutePath = normalizePath(pathModule.join(location.local, path))
+		let currentTries = 0
+		let lastErr: Error
 
-        const req = () => {
-            if(currentTries > FS_RETRIES){
-                return reject(lastErr)
-            }
+		const req = () => {
+			if (currentTries > FS_RETRIES) {
+				return reject(lastErr)
+			}
 
-            currentTries += 1
+			currentTries += 1
 
-            fs.ensureDir(absolutePath).then(() => {
-                gracefulLStat(absolutePath).then(resolve).catch((err) => {
-                    lastErr = err
-    
-                    if(err.code && FS_RETRY_CODES.includes(err.code)){
-                        return setTimeout(req, FS_RETRY_TIMEOUT)
-                    }
+			fs.ensureDir(absolutePath)
+				.then(() => {
+					gracefulLStat(absolutePath)
+						.then(resolve)
+						.catch(err => {
+							lastErr = err
 
-                    return reject(err)
-                })
-            }).catch((err) => {
-                lastErr = err
+							if (err.code && FS_RETRY_CODES.includes(err.code)) {
+								return setTimeout(req, FS_RETRY_TIMEOUT)
+							}
 
-                if(err.code && FS_RETRY_CODES.includes(err.code)){
-                    return setTimeout(req, FS_RETRY_TIMEOUT)
-                }
-                
-                return reject(err)
-            })
-        }
+							return reject(err)
+						})
+				})
+				.catch(err => {
+					lastErr = err
 
-        return req()
-    })
+					if (err.code && FS_RETRY_CODES.includes(err.code)) {
+						return setTimeout(req, FS_RETRY_TIMEOUT)
+					}
+
+					return reject(err)
+				})
+		}
+
+		return req()
+	})
 }
 
 export const move = (before: string, after: string, overwrite = true) => {
-    return new Promise(async (resolve, reject) => {
-        try{
-            before = normalizePath(before)
-            after = normalizePath(after)
-        }
-        catch(e){
-            return reject(e)
-        }
+	return new Promise(async (resolve, reject) => {
+		try {
+			before = normalizePath(before)
+			after = normalizePath(after)
+		} catch (e) {
+			return reject(e)
+		}
 
-        if(!(await doesExistLocally(before))){
-            return resolve(true)
-        }
+		if (!(await doesExistLocally(before))) {
+			return resolve(true)
+		}
 
-        let currentTries = 0
-        let lastErr: Error
+		let currentTries = 0
+		let lastErr: Error
 
-        const req = () => {
-            if(currentTries > FS_RETRIES){
-                return reject(lastErr)
-            }
+		const req = () => {
+			if (currentTries > FS_RETRIES) {
+				return reject(lastErr)
+			}
 
-            currentTries += 1
+			currentTries += 1
 
-            fs.move(before, after, {
-                overwrite
-            }).then(resolve).catch((err) => {
-                lastErr = err
+			fs.move(before, after, {
+				overwrite
+			})
+				.then(resolve)
+				.catch(err => {
+					lastErr = err
 
-                if(err.code && FS_RETRY_CODES.includes(err.code)){
-                    return setTimeout(req, FS_RETRY_TIMEOUT)
-                }
-                
-                return reject(err)
-            })
-        }
+					if (err.code && FS_RETRY_CODES.includes(err.code)) {
+						return setTimeout(req, FS_RETRY_TIMEOUT)
+					}
 
-        return req()
-    })
+					return reject(err)
+				})
+		}
+
+		return req()
+	})
 }
 
 export const rename = (before: string, after: string) => {
-    return new Promise(async (resolve, reject) => {
-        try{
-            before = normalizePath(before)
-            after = normalizePath(after)
-        }
-        catch(e){
-            return reject(e)
-        }
+	return new Promise(async (resolve, reject) => {
+		try {
+			before = normalizePath(before)
+			after = normalizePath(after)
+		} catch (e) {
+			return reject(e)
+		}
 
-        if(!(await doesExistLocally(before))){
-            return resolve(true)
-        }
+		if (!(await doesExistLocally(before))) {
+			return resolve(true)
+		}
 
-        let currentTries = 0
-        let lastErr: Error
+		let currentTries = 0
+		let lastErr: Error
 
-        const req = () => {
-            if(currentTries > FS_RETRIES){
-                return reject(lastErr)
-            }
+		const req = () => {
+			if (currentTries > FS_RETRIES) {
+				return reject(lastErr)
+			}
 
-            currentTries += 1
+			currentTries += 1
 
-            fs.rename(before, after).then(resolve).catch((err) => {
-                lastErr = err
+			fs.rename(before, after)
+				.then(resolve)
+				.catch(err => {
+					lastErr = err
 
-                if(err.code && FS_RETRY_CODES.includes(err.code)){
-                    return setTimeout(req, FS_RETRY_TIMEOUT)
-                }
+					if (err.code && FS_RETRY_CODES.includes(err.code)) {
+						return setTimeout(req, FS_RETRY_TIMEOUT)
+					}
 
-                return reject(err)
-            })
-        }
+					return reject(err)
+				})
+		}
 
-        return req()
-    })
+		return req()
+	})
 }
 
 export const createLocalTrashDirs = async () => {
-    const userId = await db.get("userId")
+	const userId = await db.get("userId")
 
-    if(!userId || !Number.isInteger(userId)){
-        return
-    }
+	if (!userId || !Number.isInteger(userId)) {
+		return
+	}
 
-    const syncLocations = await db.get("syncLocations:" + userId)
+	const syncLocations = await db.get("syncLocations:" + userId)
 
-    if(!syncLocations || !Array.isArray(syncLocations)){
-        return
-    }
+	if (!syncLocations || !Array.isArray(syncLocations)) {
+		return
+	}
 
-    await Promise.all([
-        ...syncLocations.map(location => fs.ensureDir(normalizePath(pathModule.join(location.local, ".filen.trash.local"))))
-    ])
+	await Promise.all([
+		...syncLocations.map(location =>
+			fs.ensureDir(normalizePath(pathModule.join(location.local, ".filen.trash.local")))
+		)
+	])
 }
 
 export const clearLocalTrashDirs = (clearNow = false): Promise<void> => {
-    return new Promise((resolve, reject) => {
-        db.get("userId").then((userId) => {
-            if(!userId || !Number.isInteger(userId)){
-                return
-            }
-    
-            Promise.all([
-                db.get("syncLocations:" + userId),
-                createLocalTrashDirs()
-            ]).then(([syncLocations, _]) => {
-                if(!syncLocations || !Array.isArray(syncLocations)){
-                    return
-                }
-        
-                Promise.allSettled([
-                    ...syncLocations.map(location => new Promise<void>((resolve, reject) => {
-                        const path = normalizePath(pathModule.join(location.local, ".filen.trash.local"))
-        
-                        const dirStream = readdirp(path, {
-                            alwaysStat: false,
-                            lstat: false,
-                            type: "all",
-                            depth: 2147483648
-                        })
-        
-                        let statting = 0
-                        const pathsToTrash: string[] = []
-                        const now = new Date().getTime()
-                        let dirSize = 0
-                        
-                        dirStream.on("data", async (item) => {
-                            statting += 1
-            
-                            if(clearNow){
-                                pathsToTrash.push(item.fullPath)
-                            }
-                            else{
-                                try{
-                                    item.stats = await gracefulLStat(item.fullPath)
-            
-                                    if(!item.stats.isLink){
-                                        if((item.stats.ctimeMs + constants.deleteFromLocalTrashAfter) <= now){
-                                            pathsToTrash.push(item.fullPath)
-                                        }
-            
-                                        dirSize += item.stats.size
-                                    }
-                                }
-                                catch(e){
-                                    log.error(e)
-                                }
-                            }
-            
-                            statting -= 1
-                        })
-                        
-                        dirStream.on("warn", (warn) => {
-                            log.error("[Local trash] Readdirp warning:", warn)
-                        })
-                        
-                        dirStream.on("error", (err) => {
-                            dirStream.destroy()
-            
-                            statting = 0
-                            
-                            return reject(err)
-                        })
-                        
-                        dirStream.on("end", async () => {
-                            await new Promise<void>((resolve) => {
-                                if(statting <= 0){
-                                    return resolve()
-                                }
-            
-                                const wait = setInterval(() => {
-                                    if(statting <= 0){
-                                        clearInterval(wait)
-            
-                                        return resolve()
-                                    }
-                                }, 10)
-                            })
-            
-                            statting = 0
-            
-                            dirStream.destroy()
-    
-                            await Promise.allSettled([
-                                db.set("localTrashDirSize:" + location.uuid, clearNow ? 0 : dirSize),
-                                ...pathsToTrash.map(pathToTrash => rmPermanent(pathToTrash))
-                            ])
-    
-                            resolve()
-                        })
-                    }))
-                ]).then(() => resolve())
-            }).catch(reject)
-        }).catch(reject)
-    })
+	return new Promise((resolve, reject) => {
+		db.get("userId")
+			.then(userId => {
+				if (!userId || !Number.isInteger(userId)) {
+					return
+				}
+
+				Promise.all([db.get("syncLocations:" + userId), createLocalTrashDirs()])
+					.then(([syncLocations, _]) => {
+						if (!syncLocations || !Array.isArray(syncLocations)) {
+							return
+						}
+
+						Promise.allSettled([
+							...syncLocations.map(
+								location =>
+									new Promise<void>((resolve, reject) => {
+										const path = normalizePath(
+											pathModule.join(location.local, ".filen.trash.local")
+										)
+
+										const dirStream = readdirp(path, {
+											alwaysStat: false,
+											lstat: false,
+											type: "all",
+											depth: 2147483648
+										})
+
+										let statting = 0
+										const pathsToTrash: string[] = []
+										const now = new Date().getTime()
+										let dirSize = 0
+
+										dirStream.on("data", async item => {
+											statting += 1
+
+											if (clearNow) {
+												pathsToTrash.push(item.fullPath)
+											} else {
+												try {
+													item.stats = await gracefulLStat(item.fullPath)
+
+													if (!item.stats.isLink) {
+														if (
+															item.stats.ctimeMs + constants.deleteFromLocalTrashAfter <=
+															now
+														) {
+															pathsToTrash.push(item.fullPath)
+														}
+
+														dirSize += item.stats.size
+													}
+												} catch (e) {
+													log.error(e)
+												}
+											}
+
+											statting -= 1
+										})
+
+										dirStream.on("warn", warn => {
+											log.error("[Local trash] Readdirp warning:", warn)
+										})
+
+										dirStream.on("error", err => {
+											dirStream.destroy()
+
+											statting = 0
+
+											return reject(err)
+										})
+
+										dirStream.on("end", async () => {
+											await new Promise<void>(resolve => {
+												if (statting <= 0) {
+													return resolve()
+												}
+
+												const wait = setInterval(() => {
+													if (statting <= 0) {
+														clearInterval(wait)
+
+														return resolve()
+													}
+												}, 10)
+											})
+
+											statting = 0
+
+											dirStream.destroy()
+
+											await Promise.allSettled([
+												db.set("localTrashDirSize:" + location.uuid, clearNow ? 0 : dirSize),
+												...pathsToTrash.map(pathToTrash => rmPermanent(pathToTrash))
+											])
+
+											resolve()
+										})
+									})
+							)
+						]).then(() => resolve())
+					})
+					.catch(reject)
+			})
+			.catch(reject)
+	})
 }
 
 export const initLocalTrashDirs = () => {
-    clearLocalTrashDirs().catch(log.error)
+	clearLocalTrashDirs().catch(log.error)
 
-    clearInterval(LOCAL_TRASH_DIRS_CLEAN_INTERVAL)
+	clearInterval(LOCAL_TRASH_DIRS_CLEAN_INTERVAL)
 
-    LOCAL_TRASH_DIRS_CLEAN_INTERVAL = setInterval(() => {
-        clearLocalTrashDirs().catch(log.error)
-    }, constants.clearLocalTrashDirsInterval)
+	LOCAL_TRASH_DIRS_CLEAN_INTERVAL = setInterval(() => {
+		clearLocalTrashDirs().catch(log.error)
+	}, constants.clearLocalTrashDirsInterval)
 }
 
 export const checkLastModified = (path: string) => {
-    return new Promise((resolve, reject) => {
-        path = normalizePath(path)
+	return new Promise((resolve, reject) => {
+		path = normalizePath(path)
 
-        gracefulLStat(path).then(async (stat) => {
-            if(stat.mtimeMs > 0){
-                return resolve({
-                    changed: false
-                })
-            }
+		gracefulLStat(path)
+			.then(async stat => {
+				if (stat.mtimeMs > 0) {
+					return resolve({
+						changed: false
+					})
+				}
 
-            const lastModified = new Date(new Date().getTime() - 60000)
-            const mtimeMs = lastModified.getTime()
-            
-            let currentTries = 0
-            let lastErr: Error
+				const lastModified = new Date(new Date().getTime() - 60000)
+				const mtimeMs = lastModified.getTime()
 
-            const req = () => {
-                if(currentTries > FS_RETRIES){
-                    return reject(lastErr)
-                }
+				let currentTries = 0
+				let lastErr: Error
 
-                currentTries += 1
+				const req = () => {
+					if (currentTries > FS_RETRIES) {
+						return reject(lastErr)
+					}
 
-                fs.utimes(path, lastModified, lastModified).then(() => {
-                    return resolve({
-                        changed: true,
-                        mtimeMs 
-                    })
-                }).catch((err) => {
-                    lastErr = err
+					currentTries += 1
 
-                    if(err.code && FS_RETRY_CODES.includes(err.code)){
-                        return setTimeout(req, FS_RETRY_TIMEOUT)
-                    }
-                    
-                    return reject(err)
-                })
-            }
+					fs.utimes(path, lastModified, lastModified)
+						.then(() => {
+							return resolve({
+								changed: true,
+								mtimeMs
+							})
+						})
+						.catch(err => {
+							lastErr = err
 
-            return req()
-        }).catch(reject)
-    })
+							if (err.code && FS_RETRY_CODES.includes(err.code)) {
+								return setTimeout(req, FS_RETRY_TIMEOUT)
+							}
+
+							return reject(err)
+						})
+				}
+
+				return req()
+			})
+			.catch(reject)
+	})
 }
 
 export const isFileBusy = (path: string): Promise<boolean> => {
-    return new Promise((resolve, reject) => {
-        path = normalizePath(path)
+	return new Promise((resolve, reject) => {
+		path = normalizePath(path)
 
-        let currentTries = -1
-        const maxTries = 30
-        const timeout = 1000
-        let lastErr: any
+		let currentTries = -1
+		const maxTries = 30
+		const timeout = 1000
+		let lastErr: any
 
-        const req = () => {
-            currentTries += 1
+		const req = () => {
+			currentTries += 1
 
-            if(currentTries >= maxTries){
-                if(lastErr && lastErr.code && lastErr.code == "EBUSY"){
-                    return resolve(true)
-                }
+			if (currentTries >= maxTries) {
+				if (lastErr && lastErr.code && lastErr.code == "EBUSY") {
+					return resolve(true)
+				}
 
-                return resolve(false)
-            }
+				return resolve(false)
+			}
 
-            fs.open(path, "r+", (err, fd) => {
-                if(err){
-                    lastErr = err
+			fs.open(path, "r+", (err, fd) => {
+				if (err) {
+					lastErr = err
 
-                    if(err.code == "EBUSY"){
-                        setTimeout(req, timeout)
+					if (err.code == "EBUSY") {
+						setTimeout(req, timeout)
 
-                        return
-                    }
+						return
+					}
 
-                    return resolve(false)
-                }
-                
-                fs.close(fd, () => resolve(false))
-            })
-        }
+					return resolve(false)
+				}
 
-        req()
-    })
+				fs.close(fd, () => resolve(false))
+			})
+		}
+
+		req()
+	})
 }
 
-export const directoryTree = (path: string, skipCache = false, location: Location): Promise<{ changed: boolean, data: any }> => {
-    return new Promise((resolve, reject) => {
-        const cacheKey = "directoryTreeLocal:" + location.uuid
+export const directoryTree = (
+	path: string,
+	skipCache = false,
+	location: Location
+): Promise<{ changed: boolean; data: any }> => {
+	return new Promise((resolve, reject) => {
+		const cacheKey = "directoryTreeLocal:" + location.uuid
 
-        Promise.all([
-            db.get("localDataChanged:" + location.uuid),
-            db.get(cacheKey),
-            db.get("excludeDot")
-        ]).then(async ([localDataChanged, cachedLocalTree, excludeDot]) => {
-            if(excludeDot == null){
-                excludeDot = true
-            }
-            
-            if(!localDataChanged && cachedLocalTree !== null && !skipCache){
-                return resolve({
-                    changed: false,
-                    data: cachedLocalTree
-                })
-            }
+		Promise.all([db.get("localDataChanged:" + location.uuid), db.get(cacheKey), db.get("excludeDot")])
+			.then(async ([localDataChanged, cachedLocalTree, excludeDot]) => {
+				if (excludeDot == null) {
+					excludeDot = true
+				}
 
-            path = normalizePath(path)
+				if (!localDataChanged && cachedLocalTree !== null && !skipCache) {
+					return resolve({
+						changed: false,
+						data: cachedLocalTree
+					})
+				}
 
-            const files: Record<string, { name: string, size: number, lastModified: number, ino: number }> = {}
-            const folders: Record<string, { name: string, size: number, lastModified: number, ino: number }> = {}
-            const ino: Record<number, { type: "folder" | "file", path: string }> = {}
-            const windows = is.windows()
-            let statting = 0
+				path = normalizePath(path)
 
-            const dirStream = readdirp(path, {
-                alwaysStat: false,
-                lstat: false,
-                type: "all",
-                depth: 2147483648,
-                directoryFilter: ["!.filen.trash.local", "!System Volume Information"],
-                fileFilter: ["!.filen.trash.local", "!System Volume Information"]
-            })
-            
-            dirStream.on("data", async (item) => {
-                statting += 1
+				const files: Record<
+					string,
+					{
+						name: string
+						size: number
+						lastModified: number
+						ino: number
+					}
+				> = {}
+				const folders: Record<
+					string,
+					{
+						name: string
+						size: number
+						lastModified: number
+						ino: number
+					}
+				> = {}
+				const ino: Record<number, { type: "folder" | "file"; path: string }> = {}
+				const windows = is.windows()
+				let statting = 0
 
-                try{
-                    if(windows){
-                        item.path = windowsPathToUnixStyle(item.path)
-                    }
+				const dirStream = readdirp(path, {
+					alwaysStat: false,
+					lstat: false,
+					type: "all",
+					depth: 2147483648,
+					directoryFilter: ["!.filen.trash.local", "!System Volume Information"],
+					fileFilter: ["!.filen.trash.local", "!System Volume Information"]
+				})
 
-                    let include = true
-    
-                    if(excludeDot && (item.basename.startsWith(".") || pathIncludesDot(item.path))){
-                        include = false
-                    }
-    
-                    if(
-                        include
-                        && !isFolderPathExcluded(item.path)
-                        && pathValidation(item.path)
-                        && !pathIsFileOrFolderNameIgnoredByDefault(item.path)
-                        && !isSystemPathExcluded("//" + item.fullPath)
-                        && !isNameOverMaxLength(item.basename)
-                        && !isPathOverMaxLength(location.local + "/" + item.path)
-                    ){
-                        item.stats = await gracefulLStat(item.fullPath)
+				dirStream.on("data", async item => {
+					statting += 1
 
-                        if(!item.stats.isLink){
-                            if(item.stats.isDir){
-                                const inoNum = parseInt(item.stats.ino.toString()) //.toString() because of BigInt
-                                const entry = {
-                                    name: item.basename,
-                                    size: 0,
-                                    lastModified: parseInt(item.stats.mtimeMs.toString()), //.toString() because of BigInt
-                                    ino: inoNum
-                                }
+					try {
+						if (windows) {
+							item.path = windowsPathToUnixStyle(item.path)
+						}
 
-                                folders[item.path] = entry
-                                ino[inoNum] = {
-                                    type: "folder",
-                                    path: item.path
-                                }
-                            }
-                            else{
-                                if(item.stats.size > 0){
-                                    const inoNum = parseInt(item.stats.ino.toString()) //.toString() because of BigInt
-                                    const entry = {
-                                        name: item.basename,
-                                        size: parseInt(item.stats.size.toString()), //.toString() because of BigInt
-                                        lastModified: parseInt(item.stats.mtimeMs.toString()), //.toString() because of BigInt
-                                        ino: inoNum
-                                    }
+						let include = true
 
-                                    files[item.path] = entry
-                                    ino[inoNum] = {
-                                        type: "file",
-                                        path: item.path
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                catch(e: any){
-                    log.error(e)
+						if (excludeDot && (item.basename.startsWith(".") || pathIncludesDot(item.path))) {
+							include = false
+						}
 
-                    addSyncIssue({
-                        uuid: uuidv4(),
-                        type: "warning",
-                        where: "local",
-                        path: item.fullPath,
-                        err: e,
-                        info: "Could not read " + item.fullPath,
-                        timestamp: new Date().getTime()
-                    })
-                }
+						if (
+							include &&
+							!isFolderPathExcluded(item.path) &&
+							pathValidation(item.path) &&
+							!pathIsFileOrFolderNameIgnoredByDefault(item.path) &&
+							!isSystemPathExcluded("//" + item.fullPath) &&
+							!isNameOverMaxLength(item.basename) &&
+							!isPathOverMaxLength(location.local + "/" + item.path)
+						) {
+							item.stats = await gracefulLStat(item.fullPath)
 
-                statting -= 1
-            })
-            
-            dirStream.on("warn", (warn) => {
-                log.error("Readdirp warning:", warn)
-            })
-            
-            dirStream.on("error", (err) => {
-                dirStream.destroy()
+							if (!item.stats.isLink) {
+								if (item.stats.isDir) {
+									const inoNum = parseInt(item.stats.ino.toString()) //.toString() because of BigInt
+									const entry = {
+										name: item.basename,
+										size: 0,
+										lastModified: parseInt(item.stats.mtimeMs.toString()), //.toString() because of BigInt
+										ino: inoNum
+									}
 
-                statting = 0
-                
-                return reject(err)
-            })
-            
-            dirStream.on("end", async () => {
-                await new Promise<void>((resolve) => {
-                    if(statting <= 0){
-                        return resolve()
-                    }
+									folders[item.path] = entry
+									ino[inoNum] = {
+										type: "folder",
+										path: item.path
+									}
+								} else {
+									if (item.stats.size > 0) {
+										const inoNum = parseInt(item.stats.ino.toString()) //.toString() because of BigInt
+										const entry = {
+											name: item.basename,
+											size: parseInt(item.stats.size.toString()), //.toString() because of BigInt
+											lastModified: parseInt(item.stats.mtimeMs.toString()), //.toString() because of BigInt
+											ino: inoNum
+										}
 
-                    const wait = setInterval(() => {
-                        if(statting <= 0){
-                            clearInterval(wait)
+										files[item.path] = entry
+										ino[inoNum] = {
+											type: "file",
+											path: item.path
+										}
+									}
+								}
+							}
+						}
+					} catch (e: any) {
+						log.error(e)
 
-                            return resolve()
-                        }
-                    }, 10)
-                })
+						addSyncIssue({
+							uuid: uuidv4(),
+							type: "warning",
+							where: "local",
+							path: item.fullPath,
+							err: e,
+							info: "Could not read " + item.fullPath,
+							timestamp: new Date().getTime()
+						})
+					}
 
-                statting = 0
+					statting -= 1
+				})
 
-                dirStream.destroy()
-                
-                const obj = {
-                    files,
-                    folders,
-                    ino
-                }
+				dirStream.on("warn", warn => {
+					log.error("Readdirp warning:", warn)
+				})
 
-                try{
-                    await Promise.all([
-                        db.set(cacheKey, obj),
-                        db.set("localDataChanged:" + location.uuid, false)
-                    ])
-                }
-                catch(e){
-                    return reject(e)
-                }
+				dirStream.on("error", err => {
+					dirStream.destroy()
 
-                return resolve({
-                    changed: true,
-                    data: obj
-                })
-            })
-        }).catch(reject)
-    })
+					statting = 0
+
+					return reject(err)
+				})
+
+				dirStream.on("end", async () => {
+					await new Promise<void>(resolve => {
+						if (statting <= 0) {
+							return resolve()
+						}
+
+						const wait = setInterval(() => {
+							if (statting <= 0) {
+								clearInterval(wait)
+
+								return resolve()
+							}
+						}, 10)
+					})
+
+					statting = 0
+
+					dirStream.destroy()
+
+					const obj = {
+						files,
+						folders,
+						ino
+					}
+
+					try {
+						await Promise.all([db.set(cacheKey, obj), db.set("localDataChanged:" + location.uuid, false)])
+					} catch (e) {
+						return reject(e)
+					}
+
+					return resolve({
+						changed: true,
+						data: obj
+					})
+				})
+			})
+			.catch(reject)
+	})
 }
 
 export const utimes = async (path: string, atime: Date, mtime: Date) => {
-    path = normalizePath(path)
+	path = normalizePath(path)
 
-    return await fs.utimes(path, atime, mtime)
+	return await fs.utimes(path, atime, mtime)
 }
 
 export const unlink = async (path: string) => {
-    path = normalizePath(path)
+	path = normalizePath(path)
 
-    return await fs.unlink(path)
+	return await fs.unlink(path)
 }
 
 export const remove = async (path: string) => {
-    path = normalizePath(path)
+	path = normalizePath(path)
 
-    return await fs.remove(path)
+	return await fs.remove(path)
 }
 
 export const mkdirNormal = async (path: string, options = { recursive: true }) => {
-    path = normalizePath(path)
+	path = normalizePath(path)
 
-    return await fs.mkdir(path, options)
+	return await fs.mkdir(path, options)
 }
 
 export const access = (path: string, mode: number): Promise<void> => {
-    return new Promise((resolve, reject) => {
-        path = normalizePath(path)
+	return new Promise((resolve, reject) => {
+		path = normalizePath(path)
 
-        fs.access(path, mode, (err) => {
-            if(err){
-                return reject(err)
-            }
+		fs.access(path, mode, err => {
+			if (err) {
+				return reject(err)
+			}
 
-            return resolve()
-        })
-    })
+			return resolve()
+		})
+	})
 }
 
 export const appendFile = async (path: string, data: Buffer | string, options = undefined) => {
-    path = normalizePath(path)
+	path = normalizePath(path)
 
-    return await fs.appendFile(path, data, options)
+	return await fs.appendFile(path, data, options)
 }
 
 export const ensureDir = async (path: string) => {
-    path = normalizePath(path)
+	path = normalizePath(path)
 
-    return await fs.ensureDir(path)
+	return await fs.ensureDir(path)
 }
 
 export const getApplyDoneTaskPath = async (locationUUID: string) => {
-    if(typeof APPLY_DONE_TASKS_PATH[locationUUID] == "string" && APPLY_DONE_TASKS_PATH[locationUUID].length > 0){
-        return APPLY_DONE_TASKS_PATH[locationUUID]
-    }
+	if (typeof APPLY_DONE_TASKS_PATH[locationUUID] == "string" && APPLY_DONE_TASKS_PATH[locationUUID].length > 0) {
+		return APPLY_DONE_TASKS_PATH[locationUUID]
+	}
 
-    const userDataPath: string = app.getPath("userData")
+	const userDataPath: string = app.getPath("userData")
 
-    await fs.ensureDir(pathModule.join(userDataPath, "data", "v" + APPLY_DONE_TASKS_VERSION))
+	await fs.ensureDir(pathModule.join(userDataPath, "data", "v" + APPLY_DONE_TASKS_VERSION))
 
-    const path: string = pathModule.join(userDataPath, "data", "v" + APPLY_DONE_TASKS_VERSION, "applyDoneTasks_" + locationUUID)
+	const path: string = pathModule.join(
+		userDataPath,
+		"data",
+		"v" + APPLY_DONE_TASKS_VERSION,
+		"applyDoneTasks_" + locationUUID
+	)
 
-    APPLY_DONE_TASKS_PATH[locationUUID] = path
+	APPLY_DONE_TASKS_PATH[locationUUID] = path
 
-    return path
+	return path
 }
 
 export const loadApplyDoneTasks = async (locationUUID: string) => {
-    return new Promise(async (resolve, reject) => {
-        await applyDoneTasksSemaphore.acquire()
+	return new Promise(async (resolve, reject) => {
+		await applyDoneTasksSemaphore.acquire()
 
-        try{
-            var path = await getApplyDoneTaskPath(locationUUID)
-        }
-        catch(e: any){
-            applyDoneTasksSemaphore.release()
+		try {
+			var path = await getApplyDoneTaskPath(locationUUID)
+		} catch (e: any) {
+			applyDoneTasksSemaphore.release()
 
-            if(e.code == "ENOENT"){
-                return resolve(true)
-            }
+			if (e.code == "ENOENT") {
+				return resolve(true)
+			}
 
-            return reject(e)
-        }
+			return reject(e)
+		}
 
-        try{
-            await fs.access(path, fs.constants.F_OK)
-        }
-        catch(e){
-            applyDoneTasksSemaphore.release()
-            
-            return resolve([])
-        }
-    
-        try{
-            const reader = readline.createInterface({
-                input: fs.createReadStream(path, {
-                    flags: "r"
-                }),
-                crlfDelay: Infinity
-            })
+		try {
+			await fs.access(path, fs.constants.F_OK)
+		} catch (e) {
+			applyDoneTasksSemaphore.release()
 
-            const tasks: any[] = []
-    
-            reader.on("line", (line: string) => {
-                if(typeof line !== "string"){
-                    return
-                }
+			return resolve([])
+		}
 
-                if(line.length < 4){
-                    return
-                }
+		try {
+			const reader = readline.createInterface({
+				input: fs.createReadStream(path, {
+					flags: "r"
+				}),
+				crlfDelay: Infinity
+			})
 
-                try{
-                    const parsed = JSON.parse(line)
-    
-                    tasks.push(parsed)
-                }
-                catch(e){
-                    log.error(e)
-                }
-            })
-    
-            reader.on("error", (err: any) => {
-                applyDoneTasksSemaphore.release()
+			const tasks: any[] = []
 
-                return reject(err)
-            })
+			reader.on("line", (line: string) => {
+				if (typeof line !== "string") {
+					return
+				}
 
-            reader.on("close", () => {
-                applyDoneTasksSemaphore.release()
+				if (line.length < 4) {
+					return
+				}
 
-                return resolve(tasks)
-            })
-        }
-        catch(e){
-            applyDoneTasksSemaphore.release()
+				try {
+					const parsed = JSON.parse(line)
 
-            return reject(e)
-        }
-    })
+					tasks.push(parsed)
+				} catch (e) {
+					log.error(e)
+				}
+			})
+
+			reader.on("error", (err: any) => {
+				applyDoneTasksSemaphore.release()
+
+				return reject(err)
+			})
+
+			reader.on("close", () => {
+				applyDoneTasksSemaphore.release()
+
+				return resolve(tasks)
+			})
+		} catch (e) {
+			applyDoneTasksSemaphore.release()
+
+			return reject(e)
+		}
+	})
 }
 
 export const addToApplyDoneTasks = async (locationUUID: string, task: any) => {
-    await applyDoneTasksSemaphore.acquire()
+	await applyDoneTasksSemaphore.acquire()
 
-    try{
-        const path = await getApplyDoneTaskPath(locationUUID)
+	try {
+		const path = await getApplyDoneTaskPath(locationUUID)
 
-        await appendFile(path, JSON.stringify(task) + "\n")
-    }
-    catch(e){
-        log.error(e)
-    }
+		await appendFile(path, JSON.stringify(task) + "\n")
+	} catch (e) {
+		log.error(e)
+	}
 
-    applyDoneTasksSemaphore.release()
+	applyDoneTasksSemaphore.release()
 
-    return true
+	return true
 }
 
 export const clearApplyDoneTasks = async (locationUUID: string) => {
-    await applyDoneTasksSemaphore.acquire()
+	await applyDoneTasksSemaphore.acquire()
 
-    try{
-        var path = await getApplyDoneTaskPath(locationUUID)
+	try {
+		var path = await getApplyDoneTaskPath(locationUUID)
 
-        await fs.access(path, fs.constants.F_OK)
-    }
-    catch(e){
-        applyDoneTasksSemaphore.release()
+		await fs.access(path, fs.constants.F_OK)
+	} catch (e) {
+		applyDoneTasksSemaphore.release()
 
-        return true
-    }
+		return true
+	}
 
-    await fs.unlink(path).catch(log.error)
+	await fs.unlink(path).catch(log.error)
 
-    applyDoneTasksSemaphore.release()
+	applyDoneTasksSemaphore.release()
 
-    return true
+	return true
 }

@@ -13,88 +13,86 @@ import colors from "../../styles/colors"
 const { ipcRenderer } = window.require("electron")
 const log = window.require("electron-log")
 
-const UpdateWindow = memo(({ windowId, toVersion }: { windowId: string, toVersion: string }) => {
-    const darkMode: boolean = useDarkMode()
-    const lang: string = useLang()
-    const platform: string = usePlatform()
-    const [isInstalling, setIsInstalling] = useState<boolean>(false)
+const UpdateWindow = memo(({ windowId, toVersion }: { windowId: string; toVersion: string }) => {
+	const darkMode: boolean = useDarkMode()
+	const lang: string = useLang()
+	const platform: string = usePlatform()
+	const [isInstalling, setIsInstalling] = useState<boolean>(false)
 
-    useEffect(() => {
-        ipcRenderer.send("window-ready", windowId)
-    }, [])
+	useEffect(() => {
+		ipcRenderer.send("window-ready", windowId)
+	}, [])
 
-    return (
-        <Container
-            darkMode={darkMode}
-            lang={lang}
-            platform={platform}
-        >
-            <Titlebar 
-                darkMode={darkMode} 
-                lang={lang} 
-                platform={platform} 
-                title={i18n(lang, "titlebarUpdateAvailable")}
-            />
-            <Flex
-                width="100vw"
-                height="100vh"
-                flexDirection="column"
-                justifyContent="center"
-                alignItems="center"
-                textAlign="center"
-                padding="50px"
-            >
-                <AiOutlineDownload 
-                    size={64} 
-                    color={darkMode ? "white" : "gray"} 
-                />
-                <Text
-                    color={darkMode ? "white" : "gray"}
-                    marginTop="15px"
-                    fontSize={14}
-                >
-                    {i18n(lang, "updateWindowInfo")}
-                </Text>
-                <Text
-                    color={darkMode ? "white" : "gray"}
-                    marginTop="25px"
-                    fontSize={14}
-                >
-                    {i18n(lang, "updateWindowInfo3")}
-                </Text>
-                {
-                    isInstalling ? (
-                        <Spinner
-                            width="24px"
-                            height="24px"
-                            color={colors(platform, darkMode, "textPrimary")}
-                            marginTop="25px"
-                        />
-                    ) : (
-                        <Link 
-                            color="#0A84FF" 
-                            textDecoration="none" 
-                            _hover={{
-                                textDecoration: "none"
-                            }} 
-                            marginTop="25px"
-                            onClick={() => {
-                                if(isInstalling){
-                                    return
-                                }
-                                
-                                setIsInstalling(true)
+	return (
+		<Container
+			darkMode={darkMode}
+			lang={lang}
+			platform={platform}
+		>
+			<Titlebar
+				darkMode={darkMode}
+				lang={lang}
+				platform={platform}
+				title={i18n(lang, "titlebarUpdateAvailable")}
+			/>
+			<Flex
+				width="100vw"
+				height="100vh"
+				flexDirection="column"
+				justifyContent="center"
+				alignItems="center"
+				textAlign="center"
+				padding="50px"
+			>
+				<AiOutlineDownload
+					size={64}
+					color={darkMode ? "white" : "gray"}
+				/>
+				<Text
+					color={darkMode ? "white" : "gray"}
+					marginTop="15px"
+					fontSize={14}
+				>
+					{i18n(lang, "updateWindowInfo")}
+				</Text>
+				<Text
+					color={darkMode ? "white" : "gray"}
+					marginTop="25px"
+					fontSize={14}
+				>
+					{i18n(lang, "updateWindowInfo3")}
+				</Text>
+				{isInstalling ? (
+					<Spinner
+						width="24px"
+						height="24px"
+						color={colors(platform, darkMode, "textPrimary")}
+						marginTop="25px"
+					/>
+				) : (
+					<Link
+						color="#0A84FF"
+						textDecoration="none"
+						_hover={{
+							textDecoration: "none"
+						}}
+						marginTop="25px"
+						onClick={() => {
+							if (isInstalling) {
+								return
+							}
 
-                                ipc.installUpdate().catch(log.error)
-                            }}
-                        >
-                            {i18n(lang, "updateWindowButton")}
-                        </Link>
-                    )
-                }
-            </Flex>
-        </Container>
-    )
+							setIsInstalling(true)
+
+							ipc.installUpdate().catch(log.error)
+						}}
+					>
+						{i18n(lang, "updateWindowButton")}
+					</Link>
+				)}
+			</Flex>
+		</Container>
+	)
 })
 
 export default UpdateWindow

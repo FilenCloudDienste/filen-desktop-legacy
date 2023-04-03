@@ -14,79 +14,78 @@ const pollingTimeout: Record<string, NodeJS.Timer> = {}
 const lastEvent: Record<string, number> = {}
 const didCloseDueToResume: Record<string, boolean> = {}
 
-export const isNetworkPath = (path: string): boolean => { // Not reliable on linux or mac
-    try{
-        const realPath = fs.realpathSync(path)
-    
-        return realPath.startsWith("\\\\") || realPath.startsWith("//")
-    }
-    catch(e){
-        log.error(e)
+export const isNetworkPath = (path: string): boolean => {
+	// Not reliable on linux or mac
+	try {
+		const realPath = fs.realpathSync(path)
 
-        return false
-    }
+		return realPath.startsWith("\\\\") || realPath.startsWith("//")
+	} catch (e) {
+		log.error(e)
+
+		return false
+	}
 }
 
 export const emitToWorker = (data: any) => {
-    emitGlobal("global-message", {
-        type: "watcher-event",
-        data
-    })
+	emitGlobal("global-message", {
+		type: "watcher-event",
+		data
+	})
 }
 
 export const resumeWatchers = () => {
-    if(is.linux()){
-        return
-    }
+	if (is.linux()) {
+		return
+	}
 
-    for(const path in SUBS_INFO){
-        if(isNetworkPath(path)){
-            continue
-        }
+	for (const path in SUBS_INFO) {
+		if (isNetworkPath(path)) {
+			continue
+		}
 
-        const locationUUID = SUBS_INFO[path]
+		const locationUUID = SUBS_INFO[path]
 
-        try{
-            if(typeof SUBS[path].isClosed == "function"){
-                if(!SUBS[path].isClosed()){
-                    didCloseDueToResume[path] = true
+		try {
+			if (typeof SUBS[path].isClosed == "function") {
+				if (!SUBS[path].isClosed()) {
+					didCloseDueToResume[path] = true
 
-                    SUBS[path].close()
-                }
-                
-                delete SUBS[path]
-            }
-        }
-        catch(e){
-            log.error(e)
-        }
+					SUBS[path].close()
+				}
 
-        watch(path, locationUUID).catch(log.error)
-    }
+				delete SUBS[path]
+			}
+		} catch (e) {
+			log.error(e)
+		}
+
+		watch(path, locationUUID).catch(log.error)
+	}
 }
 
 export const restartWatcher = (path: string, locationUUID: string) => {
-    if(is.linux() || isNetworkPath(path)){
-        return
-    }
+	if (is.linux() || isNetworkPath(path)) {
+		return
+	}
 
-    setTimeout(() => {
-        if(typeof didCloseDueToResume[path] == "undefined"){
-            delete SUBS[path]
-            delete SUBS_INFO[path]
+	setTimeout(() => {
+		if (typeof didCloseDueToResume[path] == "undefined") {
+			delete SUBS[path]
+			delete SUBS_INFO[path]
 
-            emitToWorker({
-                event: "dummy",
-                name: "dummy",
-                watchPath: path,
-                locationUUID
-            })
+			emitToWorker({
+				event: "dummy",
+				name: "dummy",
+				watchPath: path,
+				locationUUID
+			})
 
-            watch(path, locationUUID).catch(log.error)
-        }
+			watch(path, locationUUID).catch(log.error)
+		}
 
-        delete didCloseDueToResume[path]
-    }, 5000)
+		delete didCloseDueToResume[path]
+	}, 5000)
 }
 
 powerMonitor.on("resume", () => resumeWatchers())
@@ -94,67 +93,66 @@ powerMonitor.on("unlock-screen", () => resumeWatchers())
 powerMonitor.on("user-did-become-active", () => resumeWatchers())
 
 export const watch = (path: string, locationUUID: string) => {
-    return new Promise((resolve, reject) => {
-        if(is.linux() || isNetworkPath(path)){
-            clearInterval(pollingTimeout[path])
+	return new Promise((resolve, reject) => {
+		if (is.linux() || isNetworkPath(path)) {
+			clearInterval(pollingTimeout[path])
 
-            pollingTimeout[path] = setInterval(() => {
-                emitToWorker({
-                    event: "dummy",
-                    name: "dummy",
-                    watchPath: path,
-                    locationUUID
-                })
-            }, getRandomArbitrary(Math.floor(POLLING_TIME - 15000), POLLING_TIME))
+			pollingTimeout[path] = setInterval(() => {
+				emitToWorker({
+					event: "dummy",
+					name: "dummy",
+					watchPath: path,
+					locationUUID
+				})
+			}, getRandomArbitrary(Math.floor(POLLING_TIME - 15000), POLLING_TIME))
 
-            return
-        }
+			return
+		}
 
-        if(typeof SUBS[path] !== "undefined"){
-            resolve(SUBS[path])
+		if (typeof SUBS[path] !== "undefined") {
+			resolve(SUBS[path])
 
-            return
-        }
+			return
+		}
 
-        try{
-            SUBS[path] = nodeWatch(pathModule.normalize(path), {
-                recursive: true,
-                delay: 1000,
-                persistent: true
-            })
-    
-            SUBS[path].on("change", (event, name) => {
-                lastEvent[path] = new Date().getTime()
+		try {
+			SUBS[path] = nodeWatch(pathModule.normalize(path), {
+				recursive: true,
+				delay: 1000,
+				persistent: true
+			})
 
-                emitToWorker({ event, name, watchPath: path, locationUUID })
-            })
-    
-            SUBS[path].on("error", (err) => {
-                log.error(err)
+			SUBS[path].on("change", (event, name) => {
+				lastEvent[path] = new Date().getTime()
 
-                delete didCloseDueToResume[path]
-                delete SUBS[path]
-                delete SUBS_INFO[path]
+				emitToWorker({ event, name, watchPath: path, locationUUID })
+			})
 
-                restartWatcher(path, locationUUID)
-            })
+			SUBS[path].on("error", err => {
+				log.error(err)
 
-            SUBS[path].on("close", () => {
-                restartWatcher(path, locationUUID)
-            })
-    
-            SUBS[path].on("ready", () => {
-                SUBS_INFO[path] = locationUUID
+				delete didCloseDueToResume[path]
+				delete SUBS[path]
+				delete SUBS_INFO[path]
 
-                resolve(SUBS[path])
-            })
-        }
-        catch(e){
-            log.error(e)
+				restartWatcher(path, locationUUID)
+			})
 
-            reject(e)
+			SUBS[path].on("close", () => {
+				restartWatcher(path, locationUUID)
+			})
 
-            return
-        }
-    })
+			SUBS[path].on("ready", () => {
+				SUBS_INFO[path] = locationUUID
+
+				resolve(SUBS[path])
+			})
+		} catch (e) {
+			log.error(e)
+
+			reject(e)
+
+			return
+		}
+	})
 }

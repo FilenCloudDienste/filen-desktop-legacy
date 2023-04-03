@@ -3,21 +3,21 @@ import ipc from "../../ipc"
 import { SyncIssue } from "../../../../types"
 
 const useSyncIssues = (): SyncIssue[] => {
-    const [data, setData] = useState<SyncIssue[]>([])
+	const [data, setData] = useState<SyncIssue[]>([])
 
-    const fetchIssues = useCallback(() => {
-        ipc.getSyncIssues().then(setData).catch(console.error)
-    }, [])
+	const fetchIssues = useCallback(() => {
+		ipc.getSyncIssues().then(setData).catch(console.error)
+	}, [])
 
-    useEffect(() => {
-        fetchIssues()
+	useEffect(() => {
+		fetchIssues()
 
-        const interval = setInterval(fetchIssues, 1000)
+		const interval = setInterval(fetchIssues, 1000)
 
-        return () => {
-            clearInterval(interval)
-        }
-    }, [])
+		return () => {
+			clearInterval(interval)
+		}
+	}, [])
 
 	return data
 }

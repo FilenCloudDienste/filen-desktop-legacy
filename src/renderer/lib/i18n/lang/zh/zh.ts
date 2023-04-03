@@ -114,11 +114,9 @@ const zh: {
 	// You need to select at least one sub directory
 	cannotCreateSyncLocationSubdir: "您需要最少选择一个子目录",
 	// The local path you have selected is already a configured sync location. This could lead to endless sync loops
-	cannotCreateSyncLocationLoop:
-		"您选择了配置过的同步路径，这将陷入同步死循环",
+	cannotCreateSyncLocationLoop: "您选择了配置过的同步路径，这将陷入同步死循环",
 	// Could not access the local directory. Maybe you don't have the permissions?
-	cannotCreateSyncLocationAccess:
-		"无法访问本地路径，可能是因为文件权限问题",
+	cannotCreateSyncLocationAccess: "无法访问本地路径，可能是因为文件权限问题",
 	// Select remote location
 	selectRemoteLocation: "选择云端位置",
 	// Sync mode
@@ -148,8 +146,7 @@ const zh: {
 	// Delete sync location
 	deleteSyncLocation: "删除同步位置",
 	// Are you sure you want to delete this sync location?
-	confirmDeleteSyncLocation:
-		"确定删除此同步位置吗？",
+	confirmDeleteSyncLocation: "确定删除此同步位置吗？",
 	// Delete
 	delete: "删除",
 	// Ignored pattern, separated by a new line
@@ -173,8 +170,7 @@ const zh: {
 	// Clear issues
 	clearSyncIssues: "冲突已解决",
 	// When clearing the shown issues the client will attempt to sync again. Please make sure to resolve all issues before clearing them.
-	clearSyncIssuesInfo:
-		"客户端会尝试再次同步，请确保所有冲突已处理完毕，再确认“冲突已解决”",
+	clearSyncIssuesInfo: "客户端会尝试再次同步，请确保所有冲突已处理完毕，再确认“冲突已解决”",
 	// Clear
 	clear: "冲突已解决",
 	// Upload bandwidth throttling

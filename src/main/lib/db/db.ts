@@ -16,264 +16,270 @@ const RETRY_TIMEOUT = 500
 const writeMutexes: Record<string, SemaphoreInterface> = {}
 
 export const get = async (key: string) => {
-    if(USE_MEMORY_CACHE){
-        if(memoryCache.has(MEMORY_CACHE_KEY + key)){
-            return memoryCache.get(MEMORY_CACHE_KEY + key)
-        }
-    }
+	if (USE_MEMORY_CACHE) {
+		if (memoryCache.has(MEMORY_CACHE_KEY + key)) {
+			return memoryCache.get(MEMORY_CACHE_KEY + key)
+		}
+	}
 
-    const keyHash = hashKey(key)
-    
-    try{
-        var data = await fs.readFile(pathModule.join(DB_PATH, keyHash + ".json"), "utf-8")
-    }
-    catch(e){
-        return null
-    }
+	const keyHash = hashKey(key)
 
-    const val = JSON.parse(data)
+	try {
+		var data = await fs.readFile(pathModule.join(DB_PATH, keyHash + ".json"), "utf-8")
+	} catch (e) {
+		return null
+	}
 
-    if(typeof val !== "object"){
-        return null
-    }
+	const val = JSON.parse(data)
 
-    if(typeof val.key !== "string" || typeof val.value == "undefined"){
-        return null
-    }
+	if (typeof val !== "object") {
+		return null
+	}
 
-    if(val.key !== key){
-        return null
-    }
+	if (typeof val.key !== "string" || typeof val.value == "undefined") {
+		return null
+	}
 
-    if(USE_MEMORY_CACHE){
-        memoryCache.set(MEMORY_CACHE_KEY + key, val.value)
-    }
+	if (val.key !== key) {
+		return null
+	}
 
-    return val.value
+	if (USE_MEMORY_CACHE) {
+		memoryCache.set(MEMORY_CACHE_KEY + key, val.value)
+	}
+
+	return val.value
 }
 
 export const set = (key: string, value: any) => {
-    return new Promise(async (resolve, reject) => {
-        if(!writeMutexes[key]){
-            writeMutexes[key] = new Semaphore(1)
-        }
+	return new Promise(async (resolve, reject) => {
+		if (!writeMutexes[key]) {
+			writeMutexes[key] = new Semaphore(1)
+		}
 
-        await writeMutexes[key].acquire()
+		await writeMutexes[key].acquire()
 
-        try{
-            var val = JSON.stringify({
-                key,
-                value
-            }, (_, val) => typeof val == "bigint" ? val.toString() : val)
-        }
-        catch(e){
-            reject(e)
+		try {
+			var val = JSON.stringify(
+				{
+					key,
+					value
+				},
+				(_, val) => (typeof val == "bigint" ? val.toString() : val)
+			)
+		} catch (e) {
+			reject(e)
 
-            writeMutexes[key].release()
+			writeMutexes[key].release()
 
-            return
-        }
+			return
+		}
 
-        const keyHash = hashKey(key)
+		const keyHash = hashKey(key)
 
-        let tries = 0
-        let lastErr = ""
+		let tries = 0
+		let lastErr = ""
 
-        const write = () => {
-            if(tries > MAX_RETRIES){
-                reject(new Error(lastErr))
+		const write = () => {
+			if (tries > MAX_RETRIES) {
+				reject(new Error(lastErr))
 
-                writeMutexes[key].release()
+				writeMutexes[key].release()
 
-                return
-            }
+				return
+			}
 
-            tries += 1
+			tries += 1
 
-            const dbFilePath = pathModule.join(DB_PATH, keyHash + ".json")
+			const dbFilePath = pathModule.join(DB_PATH, keyHash + ".json")
 
-            fs.ensureFile(dbFilePath).then(() => {
-                writeFileAtomic(dbFilePath, val).then(() => {
-                    if(USE_MEMORY_CACHE){
-                        memoryCache.set(MEMORY_CACHE_KEY + key, value)
-                    }
+			fs.ensureFile(dbFilePath)
+				.then(() => {
+					writeFileAtomic(dbFilePath, val)
+						.then(() => {
+							if (USE_MEMORY_CACHE) {
+								memoryCache.set(MEMORY_CACHE_KEY + key, value)
+							}
 
-                    emitGlobal("global-message", {
-                        type: "dbSet",
-                        data: {
-                            key
-                        }
-                    })
+							emitGlobal("global-message", {
+								type: "dbSet",
+								data: {
+									key
+								}
+							})
 
-                    writeMutexes[key].release()
+							writeMutexes[key].release()
 
-                    resolve(true)
-                }).catch((err) => {
-                    lastErr = err
+							resolve(true)
+						})
+						.catch(err => {
+							lastErr = err
 
-                    setTimeout(write, RETRY_TIMEOUT + getRandomArbitrary(10, 100))
-                })
-            }).catch((err) => {
-                lastErr = err
+							setTimeout(write, RETRY_TIMEOUT + getRandomArbitrary(10, 100))
+						})
+				})
+				.catch(err => {
+					lastErr = err
 
-                setTimeout(write, RETRY_TIMEOUT + getRandomArbitrary(10, 100))
-            })
-        }
+					setTimeout(write, RETRY_TIMEOUT + getRandomArbitrary(10, 100))
+				})
+		}
 
-        write()
-    })
+		write()
+	})
 }
 
 export const remove = (key: string) => {
-    return new Promise(async (resolve, reject) => {
-        if(!writeMutexes[key]){
-            writeMutexes[key] = new Semaphore(1)
-        }
+	return new Promise(async (resolve, reject) => {
+		if (!writeMutexes[key]) {
+			writeMutexes[key] = new Semaphore(1)
+		}
 
-        await writeMutexes[key].acquire()
+		await writeMutexes[key].acquire()
 
-        const keyHash = hashKey(key)
+		const keyHash = hashKey(key)
 
-        let tries = 0
-        let lastErr = ""
+		let tries = 0
+		let lastErr = ""
 
-        const write = () => {
-            if(tries > MAX_RETRIES){
-                reject(new Error(lastErr))
+		const write = () => {
+			if (tries > MAX_RETRIES) {
+				reject(new Error(lastErr))
 
-                writeMutexes[key].release()
+				writeMutexes[key].release()
 
-                return
-            }
+				return
+			}
 
-            tries += 1
+			tries += 1
 
-            fs.access(pathModule.join(DB_PATH, keyHash + ".json"), fs.constants.F_OK, (err) => {
-                if(err){
-                    if(USE_MEMORY_CACHE){
-                        memoryCache.delete(MEMORY_CACHE_KEY + key)
-                    }
+			fs.access(pathModule.join(DB_PATH, keyHash + ".json"), fs.constants.F_OK, err => {
+				if (err) {
+					if (USE_MEMORY_CACHE) {
+						memoryCache.delete(MEMORY_CACHE_KEY + key)
+					}
 
-                    emitGlobal("global-message", {
-                        type: "dbRemove",
-                        data: {
-                            key
-                        }
-                    })
-    
-                    resolve(true)
+					emitGlobal("global-message", {
+						type: "dbRemove",
+						data: {
+							key
+						}
+					})
 
-                    writeMutexes[key].release()
+					resolve(true)
 
-                    return
-                }
+					writeMutexes[key].release()
 
-                fs.unlink(pathModule.join(DB_PATH, keyHash + ".json")).then(() => {
-                    if(USE_MEMORY_CACHE){
-                        memoryCache.delete(MEMORY_CACHE_KEY + key)
-                    }
+					return
+				}
 
-                    emitGlobal("global-message", {
-                        type: "dbRemove",
-                        data: {
-                            key
-                        }
-                    })
+				fs.unlink(pathModule.join(DB_PATH, keyHash + ".json"))
+					.then(() => {
+						if (USE_MEMORY_CACHE) {
+							memoryCache.delete(MEMORY_CACHE_KEY + key)
+						}
 
-                    writeMutexes[key].release()
-    
-                    resolve(true)
-                }).catch((err) => {
-                    if(err.code == "ENOENT"){
-                        if(USE_MEMORY_CACHE){
-                            memoryCache.delete(MEMORY_CACHE_KEY + key)
-                        }
+						emitGlobal("global-message", {
+							type: "dbRemove",
+							data: {
+								key
+							}
+						})
 
-                        emitGlobal("global-message", {
-                            type: "dbRemove",
-                            data: {
-                                key
-                            }
-                        })
+						writeMutexes[key].release()
 
-                        writeMutexes[key].release()
-        
-                        resolve(true)
+						resolve(true)
+					})
+					.catch(err => {
+						if (err.code == "ENOENT") {
+							if (USE_MEMORY_CACHE) {
+								memoryCache.delete(MEMORY_CACHE_KEY + key)
+							}
 
-                        return
-                    }
+							emitGlobal("global-message", {
+								type: "dbRemove",
+								data: {
+									key
+								}
+							})
 
-                    lastErr = err
+							writeMutexes[key].release()
 
-                    setTimeout(write, RETRY_TIMEOUT + getRandomArbitrary(10, 100))
-                })
-            })
-        }
+							resolve(true)
 
-        write()
-    })
+							return
+						}
+
+						lastErr = err
+
+						setTimeout(write, RETRY_TIMEOUT + getRandomArbitrary(10, 100))
+					})
+			})
+		}
+
+		write()
+	})
 }
 
 export const clear = async () => {
-    for(const mutex in writeMutexes){
-        await writeMutexes[mutex].acquire()
-    }
+	for (const mutex in writeMutexes) {
+		await writeMutexes[mutex].acquire()
+	}
 
-    try{
-        const dir = await fs.readdir(DB_PATH)
+	try {
+		const dir = await fs.readdir(DB_PATH)
 
-        for(const entry of dir){
-            await fs.unlink(pathModule.join(DB_PATH, entry))
-        }
+		for (const entry of dir) {
+			await fs.unlink(pathModule.join(DB_PATH, entry))
+		}
 
-        if(USE_MEMORY_CACHE){
-            memoryCache.cache.forEach((_, key) => {
-                if(key.startsWith(MEMORY_CACHE_KEY)){
-                    memoryCache.delete(key)
-                }
-            })
-        }
+		if (USE_MEMORY_CACHE) {
+			memoryCache.cache.forEach((_, key) => {
+				if (key.startsWith(MEMORY_CACHE_KEY)) {
+					memoryCache.delete(key)
+				}
+			})
+		}
 
-        emitGlobal("global-message", {
-            type: "dbClear"
-        })
+		emitGlobal("global-message", {
+			type: "dbClear"
+		})
 
-        for(const mutex in writeMutexes){
-            writeMutexes[mutex].release()
-        }
-    }
-    catch(e){
-        throw e
-    }
+		for (const mutex in writeMutexes) {
+			writeMutexes[mutex].release()
+		}
+	} catch (e) {
+		throw e
+	}
 
-    for(const mutex in writeMutexes){
-        writeMutexes[mutex].release()
-    }
+	for (const mutex in writeMutexes) {
+		writeMutexes[mutex].release()
+	}
 }
 
 export const keys = async () => {
-    const dir = await fs.readdir(DB_PATH)
-    const keys: string[] = []
+	const dir = await fs.readdir(DB_PATH)
+	const keys: string[] = []
 
-    for(const file of dir){
-        const obj = JSON.parse(await fs.readFile(pathModule.join(DB_PATH, file), "utf-8"))
+	for (const file of dir) {
+		const obj = JSON.parse(await fs.readFile(pathModule.join(DB_PATH, file), "utf-8"))
 
-        if(typeof obj == "object"){
-            if(typeof obj.key == "string"){
-                keys.push(obj.key)
-            }
-        }
-    }
+		if (typeof obj == "object") {
+			if (typeof obj.key == "string") {
+				keys.push(obj.key)
+			}
+		}
+	}
 
-    return keys
+	return keys
 }
 
 export const db = {
-    get,
-    set,
-    remove,
-    clear,
-    keys
+	get,
+	set,
+	remove,
+	clear,
+	keys
 }
 
 export default db

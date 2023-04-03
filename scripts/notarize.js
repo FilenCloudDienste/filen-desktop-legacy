@@ -1,10 +1,10 @@
 require("dotenv").config()
 const { notarize } = require("electron-notarize")
 
-exports.default = async function notarizing(context){
+exports.default = async function notarizing(context) {
 	const { electronPlatformName, appOutDir } = context
 
-	if(electronPlatformName !== "darwin"){
+	if (electronPlatformName !== "darwin") {
 		return true
 	}
 

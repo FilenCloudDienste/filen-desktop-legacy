@@ -14,106 +14,105 @@ import ipc from "../../lib/ipc"
 const log = window.require("electron-log")
 const { shell } = window.require("electron")
 
-const UpdateModal = memo(({ lang, darkMode, platform }: { lang: string, darkMode: boolean, platform: string }) => {
-    const isOnline: boolean = useIsOnline()
-    const [showModal, setShowModal] = useState<boolean>(false)
-    const currentVersion = useRef<string>("100")
-    const closed = useRef<boolean>(false)
+const UpdateModal = memo(({ lang, darkMode, platform }: { lang: string; darkMode: boolean; platform: string }) => {
+	const isOnline: boolean = useIsOnline()
+	const [showModal, setShowModal] = useState<boolean>(false)
+	const currentVersion = useRef<string>("100")
+	const closed = useRef<boolean>(false)
 
-    const isUpdateAvailable = async (): Promise<any> => {
-        if(closed.current){
-            return false
-        }
+	const isUpdateAvailable = async (): Promise<any> => {
+		if (closed.current) {
+			return false
+		}
 
-        if(!isOnline){
-            return setTimeout(isUpdateAvailable, 5000)
-        }
+		if (!isOnline) {
+			return setTimeout(isUpdateAvailable, 5000)
+		}
 
-        try{
-            const response = await apiRequest({
-                method: "POST",
-                endpoint: "/v1/currentVersions",
-                data: {
-                    platform: "desktop"
-                },
-                timeout: 60000
-            })
+		try {
+			const response = await apiRequest({
+				method: "POST",
+				endpoint: "/v1/currentVersions",
+				data: {
+					platform: "desktop"
+				},
+				timeout: 60000
+			})
 
-            if(!response.status){
-                return log.error(response.message)
-            }
+			if (!response.status) {
+				return log.error(response.message)
+			}
 
-            if(compareVersions(currentVersion.current, response.data.desktop) == "update" && !closed.current){
-                return setShowModal(true)
-            }
-        }
-        catch(e){
-            log.error(e)
-        }
+			if (compareVersions(currentVersion.current, response.data.desktop) == "update" && !closed.current) {
+				return setShowModal(true)
+			}
+		} catch (e) {
+			log.error(e)
+		}
 
-        return setTimeout(isUpdateAvailable, 60000)
-    }
-    
-    useEffect(() => {
-        isUpdateAvailable()
+		return setTimeout(isUpdateAvailable, 60000)
+	}
 
-        ipc.getVersion().then((version) => currentVersion.current = version).catch(log.error)
-    }, [])
+	useEffect(() => {
+		isUpdateAvailable()
 
-    return (
-        <Modal 
-            onClose={() => setShowModal(false)} 
-            isOpen={showModal} 
-            size="full"
-        >
-            <ModalOverlay borderRadius="10px" />
-            <ModalContent 
-                backgroundColor={colors(platform, darkMode, "backgroundPrimary")} 
-                borderRadius="10px"
-            >
-                <ModalCloseButton 
-                    color={colors(platform, darkMode, "textPrimary")}
-                    _hover={{ backgroundColor: colors(platform, darkMode, "backgroundSecondary") }}
-                    onClick={() => closed.current = true}
-                />
-                <ModalBody overflow="hidden">
-                    <Flex
-                        width="100%"
-                        height="500px"
-                        justifyContent="center"
-                        alignItems="center"
-                        overflow="hidden"
-                        flexDirection="column"
-                        textAlign="center"
-                    >
-                        <Image 
-                            src={darkMode ? LightLogo : DarkLogo} 
-                            userSelect="none" 
-                            width="75px" 
-                            marginBottom="40px" 
-                        />
-                        <Text
-                            color={colors(platform, darkMode, "textPrimary")}
-                        >
-                            {i18n(lang, "updateAvailable")}
-                        </Text>
-                        <Link 
-                            color={colors(platform, darkMode, "link")} 
-                            fontSize={16} 
-                            textDecoration="none" 
-                            _hover={{
-                                textDecoration: "none"
-                            }}
-                            marginTop="40px"
-                            onClick={() => shell.openExternal("https://filen.io/apps").catch(log.error)}
-                        >
-                            {i18n(lang, "downloadUpdateBtn")}
-                        </Link>
-                    </Flex>
-                </ModalBody>
-            </ModalContent>
-        </Modal>
-    )
+		ipc.getVersion()
+			.then(version => (currentVersion.current = version))
+			.catch(log.error)
+	}, [])
+
+	return (
+		<Modal
+			onClose={() => setShowModal(false)}
+			isOpen={showModal}
+			size="full"
+		>
+			<ModalOverlay borderRadius="10px" />
+			<ModalContent
+				backgroundColor={colors(platform, darkMode, "backgroundPrimary")}
+				borderRadius="10px"
+			>
+				<ModalCloseButton
+					color={colors(platform, darkMode, "textPrimary")}
+					_hover={{
+						backgroundColor: colors(platform, darkMode, "backgroundSecondary")
+					}}
+					onClick={() => (closed.current = true)}
+				/>
+				<ModalBody overflow="hidden">
+					<Flex
+						width="100%"
+						height="500px"
+						justifyContent="center"
+						alignItems="center"
+						overflow="hidden"
+						flexDirection="column"
+						textAlign="center"
+					>
+						<Image
+							src={darkMode ? LightLogo : DarkLogo}
+							userSelect="none"
+							width="75px"
+							marginBottom="40px"
+						/>
+						<Text color={colors(platform, darkMode, "textPrimary")}>{i18n(lang, "updateAvailable")}</Text>
+						<Link
+							color={colors(platform, darkMode, "link")}
+							fontSize={16}
+							textDecoration="none"
+							_hover={{
+								textDecoration: "none"
+							}}
+							marginTop="40px"
+							onClick={() => shell.openExternal("https://filen.io/apps").catch(log.error)}
+						>
+							{i18n(lang, "downloadUpdateBtn")}
+						</Link>
+					</Flex>
+				</ModalBody>
+			</ModalContent>
+		</Modal>
+	)
 })
 
 export default UpdateModal
