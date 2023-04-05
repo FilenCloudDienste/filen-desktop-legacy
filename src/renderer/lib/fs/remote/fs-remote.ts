@@ -548,7 +548,7 @@ export const upload = (path: string, remoteTreeNow: any, location: Location, tas
 
 		const absolutePath = normalizePath(pathModule.join(location.local, path))
 		const name = pathModule.basename(absolutePath)
-		const nameHashed = hashFn(name.toLowerCase())
+		const nameHashed = await hashFn(name.toLowerCase())
 
 		if (typeof name !== "string" || name.length <= 0) {
 			return reject(new Error("Could not upload file: Name invalid: " + name))

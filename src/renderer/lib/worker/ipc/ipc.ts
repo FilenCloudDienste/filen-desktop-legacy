@@ -49,19 +49,11 @@ const handleMessage = (type: string, request: any) => {
 		} else if (type == "hashPassword") {
 			const { password } = request
 
-			try {
-				return resolve(hashPassword(password))
-			} catch (e) {
-				return reject(e)
-			}
+			hashPassword(password).then(resolve).catch(reject)
 		} else if (type == "hashFn") {
 			const { data } = request
 
-			try {
-				return resolve(hashFn(data))
-			} catch (e) {
-				return reject(e)
-			}
+			hashFn(data).then(resolve).catch(reject)
 		} else if (type == "deriveKeyFromPassword") {
 			const { password, salt, iterations, hash, bitLength, returnHex } = request
 

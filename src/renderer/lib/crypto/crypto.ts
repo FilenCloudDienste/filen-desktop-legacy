@@ -14,14 +14,37 @@ const CryptoJS = window.require("crypto-js")
 const md2 = window.require("js-md2")
 const md4 = window.require("js-md4")
 const md5 = window.require("js-md5")
-const sha256 = window.require("js-sha256")
-const sha1 = window.require("js-sha1")
-const sha512 = window.require("js-sha512")
-const sha384 = window.require("js-sha512").sha384
 const log = window.require("electron-log")
 
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
+
+export const bufferToHash = async (
+	buffer: Uint8Array | ArrayBuffer,
+	algorithm: "SHA-1" | "SHA-256" | "SHA-512" | "SHA-384"
+): Promise<string> => {
+	const digest = await globalThis.crypto.subtle.digest(algorithm, buffer)
+	const hashArray = Array.from(new Uint8Array(digest))
+	const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("")
+
+	return hashHex
+}
+
+const sha1 = async (input: string): Promise<string> => {
+	return await bufferToHash(textEncoder.encode(input), "SHA-1")
+}
+
+const sha256 = async (input: string): Promise<string> => {
+	return await bufferToHash(textEncoder.encode(input), "SHA-256")
+}
+
+const sha384 = async (input: string): Promise<string> => {
+	return await bufferToHash(textEncoder.encode(input), "SHA-384")
+}
+
+const sha512 = async (input: string): Promise<string> => {
+	return await bufferToHash(textEncoder.encode(input), "SHA-512")
+}
 
 export const deriveKeyFromPassword = async ({
 	password,
@@ -87,8 +110,8 @@ export const generatePasswordAndMasterKeysBasedOnAuthVersion = async ({
 
 	if (authVersion == 1) {
 		//old & deprecated, not in use anymore, just here for backwards compatibility
-		derivedPassword = hashPassword(rawPassword)
-		derivedMasterKeys = hashFn(rawPassword)
+		derivedPassword = await hashPassword(rawPassword)
+		derivedMasterKeys = await hashFn(rawPassword)
 	} else if (authVersion == 2) {
 		const derivedKey = (await deriveKeyFromPassword({
 			password: rawPassword,
@@ -101,7 +124,7 @@ export const generatePasswordAndMasterKeysBasedOnAuthVersion = async ({
 
 		derivedMasterKeys = derivedKey.substring(0, derivedKey.length / 2)
 		derivedPassword = derivedKey.substring(derivedKey.length / 2, derivedKey.length)
-		derivedPassword = CryptoJS.SHA512(derivedPassword).toString()
+		derivedPassword = await sha512(derivedPassword)
 	} else {
 		throw new Error("Invalid auth version")
 	}
@@ -112,13 +135,13 @@ export const generatePasswordAndMasterKeysBasedOnAuthVersion = async ({
 	}
 }
 
-export const hashPassword = (password: string): string => {
+export const hashPassword = async (password: string): Promise<string> => {
 	//old & deprecated, not in use anymore, just here for backwards compatibility
-	return sha512(sha384(sha256(sha1(password)))) + sha512(md5(md4(md2(password))))
+	return (await sha512(await sha384(await sha256(await sha1(password))))) + (await sha512(md5(md4(md2(password)))))
 }
 
-export const hashFn = (str: string): string => {
-	return sha1(sha512(str))
+export const hashFn = async (input: string): Promise<string> => {
+	return await sha1(await sha512(input))
 }
 
 export const decryptMetadata = async (data: string, key: any): Promise<string> => {
@@ -612,15 +635,4 @@ export const generateKeypair = async (): Promise<{
 		publicKey: b64PubKey,
 		privateKey: b64PrivKey
 	}
-}
-
-export const bufferToHash = async (
-	buffer: Uint8Array | ArrayBuffer,
-	algorithm: "SHA-1" | "SHA-256" | "SHA-512" | "SHA-384"
-): Promise<string> => {
-	const digest = await globalThis.crypto.subtle.digest(algorithm, buffer)
-	const hashArray = Array.from(new Uint8Array(digest))
-	const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("")
-
-	return hashHex
 }

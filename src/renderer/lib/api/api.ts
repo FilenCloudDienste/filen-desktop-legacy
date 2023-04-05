@@ -14,7 +14,6 @@ import { sendToAllPorts } from "../worker/ipc"
 import { logout } from "../../windows/settings/account"
 import striptags from "striptags"
 import { isSyncLocationPaused } from "../worker/sync/sync.utils"
-import memoryCache from "../memoryCache"
 import { v4 as uuidv4 } from "uuid"
 
 const https = window.require("https")
@@ -361,7 +360,7 @@ export const createFolder = async ({ uuid, name, parent }: { uuid: string; name:
 	await createFolderSemaphore.acquire()
 
 	try {
-		const nameHashed = hashFn(name.toLowerCase())
+		const nameHashed = await hashFn(name.toLowerCase())
 		const [apiKey, masterKeys] = await Promise.all([db.get("apiKey"), db.get("masterKeys")])
 		const encrypted = await encryptMetadata(JSON.stringify({ name }), masterKeys[masterKeys.length - 1])
 		const response = await apiRequest({
@@ -406,7 +405,7 @@ export const createFolder = async ({ uuid, name, parent }: { uuid: string; name:
 }
 
 export const fileExists = async ({ name, parent }: { name: string; parent: string }): Promise<{ exists: boolean; existsUUID: string }> => {
-	const nameHashed = hashFn(name.toLowerCase())
+	const nameHashed = await hashFn(name.toLowerCase())
 	const apiKey = await db.get("apiKey")
 	const response = await apiRequest({
 		method: "POST",
@@ -435,7 +434,7 @@ export const folderExists = async ({
 	name: string
 	parent: string
 }): Promise<{ exists: boolean; existsUUID: string }> => {
-	const nameHashed = hashFn(name.toLowerCase())
+	const nameHashed = await hashFn(name.toLowerCase())
 	const apiKey = await db.get("apiKey")
 	const response = await apiRequest({
 		method: "POST",
@@ -929,7 +928,7 @@ export const checkIfItemParentIsShared = ({ type, parent, metaData }: { type: st
 																key: link.linkKey,
 																expiration: "never",
 																password: "empty",
-																passwordHashed: "8f83dfba6522ce8c34c5afefa64878e3a4ac554d", //hashFn("empty")
+																passwordHashed: "8f83dfba6522ce8c34c5afefa64878e3a4ac554d",
 																downloadBtn: "enable"
 															}
 														})
@@ -1880,7 +1879,7 @@ export const moveFolder = async ({ folder, parent }: { folder: any; parent: stri
 }
 
 export const renameFile = async ({ file, name }: { file: any; name: string }): Promise<void> => {
-	const nameHashed = hashFn(name.toLowerCase())
+	const nameHashed = await hashFn(name.toLowerCase())
 	const [apiKey, masterKeys] = await Promise.all([db.get("apiKey"), db.get("masterKeys")])
 	const [encrypted, encryptedName] = await Promise.all([
 		encryptMetadata(
@@ -1937,7 +1936,7 @@ export const renameFile = async ({ file, name }: { file: any; name: string }): P
 }
 
 export const renameFolder = async ({ folder, name }: { folder: any; name: string }): Promise<void> => {
-	const nameHashed = hashFn(name.toLowerCase())
+	const nameHashed = await hashFn(name.toLowerCase())
 	const [apiKey, masterKeys] = await Promise.all([db.get("apiKey"), db.get("masterKeys")])
 	const encrypted = await encryptMetadata(JSON.stringify({ name }), masterKeys[masterKeys.length - 1])
 	const response = await apiRequest({
@@ -2019,7 +2018,7 @@ export const enableItemPublicLink = async (
 				fileUUID: uuid,
 				expiration: "never",
 				password: "empty",
-				passwordHashed: hashFn("empty"),
+				passwordHashed: await hashFn("empty"),
 				salt: generateRandomString(32),
 				downloadBtn: "enable",
 				type: "enable"
@@ -2053,7 +2052,7 @@ export const disableItemPublicLink = async (uuid: string, type: "folder" | "file
 				fileUUID: uuid,
 				expiration: "never",
 				password: "empty",
-				passwordHashed: hashFn("empty"),
+				passwordHashed: await hashFn("empty"),
 				salt: generateRandomString(32),
 				downloadBtn: "enable",
 				type: "disable"
