@@ -349,7 +349,9 @@ export const Semaphore = function (this: SemaphoreInterface, max: number) {
 } as any as { new (max: number): SemaphoreInterface }
 
 export const convertTimestampToMs = (timestamp: number): number => {
-	if (Math.abs(Date.now() - timestamp) < Math.abs(Date.now() - timestamp * 1000)) {
+	const now = Date.now()
+
+	if (Math.abs(now - timestamp) < Math.abs(now - timestamp * 1000)) {
 		return timestamp
 	}
 
