@@ -60,11 +60,7 @@ export const smokeTest = async (uuid: string): Promise<boolean> => {
 	return true
 }
 
-export const directoryTree = (
-	uuid: string,
-	skipCache: boolean = false,
-	location: Location
-): Promise<RemoteDirectoryTreeResult> => {
+export const directoryTree = (uuid: string, skipCache: boolean = false, location: Location): Promise<RemoteDirectoryTreeResult> => {
 	return new Promise((resolve, reject) => {
 		Promise.all([db.get("deviceId"), db.get("apiKey"), db.get("masterKeys"), db.get("excludeDot")])
 			.then(([deviceId, apiKey, masterKeys, excludeDot]) => {
@@ -137,8 +133,7 @@ export const directoryTree = (
 							})
 						}
 
-						const [baseFolderUUID, baseFolderMetadata, baseFolderParent]: [string, string, string] =
-							response.folders[0]
+						const [baseFolderUUID, baseFolderMetadata, baseFolderParent]: [string, string, string] = response.folders[0]
 						const baseFolderName = await decryptFolderName(baseFolderMetadata, masterKeys)
 
 						if (baseFolderParent !== "base") {
@@ -179,8 +174,7 @@ export const directoryTree = (
 												return parentExists()
 											})
 												.then(parentPath => {
-													const foundParentPath =
-														parentPath.length == 0 ? "" : parentPath + "/"
+													const foundParentPath = parentPath.length == 0 ? "" : parentPath + "/"
 													const thisPath = foundParentPath + name
 
 													if (parent !== "base" && thisPath.indexOf("/") == -1) {
@@ -206,11 +200,7 @@ export const directoryTree = (
 														include = false
 													}
 
-													if (
-														include &&
-														parent !== "base" &&
-														!addedFolders[parent + ":" + name]
-													) {
+													if (include && parent !== "base" && !addedFolders[parent + ":" + name]) {
 														addedFolders[parent + ":" + name] = true
 
 														builtTreeFolders[entryPath] = {
@@ -277,12 +267,8 @@ export const directoryTree = (
 												return parentExists()
 											})
 												.then(parentPath => {
-													const foundParentPath =
-														parentPath.length == 0 ? "" : parentPath + "/"
-													const thisPath =
-														parent == "base"
-															? decrypted.name
-															: foundParentPath + decrypted.name
+													const foundParentPath = parentPath.length == 0 ? "" : parentPath + "/"
+													const thisPath = parent == "base" ? decrypted.name : foundParentPath + decrypted.name
 
 													if (parent !== "base" && thisPath.indexOf("/") == -1) {
 														return resolve(true)
@@ -305,11 +291,7 @@ export const directoryTree = (
 														include = false
 													}
 
-													if (
-														include &&
-														parent !== "base" &&
-														!addedFiles[parent + ":" + decrypted.name]
-													) {
+													if (include && parent !== "base" && !addedFiles[parent + ":" + decrypted.name]) {
 														addedFiles[parent + ":" + decrypted.name] = true
 
 														builtTreeFiles[entryPath] = {
@@ -492,10 +474,7 @@ export const findOrCreateParentDirectory = (
 				}
 			}
 
-			if (
-				typeof existingFolders[neededParentPath] == "object" &&
-				typeof existingFolders[neededParentPath].uuid == "string"
-			) {
+			if (typeof existingFolders[neededParentPath] == "object" && typeof existingFolders[neededParentPath].uuid == "string") {
 				found = true
 				foundParentUUID = existingFolders[neededParentPath].uuid
 
@@ -528,11 +507,7 @@ export const mkdir = async (
 		uuid = uuidv4()
 	}
 
-	if (typeof name !== "string") {
-		throw new Error("Could not create remote folder: Name invalid: " + name)
-	}
-
-	if (name.length <= 0) {
+	if (typeof name !== "string" || name.length <= 0) {
 		throw new Error("Could not create remote folder: Name invalid: " + name)
 	}
 
@@ -540,12 +515,7 @@ export const mkdir = async (
 		throw "deletedLocally"
 	}
 
-	const parent = await findOrCreateParentDirectory(
-		path,
-		location.remoteUUID,
-		remoteTreeNow,
-		normalizePath(location.local + "/" + path)
-	)
+	const parent = await findOrCreateParentDirectory(path, location.remoteUUID, remoteTreeNow, normalizePath(location.local + "/" + path))
 	const createdUUID = await createDirectory(uuid, name, parent)
 
 	return {
@@ -580,16 +550,12 @@ export const upload = (path: string, remoteTreeNow: any, location: Location, tas
 		const name = pathModule.basename(absolutePath)
 		const nameHashed = hashFn(name.toLowerCase())
 
-		if (typeof name !== "string") {
+		if (typeof name !== "string" || name.length <= 0) {
 			return reject(new Error("Could not upload file: Name invalid: " + name))
 		}
 
 		if (typeof location.remoteUUID !== "string") {
 			return reject("parentMissing")
-		}
-
-		if (name.length <= 0) {
-			return reject(new Error("Could not upload file: Name invalid: " + name))
 		}
 
 		if (typeof uuid !== "string") {
@@ -636,34 +602,26 @@ export const upload = (path: string, remoteTreeNow: any, location: Location, tas
 											var rm = generateRandomString(32)
 											var uploadKey = generateRandomString(32)
 											var nameH = nameHashed
-											var [nameEnc, mimeEnc, sizeEnc, metaData, origStats]: [
-												string,
-												string,
-												string,
-												string,
-												Stats
-											] = await Promise.all([
-												encryptMetadata(name, key),
-												encryptMetadata(mime, key),
-												encryptMetadata(size.toString(), key),
-												encryptMetadata(
-													JSON.stringify(
-														{
-															name,
-															size,
-															mime,
-															key,
-															lastModified
-														},
-														(_, value) =>
-															typeof value == "bigint"
-																? parseInt(value.toString())
-																: value
+											var [nameEnc, mimeEnc, sizeEnc, metaData, origStats]: [string, string, string, string, Stats] =
+												await Promise.all([
+													encryptMetadata(name, key),
+													encryptMetadata(mime, key),
+													encryptMetadata(size.toString(), key),
+													encryptMetadata(
+														JSON.stringify(
+															{
+																name,
+																size,
+																mime,
+																key,
+																lastModified
+															},
+															(_, value) => (typeof value == "bigint" ? parseInt(value.toString()) : value)
+														),
+														masterKeys[masterKeys.length - 1]
 													),
-													masterKeys[masterKeys.length - 1]
-												),
-												gracefulLStat(absolutePath)
-											])
+													gracefulLStat(absolutePath)
+												])
 										} catch (e) {
 											log.error("Metadata generation failed for " + absolutePath)
 											log.error(e)
@@ -694,11 +652,7 @@ export const upload = (path: string, remoteTreeNow: any, location: Location, tas
 													}
 												}
 
-												readChunk(
-													absolutePath,
-													index * constants.chunkSize,
-													constants.chunkSize
-												)
+												readChunk(absolutePath, index * constants.chunkSize, constants.chunkSize)
 													.then(data => {
 														const queryParams = new URLSearchParams({
 															apiKey: apiKey,
@@ -895,9 +849,9 @@ export const upload = (path: string, remoteTreeNow: any, location: Location, tas
 	})
 }
 
-export const rm = (type: string, uuid: string): Promise<boolean> => trashItem({ type, uuid })
+export const rm = (type: string, uuid: string): Promise<void> => trashItem({ type, uuid })
 
-export const move = async (type: string, task: any, location: any, remoteTreeNow: any): Promise<boolean> => {
+export const move = async (type: string, task: any, location: any, remoteTreeNow: any): Promise<void> => {
 	const parent = await findOrCreateParentDirectory(task.to, location.remoteUUID, remoteTreeNow)
 
 	if (type == "file") {
@@ -921,11 +875,9 @@ export const move = async (type: string, task: any, location: any, remoteTreeNow
 			parent
 		})
 	}
-
-	return true
 }
 
-export const rename = async (type: string, task: any): Promise<boolean> => {
+export const rename = async (type: string, task: any): Promise<void> => {
 	const newName = pathModule.basename(task.to)
 
 	if (newName.length == 0) {
@@ -953,6 +905,4 @@ export const rename = async (type: string, task: any): Promise<boolean> => {
 			name: newName
 		})
 	}
-
-	return true
 }

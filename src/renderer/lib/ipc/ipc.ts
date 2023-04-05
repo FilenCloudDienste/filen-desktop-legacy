@@ -7,10 +7,10 @@ import { SyncIssue, Location } from "../../../types"
 const { ipcRenderer } = window.require("electron")
 const log = window.require("electron-log")
 
-const MESSAGE_SENDER: string = uuidv4()
+const MESSAGE_SENDER = uuidv4()
 const resolves: Record<string, (value: any) => void> = {}
 const rejects: Record<string, (reason?: any) => void> = {}
-let DEBOUNCE_WATCHER_EVENT: any = {}
+let DEBOUNCE_WATCHER_EVENT: Record<string, NodeJS.Timer> = {}
 
 export const decodeError = ({ name, message, extra }: { name: string; message: string; extra: any }) => {
 	const e = new Error(message)

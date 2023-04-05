@@ -8,30 +8,34 @@ const log = window.require("electron-log")
 const useDb = (dbKey: string, defaultValue: any): any => {
 	const [data, setData] = useState<any>(defaultValue)
 
-	const fetchDataFromDb = useCallback((key: string) => {
-		db.get(key)
-			.then((value: any) => {
-				if (typeof value == "undefined") {
-					return setData(defaultValue)
-				}
+	const fetchDataFromDb = useCallback(async (key: string) => {
+		try {
+			const value = await db.get(key)
 
-				if (value == null) {
-					return setData(defaultValue)
-				}
+			if (typeof value == "undefined") {
+				setData(defaultValue)
 
-				return setData(value)
-			})
-			.catch(err => {
-				log.error(err)
+				return
+			}
 
-				return setData(defaultValue)
-			})
+			if (value == null) {
+				setData(defaultValue)
+
+				return
+			}
+
+			setData(value)
+		} catch (e) {
+			log.error(e)
+
+			setData(defaultValue)
+		}
 	}, [])
 
 	useEffect(() => {
 		const setListener = eventListener.on("dbSet", ({ key }: { key: string }) => {
 			if (key !== dbKey) {
-				return false
+				return
 			}
 
 			if (memoryCache.has(db.dbCacheKey + key)) {
@@ -41,20 +45,18 @@ const useDb = (dbKey: string, defaultValue: any): any => {
 			fetchDataFromDb(key)
 		})
 
-		const clearListener = eventListener.on("dbClear", () => {
-			return setData(defaultValue)
-		})
+		const clearListener = eventListener.on("dbClear", () => setData(defaultValue))
 
 		const removeListener = eventListener.on("dbRemove", ({ key }: { key: string }) => {
 			if (key !== dbKey) {
-				return false
+				return
 			}
 
 			if (memoryCache.has(db.dbCacheKey + key)) {
 				memoryCache.delete(db.dbCacheKey + key)
 			}
 
-			return setData(defaultValue)
+			setData(defaultValue)
 		})
 
 		fetchDataFromDb(dbKey)

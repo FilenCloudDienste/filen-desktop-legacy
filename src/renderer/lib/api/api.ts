@@ -184,27 +184,23 @@ export const apiRequest = ({ method = "POST", endpoint = "/v1/", data = {}, time
 	})
 }
 
-export const authInfo = ({ email }: { email: string }): Promise<any> => {
-	return new Promise((resolve, reject) => {
-		apiRequest({
-			method: "POST",
-			endpoint: "/v1/auth/info",
-			data: {
-				email
-			}
-		})
-			.then((response: any) => {
-				if (!response.status) {
-					return reject(response.message)
-				}
-
-				return resolve(response.data)
-			})
-			.catch(reject)
+export const authInfo = async ({ email }: { email: string }): Promise<any> => {
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/auth/info",
+		data: {
+			email
+		}
 	})
+
+	if (!response.status) {
+		throw new Error(response.message)
+	}
+
+	return response.data
 }
 
-export const login = ({
+export const login = async ({
 	email,
 	password,
 	twoFactorCode,
@@ -215,112 +211,92 @@ export const login = ({
 	twoFactorCode: string | number
 	authVersion: number
 }): Promise<any> => {
-	return new Promise((resolve, reject) => {
-		apiRequest({
-			method: "POST",
-			endpoint: "/v1/login",
-			data: {
-				email,
-				password,
-				twoFactorKey: twoFactorCode,
-				authVersion
-			}
-		})
-			.then((response: any) => {
-				if (!response.status) {
-					return reject(response.message)
-				}
-
-				return resolve(response.data)
-			})
-			.catch(reject)
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/login",
+		data: {
+			email,
+			password,
+			twoFactorKey: twoFactorCode,
+			authVersion
+		}
 	})
+
+	if (!response.status) {
+		throw new Error(response.message)
+	}
+
+	return response.data
 }
 
-export const userInfo = ({ apiKey }: { apiKey: string }): Promise<any> => {
-	return new Promise((resolve, reject) => {
-		apiRequest({
-			method: "POST",
-			endpoint: "/v1/user/info",
-			data: {
-				apiKey
-			}
-		})
-			.then((response: any) => {
-				if (!response.status) {
-					return reject(response.message)
-				}
-
-				return resolve(response.data)
-			})
-			.catch(reject)
+export const userInfo = async ({ apiKey }: { apiKey: string }): Promise<any> => {
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/user/info",
+		data: {
+			apiKey
+		}
 	})
+
+	if (!response.status) {
+		throw new Error(response.message)
+	}
+
+	return response.data
 }
 
-export const baseFolders = ({ apiKey }: { apiKey: string }): Promise<any> => {
-	return new Promise((resolve, reject) => {
-		apiRequest({
-			method: "POST",
-			endpoint: "/v1/user/baseFolders",
-			data: {
-				apiKey,
-				includeDefault: "true"
-			}
-		})
-			.then((response: any) => {
-				if (!response.status) {
-					return reject(response.message)
-				}
-
-				return resolve(response.data)
-			})
-			.catch(reject)
+export const baseFolders = async ({ apiKey }: { apiKey: string }): Promise<any> => {
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/user/baseFolders",
+		data: {
+			apiKey,
+			includeDefault: "true"
+		}
 	})
+
+	if (!response.status) {
+		throw new Error(response.message)
+	}
+
+	return response.data
 }
 
-export const folderContent = ({ apiKey, uuid }: { apiKey: string; uuid: string }): Promise<any> => {
-	return new Promise((resolve, reject) => {
-		apiRequest({
-			method: "POST",
-			endpoint: "/v1/dir/content",
-			data: {
-				apiKey,
-				app: "true",
-				folders: JSON.stringify(["default"]),
-				page: 1,
-				uuid
-			}
-		})
-			.then((response: any) => {
-				if (!response.status) {
-					return reject(response.message)
-				}
-
-				return resolve(response.data)
-			})
-			.catch(reject)
+export const folderContent = async ({ apiKey, uuid }: { apiKey: string; uuid: string }): Promise<any> => {
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/dir/content",
+		data: {
+			apiKey,
+			app: "true",
+			folders: JSON.stringify(["default"]),
+			page: 1,
+			uuid
+		}
 	})
+
+	if (!response.status) {
+		throw new Error(response.message)
+	}
+
+	return response.data
 }
 
-export const folderPresent = ({ apiKey, uuid }: { apiKey: string; uuid: string }): Promise<any> => {
-	return new Promise((resolve, reject) => {
-		apiRequest({
-			method: "POST",
-			endpoint: "/v1/dir/present",
-			data: {
-				apiKey,
-				uuid
-			}
-		})
-			.then((response: any) => {
-				if (!response.status) {
-					return reject(response.message)
-				}
-
-				return resolve(response.data)
-			})
-			.catch(reject)
+export const folderPresent = async ({ apiKey, uuid }: { apiKey: string; uuid: string }): Promise<any> => {
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/dir/present",
+		data: {
+			apiKey,
+			uuid
+		}
 	})
+
+	if (!response.status) {
+		throw new Error(response.message)
+	}
+
+	return response.data
 }
 
 export const filePresent = async (uuid: string): Promise<any> => {
@@ -341,7 +317,7 @@ export const filePresent = async (uuid: string): Promise<any> => {
 	return response.data
 }
 
-export const dirTree = ({
+export const dirTree = async ({
 	apiKey,
 	uuid,
 	deviceId,
@@ -354,481 +330,300 @@ export const dirTree = ({
 	skipCache?: boolean
 	includeRaw?: boolean
 }): Promise<{ data: any; raw: string }> => {
-	return new Promise((resolve, reject) => {
-		apiRequest({
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/dir/tree",
+		data: {
+			apiKey,
+			uuid,
+			deviceId,
+			skipCache: skipCache ? 1 : 0
+		},
+		includeRaw
+	})
+
+	if (includeRaw) {
+		if (!response.data.status) {
+			throw new Error(response.data.message)
+		}
+
+		return { data: response.data.data, raw: response.raw }
+	}
+
+	if (!response.status) {
+		throw new Error(response.message)
+	}
+
+	return response.data
+}
+
+export const createFolder = async ({ uuid, name, parent }: { uuid: string; name: string; parent: string }): Promise<string> => {
+	await createFolderSemaphore.acquire()
+
+	try {
+		const nameHashed = hashFn(name.toLowerCase())
+		const [apiKey, masterKeys] = await Promise.all([db.get("apiKey"), db.get("masterKeys")])
+		const encrypted = await encryptMetadata(JSON.stringify({ name }), masterKeys[masterKeys.length - 1])
+		const response = await apiRequest({
 			method: "POST",
-			endpoint: "/v1/dir/tree",
+			endpoint: "/v1/dir/sub/create",
 			data: {
 				apiKey,
 				uuid,
-				deviceId,
-				skipCache: skipCache ? 1 : 0
-			},
-			includeRaw
-		})
-			.then(res => {
-				if (includeRaw) {
-					if (!res.data.status) {
-						return reject(res.data.message)
-					}
-
-					return resolve({ data: res.data.data, raw: res.raw })
-				}
-
-				if (!res.status) {
-					return reject(res.message)
-				}
-
-				return resolve(res.data)
-			})
-			.catch(reject)
-	})
-}
-
-export const acquireLock = ({ apiKey, id }: { apiKey: string; id: string | number }): Promise<any> => {
-	return new Promise((resolve, reject) => {
-		apiRequest({
-			method: "POST",
-			endpoint: "/v1/lock/acquire",
-			data: {
-				apiKey,
-				id
+				name: encrypted,
+				nameHashed,
+				parent
 			}
 		})
-			.then((response: any) => {
-				if (!response.status) {
-					return reject(response.message)
-				}
 
-				return resolve(response.data)
-			})
-			.catch(reject)
-	})
-}
+		if (!response.status) {
+			if (typeof response.data !== "undefined" && typeof response.data.existsUUID !== "undefined") {
+				createFolderSemaphore.release()
 
-export const releaseLock = ({ apiKey, id }: { apiKey: string; id: string | number }): Promise<any> => {
-	return new Promise((resolve, reject) => {
-		apiRequest({
-			method: "POST",
-			endpoint: "/v1/lock/release",
-			data: {
-				apiKey,
-				id
+				return response.data.existsUUID
+			}
+
+			throw new Error(response.message)
+		}
+
+		await checkIfItemParentIsShared({
+			type: "folder",
+			parent,
+			metaData: {
+				uuid,
+				name
 			}
 		})
-			.then((response: any) => {
-				if (!response.status) {
-					return reject(response.message)
-				}
 
-				return resolve(response.data)
-			})
-			.catch(reject)
-	})
+		createFolderSemaphore.release()
+
+		return uuid
+	} catch (e) {
+		createFolderSemaphore.release()
+
+		throw e
+	}
 }
 
-export const holdLock = ({ apiKey, id }: { apiKey: string; id: string | number }): Promise<any> => {
-	return new Promise((resolve, reject) => {
-		apiRequest({
-			method: "POST",
-			endpoint: "/v1/lock/hold",
-			data: {
-				apiKey,
-				id
-			}
-		})
-			.then((response: any) => {
-				if (!response.status) {
-					return reject(response.message)
-				}
-
-				return resolve(response.data)
-			})
-			.catch(reject)
+export const fileExists = async ({ name, parent }: { name: string; parent: string }): Promise<{ exists: boolean; existsUUID: string }> => {
+	const nameHashed = hashFn(name.toLowerCase())
+	const apiKey = await db.get("apiKey")
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/file/exists",
+		data: {
+			apiKey,
+			parent,
+			nameHashed
+		}
 	})
+
+	if (!response.status) {
+		throw new Error(response.message)
+	}
+
+	return {
+		exists: response.data.exists ? true : false,
+		existsUUID: response.data.uuid
+	}
 }
 
-export const createFolder = ({ uuid, name, parent }: { uuid: string; name: string; parent: string }): Promise<any> => {
-	return new Promise((resolve, reject) => {
-		createFolderSemaphore
-			.acquire()
-			.then(() => {
-				const nameHashed = hashFn(name.toLowerCase())
-
-				db.get("apiKey")
-					.then(apiKey => {
-						db.get("masterKeys")
-							.then(masterKeys => {
-								encryptMetadata(JSON.stringify({ name }), masterKeys[masterKeys.length - 1])
-									.then(encrypted => {
-										apiRequest({
-											method: "POST",
-											endpoint: "/v1/dir/sub/create",
-											data: {
-												apiKey,
-												uuid,
-												name: encrypted,
-												nameHashed,
-												parent
-											}
-										})
-											.then((response: any) => {
-												if (!response.status) {
-													createFolderSemaphore.release()
-
-													if (typeof response.data !== "undefined") {
-														if (typeof response.data.existsUUID !== "undefined") {
-															return resolve(response.data.existsUUID)
-														}
-													}
-
-													return reject(response.message)
-												}
-
-												checkIfItemParentIsShared({
-													type: "folder",
-													parent,
-													metaData: {
-														uuid,
-														name
-													}
-												})
-													.then(() => {
-														createFolderSemaphore.release()
-
-														memoryCache.set("decryptFolderName:" + encrypted, name)
-
-														return resolve(uuid)
-													})
-													.catch(err => {
-														createFolderSemaphore.release()
-
-														return reject(err)
-													})
-											})
-											.catch(err => {
-												createFolderSemaphore.release()
-
-												return reject(err)
-											})
-									})
-									.catch(err => {
-										createFolderSemaphore.release()
-
-										return reject(err)
-									})
-							})
-							.catch(err => {
-								createFolderSemaphore.release()
-
-								return reject(err)
-							})
-					})
-					.catch(err => {
-						createFolderSemaphore.release()
-
-						return reject(err)
-					})
-			})
-			.catch(reject)
+export const folderExists = async ({
+	name,
+	parent
+}: {
+	name: string
+	parent: string
+}): Promise<{ exists: boolean; existsUUID: string }> => {
+	const nameHashed = hashFn(name.toLowerCase())
+	const apiKey = await db.get("apiKey")
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/dir/exists",
+		data: {
+			apiKey,
+			parent,
+			nameHashed
+		}
 	})
+
+	if (!response.status) {
+		throw new Error(response.message)
+	}
+
+	return {
+		exists: response.data.exists ? true : false,
+		existsUUID: response.data.uuid
+	}
 }
 
-export const fileExists = ({ name, parent }: { name: string; parent: string }): Promise<{ exists: boolean; existsUUID: string }> => {
-	return new Promise((resolve, reject) => {
-		const nameHashed = hashFn(name.toLowerCase())
-
-		db.get("apiKey")
-			.then(apiKey => {
-				apiRequest({
-					method: "POST",
-					endpoint: "/v1/file/exists",
-					data: {
-						apiKey,
-						parent,
-						nameHashed
-					}
-				})
-					.then((response: any) => {
-						if (!response.status) {
-							return reject(response.message)
-						}
-
-						return resolve({
-							exists: response.data.exists ? true : false,
-							existsUUID: response.data.uuid
-						})
-					})
-					.catch(reject)
-			})
-			.catch(reject)
+export const archiveFile = async ({ existsUUID, updateUUID }: { existsUUID: string; updateUUID: string }): Promise<any> => {
+	const apiKey = await db.get("apiKey")
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/file/archive",
+		data: {
+			apiKey,
+			uuid: existsUUID,
+			updateUUID
+		}
 	})
+
+	if (!response.status) {
+		throw new Error(response.message)
+	}
+
+	return response.data
 }
 
-export const folderExists = ({ name, parent }: { name: string; parent: string }): Promise<{ exists: boolean; existsUUID: string }> => {
-	return new Promise((resolve, reject) => {
-		const nameHashed = hashFn(name.toLowerCase())
-
-		db.get("apiKey")
-			.then(apiKey => {
-				apiRequest({
-					method: "POST",
-					endpoint: "/v1/dir/exists",
-					data: {
-						apiKey,
-						parent,
-						nameHashed
-					}
-				})
-					.then((response: any) => {
-						if (!response.status) {
-							return reject(response.message)
-						}
-
-						return resolve({
-							exists: response.data.exists ? true : false,
-							existsUUID: response.data.uuid
-						})
-					})
-					.catch(reject)
-			})
-			.catch(reject)
+export const isSharingFolder = async ({ uuid }: { uuid: string }): Promise<any> => {
+	const apiKey = await db.get("apiKey")
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/share/dir/status",
+		data: {
+			apiKey,
+			uuid
+		}
 	})
+
+	if (!response.status) {
+		throw new Error(response.message)
+	}
+
+	return {
+		sharing: response.data.sharing ? true : false,
+		users: response.data.users
+	}
 }
 
-export const archiveFile = ({ existsUUID, updateUUID }: { existsUUID: string; updateUUID: string }): Promise<any> => {
-	return new Promise((resolve, reject) => {
-		db.get("apiKey")
-			.then(apiKey => {
-				apiRequest({
-					method: "POST",
-					endpoint: "/v1/file/archive",
-					data: {
-						apiKey,
-						uuid: existsUUID,
-						updateUUID
-					}
-				})
-					.then((response: any) => {
-						if (!response.status) {
-							return reject(response.message)
-						}
-
-						return resolve(response.data)
-					})
-					.catch(reject)
-			})
-			.catch(reject)
+export const isPublicLinkingFolder = async ({ uuid }: { uuid: string }): Promise<any> => {
+	const apiKey = await db.get("apiKey")
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/link/dir/status",
+		data: {
+			apiKey,
+			uuid
+		}
 	})
+
+	if (!response.status) {
+		throw new Error(response.message)
+	}
+
+	return {
+		linking: response.data.link ? true : false,
+		links: response.data.links
+	}
 }
 
-export const isSharingFolder = ({ uuid }: { uuid: string }): Promise<any> => {
-	return new Promise((resolve, reject) => {
-		db.get("apiKey")
-			.then(apiKey => {
-				apiRequest({
-					method: "POST",
-					endpoint: "/v1/share/dir/status",
-					data: {
-						apiKey,
-						uuid
-					}
-				})
-					.then((response: any) => {
-						if (!response.status) {
-							return reject(response.message)
-						}
-
-						return resolve({
-							sharing: response.data.sharing ? true : false,
-							users: response.data.users
-						})
-					})
-					.catch(reject)
-			})
-			.catch(reject)
+export const addItemToPublicLink = async ({ data }: { data: any }): Promise<void> => {
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/dir/link/add",
+		data
 	})
+
+	if (!response.status) {
+		throw new Error(response.message)
+	}
 }
 
-export const isPublicLinkingFolder = ({ uuid }: { uuid: string }): Promise<any> => {
-	return new Promise((resolve, reject) => {
-		db.get("apiKey")
-			.then(apiKey => {
-				apiRequest({
-					method: "POST",
-					endpoint: "/v1/link/dir/status",
-					data: {
-						apiKey,
-						uuid
-					}
-				})
-					.then((response: any) => {
-						if (!response.status) {
-							return reject(response.message)
-						}
-
-						return resolve({
-							linking: response.data.link ? true : false,
-							links: response.data.links
-						})
-					})
-					.catch(reject)
-			})
-			.catch(reject)
+export const shareItem = async ({ data }: { data: any }): Promise<void> => {
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/share",
+		data
 	})
+
+	if (!response.status) {
+		throw new Error(response.message)
+	}
 }
 
-export const addItemToPublicLink = ({ data }: { data: any }): Promise<any> => {
-	return new Promise((resolve, reject) => {
-		apiRequest({
-			method: "POST",
-			endpoint: "/v1/dir/link/add",
-			data
-		})
-			.then(response => {
-				if (!response.status) {
-					return reject(response.message)
-				}
-
-				return resolve(true)
-			})
-			.catch(reject)
+export const isSharingItem = async ({ uuid }: { uuid: string }): Promise<any> => {
+	const apiKey = await db.get("apiKey")
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/user/shared/item/status",
+		data: {
+			apiKey,
+			uuid
+		}
 	})
+
+	if (!response.status) {
+		throw new Error(response.message)
+	}
+
+	return {
+		sharing: response.data.sharing ? true : false,
+		users: response.data.users
+	}
 }
 
-export const shareItem = ({ data }: { data: any }): Promise<any> => {
-	return new Promise((resolve, reject) => {
-		apiRequest({
-			method: "POST",
-			endpoint: "/v1/share",
-			data
-		})
-			.then(response => {
-				if (!response.status) {
-					return reject(response.message)
-				}
-
-				return resolve(true)
-			})
-			.catch(reject)
+export const isItemInPublicLink = async ({ uuid }: { uuid: string }): Promise<any> => {
+	const apiKey = await db.get("apiKey")
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/link/dir/item/status",
+		data: {
+			apiKey,
+			uuid
+		}
 	})
+
+	if (!response.status) {
+		throw new Error(response.message)
+	}
+
+	return {
+		linking: response.data.link ? true : false,
+		links: response.data.links
+	}
 }
 
-export const isSharingItem = ({ uuid }: { uuid: string }): Promise<any> => {
-	return new Promise((resolve, reject) => {
-		db.get("apiKey")
-			.then(apiKey => {
-				apiRequest({
-					method: "POST",
-					endpoint: "/v1/user/shared/item/status",
-					data: {
-						apiKey,
-						uuid
-					}
-				})
-					.then(response => {
-						if (!response.status) {
-							return reject(response.message)
-						}
-
-						return resolve({
-							sharing: response.data.sharing ? true : false,
-							users: response.data.users
-						})
-					})
-					.catch(reject)
-			})
-			.catch(reject)
+export const renameItemInPublicLink = async ({ data }: { data: any }): Promise<void> => {
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/link/dir/item/rename",
+		data
 	})
+
+	if (!response.status) {
+		throw new Error(response.message)
+	}
 }
 
-export const isItemInPublicLink = ({ uuid }: { uuid: string }): Promise<any> => {
-	return new Promise((resolve, reject) => {
-		db.get("apiKey")
-			.then(apiKey => {
-				apiRequest({
-					method: "POST",
-					endpoint: "/v1/link/dir/item/status",
-					data: {
-						apiKey,
-						uuid
-					}
-				})
-					.then(response => {
-						if (!response.status) {
-							return reject(response.message)
-						}
-
-						return resolve({
-							linking: response.data.link ? true : false,
-							links: response.data.links
-						})
-					})
-					.catch(reject)
-			})
-			.catch(reject)
+export const renameSharedItem = async ({ data }: { data: any }): Promise<void> => {
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/user/shared/item/rename",
+		data
 	})
+
+	if (!response.status) {
+		throw new Error(response.message)
+	}
 }
 
-export const renameItemInPublicLink = ({ data }: { data: any }): Promise<boolean> => {
-	return new Promise((resolve, reject) => {
-		apiRequest({
-			method: "POST",
-			endpoint: "/v1/link/dir/item/rename",
-			data
-		})
-			.then(response => {
-				if (!response.status) {
-					return reject(response.message)
-				}
-
-				return resolve(true)
-			})
-			.catch(reject)
+export const getFolderContents = async ({ uuid }: { uuid: string }): Promise<any> => {
+	const apiKey = await db.get("apiKey")
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/download/dir",
+		data: {
+			apiKey,
+			uuid
+		}
 	})
-}
 
-export const renameSharedItem = ({ data }: { data: any }): Promise<boolean> => {
-	return new Promise((resolve, reject) => {
-		apiRequest({
-			method: "POST",
-			endpoint: "/v1/user/shared/item/rename",
-			data
-		})
-			.then(response => {
-				if (!response.status) {
-					return reject(response.message)
-				}
+	if (!response.status) {
+		throw new Error(response.message)
+	}
 
-				return resolve(true)
-			})
-			.catch(reject)
-	})
-}
-
-export const getFolderContents = ({ uuid }: { uuid: string }): Promise<any> => {
-	return new Promise((resolve, reject) => {
-		db.get("apiKey")
-			.then(apiKey => {
-				apiRequest({
-					method: "POST",
-					endpoint: "/v1/download/dir",
-					data: {
-						apiKey,
-						uuid
-					}
-				})
-					.then(response => {
-						if (!response.status) {
-							return reject(response.message)
-						}
-
-						return resolve(response.data)
-					})
-					.catch(reject)
-			})
-			.catch(reject)
-	})
+	return response.data
 }
 
 export const checkIfItemParentIsShared = ({ type, parent, metaData }: { type: string; parent: string; metaData: any }): Promise<any> => {
@@ -1975,407 +1770,311 @@ export const downloadChunk = ({
 	})
 }
 
-export const trashItem = ({ type, uuid }: { type: string; uuid: string }): Promise<boolean> => {
-	return new Promise((resolve, reject) => {
-		db.get("apiKey")
-			.then(apiKey => {
-				apiRequest({
-					method: "POST",
-					endpoint: type == "folder" ? "/v1/dir/trash" : "/v1/file/trash",
-					data: {
+export const trashItem = async ({ type, uuid }: { type: string; uuid: string }): Promise<void> => {
+	const apiKey = await db.get("apiKey")
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: type == "folder" ? "/v1/dir/trash" : "/v1/file/trash",
+		data: {
+			apiKey,
+			uuid
+		}
+	})
+
+	if (!response.status) {
+		if (
+			response.message.toString().toLowerCase().indexOf("already") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("does not exist") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("you cannot move this file to the trash") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("you cannot move this folder to the trash") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("folder not found") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("file not found") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("belong") !== -1 ||
+			(response.message.toString().toLowerCase().indexOf("not found") !== -1 &&
+				response.message.toString().toLowerCase().indexOf("api") == -1)
+		) {
+			return
+		}
+
+		throw new Error(response.message)
+	}
+}
+
+export const moveFile = async ({ file, parent }: { file: any; parent: string }): Promise<void> => {
+	const apiKey = await db.get("apiKey")
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/file/move",
+		data: {
+			apiKey,
+			fileUUID: file.uuid,
+			folderUUID: parent
+		}
+	})
+
+	if (!response.status) {
+		if (
+			response.message.toString().toLowerCase().indexOf("already") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("does not exist") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("file not found") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("belong") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("trash") !== -1 ||
+			(response.message.toString().toLowerCase().indexOf("not found") !== -1 &&
+				response.message.toString().toLowerCase().indexOf("api") == -1)
+		) {
+			return
+		}
+
+		throw new Error(response.message)
+	}
+
+	await checkIfItemParentIsShared({
+		type: "file",
+		parent,
+		metaData: {
+			uuid: file.uuid,
+			name: file.name,
+			size: file.size,
+			mime: file.mime,
+			key: file.key,
+			lastModified: file.lastModified
+		}
+	})
+}
+
+export const moveFolder = async ({ folder, parent }: { folder: any; parent: string }): Promise<void> => {
+	const apiKey = await db.get("apiKey")
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/dir/move",
+		data: {
+			apiKey,
+			uuid: folder.uuid,
+			folderUUID: parent
+		}
+	})
+
+	if (!response.status) {
+		if (
+			response.message.toString().toLowerCase().indexOf("already") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("does not exist") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("not found") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("folder not found") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("trash") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("belong") !== -1
+		) {
+			return
+		}
+
+		throw new Error(response.message)
+	}
+
+	await checkIfItemParentIsShared({
+		type: "folder",
+		parent,
+		metaData: {
+			name: folder.name,
+			uuid: folder.uuid
+		}
+	})
+}
+
+export const renameFile = async ({ file, name }: { file: any; name: string }): Promise<void> => {
+	const nameHashed = hashFn(name.toLowerCase())
+	const [apiKey, masterKeys] = await Promise.all([db.get("apiKey"), db.get("masterKeys")])
+	const [encrypted, encryptedName] = await Promise.all([
+		encryptMetadata(
+			JSON.stringify({
+				name,
+				size: file.size,
+				mime: file.mime,
+				key: file.key,
+				lastModified: file.lastModified
+			}),
+			masterKeys[masterKeys.length - 1]
+		),
+		encryptMetadata(name, file.key)
+	])
+
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/file/rename",
+		data: {
+			apiKey,
+			uuid: file.uuid,
+			name: encryptedName,
+			nameHashed,
+			metaData: encrypted
+		}
+	})
+
+	if (!response.status) {
+		if (
+			response.message.toString().toLowerCase().indexOf("already") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("does not exist") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("file not found") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("belong") !== -1 ||
+			(response.message.toString().toLowerCase().indexOf("not found") !== -1 &&
+				response.message.toString().toLowerCase().indexOf("api") == -1)
+		) {
+			return
+		}
+
+		throw new Error(response.message)
+	}
+
+	await checkIfItemIsSharedForRename({
+		type: "file",
+		uuid: file.uuid,
+		metaData: {
+			name,
+			size: file.size,
+			mime: file.mime,
+			key: file.key,
+			lastModified: file.lastModified
+		}
+	})
+}
+
+export const renameFolder = async ({ folder, name }: { folder: any; name: string }): Promise<void> => {
+	const nameHashed = hashFn(name.toLowerCase())
+	const [apiKey, masterKeys] = await Promise.all([db.get("apiKey"), db.get("masterKeys")])
+	const encrypted = await encryptMetadata(JSON.stringify({ name }), masterKeys[masterKeys.length - 1])
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v1/dir/rename",
+		data: {
+			apiKey,
+			uuid: folder.uuid,
+			name: encrypted,
+			nameHashed
+		}
+	})
+
+	if (!response.status) {
+		if (
+			response.message.toString().toLowerCase().indexOf("already") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("does not exist") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("folder not found") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("belong") !== -1 ||
+			(response.message.toString().toLowerCase().indexOf("not found") !== -1 &&
+				response.message.toString().toLowerCase().indexOf("api") == -1)
+		) {
+			return
+		}
+
+		throw new Error(response.message)
+	}
+
+	await checkIfItemIsSharedForRename({
+		type: "folder",
+		uuid: folder.uuid,
+		metaData: {
+			name
+		}
+	})
+}
+
+export const itemPublicLinkInfo = async (uuid: string, type: "folder" | "file"): Promise<any> => {
+	const apiKey = await db.get("apiKey")
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: type == "file" ? "/v1/link/status" : "/v1/dir/link/status",
+		data:
+			type == "file"
+				? {
 						apiKey,
-						uuid
-					}
-				})
-					.then(response => {
-						if (!response.status) {
-							if (
-								response.message.toString().toLowerCase().indexOf("already") !== -1 ||
-								response.message.toString().toLowerCase().indexOf("does not exist") !== -1 ||
-								response.message.toString().toLowerCase().indexOf("you cannot move this file to the trash") !== -1 ||
-								response.message.toString().toLowerCase().indexOf("you cannot move this folder to the trash") !== -1 ||
-								response.message.toString().toLowerCase().indexOf("folder not found") !== -1 ||
-								response.message.toString().toLowerCase().indexOf("file not found") !== -1 ||
-								response.message.toString().toLowerCase().indexOf("belong") !== -1 ||
-								(response.message.toString().toLowerCase().indexOf("not found") !== -1 &&
-									response.message.toString().toLowerCase().indexOf("api") == -1)
-							) {
-								return resolve(true)
-							}
-
-							return reject(response.message)
-						}
-
-						return resolve(true)
-					})
-					.catch(reject)
-			})
-			.catch(reject)
-	})
-}
-
-export const moveFile = ({ file, parent }: { file: any; parent: string }): Promise<boolean> => {
-	return new Promise((resolve, reject) => {
-		db.get("apiKey")
-			.then(apiKey => {
-				apiRequest({
-					method: "POST",
-					endpoint: "/v1/file/move",
-					data: {
+						fileUUID: uuid
+				  }
+				: {
 						apiKey,
-						fileUUID: file.uuid,
-						folderUUID: parent
-					}
-				})
-					.then(response => {
-						if (!response.status) {
-							if (
-								response.message.toString().toLowerCase().indexOf("already") !== -1 ||
-								response.message.toString().toLowerCase().indexOf("does not exist") !== -1 ||
-								response.message.toString().toLowerCase().indexOf("file not found") !== -1 ||
-								response.message.toString().toLowerCase().indexOf("belong") !== -1 ||
-								response.message.toString().toLowerCase().indexOf("trash") !== -1 ||
-								(response.message.toString().toLowerCase().indexOf("not found") !== -1 &&
-									response.message.toString().toLowerCase().indexOf("api") == -1)
-							) {
-								return resolve(true)
-							}
-
-							return reject(response.message)
-						}
-
-						checkIfItemParentIsShared({
-							type: "file",
-							parent,
-							metaData: {
-								uuid: file.uuid,
-								name: file.name,
-								size: file.size,
-								mime: file.mime,
-								key: file.key,
-								lastModified: file.lastModified
-							}
-						})
-							.then(() => {
-								return resolve(true)
-							})
-							.catch(reject)
-					})
-					.catch(reject)
-			})
-			.catch(reject)
+						uuid: uuid
+				  }
 	})
+
+	if (!response.status) {
+		throw new Error(response.message)
+	}
+
+	return response.data
 }
 
-export const moveFolder = ({ folder, parent }: { folder: any; parent: string }): Promise<boolean> => {
-	return new Promise((resolve, reject) => {
-		db.get("apiKey")
-			.then(apiKey => {
-				apiRequest({
-					method: "POST",
-					endpoint: "/v1/dir/move",
-					data: {
-						apiKey,
-						uuid: folder.uuid,
-						folderUUID: parent
-					}
-				})
-					.then(response => {
-						if (!response.status) {
-							if (
-								response.message.toString().toLowerCase().indexOf("already") !== -1 ||
-								response.message.toString().toLowerCase().indexOf("does not exist") !== -1 ||
-								response.message.toString().toLowerCase().indexOf("not found") !== -1 ||
-								response.message.toString().toLowerCase().indexOf("folder not found") !== -1 ||
-								response.message.toString().toLowerCase().indexOf("trash") !== -1 ||
-								response.message.toString().toLowerCase().indexOf("belong") !== -1
-							) {
-								return resolve(true)
-							}
-
-							return reject(response.message)
-						}
-
-						checkIfItemParentIsShared({
-							type: "folder",
-							parent,
-							metaData: {
-								name: folder.name,
-								uuid: folder.uuid
-							}
-						})
-							.then(() => {
-								return resolve(true)
-							})
-							.catch(reject)
-					})
-					.catch(reject)
-			})
-			.catch(reject)
-	})
-}
-
-export const renameFile = ({ file, name }: { file: any; name: string }): Promise<boolean> => {
-	return new Promise((resolve, reject) => {
-		const nameHashed = hashFn(name.toLowerCase())
-
-		Promise.all([db.get("apiKey"), db.get("masterKeys")])
-			.then(([apiKey, masterKeys]) => {
-				Promise.all([
-					encryptMetadata(
-						JSON.stringify({
-							name,
-							size: file.size,
-							mime: file.mime,
-							key: file.key,
-							lastModified: file.lastModified
-						}),
-						masterKeys[masterKeys.length - 1]
-					),
-					encryptMetadata(name, file.key)
-				])
-					.then(([encrypted, encryptedName]) => {
-						apiRequest({
-							method: "POST",
-							endpoint: "/v1/file/rename",
-							data: {
-								apiKey,
-								uuid: file.uuid,
-								name: encryptedName,
-								nameHashed,
-								metaData: encrypted
-							}
-						})
-							.then(response => {
-								if (!response.status) {
-									if (
-										response.message.toString().toLowerCase().indexOf("already") !== -1 ||
-										response.message.toString().toLowerCase().indexOf("does not exist") !== -1 ||
-										response.message.toString().toLowerCase().indexOf("file not found") !== -1 ||
-										response.message.toString().toLowerCase().indexOf("belong") !== -1 ||
-										(response.message.toString().toLowerCase().indexOf("not found") !== -1 &&
-											response.message.toString().toLowerCase().indexOf("api") == -1)
-									) {
-										return resolve(true)
-									}
-
-									return reject(response.message)
-								}
-
-								checkIfItemIsSharedForRename({
-									type: "file",
-									uuid: file.uuid,
-									metaData: {
-										name,
-										size: file.size,
-										mime: file.mime,
-										key: file.key,
-										lastModified: file.lastModified
-									}
-								})
-									.then(() => {
-										return resolve(true)
-									})
-									.catch(reject)
-							})
-							.catch(reject)
-					})
-					.catch(reject)
-			})
-			.catch(reject)
-	})
-}
-
-export const renameFolder = ({ folder, name }: { folder: any; name: string }): Promise<boolean> => {
-	return new Promise((resolve, reject) => {
-		const nameHashed = hashFn(name.toLowerCase())
-
-		Promise.all([db.get("apiKey"), db.get("masterKeys")])
-			.then(([apiKey, masterKeys]) => {
-				encryptMetadata(JSON.stringify({ name }), masterKeys[masterKeys.length - 1])
-					.then(encrypted => {
-						apiRequest({
-							method: "POST",
-							endpoint: "/v1/dir/rename",
-							data: {
-								apiKey,
-								uuid: folder.uuid,
-								name: encrypted,
-								nameHashed
-							}
-						})
-							.then(response => {
-								if (!response.status) {
-									if (
-										response.message.toString().toLowerCase().indexOf("already") !== -1 ||
-										response.message.toString().toLowerCase().indexOf("does not exist") !== -1 ||
-										response.message.toString().toLowerCase().indexOf("folder not found") !== -1 ||
-										response.message.toString().toLowerCase().indexOf("belong") !== -1 ||
-										(response.message.toString().toLowerCase().indexOf("not found") !== -1 &&
-											response.message.toString().toLowerCase().indexOf("api") == -1)
-									) {
-										return resolve(true)
-									}
-
-									return reject(response.message)
-								}
-
-								checkIfItemIsSharedForRename({
-									type: "folder",
-									uuid: folder.uuid,
-									metaData: {
-										name
-									}
-								})
-									.then(() => {
-										return resolve(true)
-									})
-									.catch(reject)
-							})
-							.catch(reject)
-					})
-					.catch(reject)
-			})
-			.catch(reject)
-	})
-}
-
-export const itemPublicLinkInfo = (uuid: string, type: "folder" | "file"): Promise<any> => {
-	return new Promise((resolve, reject) => {
-		db.get("apiKey")
-			.then(apiKey => {
-				apiRequest({
-					method: "POST",
-					endpoint: type == "file" ? "/v1/link/status" : "/v1/dir/link/status",
-					data:
-						type == "file"
-							? {
-									apiKey,
-									fileUUID: uuid
-							  }
-							: {
-									apiKey,
-									uuid: uuid
-							  }
-				})
-					.then(response => {
-						if (!response.status) {
-							return reject(response.message)
-						}
-
-						return resolve(response.data)
-					})
-					.catch(reject)
-			})
-			.catch(reject)
-	})
-}
-
-export const enableItemPublicLink = (
+export const enableItemPublicLink = async (
 	uuid: string,
 	type: "folder" | "file",
 	progressCallback?: (current: number, total: number) => any
-): Promise<boolean> => {
-	return new Promise((resolve, reject) => {
-		db.get("apiKey")
-			.then(async apiKey => {
-				if (type == "file") {
-					const linkUUID: string = uuidv4()
+): Promise<void> => {
+	const apiKey = await db.get("apiKey")
 
-					apiRequest({
-						method: "POST",
-						endpoint: "/v1/link/edit",
-						data: {
-							apiKey,
-							uuid: linkUUID,
-							fileUUID: uuid,
-							expiration: "never",
-							password: "empty",
-							passwordHashed: hashFn("empty"),
-							salt: generateRandomString(32),
-							downloadBtn: "enable",
-							type: "enable"
-						}
-					})
-						.then(response => {
-							if (typeof progressCallback == "function") {
-								progressCallback(1, 1)
-							}
+	if (type == "folder") {
+		throw new Error("Not implemented")
+	} else {
+		const linkUUID = uuidv4()
+		const response = await apiRequest({
+			method: "POST",
+			endpoint: "/v1/link/edit",
+			data: {
+				apiKey,
+				uuid: linkUUID,
+				fileUUID: uuid,
+				expiration: "never",
+				password: "empty",
+				passwordHashed: hashFn("empty"),
+				salt: generateRandomString(32),
+				downloadBtn: "enable",
+				type: "enable"
+			}
+		})
 
-							if (!response.status) {
-								return reject(response.message)
-							}
+		if (typeof progressCallback == "function") {
+			progressCallback(1, 1)
+		}
 
-							return resolve(true)
-						})
-						.catch(reject)
-				} else {
-					//createFolderPublicLink(item, progressCallback).then(() => {
-					//    return resolve(true)
-					//}).catch(reject)
-
-					return reject(new Error("not implemented"))
-				}
-			})
-			.catch(reject)
-	})
+		if (!response.status) {
+			throw new Error(response.message)
+		}
+	}
 }
 
-export const disableItemPublicLink = (uuid: string, type: "folder" | "file", linkUUID: string): Promise<boolean> => {
-	return new Promise((resolve, reject) => {
-		db.get("apiKey")
-			.then(async apiKey => {
-				if (type == "file") {
-					if (typeof linkUUID !== "string") {
-						return reject(new Error("Invalid linkUUID"))
-					}
+export const disableItemPublicLink = async (uuid: string, type: "folder" | "file", linkUUID: string): Promise<void> => {
+	const apiKey = await db.get("apiKey")
 
-					if (linkUUID.length < 32) {
-						return reject(new Error("Invalid linkUUID"))
-					}
+	if (type == "file") {
+		if (linkUUID.length < 32) {
+			throw new Error("Invalid linkUUID")
+		}
 
-					apiRequest({
-						method: "POST",
-						endpoint: "/v1/link/edit",
-						data: {
-							apiKey,
-							uuid: linkUUID,
-							fileUUID: uuid,
-							expiration: "never",
-							password: "empty",
-							passwordHashed: hashFn("empty"),
-							salt: generateRandomString(32),
-							downloadBtn: "enable",
-							type: "disable"
-						}
-					})
-						.then(response => {
-							if (!response.status) {
-								return reject(response.message)
-							}
+		const response = await apiRequest({
+			method: "POST",
+			endpoint: "/v1/link/edit",
+			data: {
+				apiKey,
+				uuid: linkUUID,
+				fileUUID: uuid,
+				expiration: "never",
+				password: "empty",
+				passwordHashed: hashFn("empty"),
+				salt: generateRandomString(32),
+				downloadBtn: "enable",
+				type: "disable"
+			}
+		})
 
-							return resolve(true)
-						})
-						.catch(reject)
-				} else {
-					apiRequest({
-						method: "POST",
-						endpoint: "/v1/dir/link/remove",
-						data: {
-							apiKey,
-							uuid
-						}
-					})
-						.then(response => {
-							if (!response.status) {
-								return reject(response.message)
-							}
+		if (!response.status) {
+			throw new Error(response.message)
+		}
+	} else {
+		const response = await apiRequest({
+			method: "POST",
+			endpoint: "/v1/dir/link/remove",
+			data: {
+				apiKey,
+				uuid
+			}
+		})
 
-							return resolve(true)
-						})
-						.catch(reject)
-				}
-			})
-			.catch(reject)
-	})
+		if (!response.status) {
+			throw new Error(response.message)
+		}
+	}
 }

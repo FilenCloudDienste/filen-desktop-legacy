@@ -12,18 +12,14 @@ export const get = (key: string): any => {
 	return null
 }
 
-export const set = (key: string, value: any): boolean => {
+export const set = (key: string, value: any): void => {
 	cacheMap.set(key, value)
-
-	return true
 }
 
-export const del = (key: string): boolean => {
+export const del = (key: string): void => {
 	if (cacheMap.has(key)) {
 		cacheMap.delete(key)
 	}
-
-	return true
 }
 
 export const cache = cacheMap

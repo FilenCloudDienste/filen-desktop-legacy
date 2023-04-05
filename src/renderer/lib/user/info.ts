@@ -58,6 +58,6 @@ export const remoteStorageLeft = async (): Promise<number> => {
 	} catch (e) {
 		console.error(e)
 
-		return Number.MAX_SAFE_INTEGER
+		return 0
 	}
 }
