@@ -10,11 +10,10 @@ import {
 import striptags from "striptags"
 import { RemoteFileMetadata } from "../../../types"
 
-const CryptoJS = window.require("crypto-js")
+const CryptoJS = window.require("crypto-js") //old & deprecated, not in use anymore, just here for backwards compatibility
 const md2 = window.require("js-md2")
-const md4 = window.require("js-md4")
-const md5 = window.require("js-md5")
 const log = window.require("electron-log")
+const crypto = window.require("crypto")
 
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
@@ -30,20 +29,31 @@ export const bufferToHash = async (
 	return hashHex
 }
 
-const sha1 = async (input: string): Promise<string> => {
-	return await bufferToHash(textEncoder.encode(input), "SHA-1")
+const sha1 = (input: string): string => {
+	//old & deprecated, not in use anymore, just here for backwards compatibility
+	return crypto.createHash("sha1").update(Buffer.from(input, "utf8")).digest("hex")
 }
 
-const sha256 = async (input: string): Promise<string> => {
-	return await bufferToHash(textEncoder.encode(input), "SHA-256")
+const sha256 = (input: string): string => {
+	return crypto.createHash("sha256").update(Buffer.from(input, "utf8")).digest("hex")
 }
 
-const sha384 = async (input: string): Promise<string> => {
-	return await bufferToHash(textEncoder.encode(input), "SHA-384")
+const sha384 = (input: string): string => {
+	return crypto.createHash("sha384").update(Buffer.from(input, "utf8")).digest("hex")
 }
 
-const sha512 = async (input: string): Promise<string> => {
-	return await bufferToHash(textEncoder.encode(input), "SHA-512")
+const sha512 = (input: string): string => {
+	return crypto.createHash("sha512").update(Buffer.from(input, "utf8")).digest("hex")
+}
+
+const md5 = (input: string): string => {
+	//old & deprecated, not in use anymore, just here for backwards compatibility
+	return crypto.createHash("md5").update(Buffer.from(input, "utf8")).digest("hex")
+}
+
+const md4 = (input: string): string => {
+	//old & deprecated, not in use anymore, just here for backwards compatibility
+	return crypto.createHash("md4").update(Buffer.from(input, "utf8")).digest("hex")
 }
 
 export const deriveKeyFromPassword = async ({
@@ -110,8 +120,8 @@ export const generatePasswordAndMasterKeysBasedOnAuthVersion = async ({
 
 	if (authVersion == 1) {
 		//old & deprecated, not in use anymore, just here for backwards compatibility
-		derivedPassword = await hashPassword(rawPassword)
-		derivedMasterKeys = await hashFn(rawPassword)
+		derivedPassword = hashPassword(rawPassword)
+		derivedMasterKeys = hashFn(rawPassword)
 	} else if (authVersion == 2) {
 		const derivedKey = (await deriveKeyFromPassword({
 			password: rawPassword,
@@ -124,7 +134,7 @@ export const generatePasswordAndMasterKeysBasedOnAuthVersion = async ({
 
 		derivedMasterKeys = derivedKey.substring(0, derivedKey.length / 2)
 		derivedPassword = derivedKey.substring(derivedKey.length / 2, derivedKey.length)
-		derivedPassword = await sha512(derivedPassword)
+		derivedPassword = sha512(derivedPassword)
 	} else {
 		throw new Error("Invalid auth version")
 	}
@@ -135,13 +145,13 @@ export const generatePasswordAndMasterKeysBasedOnAuthVersion = async ({
 	}
 }
 
-export const hashPassword = async (password: string): Promise<string> => {
+export const hashPassword = (password: string): string => {
 	//old & deprecated, not in use anymore, just here for backwards compatibility
-	return (await sha512(await sha384(await sha256(await sha1(password))))) + (await sha512(md5(md4(md2(password)))))
+	return sha512(sha384(sha256(sha1(password)))) + sha512(md5(md4(md2(password))))
 }
 
-export const hashFn = async (input: string): Promise<string> => {
-	return await sha1(await sha512(input))
+export const hashFn = (input: string): string => {
+	return sha1(sha512(input))
 }
 
 export const decryptMetadata = async (data: string, key: any): Promise<string> => {

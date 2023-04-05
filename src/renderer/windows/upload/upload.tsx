@@ -64,7 +64,7 @@ const uploadFile = (path: string, parent: string): Promise<boolean> => {
 		try {
 			var absolutePath = pathModule.normalize(path)
 			var name = pathModule.basename(absolutePath)
-			var nameHashed = await hashFn(name.toLowerCase())
+			var nameHashed = hashFn(name.toLowerCase())
 		} catch (e) {
 			return reject(e)
 		}

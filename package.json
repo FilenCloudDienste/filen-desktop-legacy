@@ -29,8 +29,6 @@
 		"fs-extra": "10.1.0",
 		"js-base64": "3.7.2",
 		"js-md2": "0.2.2",
-		"js-md4": "0.3.2",
-		"js-md5": "0.7.3",
 		"lodash": "4.17.21",
 		"mime-types": "2.1.35",
 		"node-watch": "github:FilenCloudDienste/node-watch-fs-extra",
