@@ -349,12 +349,20 @@ export const Semaphore = function (this: SemaphoreInterface, max: number) {
 } as any as { new (max: number): SemaphoreInterface }
 
 export const convertTimestampToMs = (timestamp: number): number => {
-	const date = new Date(timestamp * 1000)
+	timestamp = Math.floor(timestamp)
 
-	if (date.getFullYear() > 2100) {
-		return Math.floor(timestamp)
-	} else {
-		return Math.floor(timestamp * 1000)
+	if (Math.abs(Date.now() - timestamp) < Math.abs(Date.now() - timestamp * 1000)) {
+		return timestamp
+	}
+
+	return timestamp * 1000
+}
+
+export const simpleDate = (timestamp: number): string => {
+	try {
+		return new Date(convertTimestampToMs(timestamp)).toString().split(" ").slice(0, 5).join(" ")
+	} catch (e) {
+		return new Date().toString().split(" ").slice(0, 5).join(" ")
 	}
 }
 
@@ -564,41 +572,43 @@ export function getTimeRemaining(endtime: number) {
 
 export const isOnline = () => window.navigator.onLine
 
-export function timeSince(ts: number, lang: string = "en") {
-	const date = new Date(ts)
-	// @ts-ignore
-	var seconds = Math.floor((new Date() - date) / 1000)
+export function timeSince(timestamp: number, lang: string = "en") {
+	timestamp = convertTimestampToMs(timestamp)
+
+	const date = new Date(timestamp)
+	var seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000)
+
 	var interval = seconds / 31536000
 
 	if (interval > 1) {
-		return i18n(lang, "timeSinceYears", true, ["__TIME__"], [Math.floor(interval).toString()])
+		return i18n(lang, "timeSinceYears", true, ["__TIME__"], [interval.toFixed(0)])
 	}
 
 	interval = seconds / 2592000
 
 	if (interval > 1) {
-		return i18n(lang, "timeSinceMonths", true, ["__TIME__"], [Math.floor(interval).toString()])
+		return i18n(lang, "timeSinceMonths", true, ["__TIME__"], [interval.toFixed(0)])
 	}
 
 	interval = seconds / 86400
 
 	if (interval > 1) {
-		return i18n(lang, "timeSinceDays", true, ["__TIME__"], [Math.floor(interval).toString()])
+		return i18n(lang, "timeSinceDays", true, ["__TIME__"], [interval.toFixed(0)])
 	}
 
 	interval = seconds / 3600
 
 	if (interval > 1) {
-		return i18n(lang, "timeSinceHours", true, ["__TIME__"], [Math.floor(interval).toString()])
+		return i18n(lang, "timeSinceHours", true, ["__TIME__"], [interval.toFixed(0)])
 	}
 
 	interval = seconds / 60
 
 	if (interval > 1) {
-		return i18n(lang, "timeSinceMinutes", true, ["__TIME__"], [Math.floor(interval).toString()])
+		return i18n(lang, "timeSinceMinutes", true, ["__TIME__"], [interval.toFixed(0)])
 	}
 
-	return i18n(lang, "timeSinceSeconds", true, ["__TIME__"], [Math.floor(interval).toString()])
+	return i18n(lang, "timeSinceSeconds", true, ["__TIME__"], [seconds.toFixed(0)])
 }
 
 export const copyToClipboard = async (text: string) => {
