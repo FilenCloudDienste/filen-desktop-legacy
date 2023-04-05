@@ -12,7 +12,6 @@ import MainList from "../../components/MainList"
 import MainHeader from "../../components/MainHeader"
 import { throttle, debounce } from "lodash"
 import constants from "../../../constants.json"
-import UpdateModal from "../../components/UpdateModal"
 import MaxStorageModal from "../../components/MaxStorageModal"
 import useIsOnline from "../../lib/hooks/useIsOnline"
 import { calcSpeed, calcTimeLeft } from "../../lib/helpers"
@@ -467,11 +466,6 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number; email: s
 				checkingChanges={checkingChanges}
 			/>
 			<IsOnlineBottomToast lang={lang} />
-			<UpdateModal
-				platform={platform}
-				darkMode={darkMode}
-				lang={lang}
-			/>
 			<MaxStorageModal
 				platform={platform}
 				darkMode={darkMode}

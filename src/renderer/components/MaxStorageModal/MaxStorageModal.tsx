@@ -13,11 +13,7 @@ const MaxStorageModal = memo(({ lang, darkMode, platform }: { lang: string; dark
 	const maxStorageReached: boolean = useDb("maxStorageReached", false)
 
 	useEffect(() => {
-		if (maxStorageReached) {
-			setShowModal(true)
-		} else {
-			setShowModal(false)
-		}
+		setShowModal(maxStorageReached)
 	}, [maxStorageReached])
 
 	return (

@@ -68,11 +68,7 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
 	const itemIconCacheKey: string = useRef("fileIconExt:" + itemExt).current
 	const [hovering, setHovering] = useState<boolean>(false)
 	const [itemIcon, setItemIcon] = useState<any>(
-		task.task.type == "folder"
-			? "folder"
-			: memoryCache.has(itemIconCacheKey)
-			? memoryCache.get(itemIconCacheKey)
-			: undefined
+		task.task.type == "folder" ? "folder" : memoryCache.has(itemIconCacheKey) ? memoryCache.get(itemIconCacheKey) : undefined
 	)
 	const [creatingPublicLink, setCreatingPublicLink] = useState<boolean>(false)
 	const [canCreatePublicLink, setCanCreatePublicLink] = useState<boolean>(true)
@@ -82,11 +78,7 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
 	const didCheckIfCanCreatePublicLinkOnHover = useRef<boolean>(false)
 
 	const getFileIcon = useCallback(() => {
-		if (
-			task.task.type == "file" &&
-			typeof task.location !== "undefined" &&
-			typeof task.location.local !== "undefined"
-		) {
+		if (task.task.type == "file" && typeof task.location !== "undefined" && typeof task.location.local !== "undefined") {
 			if (memoryCache.has(itemIconCacheKey)) {
 				setItemIcon(memoryCache.get(itemIconCacheKey))
 			} else {
@@ -106,12 +98,7 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
 	}, [task])
 
 	const fetchPublicLinkInfo = useCallback(
-		(
-			uuid: string,
-			type: "folder" | "file",
-			waitUntilEnabled: boolean = false,
-			waitUntilDisabled: boolean = false
-		): Promise<any> => {
+		(uuid: string, type: "folder" | "file", waitUntilEnabled: boolean = false, waitUntilDisabled: boolean = false): Promise<any> => {
 			return new Promise((resolve, reject) => {
 				const req = () => {
 					itemPublicLinkInfo(uuid, type)
@@ -342,7 +329,14 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
 				flexDirection="row"
 			>
 				<Flex width="14%">
-					{memoryCache.has(itemIconCacheKey) ? (
+					{itemIcon == "folder" ? (
+						<Flex>
+							<BsFillFolderFill
+								size={25}
+								color={platform == "mac" ? "#3ea0d5" : "#ffd04c"}
+							/>
+						</Flex>
+					) : memoryCache.has(itemIconCacheKey) ? (
 						<Flex>
 							<Image
 								src={memoryCache.get(itemIconCacheKey)}
@@ -351,22 +345,13 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
 							/>
 						</Flex>
 					) : typeof itemIcon == "string" ? (
-						itemIcon == "folder" ? (
-							<Flex>
-								<BsFillFolderFill
-									size={25}
-									color={platform == "mac" ? "#3ea0d5" : "#ffd04c"}
-								/>
-							</Flex>
-						) : (
-							<Flex>
-								<Image
-									src={itemIcon}
-									width="24px"
-									height="24px"
-								/>
-							</Flex>
-						)
+						<Flex>
+							<Image
+								src={itemIcon}
+								width="24px"
+								height="24px"
+							/>
+						</Flex>
 					) : itemIcon == null ? (
 						<Flex>
 							{task.task.type == "folder" ? (
@@ -455,9 +440,7 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
 							</>
 						) : (
 							<>
-								{hovering &&
-								typeof task.task.path == "string" &&
-								typeof task.realtime == "undefined" ? (
+								{hovering && typeof task.task.path == "string" && typeof task.realtime == "undefined" ? (
 									<Text
 										noOfLines={1}
 										wordBreak="break-all"
@@ -608,10 +591,7 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
 														shell
 															.openPath(
 																pathModule.normalize(
-																	pathModule.join(
-																		task.location.local,
-																		".filen.trash.local"
-																	)
+																	pathModule.join(task.location.local, ".filen.trash.local")
 																)
 															)
 															.catch(log.error)
@@ -620,9 +600,7 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
 											} else {
 												try {
 													shell.showItemInFolder(
-														pathModule.normalize(
-															pathModule.join(task.location.local, task.task.path)
-														)
+														pathModule.normalize(pathModule.join(task.location.local, task.task.path))
 													)
 												} catch (e) {
 													log.error(e)
