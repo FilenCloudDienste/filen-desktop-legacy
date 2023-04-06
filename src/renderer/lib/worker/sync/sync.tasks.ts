@@ -1409,34 +1409,27 @@ export const consumeTasks = async ({
 									})
 
 									const isPresent = new Promise<boolean>((resolve, reject) => {
-										db.get("apiKey")
-											.then(apiKey => {
-												if (task.type == "folder") {
-													folderPresent({
-														apiKey,
-														uuid: task.item.uuid
-													})
-														.then(present => {
-															if (!present.present || present.trash) {
-																return resolve(false)
-															}
+										if (task.type == "folder") {
+											folderPresent(task.item.uuid)
+												.then(present => {
+													if (!present.present || present.trash) {
+														return resolve(false)
+													}
 
-															return resolve(true)
-														})
-														.catch(reject)
-												} else {
-													filePresent(task.item.uuid)
-														.then(present => {
-															if (!present.present || present.versioned || present.trash) {
-																return resolve(false)
-															}
+													return resolve(true)
+												})
+												.catch(reject)
+										} else {
+											filePresent(task.item.uuid)
+												.then(present => {
+													if (!present.present || present.versioned || present.trash) {
+														return resolve(false)
+													}
 
-															return resolve(true)
-														})
-														.catch(reject)
-												}
-											})
-											.catch(reject)
+													return resolve(true)
+												})
+												.catch(reject)
+										}
 									})
 
 									isPresent

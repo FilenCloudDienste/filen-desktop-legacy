@@ -188,7 +188,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 				masterKeys = []
 			}
 
-			const response: any = await folderContent({ apiKey: await db.get("apiKey"), uuid })
+			const response: any = await folderContent(uuid)
 
 			const folders: any[] = []
 			const files: any[] = []
@@ -281,7 +281,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 			try {
 				await updateKeys()
 
-				const response = await baseFolders({ apiKey: await db.get("apiKey") })
+				const response = await baseFolders()
 
 				for (let i = 0; i < response.folders.length; i++) {
 					const folder = response.folders[i]

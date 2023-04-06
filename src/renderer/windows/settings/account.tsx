@@ -52,13 +52,9 @@ const SettingsWindowAccount = memo(
 		const [userInfo, setUserInfo] = useState<any>(undefined)
 
 		useEffect(() => {
-			db.get("apiKey")
-				.then(apiKey => {
-					getUserInfo({ apiKey })
-						.then(info => {
-							setUserInfo(info)
-						})
-						.catch(log.error)
+			getUserInfo()
+				.then(info => {
+					setUserInfo(info)
 				})
 				.catch(log.error)
 		}, [])

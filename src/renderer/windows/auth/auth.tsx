@@ -143,7 +143,7 @@ const AuthWindow = memo(({ windowId }: { windowId: string }) => {
 		}
 
 		try {
-			var userInfoResponse: any = await userInfo({ apiKey: loginResponse.apiKey })
+			var userInfoResponse: any = await userInfo(loginResponse.apiKey)
 		} catch (e: any) {
 			log.error("Could not get user info for " + emailToSend)
 			log.error(e)

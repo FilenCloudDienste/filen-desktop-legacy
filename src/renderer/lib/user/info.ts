@@ -1,6 +1,5 @@
 import { userInfo } from "../api"
 import memoryCache from "../memoryCache"
-import db from "../db"
 import { Semaphore } from "../helpers"
 
 export interface UserInfoV1 {
@@ -26,8 +25,7 @@ export const fetchUserInfo = async (): Promise<UserInfoV1> => {
 			}
 		}
 
-		const apiKey: string = await db.get("apiKey")
-		const info: UserInfoV1 = await userInfo({ apiKey })
+		const info: UserInfoV1 = await userInfo()
 
 		memoryCache.set("fetchUserInfo", info)
 		memoryCache.set("fetchUserInfoTimeout", new Date().getTime() + 60000)

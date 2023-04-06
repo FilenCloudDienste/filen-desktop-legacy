@@ -246,12 +246,9 @@ const Tree = memo(
 		useEffect(() => {
 			setLoading(true)
 
-			Promise.all([db.get("apiKey"), db.get("masterKeys")])
-				.then(([apiKey, masterKeys]) => {
-					folderContent({
-						apiKey,
-						uuid: parent
-					})
+			db.get("masterKeys")
+				.then(masterKeys => {
+					folderContent(parent)
 						.then(async response => {
 							const folders: any[] = []
 							const files: any[] = []
@@ -349,12 +346,9 @@ const SelectiveSyncWindow = memo(({ userId, email, windowId }: { userId: number;
 	const excluded: any = useDb("selectiveSync:remote:" + location.uuid, {})
 
 	useEffect(() => {
-		Promise.all([updateKeys(), db.get("apiKey")])
-			.then(([_, apiKey]) => {
-				folderContent({
-					apiKey,
-					uuid: location.remoteUUID!
-				})
+		updateKeys()
+			.then(() => {
+				folderContent(location.remoteUUID!)
 					.then(response => {
 						setRootItemsLength(response.folders.length + response.uploads.length)
 						setReady(true)

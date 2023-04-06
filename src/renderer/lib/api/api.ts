@@ -228,7 +228,8 @@ export const login = async ({
 	return response.data
 }
 
-export const userInfo = async ({ apiKey }: { apiKey: string }): Promise<any> => {
+export const userInfo = async (passedApiKey?: string): Promise<any> => {
+	const apiKey = passedApiKey ? passedApiKey : await db.get("apiKey")
 	const response = await apiRequest({
 		method: "POST",
 		endpoint: "/v1/user/info",
@@ -244,7 +245,8 @@ export const userInfo = async ({ apiKey }: { apiKey: string }): Promise<any> => 
 	return response.data
 }
 
-export const baseFolders = async ({ apiKey }: { apiKey: string }): Promise<any> => {
+export const baseFolders = async (): Promise<any> => {
+	const apiKey = await db.get("apiKey")
 	const response = await apiRequest({
 		method: "POST",
 		endpoint: "/v1/user/baseFolders",
@@ -261,7 +263,8 @@ export const baseFolders = async ({ apiKey }: { apiKey: string }): Promise<any> 
 	return response.data
 }
 
-export const folderContent = async ({ apiKey, uuid }: { apiKey: string; uuid: string }): Promise<any> => {
+export const folderContent = async (uuid: string): Promise<any> => {
+	const apiKey = await db.get("apiKey")
 	const response = await apiRequest({
 		method: "POST",
 		endpoint: "/v1/dir/content",
@@ -281,7 +284,8 @@ export const folderContent = async ({ apiKey, uuid }: { apiKey: string; uuid: st
 	return response.data
 }
 
-export const folderPresent = async ({ apiKey, uuid }: { apiKey: string; uuid: string }): Promise<any> => {
+export const folderPresent = async (uuid: string): Promise<any> => {
+	const apiKey = await db.get("apiKey")
 	const response = await apiRequest({
 		method: "POST",
 		endpoint: "/v1/dir/present",
@@ -299,7 +303,7 @@ export const folderPresent = async ({ apiKey, uuid }: { apiKey: string; uuid: st
 }
 
 export const filePresent = async (uuid: string): Promise<any> => {
-	const apiKey: string = await db.get("apiKey")
+	const apiKey = await db.get("apiKey")
 	const response = await apiRequest({
 		method: "POST",
 		endpoint: "/v1/file/present",
@@ -317,18 +321,17 @@ export const filePresent = async (uuid: string): Promise<any> => {
 }
 
 export const dirTree = async ({
-	apiKey,
 	uuid,
 	deviceId,
 	skipCache = false,
 	includeRaw = false
 }: {
-	apiKey: string
 	uuid: string
 	deviceId: string
 	skipCache?: boolean
 	includeRaw?: boolean
 }): Promise<{ data: any; raw: string }> => {
+	const apiKey: string = await db.get("apiKey")
 	const response = await apiRequest({
 		method: "POST",
 		endpoint: "/v1/dir/tree",

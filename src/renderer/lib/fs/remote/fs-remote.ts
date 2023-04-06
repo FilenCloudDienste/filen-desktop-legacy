@@ -48,10 +48,7 @@ const UPLOAD_VERSION: number = 2
 const previousDatasets: Record<string, string> = {}
 
 export const smokeTest = async (uuid: string): Promise<boolean> => {
-	const response = await folderPresent({
-		apiKey: await db.get("apiKey"),
-		uuid
-	})
+	const response = await folderPresent(uuid)
 
 	if (!response.present || response.trash) {
 		return false
@@ -62,8 +59,8 @@ export const smokeTest = async (uuid: string): Promise<boolean> => {
 
 export const directoryTree = (uuid: string, skipCache: boolean = false, location: Location): Promise<RemoteDirectoryTreeResult> => {
 	return new Promise((resolve, reject) => {
-		Promise.all([db.get("deviceId"), db.get("apiKey"), db.get("masterKeys"), db.get("excludeDot")])
-			.then(([deviceId, apiKey, masterKeys, excludeDot]) => {
+		Promise.all([db.get("deviceId"), db.get("masterKeys"), db.get("excludeDot")])
+			.then(([deviceId, masterKeys, excludeDot]) => {
 				if (excludeDot == null) {
 					excludeDot = true
 				}
@@ -76,7 +73,7 @@ export const directoryTree = (uuid: string, skipCache: boolean = false, location
 					return reject(new Error("Invalid master keys, length = 0"))
 				}
 
-				dirTree({ apiKey, uuid, deviceId, skipCache, includeRaw: true })
+				dirTree({ uuid, deviceId, skipCache, includeRaw: true })
 					.then(async res => {
 						const cacheKey: string = "directoryTree:" + uuid + ":" + deviceId
 						const response = res.data

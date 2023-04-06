@@ -14,9 +14,9 @@ import { getDeltas, consumeDeltas } from "./sync.deltas"
 const pathModule = window.require("path")
 const log = window.require("electron-log")
 
-let SYNC_RUNNING: boolean = false
-const SYNC_TIMEOUT: number = 5000
-let NEXT_SYNC: number = new Date().getTime() - SYNC_TIMEOUT
+let SYNC_RUNNING = false
+const SYNC_TIMEOUT = 5000
+let NEXT_SYNC = new Date().getTime() - SYNC_TIMEOUT
 const IS_FIRST_REQUEST: Record<string, boolean> = {}
 const WATCHERS: Record<string, boolean> = {}
 const syncMutex = new Semaphore(1)
@@ -1129,21 +1129,6 @@ const sync = async (): Promise<any> => {
 
 	return startSyncLoop()
 }
-
-window
-	.require("fs-extra")
-	.stat("C:\\thisdsdsdssdsd")
-	.catch((err: any) => {
-		ipc.addSyncIssue({
-			uuid: uuidv4(),
-			type: "warning",
-			where: "local",
-			path: "C:\\thisdsdsdssdsd",
-			err,
-			info: err.message,
-			timestamp: new Date().getTime()
-		}).catch(console.error)
-	})
 
 setInterval(startSyncLoop, SYNC_TIMEOUT * 1.5)
 
