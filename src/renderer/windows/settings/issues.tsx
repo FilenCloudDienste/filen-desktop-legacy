@@ -271,6 +271,10 @@ const SettingsWindowIssues = memo(({ darkMode, lang, platform }: { darkMode: boo
 											return i18n(lang, "possibleSolutionENOENT")
 										}
 
+										if (syncIssueHelp.err.message.indexOf("ELOOP") !== -1) {
+											return i18n(lang, "possibleSolutionELOOP")
+										}
+
 										if (
 											syncIssueHelp.err.message.indexOf("EPERM") !== -1 ||
 											syncIssueHelp.err.message.indexOf("EACCES") !== -1

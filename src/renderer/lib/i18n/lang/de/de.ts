@@ -178,7 +178,19 @@ const de: {
 	trayMenuSettings: "Einstellungen",
 	trayMenuQuit: "Filen beenden",
 	openLocalFolder: "Lokalen Ordner öffnen",
-	openLocalTrash: "Lokalen Papierkorb öffnen"
+	openLocalTrash: "Lokalen Papierkorb öffnen",
+	help: "Hilfe",
+	possibleSolution: "Mögliche Lösung",
+	possibleSolutionEPERM:
+		"Bitte stellen Sie sicher, dass der Client alle erforderlichen Berechtigungen zum Lesen und Schreiben auf den oben genannten Pfad hat.",
+	possibleSolutionENOENT: "Bitte stellen Sie sicher, dass der obige Pfad auf Ihrem System vorhanden ist.",
+	possibleSolutionEBUSY:
+		"Der Client konnte nicht auf den obigen Pfad zugreifen. Bitte überprüfen Sie, ob andere Programme es aktiv verwenden oder sperren.",
+	possibleSolutionEMFILE: "Auf Ihrem System sind nicht genügend Dateideskriptoren oder Speicherplatz vorhanden.",
+	possibleSolutionELOOP:
+		"Bitte stellen Sie sicher, dass Ihr lokaler Synchronisierungsort keine symbolischen Links enthält, die zu Endlosschleifen führen.",
+	issue: "Problem",
+	path: "Pfad"
 }
 
 export default de
