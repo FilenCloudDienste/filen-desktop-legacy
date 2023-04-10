@@ -20,9 +20,7 @@ export const normalizePath = (path: string): string => {
 	return pathModule.normalize(path)
 }
 
-export const checkLastModified = async (
-	path: string
-): Promise<{ changed: boolean; mtimeMs?: number }> => {
+export const checkLastModified = async (path: string): Promise<{ changed: boolean; mtimeMs?: number }> => {
 	return await invokeProxy("fsCheckLastModified", path)
 }
 
@@ -65,11 +63,7 @@ export const canReadAtPath = async (path: string): Promise<boolean> => {
 	return await invokeProxy("fsCanReadAtPath", path)
 }
 
-export const directoryTree = async (
-	path: string,
-	skipCache: boolean = false,
-	location: Location
-): Promise<LocalDirectoryTreeResult> => {
+export const directoryTree = async (path: string, skipCache: boolean = false, location: Location): Promise<LocalDirectoryTreeResult> => {
 	return await invokeProxy("fsDirectoryTree", {
 		path,
 		skipCache,
@@ -77,11 +71,7 @@ export const directoryTree = async (
 	})
 }
 
-export const readChunk = async (
-	path: string,
-	offset: number,
-	length: number
-): Promise<Buffer> => {
+export const readChunk = async (path: string, offset: number, length: number): Promise<Buffer> => {
 	return await invokeProxy("fsReadChunk", {
 		path,
 		offset,
@@ -107,11 +97,7 @@ export const mkdir = async (path: string, location: any): Promise<any> => {
 	})
 }
 
-export const utimes = async (
-	path: string,
-	atime: Date,
-	mtime: Date
-): Promise<void> => {
+export const utimes = async (path: string, atime: Date, mtime: Date): Promise<void> => {
 	return await invokeProxy("fsUtimes", {
 		path,
 		atime,
@@ -127,18 +113,11 @@ export const remove = async (path: string): Promise<void> => {
 	return await invokeProxy("fsRemove", path)
 }
 
-export const download = (
-	path: string,
-	location: any,
-	task: any
-): Promise<any> => {
+export const download = (path: string, location: any, task: any): Promise<any> => {
 	return new Promise(async (resolve, reject) => {
 		await new Promise(resolve => {
 			const getPausedStatus = () => {
-				Promise.all([
-					db.get("paused"),
-					isSyncLocationPaused(location.uuid)
-				])
+				Promise.all([db.get("paused"), isSyncLocationPaused(location.uuid)])
 					.then(([paused, locationPaused]) => {
 						if (paused || locationPaused) {
 							return setTimeout(getPausedStatus, 1000)
@@ -157,9 +136,7 @@ export const download = (
 		})
 
 		try {
-			var absolutePath = normalizePath(
-				pathModule.join(location.local, path)
-			)
+			var absolutePath = normalizePath(pathModule.join(location.local, path))
 			var file = task.item
 		} catch (e) {
 			return reject(e)
@@ -168,24 +145,17 @@ export const download = (
 		getTempDir()
 			.then(tmpDir => {
 				try {
-					var fileTmpPath = normalizePath(
-						pathModule.join(tmpDir, uuidv4())
-					)
+					var fileTmpPath = normalizePath(pathModule.join(tmpDir, uuidv4()))
 				} catch (e) {
 					return reject(e)
 				}
 
-				Promise.all([
-					rmPermanent(absolutePath),
-					rmPermanent(fileTmpPath)
-				])
+				Promise.all([rmPermanent(absolutePath), rmPermanent(fileTmpPath)])
 					.then(async () => {
 						const fileChunks = file.chunks
 						let currentWriteIndex = 0
 
-						const downloadTask = (
-							index: number
-						): Promise<{ index: number; data: Buffer }> => {
+						const downloadTask = (index: number): Promise<{ index: number; data: Buffer }> => {
 							return new Promise((resolve, reject) => {
 								downloadChunk({
 									region: file.region,
@@ -196,11 +166,7 @@ export const download = (
 									location
 								})
 									.then(data => {
-										decryptData(
-											data,
-											file.metadata.key,
-											file.version
-										)
+										decryptData(data, file.metadata.key, file.version)
 											.then(decrypted => {
 												return resolve({
 													index,
@@ -236,27 +202,25 @@ export const download = (
 								let done = 0
 
 								for (let i = 0; i < fileChunks; i++) {
-									downloadThreadsSemaphore
-										.acquire()
-										.then(() => {
-											downloadTask(i)
-												.then(({ index, data }) => {
-													writeChunk(index, data)
+									downloadThreadsSemaphore.acquire().then(() => {
+										downloadTask(i)
+											.then(({ index, data }) => {
+												writeChunk(index, data)
 
-													done += 1
+												done += 1
 
-													downloadThreadsSemaphore.release()
+												downloadThreadsSemaphore.release()
 
-													if (done >= fileChunks) {
-														return resolve()
-													}
-												})
-												.catch(err => {
-													downloadThreadsSemaphore.release()
+												if (done >= fileChunks) {
+													return resolve()
+												}
+											})
+											.catch(err => {
+												downloadThreadsSemaphore.release()
 
-													return reject(err)
-												})
-										})
+												return reject(err)
+											})
+									})
 								}
 							})
 
@@ -281,41 +245,23 @@ export const download = (
 
 						const now = new Date().getTime()
 						const lastModified = convertTimestampToMs(
-							typeof file.metadata.lastModified == "number"
-								? file.metadata.lastModified
-								: now
+							typeof file.metadata.lastModified == "number" ? file.metadata.lastModified : now
 						)
 						const utimesLastModified =
-							typeof lastModified == "number" &&
-							lastModified > 0 &&
-							now > lastModified
-								? lastModified
-								: now - 60000
+							typeof lastModified == "number" && lastModified > 0 && now > lastModified ? lastModified : now - 60000
 
 						move(fileTmpPath, absolutePath)
 							.then(() => {
-								utimes(
-									absolutePath,
-									new Date(utimesLastModified),
-									new Date(utimesLastModified)
-								)
+								utimes(absolutePath, new Date(utimesLastModified), new Date(utimesLastModified))
 									.then(() => {
 										checkLastModified(absolutePath)
 											.then(() => {
 												gracefulLStat(absolutePath)
 													.then((stat: any) => {
 														if (stat.size <= 0) {
-															rmPermanent(
-																absolutePath
-															)
+															rmPermanent(absolutePath)
 
-															return reject(
-																new Error(
-																	absolutePath +
-																		" size = " +
-																		stat.size
-																)
-															)
+															return reject(new Error(absolutePath + " size = " + stat.size))
 														}
 
 														return resolve(stat)
@@ -334,11 +280,7 @@ export const download = (
 	})
 }
 
-export const move = async (
-	before: string,
-	after: string,
-	overwrite: boolean = true
-): Promise<void> => {
+export const move = async (before: string, after: string, overwrite: boolean = true): Promise<void> => {
 	return await invokeProxy("fsMove", {
 		before,
 		after,
@@ -357,27 +299,19 @@ export const createLocalTrashDirs = async (): Promise<void> => {
 	return await invokeProxy("fsCreateLocalTrashDirs")
 }
 
-export const clearLocalTrashDirs = async (
-	clearNow: boolean = false
-): Promise<void> => {
+export const clearLocalTrashDirs = async (clearNow: boolean = false): Promise<void> => {
 	return await invokeProxy("fsClearLocalTrashDirs", clearNow)
 }
 
 export const initLocalTrashDirs = () => {
-	invokeProxy(
-		"fsInitLocalTrashDirs",
-		constants.clearLocalTrashDirsInterval
-	).catch(console.error)
+	invokeProxy("fsInitLocalTrashDirs").catch(console.error)
 }
 
 export const isFileBusy = async (path: string): Promise<boolean> => {
 	return await invokeProxy("fsIsFileBusy", path)
 }
 
-export const mkdirNormal = async (
-	path: string,
-	options = { recursive: true }
-): Promise<void> => {
+export const mkdirNormal = async (path: string, options = { recursive: true }): Promise<void> => {
 	return await invokeProxy("fsMkdirNormal", {
 		path,
 		options
@@ -391,11 +325,7 @@ export const access = async (path: string, mode: any): Promise<void> => {
 	})
 }
 
-export const appendFile = async (
-	path: string,
-	data: Buffer | string,
-	options: any = undefined
-): Promise<void> => {
+export const appendFile = async (path: string, data: Buffer | string, options: any = undefined): Promise<void> => {
 	return await invokeProxy("fsAppendFile", {
 		path,
 		data,

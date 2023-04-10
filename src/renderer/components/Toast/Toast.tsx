@@ -2,6 +2,10 @@ import React, { memo } from "react"
 import { createStandaloneToast, Box, Text } from "@chakra-ui/react"
 import useDarkMode from "../../lib/hooks/useDarkMode"
 
+export type ToastStatus = "error" | "info" | "warning"
+
+const { toast } = createStandaloneToast()
+
 export const showToast = ({
 	title = "",
 	description = "",
@@ -13,12 +17,10 @@ export const showToast = ({
 	title?: string
 	description?: string
 	message?: string
-	status?: string
+	status?: ToastStatus
 	duration?: number
 	isClosable?: boolean
 }) => {
-	const { toast } = createStandaloneToast()
-
 	toast({
 		title,
 		description: description.length > 0 ? description : message,
@@ -33,7 +35,7 @@ export const showToast = ({
 	})
 }
 
-const Toast = memo(({ message, status }: { message: string; status: string }) => {
+const Toast = memo(({ message, status }: { message: string; status: ToastStatus }) => {
 	const darkMode = useDarkMode()
 
 	let backgroundColor = darkMode ? "#171717" : "lightgray"

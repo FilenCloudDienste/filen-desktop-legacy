@@ -8,6 +8,7 @@ import Item from "../Item"
 import { List } from "react-virtualized"
 import { i18n } from "../../lib/i18n"
 import useDb from "../../lib/hooks/useDb"
+import { Location } from "../../../types"
 
 export interface MainListProps {
 	userId: number
@@ -20,8 +21,8 @@ export interface MainListProps {
 }
 
 const MainList = memo(({ userId, platform, darkMode, lang, activity, isOnline }: MainListProps) => {
-	const syncLocations: [] = useDb("syncLocations:" + userId, [])
-	const paused = useDb("paused", false)
+	const syncLocations: Location[] = useDb("syncLocations:" + userId, [])
+	const paused: boolean = useDb("paused", false)
 
 	const rowRenderer = useCallback(
 		({ index, key, style }: { index: number; key: string; style: any }) => {

@@ -11,25 +11,21 @@ const eventListener = {
 		return {
 			remove: () => {
 				if (!EVENT_LISTENERS[name]) {
-					return true
+					return
 				}
 
 				EVENT_LISTENERS[name] = EVENT_LISTENERS[name].filter((filteredListener: Function) => filteredListener !== listener)
-
-				return true
 			}
 		}
 	},
 	emit: (name: string, data?: any) => {
 		if (!EVENT_LISTENERS[name]) {
-			return false
+			return
 		}
 
 		EVENT_LISTENERS[name].forEach((listener: Function) => {
 			listener(data)
 		})
-
-		return true
 	}
 }
 

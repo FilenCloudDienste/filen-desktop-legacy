@@ -141,12 +141,12 @@ export const directoryTree = (uuid: string, skipCache: boolean = false, location
 							return reject(new Error("Could not decrypt base folder name"))
 						}
 
-						const addedFolders: { [key: string]: boolean } = {}
-						const addedFiles: { [key: string]: boolean } = {}
-						const builtTreeFiles: { [key: string]: RemoteItem } = {}
-						const builtTreeFolders: { [key: string]: RemoteItem } = {}
-						const builtTreeUUIDs: { [key: string]: RemoteUUIDs } = {}
-						const uuidsToPaths: { [key: string]: string } = {}
+						const addedFolders: Record<string, boolean> = {}
+						const addedFiles: Record<string, boolean> = {}
+						const builtTreeFiles: Record<string, RemoteItem> = {}
+						const builtTreeFolders: Record<string, RemoteItem> = {}
+						const builtTreeUUIDs: Record<string, RemoteUUIDs> = {}
+						const uuidsToPaths: Record<string, string> = {}
 
 						const promises = [
 							...response.folders.map((folder: string[]) => {
