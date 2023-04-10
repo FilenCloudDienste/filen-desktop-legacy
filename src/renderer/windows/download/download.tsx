@@ -140,7 +140,7 @@ const downloadFile = (absolutePath: string, file: any) => {
 							return reject(e)
 						}
 
-						const now = new Date().getTime()
+						const now = Date.now()
 						const lastModified = convertTimestampToMs(file.metadata.lastModified)
 						const utimesLastModified =
 							typeof lastModified == "number" && lastModified > 0 && now > lastModified ? lastModified : now - 60000
@@ -575,7 +575,7 @@ const DownloadFolder = memo(
 		}
 
 		const calcSpeed = (now: number, started: number, bytes: number) => {
-			now = new Date().getTime() - 1000
+			now = Date.now() - 1000
 
 			const secondsDiff = (now - started) / 1000
 			const bps = bytes / secondsDiff
@@ -584,7 +584,7 @@ const DownloadFolder = memo(
 		}
 
 		const calcTimeLeft = (loadedBytes: number, totalBytes: number, started: number) => {
-			const elapsed = new Date().getTime() - started
+			const elapsed = Date.now() - started
 			const speed = loadedBytes / (elapsed / 1000)
 			const remaining = (totalBytes - loadedBytes) / speed
 
@@ -593,7 +593,7 @@ const DownloadFolder = memo(
 
 		const throttleUpdates = useCallback(
 			throttle(() => {
-				setSpeed(calcSpeed(new Date().getTime(), started.current, bytes.current))
+				setSpeed(calcSpeed(Date.now(), started.current, bytes.current))
 				setPercent((bytes.current / totalBytes.current) * 100)
 			}, 250),
 			[]
@@ -614,7 +614,7 @@ const DownloadFolder = memo(
 			const progressListener = eventListener.on("downloadProgressSeperate", (data: any) => {
 				if (data.from == FROM_ID) {
 					if (started.current == -1) {
-						started.current = new Date().getTime()
+						started.current = Date.now()
 					}
 
 					bytes.current += parseInt(data.bytes)
@@ -836,7 +836,7 @@ const DownloadFolder = memo(
 										/>
 									) : (
 										(() => {
-											const remainingReadable = getTimeRemaining(new Date().getTime() + timeLeft * 1000)
+											const remainingReadable = getTimeRemaining(Date.now() + timeLeft * 1000)
 
 											if (remainingReadable.total <= 1 || remainingReadable.minutes <= 1) {
 												remainingReadable.total = 1

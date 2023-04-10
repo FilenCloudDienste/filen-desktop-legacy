@@ -16,7 +16,7 @@ const log = window.require("electron-log")
 
 let SYNC_RUNNING = false
 const SYNC_TIMEOUT = 5000
-let NEXT_SYNC = new Date().getTime() - SYNC_TIMEOUT
+let NEXT_SYNC = Date.now() - SYNC_TIMEOUT
 const IS_FIRST_REQUEST: Record<string, boolean> = {}
 const WATCHERS: Record<string, boolean> = {}
 const syncMutex = new Semaphore(1)
@@ -475,7 +475,7 @@ const syncLocation = async (location: Location): Promise<void> => {
 			path: pathModule.normalize(location.local),
 			err: e,
 			info: "Smoke test for location " + location.uuid + " failed",
-			timestamp: new Date().getTime()
+			timestamp: Date.now()
 		}).catch(console.error)
 
 		emitSyncStatusLocation("smokeTest", {
@@ -528,7 +528,7 @@ const syncLocation = async (location: Location): Promise<void> => {
 				path: pathModule.normalize(location.local),
 				err: e,
 				info: "Could not start local directory watcher at path " + pathModule.normalize(location.local),
-				timestamp: new Date().getTime()
+				timestamp: Date.now()
 			}).catch(console.error)
 
 			emitSyncStatusLocation("initWatcher", {
@@ -624,7 +624,7 @@ const syncLocation = async (location: Location): Promise<void> => {
 				path: pathModule.normalize(location.local),
 				err: e,
 				info: "Could not get last local/remote directory tree for location " + location.uuid,
-				timestamp: new Date().getTime()
+				timestamp: Date.now()
 			}).catch(console.error)
 		}
 
@@ -687,7 +687,7 @@ const syncLocation = async (location: Location): Promise<void> => {
 			path: pathModule.normalize(location.local),
 			err: e,
 			info: "Could not get deltas for location " + location.uuid,
-			timestamp: new Date().getTime()
+			timestamp: Date.now()
 		}).catch(console.error)
 
 		emitSyncStatusLocation("getDeltas", {
@@ -737,7 +737,7 @@ const syncLocation = async (location: Location): Promise<void> => {
 			path: pathModule.normalize(location.local),
 			err: e,
 			info: "Could not get consume deltas for location " + location.uuid,
-			timestamp: new Date().getTime()
+			timestamp: Date.now()
 		}).catch(console.error)
 
 		emitSyncStatusLocation("consumeDeltas", {
@@ -836,7 +836,7 @@ const syncLocation = async (location: Location): Promise<void> => {
 			path: pathModule.normalize(location.local),
 			err: e,
 			info: "Could not apply " + doneTasks.length + " done tasks to saved state for location " + location.uuid,
-			timestamp: new Date().getTime()
+			timestamp: Date.now()
 		}).catch(console.error)
 
 		emitSyncStatusLocation("applyDoneTasksToSavedState", {
@@ -878,7 +878,7 @@ const syncLocation = async (location: Location): Promise<void> => {
 			path: pathModule.normalize(location.local),
 			err: e,
 			info: "Could not save lastLocalTree to DB for location " + location.uuid,
-			timestamp: new Date().getTime()
+			timestamp: Date.now()
 		}).catch(console.error)
 
 		emitSyncStatusLocation("cleanup", {
@@ -909,7 +909,7 @@ const sync = async (): Promise<any> => {
 
 	eventListener.emit("syncLoopStart")
 
-	if (SYNC_RUNNING || new Date().getTime() < NEXT_SYNC) {
+	if (SYNC_RUNNING || Date.now() < NEXT_SYNC) {
 		syncMutex.release()
 
 		eventListener.emit("syncLoopDone")
@@ -1060,7 +1060,7 @@ const sync = async (): Promise<any> => {
 		return startSyncLoop()
 	}
 
-	if (SYNC_RUNNING || new Date().getTime() < NEXT_SYNC) {
+	if (SYNC_RUNNING || Date.now() < NEXT_SYNC) {
 		syncMutex.release()
 
 		eventListener.emit("syncLoopDone")
@@ -1121,7 +1121,7 @@ const sync = async (): Promise<any> => {
 	}
 
 	SYNC_RUNNING = false
-	NEXT_SYNC = new Date().getTime() + SYNC_TIMEOUT
+	NEXT_SYNC = Date.now() + SYNC_TIMEOUT
 
 	syncMutex.release()
 

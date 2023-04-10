@@ -438,7 +438,7 @@ export const consumeTasks = async ({
 										path: pathModule.normalize(location.local + "/" + task.path),
 										err: lastErr,
 										info: "Could not rename " + pathModule.normalize(location.local + "/" + task.path) + " remotely",
-										timestamp: new Date().getTime()
+										timestamp: Date.now()
 									}).catch(console.error)
 
 									emitSyncTask("renameInRemote", {
@@ -542,7 +542,7 @@ export const consumeTasks = async ({
 										path: pathModule.normalize(location.local + "/" + task.path),
 										err: lastErr,
 										info: "Could not rename " + pathModule.normalize(location.local + "/" + task.path) + " locally",
-										timestamp: new Date().getTime()
+										timestamp: Date.now()
 									}).catch(console.error)
 
 									emitSyncTask("renameInLocal", {
@@ -700,7 +700,7 @@ export const consumeTasks = async ({
 										path: pathModule.normalize(location.local + "/" + task.path),
 										err: lastErr,
 										info: "Could not move " + pathModule.normalize(location.local + "/" + task.path) + " remotely",
-										timestamp: new Date().getTime()
+										timestamp: Date.now()
 									}).catch(console.error)
 
 									emitSyncTask("moveInRemote", {
@@ -804,7 +804,7 @@ export const consumeTasks = async ({
 										path: pathModule.normalize(location.local + "/" + task.path),
 										err: lastErr,
 										info: "Could not move " + pathModule.normalize(location.local + "/" + task.path) + " locally",
-										timestamp: new Date().getTime()
+										timestamp: Date.now()
 									}).catch(console.error)
 
 									emitSyncTask("moveInLocal", {
@@ -962,7 +962,7 @@ export const consumeTasks = async ({
 										path: pathModule.normalize(location.local + "/" + task.path),
 										err: lastErr,
 										info: "Could not delete " + pathModule.normalize(location.local + "/" + task.path) + " remotely",
-										timestamp: new Date().getTime()
+										timestamp: Date.now()
 									}).catch(console.error)
 
 									emitSyncTask("deleteInRemote", {
@@ -1066,7 +1066,7 @@ export const consumeTasks = async ({
 										path: pathModule.normalize(location.local + "/" + task.path),
 										err: lastErr,
 										info: "Could not delete " + pathModule.normalize(location.local + "/" + task.path) + " locally",
-										timestamp: new Date().getTime()
+										timestamp: Date.now()
 									}).catch(console.error)
 
 									emitSyncTask("deleteInLocal", {
@@ -1211,7 +1211,7 @@ export const consumeTasks = async ({
 										path: pathModule.normalize(location.local + "/" + task.path),
 										err: lastErr,
 										info: "Could not upload " + pathModule.normalize(location.local + "/" + task.path),
-										timestamp: new Date().getTime()
+										timestamp: Date.now()
 									}).catch(console.error)
 
 									emitSyncTask("uploadToRemote", {
@@ -1384,7 +1384,7 @@ export const consumeTasks = async ({
 										path: pathModule.normalize(location.local + "/" + task.path),
 										err: lastErr,
 										info: "Could not download " + pathModule.normalize(location.local + "/" + task.path),
-										timestamp: new Date().getTime()
+										timestamp: Date.now()
 									}).catch(console.error)
 
 									emitSyncTask("downloadFromRemote", {

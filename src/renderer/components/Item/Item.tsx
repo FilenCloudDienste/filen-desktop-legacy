@@ -37,17 +37,17 @@ task.done !== "undefined" -> done task
 
 const ItemTimeSince = memo(({ task, lang }: { task: any; lang: string }) => {
 	const [itemTimeSince, setItemTimeSince] = useState<string>(
-		timeSince(typeof task.timestamp == "number" ? task.timestamp : new Date().getTime(), lang)
+		timeSince(typeof task.timestamp == "number" ? task.timestamp : Date.now(), lang)
 	)
 	const timeSinceInterval = useRef<NodeJS.Timer>()
 
 	const startTimeSinceInterval = useCallback(() => {
 		clearInterval(timeSinceInterval.current)
 
-		setItemTimeSince(timeSince(typeof task.timestamp == "number" ? task.timestamp : new Date().getTime(), lang))
+		setItemTimeSince(timeSince(typeof task.timestamp == "number" ? task.timestamp : Date.now(), lang))
 
 		timeSinceInterval.current = setInterval(() => {
-			setItemTimeSince(timeSince(typeof task.timestamp == "number" ? task.timestamp : new Date().getTime(), lang))
+			setItemTimeSince(timeSince(typeof task.timestamp == "number" ? task.timestamp : Date.now(), lang))
 		}, 1000)
 	}, [])
 

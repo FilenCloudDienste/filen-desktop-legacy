@@ -572,7 +572,7 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number; email:
 	}
 
 	const calcSpeed = (now: number, started: number, bytes: number): number => {
-		now = new Date().getTime() - 1000
+		now = Date.now() - 1000
 
 		const secondsDiff = (now - started) / 1000
 		const bps = Math.floor((bytes / secondsDiff) * constants.speedMultiplier)
@@ -581,7 +581,7 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number; email:
 	}
 
 	const calcTimeLeft = (loadedBytes: number, totalBytes: number, started: number): number => {
-		const elapsed = new Date().getTime() - started
+		const elapsed = Date.now() - started
 		const speed = loadedBytes / (elapsed / 1000)
 		const remaining = (totalBytes - loadedBytes) / speed
 
@@ -590,7 +590,7 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number; email:
 
 	const throttleUpdates = useCallback(
 		throttle(() => {
-			setSpeed(calcSpeed(new Date().getTime(), started.current, bytes.current))
+			setSpeed(calcSpeed(Date.now(), started.current, bytes.current))
 			setPercent(Math.round((bytes.current / (totalBytes.current * constants.sizeOverheadMultiplier)) * 100))
 		}, 250),
 		[]
@@ -609,7 +609,7 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number; email:
 		const progressListener = eventListener.on("uploadProgressSeperate", (data: any) => {
 			if (data.from == FROM_ID) {
 				if (started.current == -1) {
-					started.current = new Date().getTime()
+					started.current = Date.now()
 				}
 
 				bytes.current += parseInt(data.bytes)
@@ -716,7 +716,7 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number; email:
 										/>
 									) : (
 										(() => {
-											const remainingReadable = getTimeRemaining(new Date().getTime() + timeLeft * 1000)
+											const remainingReadable = getTimeRemaining(Date.now() + timeLeft * 1000)
 
 											if (remainingReadable.total <= 1 || remainingReadable.minutes <= 1) {
 												remainingReadable.total = 1

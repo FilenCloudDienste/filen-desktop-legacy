@@ -18,7 +18,7 @@ export const fetchUserInfo = async (): Promise<UserInfoV1> => {
 
 	try {
 		if (memoryCache.has("fetchUserInfo") && memoryCache.has("fetchUserInfoTimeout")) {
-			if (memoryCache.get("fetchUserInfoTimeout") > new Date().getTime()) {
+			if (memoryCache.get("fetchUserInfoTimeout") > Date.now()) {
 				fetchUserInfoSemaphore.release()
 
 				return memoryCache.get("fetchUserInfo") as UserInfoV1
@@ -28,7 +28,7 @@ export const fetchUserInfo = async (): Promise<UserInfoV1> => {
 		const info: UserInfoV1 = await userInfo()
 
 		memoryCache.set("fetchUserInfo", info)
-		memoryCache.set("fetchUserInfoTimeout", new Date().getTime() + 60000)
+		memoryCache.set("fetchUserInfoTimeout", Date.now() + 60000)
 
 		fetchUserInfoSemaphore.release()
 

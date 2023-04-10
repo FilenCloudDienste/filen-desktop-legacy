@@ -16,169 +16,151 @@ export interface MainFooterProps {
 	checkingChanges: boolean
 }
 
-const MainFooter = memo(
-	({ platform, darkMode, lang, totalRemaining, syncTasksToDo, isOnline, checkingChanges }: MainFooterProps) => {
-		const paused = useDb("paused", false)
+const MainFooter = memo(({ platform, darkMode, lang, totalRemaining, syncTasksToDo, isOnline, checkingChanges }: MainFooterProps) => {
+	const paused = useDb("paused", false)
 
-		const remainingReadable = useMemo(() => {
-			totalRemaining = totalRemaining + Math.floor(syncTasksToDo / 2)
+	const remainingReadable = useMemo(() => {
+		totalRemaining = totalRemaining + Math.floor(syncTasksToDo / 2)
 
-			return getTimeRemaining(new Date().getTime() + totalRemaining * 1000)
-		}, [totalRemaining, syncTasksToDo])
+		return getTimeRemaining(Date.now() + totalRemaining * 1000)
+	}, [totalRemaining, syncTasksToDo])
 
-		return (
+	return (
+		<Flex
+			flexDirection="row"
+			justifyContent="space-between"
+			paddingTop={platform == "linux" ? "5px" : "9px"}
+			paddingLeft="12px"
+			paddingRight="12px"
+			overflow="hidden"
+			width="100%"
+		>
 			<Flex
-				flexDirection="row"
-				justifyContent="space-between"
-				paddingTop={platform == "linux" ? "5px" : "9px"}
-				paddingLeft="12px"
-				paddingRight="12px"
+				alignItems="center"
 				overflow="hidden"
-				width="100%"
 			>
-				<Flex
-					alignItems="center"
-					overflow="hidden"
-				>
-					{checkingChanges && syncTasksToDo <= 0 ? (
-						<Flex alignItems="center">
-							<Spinner
-								width="12px"
-								height="12px"
-								color={colors(platform, darkMode, "textPrimary")}
-							/>
-							<Text
-								fontSize={12}
-								color={colors(platform, darkMode, "textPrimary")}
-								marginLeft="5px"
-								noOfLines={1}
-							>
-								{i18n(lang, "checkingChanges")}
-							</Text>
-						</Flex>
-					) : (
-						<>
-							{syncTasksToDo > 0 ? (
-								<Flex alignItems="center">
-									<Spinner
-										width="12px"
-										height="12px"
-										color={colors(platform, darkMode, "textPrimary")}
-									/>
-									<Text
-										fontSize={12}
-										color={colors(platform, darkMode, "textPrimary")}
-										marginLeft="5px"
-										noOfLines={1}
-									>
-										{(() => {
-											if (syncTasksToDo == 1) {
-												return i18n(
-													lang,
-													"syncingItemsFooterSingular",
-													true,
-													["__COUNT__"],
-													["1"]
-												)
-											}
-
-											return i18n(
-												lang,
-												"syncingItemsFooterPlural",
-												true,
-												["__COUNT__"],
-												[syncTasksToDo.toString()]
-											)
-										})()}
-									</Text>
-								</Flex>
-							) : syncTasksToDo > 0 ? (
-								<Flex alignItems="center">
-									<Spinner
-										width="12px"
-										height="12px"
-										color={colors(platform, darkMode, "textPrimary")}
-									/>
-									<Text
-										fontSize={12}
-										color={colors(platform, darkMode, "textPrimary")}
-										marginLeft="5px"
-										noOfLines={1}
-									>
-										{i18n(lang, "syncing")}
-									</Text>
-								</Flex>
-							) : (
-								<Flex alignItems="center">
-									<AiOutlineCheckCircle
-										size={13}
-										color="green"
-									/>
-									<Text
-										fontSize={12}
-										color={colors(platform, darkMode, "textPrimary")}
-										marginLeft="5px"
-										noOfLines={1}
-									>
-										{i18n(lang, "syncingFooterEverythingSynced")}
-									</Text>
-								</Flex>
-							)}
-						</>
-					)}
-				</Flex>
-				<Flex
-					alignItems="center"
-					overflow="hidden"
-				>
-					{paused || !isOnline ? (
-						<AiOutlinePauseCircle
+				{checkingChanges && syncTasksToDo <= 0 ? (
+					<Flex alignItems="center">
+						<Spinner
+							width="12px"
+							height="12px"
 							color={colors(platform, darkMode, "textPrimary")}
-							size={14}
 						/>
-					) : (
-						<>
-							{syncTasksToDo > 0 &&
-								(() => {
-									if (remainingReadable.total <= 1 || remainingReadable.minutes <= 1) {
-										remainingReadable.total = 1
-										remainingReadable.days = 0
-										remainingReadable.hours = 0
-										remainingReadable.minutes = 1
-										remainingReadable.seconds = 1
-									}
+						<Text
+							fontSize={12}
+							color={colors(platform, darkMode, "textPrimary")}
+							marginLeft="5px"
+							noOfLines={1}
+						>
+							{i18n(lang, "checkingChanges")}
+						</Text>
+					</Flex>
+				) : (
+					<>
+						{syncTasksToDo > 0 ? (
+							<Flex alignItems="center">
+								<Spinner
+									width="12px"
+									height="12px"
+									color={colors(platform, darkMode, "textPrimary")}
+								/>
+								<Text
+									fontSize={12}
+									color={colors(platform, darkMode, "textPrimary")}
+									marginLeft="5px"
+									noOfLines={1}
+								>
+									{(() => {
+										if (syncTasksToDo == 1) {
+											return i18n(lang, "syncingItemsFooterSingular", true, ["__COUNT__"], ["1"])
+										}
 
-									return (
-										<Text
-											fontSize={12}
-											color={colors(platform, darkMode, "textPrimary")}
-											marginLeft="5px"
-											noOfLines={1}
-										>
-											{i18n(
-												lang,
-												"aboutRemaining",
-												false,
-												["__TIME__"],
-												[
-													(remainingReadable.days > 0 ? remainingReadable.days + "d " : "") +
-														(remainingReadable.hours > 0
-															? remainingReadable.hours + "h "
-															: "") +
-														(remainingReadable.minutes > 0
-															? remainingReadable.minutes + "m "
-															: "")
-												]
-											)}
-										</Text>
-									)
-								})()}
-						</>
-					)}
-				</Flex>
+										return i18n(lang, "syncingItemsFooterPlural", true, ["__COUNT__"], [syncTasksToDo.toString()])
+									})()}
+								</Text>
+							</Flex>
+						) : syncTasksToDo > 0 ? (
+							<Flex alignItems="center">
+								<Spinner
+									width="12px"
+									height="12px"
+									color={colors(platform, darkMode, "textPrimary")}
+								/>
+								<Text
+									fontSize={12}
+									color={colors(platform, darkMode, "textPrimary")}
+									marginLeft="5px"
+									noOfLines={1}
+								>
+									{i18n(lang, "syncing")}
+								</Text>
+							</Flex>
+						) : (
+							<Flex alignItems="center">
+								<AiOutlineCheckCircle
+									size={13}
+									color="green"
+								/>
+								<Text
+									fontSize={12}
+									color={colors(platform, darkMode, "textPrimary")}
+									marginLeft="5px"
+									noOfLines={1}
+								>
+									{i18n(lang, "syncingFooterEverythingSynced")}
+								</Text>
+							</Flex>
+						)}
+					</>
+				)}
 			</Flex>
-		)
-	}
-)
+			<Flex
+				alignItems="center"
+				overflow="hidden"
+			>
+				{paused || !isOnline ? (
+					<AiOutlinePauseCircle
+						color={colors(platform, darkMode, "textPrimary")}
+						size={14}
+					/>
+				) : (
+					<>
+						{syncTasksToDo > 0 &&
+							(() => {
+								if (remainingReadable.total <= 1 || remainingReadable.minutes <= 1) {
+									remainingReadable.total = 1
+									remainingReadable.days = 0
+									remainingReadable.hours = 0
+									remainingReadable.minutes = 1
+									remainingReadable.seconds = 1
+								}
+
+								return (
+									<Text
+										fontSize={12}
+										color={colors(platform, darkMode, "textPrimary")}
+										marginLeft="5px"
+										noOfLines={1}
+									>
+										{i18n(
+											lang,
+											"aboutRemaining",
+											false,
+											["__TIME__"],
+											[
+												(remainingReadable.days > 0 ? remainingReadable.days + "d " : "") +
+													(remainingReadable.hours > 0 ? remainingReadable.hours + "h " : "") +
+													(remainingReadable.minutes > 0 ? remainingReadable.minutes + "m " : "")
+											]
+										)}
+									</Text>
+								)
+							})()}
+					</>
+				)}
+			</Flex>
+		</Flex>
+	)
+})
 
 export default MainFooter

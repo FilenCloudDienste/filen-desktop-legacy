@@ -121,7 +121,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number; email: s
 			const type: string = data.type
 			const task: any = data.data
 
-			const now: number = new Date().getTime()
+			const now: number = Date.now()
 
 			if (type == "uploadToRemote") {
 				if (task.err) {
@@ -334,7 +334,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number; email: s
 		})
 
 		const uploadProgressListener = eventListener.on("uploadProgress", (data: TransferProgress) => {
-			const now: number = new Date().getTime()
+			const now: number = Date.now()
 
 			setCurrentUploads((prev: any) =>
 				Object.keys(prev).filter(key => key == data.uuid).length > 0
@@ -363,7 +363,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number; email: s
 		})
 
 		const downloadProgressListener = eventListener.on("downloadProgress", (data: TransferProgress) => {
-			const now: number = new Date().getTime()
+			const now: number = Date.now()
 
 			setCurrentDownloads((prev: any) =>
 				Object.keys(prev).filter(key => key == data.uuid).length > 0

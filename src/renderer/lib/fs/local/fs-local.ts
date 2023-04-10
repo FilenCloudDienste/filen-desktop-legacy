@@ -243,7 +243,7 @@ export const download = (path: string, location: any, task: any): Promise<any> =
 							return reject(e)
 						}
 
-						const now = new Date().getTime()
+						const now = Date.now()
 						const lastModified = convertTimestampToMs(
 							typeof file.metadata.lastModified == "number" ? file.metadata.lastModified : now
 						)

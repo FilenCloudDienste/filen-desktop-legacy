@@ -571,7 +571,7 @@ export const clearLocalTrashDirs = (clearNow = false): Promise<void> => {
 
 										let statting = 0
 										const pathsToTrash: string[] = []
-										const now = new Date().getTime()
+										const now = Date.now()
 										let dirSize = 0
 
 										dirStream.on("data", async item => {
@@ -669,7 +669,7 @@ export const checkLastModified = (path: string): Promise<{ changed: boolean; mti
 					})
 				}
 
-				const lastModified = new Date(new Date().getTime() - 60000)
+				const lastModified = new Date(Date.now() - 60000)
 				const mtimeMs = lastModified.getTime()
 
 				let currentTries = 0
@@ -866,7 +866,7 @@ export const directoryTree = (path: string, skipCache = false, location: Locatio
 							path: item.fullPath,
 							err: e,
 							info: "Could not read " + item.fullPath,
-							timestamp: new Date().getTime()
+							timestamp: Date.now()
 						})
 					}
 

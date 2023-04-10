@@ -123,7 +123,7 @@ export const watch = (path: string, locationUUID: string) => {
 			})
 
 			SUBS[path].on("change", (event, name) => {
-				lastEvent[path] = new Date().getTime()
+				lastEvent[path] = Date.now()
 
 				emitToWorker({ event, name, watchPath: path, locationUUID })
 			})
