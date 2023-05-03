@@ -106,6 +106,8 @@ export const watch = (path: string, locationUUID: string) => {
 				})
 			}, getRandomArbitrary(Math.floor(POLLING_TIME - 15000), POLLING_TIME))
 
+			resolve(SUBS[path])
+
 			return
 		}
 
