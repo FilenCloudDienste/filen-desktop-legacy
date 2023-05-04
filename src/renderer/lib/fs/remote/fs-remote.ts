@@ -563,8 +563,8 @@ export const upload = (path: string, remoteTreeNow: any, location: Location, tas
 			return reject("deletedLocally")
 		}
 
-		Promise.all([db.get("apiKey"), db.get("masterKeys"), remoteStorageLeft()])
-			.then(([apiKey, masterKeys, remoteStorageFree]) => {
+		Promise.all([db.get("masterKeys"), remoteStorageLeft()])
+			.then(([masterKeys, remoteStorageFree]) => {
 				canReadAtPath(absolutePath)
 					.then(canRead => {
 						if (!canRead) {
@@ -585,7 +585,6 @@ export const upload = (path: string, remoteTreeNow: any, location: Location, tas
 											? Math.floor(checkLastModifiedRes.mtimeMs as number)
 											: Math.floor(task.item.lastModified)
 										const mime = mimeTypes.lookup(name) || ""
-										const expire = "never"
 										let dummyOffset = 0
 										let fileChunks = 0
 
@@ -652,20 +651,10 @@ export const upload = (path: string, remoteTreeNow: any, location: Location, tas
 												readChunk(absolutePath, index * constants.chunkSize, constants.chunkSize)
 													.then(data => {
 														const queryParams = new URLSearchParams({
-															apiKey: apiKey,
-															uuid: uuid,
-															name: nameEnc,
-															nameHashed: nameH,
-															size: sizeEnc,
-															chunks: fileChunks,
-															mime: mimeEnc,
-															index: index,
-															rm: rm,
-															expire: expire,
-															uploadKey: uploadKey,
-															metaData: metaData,
-															parent: parent,
-															version: UPLOAD_VERSION
+															uuid,
+															index,
+															parent,
+															uploadKey
 														} as any).toString()
 
 														encryptData(data, key)
@@ -673,7 +662,6 @@ export const upload = (path: string, remoteTreeNow: any, location: Location, tas
 																uploadChunk({
 																	queryParams,
 																	data: encrypted,
-																	timeout: 86400000,
 																	from: "sync",
 																	location
 																})
@@ -699,9 +687,9 @@ export const upload = (path: string, remoteTreeNow: any, location: Location, tas
 											await uploadTask(0)
 
 											await new Promise((resolve, reject) => {
-												let done = 1
+												let done = 0
 
-												for (let i = 1; i < fileChunks + 1; i++) {
+												for (let i = 0; i < fileChunks; i++) {
 													uploadThreadsSemaphore.acquire().then(() => {
 														uploadTask(i)
 															.then((data: any) => {
@@ -712,7 +700,7 @@ export const upload = (path: string, remoteTreeNow: any, location: Location, tas
 
 																uploadThreadsSemaphore.release()
 
-																if (done >= fileChunks + 1) {
+																if (done >= fileChunks) {
 																	return resolve(true)
 																}
 															})
@@ -747,12 +735,18 @@ export const upload = (path: string, remoteTreeNow: any, location: Location, tas
 
 											const doneRes = await markUploadAsDone({
 												uuid,
+												name: nameEnc,
+												nameHashed,
+												size: sizeEnc,
+												chunks: fileChunks,
+												mime: mimeEnc,
+												rm,
+												metadata: metaData,
+												version: UPLOAD_VERSION,
 												uploadKey
 											})
 
-											if (doneRes.data && doneRes.data.chunks) {
-												fileChunks = doneRes.data.chunks
-											}
+											fileChunks = doneRes.chunks
 										} catch (e: any) {
 											if (!(await doesExistLocally(absolutePath))) {
 												return reject("deletedLocally")

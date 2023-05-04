@@ -31,9 +31,9 @@ const handleMessage = (type: string, request: any) => {
 		if (type == "ping") {
 			return resolve("pong")
 		} else if (type == "apiRequest") {
-			const { method, endpoint, timeout, data } = request
+			const { method, endpoint, data } = request
 
-			apiRequest({ method, endpoint, data, timeout }).then(resolve).catch(reject)
+			apiRequest({ method, endpoint, data }).then(resolve).catch(reject)
 		} else if (type == "decryptFolderName") {
 			const { name } = request
 
@@ -140,9 +140,9 @@ const handleMessage = (type: string, request: any) => {
 				return reject(e)
 			}
 		} else if (type == "uploadChunk") {
-			const { queryParams, data, timeout, from } = request
+			const { queryParams, data, from } = request
 
-			uploadChunk({ queryParams, data, timeout, from }).then(resolve).catch(reject)
+			uploadChunk({ queryParams, data, from }).then(resolve).catch(reject)
 		} else if (type == "downloadChunk") {
 			const { region, bucket, uuid, index, from } = request
 

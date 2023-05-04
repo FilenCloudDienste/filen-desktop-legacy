@@ -211,14 +211,13 @@ const DownloadFolder = memo(
 		const startDownloading = () => {
 			setIsGettingTree(true)
 
-			Promise.all([db.get("apiKey"), db.get("privateKey"), db.get("masterKeys"), db.set("downloadPaused", false)])
-				.then(async ([apiKey, privateKey, masterKeys]) => {
+			Promise.all([db.get("privateKey"), db.get("masterKeys"), db.set("downloadPaused", false)])
+				.then(async ([privateKey, masterKeys]) => {
 					apiRequest({
 						method: "POST",
-						endpoint: args.shared ? "/v1/download/dir/shared" : args.linked ? "/v1/download/dir/link" : "/v1/download/dir",
+						endpoint: args.shared ? "/v3/dir/download/shared" : args.linked ? "/v3/dir/download/link" : "/v3/dir/download",
 						data: args.shared
 							? {
-									apiKey,
 									uuid: args.uuid
 							  }
 							: args.linked
@@ -233,7 +232,6 @@ const DownloadFolder = memo(
 											: ""
 							  }
 							: {
-									apiKey,
 									uuid: args.uuid
 							  }
 					})

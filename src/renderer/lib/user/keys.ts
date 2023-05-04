@@ -2,24 +2,26 @@ import { apiRequest } from "../api"
 import { decryptMetadata, encryptMetadata, generateKeypair } from "../crypto"
 import db from "../db"
 
-const log = window.require("electron-log")
-
 export const updateKeypair = async ({ publicKey, privateKey }: { publicKey: string; privateKey: string }): Promise<void> => {
 	const [apiKey, masterKeys] = await Promise.all([db.get("apiKey"), db.get("masterKeys")])
 
-	if (!Array.isArray(masterKeys) || masterKeys.length == 0) {
+	if (!Array.isArray(masterKeys)) {
 		throw new Error("No master keys array found")
+	}
+
+	if (masterKeys.length === 0) {
+		throw new Error("No master keys found")
 	}
 
 	const encryptedPrivateKey = await encryptMetadata(privateKey, masterKeys[masterKeys.length - 1])
 	const response = await apiRequest({
 		method: "POST",
-		endpoint: "/v1/user/keyPair/update",
+		endpoint: "/v3/user/keyPair/update",
 		data: {
-			apiKey,
 			publicKey,
 			privateKey: encryptedPrivateKey
-		}
+		},
+		apiKey
 	})
 
 	if (!response.status) {
@@ -30,19 +32,23 @@ export const updateKeypair = async ({ publicKey, privateKey }: { publicKey: stri
 export const setKeypair = async ({ publicKey, privateKey }: { publicKey: string; privateKey: string }): Promise<void> => {
 	const [apiKey, masterKeys] = await Promise.all([db.get("apiKey"), db.get("masterKeys")])
 
-	if (!Array.isArray(masterKeys) || masterKeys.length == 0) {
+	if (!Array.isArray(masterKeys)) {
 		throw new Error("No master keys array found")
+	}
+
+	if (masterKeys.length === 0) {
+		throw new Error("No master keys found")
 	}
 
 	const encryptedPrivateKey = await encryptMetadata(privateKey, masterKeys[masterKeys.length - 1])
 	const response = await apiRequest({
 		method: "POST",
-		endpoint: "/v1/user/keyPair/set",
+		endpoint: "/v3/user/keyPair/set",
 		data: {
-			apiKey,
 			publicKey,
 			privateKey: encryptedPrivateKey
-		}
+		},
+		apiKey
 	})
 
 	if (!response.status) {
@@ -53,16 +59,18 @@ export const setKeypair = async ({ publicKey, privateKey }: { publicKey: string;
 export const updatePublicAndPrivateKey = async (): Promise<void> => {
 	const [apiKey, masterKeys] = await Promise.all([db.get("apiKey"), db.get("masterKeys")])
 
-	if (!Array.isArray(masterKeys) || masterKeys.length == 0) {
+	if (!Array.isArray(masterKeys)) {
 		throw new Error("No master keys array found")
 	}
 
+	if (masterKeys.length === 0) {
+		throw new Error("No master keys found")
+	}
+
 	const response = await apiRequest({
-		method: "POST",
-		endpoint: "/v1/user/keyPair/info",
-		data: {
-			apiKey
-		}
+		method: "GET",
+		endpoint: "/v3/user/keyPair/info",
+		apiKey
 	})
 
 	if (!response.status) {
@@ -87,20 +95,20 @@ export const updatePublicAndPrivateKey = async (): Promise<void> => {
 		}
 
 		if (privateKey.length <= 16) {
-			throw new Error("Could not decrypt private key")
+			return
 		}
 
 		await db.set("publicKey", response.data.publicKey)
 		await db.set("privateKey", privateKey)
 		await updateKeypair({ publicKey: response.data.publicKey, privateKey })
 
-		log.info("User keypair updated.")
+		console.log("Keypair updated")
 	} else {
 		const generatedKeypair = await generateKeypair()
 		const b64PubKey = generatedKeypair.publicKey
 		const b64PrivKey = generatedKeypair.privateKey
 
-		if (b64PubKey.length <= 16 && b64PrivKey.length <= 16) {
+		if (b64PubKey.length <= 16 || b64PrivKey.length <= 16) {
 			throw new Error("Key lengths invalid")
 		}
 
@@ -108,25 +116,29 @@ export const updatePublicAndPrivateKey = async (): Promise<void> => {
 		await db.set("publicKey", b64PubKey)
 		await db.set("privateKey", b64PrivKey)
 
-		log.info("User keypair generated and updated.")
+		console.log("Keypair updated")
 	}
 }
 
 export const updateKeys = async (): Promise<void> => {
 	const [apiKey, masterKeys] = await Promise.all([db.get("apiKey"), db.get("masterKeys")])
 
-	if (!Array.isArray(masterKeys) || masterKeys.length == 0) {
+	if (!Array.isArray(masterKeys)) {
 		throw new Error("No master keys array found")
+	}
+
+	if (masterKeys.length === 0) {
+		throw new Error("No master keys found")
 	}
 
 	const encryptedMasterKeys = await encryptMetadata(masterKeys.join("|"), masterKeys[masterKeys.length - 1])
 	const response = await apiRequest({
 		method: "POST",
-		endpoint: "/v1/user/masterKeys",
+		endpoint: "/v3/user/masterKeys",
 		data: {
-			apiKey,
 			masterKeys: encryptedMasterKeys
-		}
+		},
+		apiKey
 	})
 
 	if (!response.status) {
@@ -154,7 +166,7 @@ export const updateKeys = async (): Promise<void> => {
 
 		await db.set("masterKeys", newMasterKeys)
 
-		log.info("Master keys updated.")
+		console.log("Master keys updated")
 	}
 
 	await updatePublicAndPrivateKey()

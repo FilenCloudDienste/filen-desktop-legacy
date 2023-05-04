@@ -83,8 +83,8 @@ const uploadFile = (path: string, parent: string): Promise<boolean> => {
 
 		const uuid = uuidv4()
 
-		Promise.all([db.get("apiKey"), db.get("masterKeys")])
-			.then(([apiKey, masterKeys]) => {
+		db.get("masterKeys")
+			.then(masterKeys => {
 				fsLocal
 					.canReadAtPath(absolutePath)
 					.then(canRead => {
@@ -98,7 +98,6 @@ const uploadFile = (path: string, parent: string): Promise<boolean> => {
 								const size = parseInt(stat.size.toString())
 								const lastModified = Math.floor(stat.mtimeMs)
 								const mime = mimeTypes.lookup(name) || ""
-								const expire = "never"
 								let dummyOffset = 0
 								let fileChunks = 0
 
@@ -172,23 +171,12 @@ const uploadFile = (path: string, parent: string): Promise<boolean> => {
 												.then(encrypted => {
 													uploadChunk({
 														queryParams: new URLSearchParams({
-															apiKey: apiKey,
-															uuid: uuid,
-															name: nameEnc,
-															nameHashed: nameH,
-															size: sizeEnc,
-															chunks: fileChunks,
-															mime: mimeEnc,
-															index: index,
-															rm: rm,
-															expire: expire,
-															uploadKey: uploadKey,
-															metaData: metaData,
-															parent: parent,
-															version: UPLOAD_VERSION
+															uuid,
+															index,
+															parent,
+															uploadKey
 														} as any).toString(),
 														data: encrypted,
-														timeout: 86400000,
 														from: FROM_ID
 													})
 														.then(response => {
@@ -209,17 +197,17 @@ const uploadFile = (path: string, parent: string): Promise<boolean> => {
 									await uploadTask(0)
 
 									await new Promise((resolve, reject) => {
-										let done = 1
+										let done = 0
 
-										for (let i = 1; i < fileChunks + 1; i++) {
+										for (let i = 0; i < fileChunks; i++) {
 											uploadThreadsSemaphore.acquire().then(() => {
 												uploadTask(i)
-													.then((data: any) => {
+													.then(() => {
 														done += 1
 
 														uploadThreadsSemaphore.release()
 
-														if (done >= fileChunks + 1) {
+														if (done >= fileChunks) {
 															return resolve(true)
 														}
 													})
@@ -247,7 +235,18 @@ const uploadFile = (path: string, parent: string): Promise<boolean> => {
 										return reject("parentMissing")
 									}
 
-									await markUploadAsDone({ uuid, uploadKey })
+									await markUploadAsDone({
+										uuid,
+										name: nameEnc,
+										nameHashed,
+										size: sizeEnc,
+										chunks: fileChunks,
+										mime: mimeEnc,
+										rm,
+										metadata: metaData,
+										version: UPLOAD_VERSION,
+										uploadKey
+									})
 								} catch (e: any) {
 									if (!(await fsRemote.doesExistLocally(absolutePath))) {
 										return reject("deletedLocally")

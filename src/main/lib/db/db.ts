@@ -25,30 +25,28 @@ export const get = async (key: string) => {
 	const keyHash = hashKey(key)
 
 	try {
-		var data = await fs.readFile(pathModule.join(DB_PATH, keyHash + ".json"), "utf-8")
+		const val = JSON.parse(await fs.readFile(pathModule.join(DB_PATH, keyHash + ".json"), "utf-8"))
+
+		if (typeof val !== "object") {
+			return null
+		}
+
+		if (typeof val.key !== "string" || typeof val.value == "undefined") {
+			return null
+		}
+
+		if (val.key !== key) {
+			return null
+		}
+
+		if (USE_MEMORY_CACHE) {
+			memoryCache.set(MEMORY_CACHE_KEY + key, val.value)
+		}
+
+		return val.value
 	} catch (e) {
 		return null
 	}
-
-	const val = JSON.parse(data)
-
-	if (typeof val !== "object") {
-		return null
-	}
-
-	if (typeof val.key !== "string" || typeof val.value == "undefined") {
-		return null
-	}
-
-	if (val.key !== key) {
-		return null
-	}
-
-	if (USE_MEMORY_CACHE) {
-		memoryCache.set(MEMORY_CACHE_KEY + key, val.value)
-	}
-
-	return val.value
 }
 
 export const set = (key: string, value: any) => {
