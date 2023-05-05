@@ -1,4 +1,4 @@
-import { ipcMain, dialog, app, globalShortcut, BrowserWindow } from "electron"
+import { ipcMain, dialog, app, globalShortcut, BrowserWindow, shell } from "electron"
 import log from "electron-log"
 import fs from "fs-extra"
 import pathModule from "path"
@@ -675,6 +675,8 @@ export const updateKeybinds = async (): Promise<void> => {
 				db.set("paused", true).catch(log.error)
 			} else if (keybinds[i].type == "resumeSync") {
 				db.set("paused", false).catch(log.error)
+			} else if (keybinds[i].type == "openWebsite") {
+				shell.openExternal("https://drive.filen.io").catch(log.error)
 			}
 		})
 	}

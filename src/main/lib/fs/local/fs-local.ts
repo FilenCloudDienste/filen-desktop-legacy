@@ -38,7 +38,8 @@ const FS_RETRY_CODES = [
 	"ETXTBSY",
 	"ESPIPE",
 	"EAI_SYSTEM",
-	"EAI_CANCELED"
+	"EAI_CANCELED",
+	"EUNKNOWN"
 ]
 const FS_NORETRY_CODES = ["ENOENT", "ENODEV", "EACCES", "EPERM", "EINVAL", "ENAMETOOLONG", "ENOBUFS", "ENOSPC", "EROFS"]
 let LOCAL_TRASH_DIRS_CLEAN_INTERVAL: NodeJS.Timer
@@ -117,10 +118,12 @@ export const exists = (fullPath: string): Promise<boolean> => {
 
 		fs.access(path, fs.constants.F_OK, err => {
 			if (err) {
-				return resolve(false)
+				resolve(false)
+
+				return
 			}
 
-			return resolve(true)
+			resolve(true)
 		})
 	})
 }
@@ -566,7 +569,7 @@ export const clearLocalTrashDirs = (clearNow = false): Promise<void> => {
 											alwaysStat: false,
 											lstat: false,
 											type: "all",
-											depth: 2147483648
+											depth: 1
 										})
 
 										let statting = 0
@@ -992,7 +995,7 @@ export const getApplyDoneTaskPath = async (locationUUID: string): Promise<string
 	return path
 }
 
-export const loadApplyDoneTasks = async (locationUUID: string): Promise<any[]> => {
+export const loadApplyDoneTasks = (locationUUID: string): Promise<any[]> => {
 	return new Promise(async (resolve, reject) => {
 		await applyDoneTasksSemaphore.acquire()
 

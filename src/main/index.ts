@@ -2,11 +2,7 @@ import { app, BrowserWindow, powerMonitor, Menu } from "electron"
 import log from "electron-log"
 import is from "electron-is"
 import { autoUpdater } from "electron-updater"
-import {
-	linuxCheckLibAppIndicator,
-	positionWindow,
-	toggleMainWindow
-} from "./lib/tray"
+import { linuxCheckLibAppIndicator, positionWindow, toggleMainWindow } from "./lib/tray"
 import { createWindows, createUpdate } from "./lib/windows"
 import { emitGlobal, updateKeybinds } from "./lib/ipc"
 import memoryCache from "./lib/memoryCache"
@@ -132,50 +128,30 @@ if (!app.requestSingleInstanceLock()) {
 					label: "Application",
 					submenu: [
 						{
-							label: "About Application"
-						},
-						{
-							type: "separator"
-						},
-						{
 							label: "Quit",
-							accelerator: "Command+Q",
-							click: () => {
-								app.quit()
-							}
+							accelerator: "CmdOrCtrl+Q",
+							click: () => app.quit(),
+							// @ts-expect-error
+							selector: "terminate:"
 						}
 					]
 				},
 				{
 					label: "Edit",
 					submenu: [
-						{
-							label: "Undo",
-							accelerator: "CmdOrCtrl+Z"
-						},
-						{
-							label: "Redo",
-							accelerator: "Shift+CmdOrCtrl+Z"
-						},
-						{
-							type: "separator"
-						},
-						{
-							label: "Cut",
-							accelerator: "CmdOrCtrl+X"
-						},
-						{
-							label: "Copy",
-							accelerator: "CmdOrCtrl+C"
-						},
-						{
-							label: "Paste",
-							accelerator: "CmdOrCtrl+V"
-						},
-						{
-							label: "Select All",
-							accelerator: "CmdOrCtrl+A"
-						}
+						// @ts-expect-error
+						{ label: "Undo", accelerator: "CmdOrCtrl+Z", selector: "undo:" },
+						// @ts-expect-error
+						{ label: "Redo", accelerator: "Shift+CmdOrCtrl+Z", selector: "redo:" },
+						{ type: "separator" },
+						// @ts-expect-error
+						{ label: "Cut", accelerator: "CmdOrCtrl+X", selector: "cut:" },
+						// @ts-expect-error
+						{ label: "Copy", accelerator: "CmdOrCtrl+C", selector: "copy:" },
+						// @ts-expect-error
+						{ label: "Paste", accelerator: "CmdOrCtrl+V", selector: "paste:" },
+						// @ts-expect-error
+						{ label: "Select All", accelerator: "CmdOrCtrl+A", selector: "selectAll:" }
 					]
 				}
 			])

@@ -223,7 +223,6 @@ const AuthWindow = memo(({ windowId }: { windowId: string }) => {
 							value={twoFactorCode}
 							onChange={event => setTwoFactorCode(event.target.value)}
 							placeholder={i18n(lang, "loginTwoFactorCodePlaceholder")}
-							userSelect="all"
 							style={{
 								border: "none",
 								backgroundColor: darkMode ? "#171717" : "lightgray",
@@ -261,7 +260,6 @@ const AuthWindow = memo(({ windowId }: { windowId: string }) => {
 							value={email}
 							onChange={event => setEmail(event.target.value)}
 							placeholder={i18n(lang, "loginEmailPlaceholder")}
-							userSelect="all"
 							style={{
 								marginBottom: 10,
 								border: "none",
@@ -282,7 +280,6 @@ const AuthWindow = memo(({ windowId }: { windowId: string }) => {
 							value={password}
 							onChange={event => setPassword(event.target.value)}
 							placeholder={i18n(lang, "loginPasswordPlaceholder")}
-							userSelect="all"
 							ref={passwordFieldRef}
 							style={{
 								border: "none",
@@ -332,7 +329,7 @@ const AuthWindow = memo(({ windowId }: { windowId: string }) => {
 							_hover={{
 								textDecoration: "none"
 							}}
-							onClick={() => shell.openExternal("https://filen.io/#forgot-password")}
+							onClick={() => shell.openExternal("https://drive.filen.io/forgot-password")}
 						>
 							{i18n(lang, "forgotPasswordBtn")}
 						</Link>
@@ -342,7 +339,7 @@ const AuthWindow = memo(({ windowId }: { windowId: string }) => {
 							_hover={{
 								textDecoration: "none"
 							}}
-							onClick={() => shell.openExternal("https://filen.io/#signup")}
+							onClick={() => shell.openExternal("https://drive.filen.io/register")}
 						>
 							{i18n(lang, "createAccountBtn")}
 						</Link>

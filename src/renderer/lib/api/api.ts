@@ -275,7 +275,7 @@ export const userInfo = async (passedApiKey?: string): Promise<any> => {
 	return response.data
 }
 
-export const baseFolders = async (): Promise<any> => {
+export const baseFolder = async (): Promise<string> => {
 	const response = await apiRequest({
 		method: "GET",
 		endpoint: "/v3/user/baseFolder"
@@ -285,7 +285,7 @@ export const baseFolders = async (): Promise<any> => {
 		throw new Error(response.message)
 	}
 
-	return response.data
+	return response.data.uuid
 }
 
 export const folderContent = async (uuid: string): Promise<any> => {

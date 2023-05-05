@@ -19,7 +19,7 @@ import useLang from "../../lib/hooks/useLang"
 import usePlatform from "../../lib/hooks/usePlatform"
 import Titlebar from "../../components/Titlebar"
 import { i18n } from "../../lib/i18n"
-import { baseFolders, folderContent } from "../../lib/api"
+import { baseFolder, folderContent } from "../../lib/api"
 import db from "../../lib/db"
 import { IoChevronForwardOutline, IoFolderOpenOutline, IoChevronBackOutline } from "react-icons/io5"
 import { getParentFromParentFromURL, fileAndFolderNameValidation } from "../../lib/helpers"
@@ -270,6 +270,41 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 		}
 	}
 
+	const createDir = async () => {
+		const folderName = createFolderName.trim()
+
+		if (folderName.length == 0) {
+			return showToast({ message: i18n(lang, "invalidFolderName"), status: "error" })
+		}
+
+		if (!fileAndFolderNameValidation(folderName)) {
+			return showToast({ message: i18n(lang, "invalidFolderName"), status: "error" })
+		}
+
+		const ex = url.current.split("/")
+		const parent = ex[ex.length - 1].trim()
+
+		setIsCreatingFolder(true)
+
+		try {
+			await createFolder({
+				uuid: uuidv4(),
+				name: folderName,
+				parent
+			})
+		} catch (e: any) {
+			log.error(e)
+
+			setIsCreatingFolder(false)
+
+			return showToast({ message: e.toString(), status: "error" })
+		}
+
+		setCreateFolderModalOpen(false)
+		fetchFolderContent(parent)
+		setIsCreatingFolder(false)
+	}
+
 	useEffect(() => {
 		if (createFolderModalOpen) {
 			setCreateFolderName("")
@@ -281,19 +316,11 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 			try {
 				await updateKeys()
 
-				const response = await baseFolders()
+				const baseFolderUUID = await baseFolder()
 
-				for (let i = 0; i < response.folders.length; i++) {
-					const folder = response.folders[i]
-
-					if (folder.is_default) {
-						const folderName = await ipc.decryptFolderName(folder.name)
-
-						defaultFolderUUID.current = folder.uuid
-						defaultFolderName.current = folderName
-						folderNames[folder.uuid] = folderName
-					}
-				}
+				defaultFolderUUID.current = baseFolderUUID
+				defaultFolderName.current = "Cloud Drive"
+				folderNames[baseFolderUUID] = "Cloud Drive"
 			} catch (e) {
 				return log.error(e)
 			}
@@ -580,6 +607,11 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 							}}
 							autoFocus={true}
 							disabled={isCreatingFolder}
+							onKeyDown={e => {
+								if (e.key == "Enter") {
+									createDir()
+								}
+							}}
 						/>
 					</ModalBody>
 					<ModalFooter>
@@ -596,40 +628,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 									textDecoration="none"
 									_hover={{ textDecoration: "none" }}
 									marginLeft="10px"
-									onClick={async () => {
-										const folderName = createFolderName.trim()
-
-										if (folderName.length == 0) {
-											return showToast({ message: i18n(lang, "invalidFolderName"), status: "error" })
-										}
-
-										if (!fileAndFolderNameValidation(folderName)) {
-											return showToast({ message: i18n(lang, "invalidFolderName"), status: "error" })
-										}
-
-										const ex = url.current.split("/")
-										const parent = ex[ex.length - 1].trim()
-
-										setIsCreatingFolder(true)
-
-										try {
-											await createFolder({
-												uuid: uuidv4(),
-												name: folderName,
-												parent
-											})
-										} catch (e: any) {
-											log.error(e)
-
-											setIsCreatingFolder(false)
-
-											return showToast({ message: e.toString(), status: "error" })
-										}
-
-										setCreateFolderModalOpen(false)
-										fetchFolderContent(parent)
-										setIsCreatingFolder(false)
-									}}
+									onClick={() => createDir()}
 								>
 									{i18n(lang, "create")}
 								</Link>

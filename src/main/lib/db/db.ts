@@ -31,7 +31,7 @@ export const get = async (key: string) => {
 			return null
 		}
 
-		if (typeof val.key !== "string" || typeof val.value == "undefined") {
+		if (typeof val.key !== "string" || typeof val.value === "undefined") {
 			return null
 		}
 
@@ -63,7 +63,7 @@ export const set = (key: string, value: any) => {
 					key,
 					value
 				},
-				(_, val) => (typeof val == "bigint" ? val.toString() : val)
+				(_, val) => (typeof val === "bigint" ? val.toString() : val)
 			)
 		} catch (e) {
 			reject(e)
@@ -189,7 +189,7 @@ export const remove = (key: string) => {
 						resolve(true)
 					})
 					.catch(err => {
-						if (err.code == "ENOENT") {
+						if (err.code === "ENOENT") {
 							if (USE_MEMORY_CACHE) {
 								memoryCache.delete(MEMORY_CACHE_KEY + key)
 							}
@@ -262,8 +262,8 @@ export const keys = async () => {
 	for (const file of dir) {
 		const obj = JSON.parse(await fs.readFile(pathModule.join(DB_PATH, file), "utf-8"))
 
-		if (typeof obj == "object") {
-			if (typeof obj.key == "string") {
+		if (typeof obj === "object") {
+			if (typeof obj.key === "string") {
 				keys.push(obj.key)
 			}
 		}

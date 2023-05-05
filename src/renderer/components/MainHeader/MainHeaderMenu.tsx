@@ -10,6 +10,7 @@ import { MdUploadFile } from "react-icons/md"
 import { RiFolderUploadLine } from "react-icons/ri"
 
 const { shell } = window.require("electron")
+const log = window.require("electron-log")
 
 interface Props {
 	userId: number
@@ -165,7 +166,7 @@ export default class MainHeaderMenu extends React.Component<Props> {
 							_focus={{
 								backgroundColor: colors(platform, darkMode, "backgroundSecondary")
 							}}
-							onClick={() => shell.openExternal("https://filen.io/my-account/file-manager/")}
+							onClick={() => shell.openExternal("https://drive.filen.io").catch(log.error)}
 						>
 							{i18n(lang, "openWebsite")}
 						</MenuItem>

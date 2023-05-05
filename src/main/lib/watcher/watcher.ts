@@ -14,10 +14,10 @@ const pollingTimeout: Record<string, NodeJS.Timer> = {}
 const lastEvent: Record<string, number> = {}
 const didCloseDueToResume: Record<string, boolean> = {}
 
-export const isNetworkPath = (path: string): boolean => {
+export const isNetworkPath = async (path: string): Promise<boolean> => {
 	// Not reliable on linux or mac
 	try {
-		const realPath = fs.realpathSync(path)
+		const realPath = await fs.realpath(path)
 
 		return realPath.startsWith("\\\\") || realPath.startsWith("//")
 	} catch (e) {
@@ -34,13 +34,13 @@ export const emitToWorker = (data: any) => {
 	})
 }
 
-export const resumeWatchers = () => {
+export const resumeWatchers = async () => {
 	if (is.linux()) {
 		return
 	}
 
 	for (const path in SUBS_INFO) {
-		if (isNetworkPath(path)) {
+		if (await isNetworkPath(path)) {
 			continue
 		}
 
@@ -64,8 +64,8 @@ export const resumeWatchers = () => {
 	}
 }
 
-export const restartWatcher = (path: string, locationUUID: string) => {
-	if (is.linux() || isNetworkPath(path)) {
+export const restartWatcher = async (path: string, locationUUID: string) => {
+	if (is.linux() || (await isNetworkPath(path))) {
 		return
 	}
 
@@ -93,8 +93,8 @@ powerMonitor.on("unlock-screen", () => resumeWatchers())
 powerMonitor.on("user-did-become-active", () => resumeWatchers())
 
 export const watch = (path: string, locationUUID: string) => {
-	return new Promise((resolve, reject) => {
-		if (is.linux() || isNetworkPath(path)) {
+	return new Promise(async (resolve, reject) => {
+		if (is.linux() || (await isNetworkPath(path))) {
 			clearInterval(pollingTimeout[path])
 
 			pollingTimeout[path] = setInterval(() => {
