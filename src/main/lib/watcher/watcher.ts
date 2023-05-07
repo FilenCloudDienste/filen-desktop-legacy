@@ -47,7 +47,7 @@ export const resumeWatchers = async () => {
 		const locationUUID = SUBS_INFO[path]
 
 		try {
-			if (typeof SUBS[path].isClosed == "function") {
+			if (typeof SUBS[path] !== "undefined" && typeof SUBS[path].isClosed === "function") {
 				if (!SUBS[path].isClosed()) {
 					didCloseDueToResume[path] = true
 

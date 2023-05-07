@@ -657,6 +657,12 @@ export const upload = (path: string, remoteTreeNow: any, location: Location, tas
 															uploadKey
 														} as any).toString()
 
+														if (data.byteLength === 0) {
+															reject(new Error("Buffer byteLength 0"))
+
+															return
+														}
+
 														encryptData(data, key)
 															.then(encrypted => {
 																uploadChunk({
@@ -667,10 +673,12 @@ export const upload = (path: string, remoteTreeNow: any, location: Location, tas
 																})
 																	.then(response => {
 																		if (!response.status) {
-																			return reject(new Error(response.message))
+																			reject(new Error(response.message))
+
+																			return
 																		}
 
-																		return resolve(response.data)
+																		resolve(response.data)
 																	})
 																	.catch(reject)
 															})
@@ -684,8 +692,6 @@ export const upload = (path: string, remoteTreeNow: any, location: Location, tas
 										let bucket: string = ""
 
 										try {
-											await uploadTask(0)
-
 											await new Promise((resolve, reject) => {
 												let done = 0
 

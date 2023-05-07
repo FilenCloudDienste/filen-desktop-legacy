@@ -25,6 +25,7 @@
 	"defaultIgnored": {
 		"names": [
 			".ds_store",
+			"._.ds_store",
 			"desktop.ini",
 			"thumbs.db",
 			"ntuser.dat",

@@ -15,7 +15,7 @@ const MAX_RETRIES = 30
 const RETRY_TIMEOUT = 500
 const writeMutexes: Record<string, SemaphoreInterface> = {}
 
-export const get = async (key: string) => {
+export const get = async (key: string): Promise<any> => {
 	if (USE_MEMORY_CACHE) {
 		if (memoryCache.has(MEMORY_CACHE_KEY + key)) {
 			return memoryCache.get(MEMORY_CACHE_KEY + key)
@@ -49,8 +49,8 @@ export const get = async (key: string) => {
 	}
 }
 
-export const set = (key: string, value: any) => {
-	return new Promise(async (resolve, reject) => {
+export const set = (key: string, value: any): Promise<void> => {
+	return new Promise<void>(async (resolve, reject) => {
 		if (!writeMutexes[key]) {
 			writeMutexes[key] = new Semaphore(1)
 		}
@@ -74,7 +74,6 @@ export const set = (key: string, value: any) => {
 		}
 
 		const keyHash = hashKey(key)
-
 		let tries = 0
 		let lastErr = ""
 
@@ -108,7 +107,7 @@ export const set = (key: string, value: any) => {
 
 							writeMutexes[key].release()
 
-							resolve(true)
+							resolve()
 						})
 						.catch(err => {
 							lastErr = err
@@ -127,8 +126,8 @@ export const set = (key: string, value: any) => {
 	})
 }
 
-export const remove = (key: string) => {
-	return new Promise(async (resolve, reject) => {
+export const remove = (key: string): Promise<void> => {
+	return new Promise<void>(async (resolve, reject) => {
 		if (!writeMutexes[key]) {
 			writeMutexes[key] = new Semaphore(1)
 		}
@@ -136,7 +135,6 @@ export const remove = (key: string) => {
 		await writeMutexes[key].acquire()
 
 		const keyHash = hashKey(key)
-
 		let tries = 0
 		let lastErr = ""
 
@@ -164,9 +162,9 @@ export const remove = (key: string) => {
 						}
 					})
 
-					resolve(true)
-
 					writeMutexes[key].release()
+
+					resolve()
 
 					return
 				}
@@ -186,7 +184,7 @@ export const remove = (key: string) => {
 
 						writeMutexes[key].release()
 
-						resolve(true)
+						resolve()
 					})
 					.catch(err => {
 						if (err.code === "ENOENT") {
@@ -203,7 +201,7 @@ export const remove = (key: string) => {
 
 							writeMutexes[key].release()
 
-							resolve(true)
+							resolve()
 
 							return
 						}
@@ -219,7 +217,7 @@ export const remove = (key: string) => {
 	})
 }
 
-export const clear = async () => {
+export const clear = async (): Promise<void> => {
 	for (const mutex in writeMutexes) {
 		await writeMutexes[mutex].acquire()
 	}
@@ -255,7 +253,7 @@ export const clear = async () => {
 	}
 }
 
-export const keys = async () => {
+export const keys = async (): Promise<string[]> => {
 	const dir = await fs.readdir(DB_PATH)
 	const keys: string[] = []
 

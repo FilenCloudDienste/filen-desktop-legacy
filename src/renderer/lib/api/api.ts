@@ -1949,8 +1949,6 @@ export const enableItemPublicLink = async (
 	type: "folder" | "file",
 	progressCallback?: (current: number, total: number) => any
 ): Promise<void> => {
-	const apiKey = await db.get("apiKey")
-
 	if (type == "folder") {
 		throw new Error("Not implemented")
 	} else {
@@ -1981,8 +1979,6 @@ export const enableItemPublicLink = async (
 }
 
 export const disableItemPublicLink = async (uuid: string, type: "folder" | "file", linkUUID: string): Promise<void> => {
-	const apiKey = await db.get("apiKey")
-
 	if (type == "file") {
 		if (typeof linkUUID !== "string" || linkUUID.length < 32) {
 			throw new Error("Invalid linkUUID")

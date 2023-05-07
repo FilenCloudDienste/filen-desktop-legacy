@@ -579,11 +579,19 @@ handlerProxy("fsRename", async (_, { before, after }) => {
 })
 
 handlerProxy("fsCreateLocalTrashDirs", async () => {
-	return await fsLocal.createLocalTrashDirs()
+	try {
+		await fsLocal.createLocalTrashDirs()
+	} catch (e) {
+		log.error(e)
+	}
 })
 
 handlerProxy("fsClearLocalTrashDirs", async (_, clearNow) => {
-	return await fsLocal.clearLocalTrashDirs(clearNow)
+	try {
+		await fsLocal.clearLocalTrashDirs(clearNow)
+	} catch (e) {
+		log.error(e)
+	}
 })
 
 handlerProxy("fsInitLocalTrashDirs", async () => {

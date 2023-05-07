@@ -492,7 +492,7 @@ const syncLocation = async (location: Location): Promise<void> => {
 	} catch (e: any) {
 		log.error(e)
 
-		if (e.toString().toLowerCase().indexOf("remote folder") !== -1 && e.toString().toLowerCase().indexOf("is not present") !== -1) {
+		if (e.toString().toLowerCase().indexOf("folder does not exist") !== -1) {
 			await removeRemoteLocation(location)
 		}
 
