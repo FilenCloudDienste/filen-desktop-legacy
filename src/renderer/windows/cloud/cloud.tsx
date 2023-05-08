@@ -190,38 +190,54 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 			}
 
 			const response: any = await folderContent(uuid)
-
+			const promises: Promise<void>[] = []
 			const folders: any[] = []
 			const files: any[] = []
 
-			for (let i = 0; i < response.folders.length; i++) {
-				const folder: any = response.folders[i]
-				const folderName: string = await decryptFolderName(folder.name, masterKeys)
+			for (const folder of response.folders) {
+				promises.push(
+					new Promise((resolve, reject) => {
+						decryptFolderName(folder.name, masterKeys)
+							.then(folderName => {
+								if (folderName.length > 0) {
+									folderNames[folder.uuid] = folderName
 
-				if (folderName.length > 0) {
-					folderNames[folder.uuid] = folderName
+									folders.push({
+										...folder,
+										name: folderName,
+										type: "folder"
+									})
+								}
 
-					folders.push({
-						...folder,
-						name: folderName,
-						type: "folder"
+								resolve()
+							})
+							.catch(reject)
 					})
-				}
+				)
 			}
 
-			for (let i = 0; i < response.uploads.length; i++) {
-				const file: any = response.uploads[i]
-				const metadata: any = await decryptFileMetadata(file.metadata, masterKeys)
+			for (const file of response.uploads) {
+				promises.push(
+					new Promise((resolve, reject) => {
+						decryptFileMetadata(file.metadata, masterKeys)
+							.then(metadata => {
+								if (metadata.name.length > 0) {
+									files.push({
+										...file,
+										metadata,
+										icon: undefined,
+										type: "file"
+									})
+								}
 
-				if (metadata.name.length > 0) {
-					files.push({
-						...file,
-						metadata,
-						icon: undefined,
-						type: "file"
+								resolve()
+							})
+							.catch(reject)
 					})
-				}
+				)
 			}
+
+			await Promise.all(promises)
 
 			setSelectedFolder((prev: any) =>
 				prev.uuid !== uuid
