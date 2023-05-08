@@ -20,6 +20,7 @@ import { IoFolder, IoFolderOpen } from "react-icons/io5"
 import { BsFileEarmarkFill } from "react-icons/bs"
 import { AiOutlineCaretRight, AiOutlineCaretDown } from "react-icons/ai"
 import { Location } from "../../../types"
+import { decryptFileMetadata, decryptFolderName } from "../../lib/crypto"
 
 const log = window.require("electron-log")
 const { ipcRenderer } = window.require("electron")
@@ -254,8 +255,8 @@ const Tree = memo(
 							const files: any[] = []
 
 							for (let i = 0; i < response.folders.length; i++) {
-								const folder: any = response.folders[i]
-								const folderName: string = await ipc.decryptFolderName(folder.name)
+								const folder = response.folders[i]
+								const folderName = await decryptFolderName(folder.name, masterKeys)
 
 								if (folderName.length > 0) {
 									folders.push({
@@ -268,8 +269,8 @@ const Tree = memo(
 							}
 
 							for (let i = 0; i < response.uploads.length; i++) {
-								const file: any = response.uploads[i]
-								const metadata: any = await ipc.decryptFileMetadata(file.metadata, masterKeys)
+								const file = response.uploads[i]
+								const metadata = await decryptFileMetadata(file.metadata, masterKeys)
 
 								if (metadata.name.length > 0) {
 									files.push({

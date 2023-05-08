@@ -20,9 +20,17 @@ import eventListener from "../../lib/eventListener"
 import { throttle } from "lodash"
 import { AiOutlineCheckCircle } from "react-icons/ai"
 import { showToast } from "../../components/Toast"
-import { decryptData } from "../../lib/crypto"
 import useDb from "../../lib/hooks/useDb"
 import { AiOutlinePauseCircle } from "react-icons/ai"
+import {
+	decryptFileMetadataPrivateKey,
+	decryptData,
+	decryptFileMetadata,
+	decryptFileMetadataLink,
+	decryptFolderName,
+	decryptFolderNameLink,
+	decryptFolderNamePrivateKey
+} from "../../lib/crypto"
 
 const log = window.require("electron-log")
 const pathModule = window.require("path")
@@ -251,10 +259,10 @@ const DownloadFolder = memo(
 								baseFolderMetadata == "default"
 									? "Default"
 									: args.shared
-									? await ipc.decryptFolderNamePrivateKey(baseFolderMetadata, privateKey)
+									? await decryptFolderNamePrivateKey(baseFolderMetadata, privateKey)
 									: args.linked
-									? await ipc.decryptFolderNameLink(baseFolderMetadata, args.linkKey)
-									: await ipc.decryptFolderName(baseFolderMetadata)
+									? await decryptFolderNameLink(baseFolderMetadata, args.linkKey)
+									: await decryptFolderName(baseFolderMetadata, masterKeys)
 
 							if (baseFolderParent !== "base") {
 								showToast({ message: "Invalid base folder parent", status: "error" })
@@ -295,10 +303,10 @@ const DownloadFolder = memo(
 									metadata == "default"
 										? "Default"
 										: args.shared
-										? await ipc.decryptFolderNamePrivateKey(metadata, privateKey)
+										? await decryptFolderNamePrivateKey(metadata, privateKey)
 										: args.linked
-										? await ipc.decryptFolderNameLink(metadata, args.linkKey)
-										: await ipc.decryptFolderName(metadata)
+										? await decryptFolderNameLink(metadata, args.linkKey)
+										: await decryptFolderName(metadata, masterKeys)
 
 								if (name.length > 0) {
 									if (!addedFolders[parent + ":" + name]) {
@@ -317,10 +325,10 @@ const DownloadFolder = memo(
 							for (let i = 0; i < response.data.files.length; i++) {
 								const { uuid, bucket, region, chunks, parent, metadata, version, timestamp } = response.data.files[i]
 								const decrypted = args.shared
-									? await ipc.decryptFileMetadataPrivateKey(metadata, privateKey)
+									? await decryptFileMetadataPrivateKey(metadata, privateKey)
 									: args.linked
-									? await ipc.decryptFileMetadataLink(metadata, args.linkKey)
-									: await ipc.decryptFileMetadata(metadata, masterKeys)
+									? await decryptFileMetadataLink(metadata, args.linkKey)
+									: await decryptFileMetadata(metadata, masterKeys)
 
 								if (typeof decrypted.lastModified == "number") {
 									if (decrypted.lastModified <= 0) {
@@ -347,7 +355,7 @@ const DownloadFolder = memo(
 											type: "file"
 										})
 
-										totalBytes.current += parseInt(decrypted.size)
+										totalBytes.current += decrypted.size
 									}
 								}
 							}

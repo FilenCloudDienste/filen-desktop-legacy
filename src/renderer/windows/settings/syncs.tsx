@@ -277,9 +277,7 @@ const SettingsWindowSyncs = memo(
 							filenIgnore = ""
 						}
 
-						if (currentSyncLocationIgnored.length == 0) {
-							setCurrentSyncLocationIgnored(filenIgnore)
-						}
+						setCurrentSyncLocationIgnored(filenIgnore)
 					})
 					.catch(err => {
 						log.error(err)
@@ -876,60 +874,58 @@ const SettingsWindowSyncs = memo(
 											</Select>
 										</Flex>
 									</Flex>
-									<Flex
-										width="100%"
-										height="auto"
-										justifyContent="space-between"
-										alignItems="center"
-										marginTop="10px"
-									>
-										<Flex alignItems="center">
-											<Text
-												color={colors(platform, darkMode, "textPrimary")}
-												fontSize={14}
-											>
-												{i18n(lang, "selectiveSync")}
-											</Text>
-											<Tooltip
-												label={
-													<Flex flexDirection="column">
-														<Text color={colors(platform, darkMode, "textPrimary")}>
-															{i18n(lang, "selectiveSyncTooltip")}
-														</Text>
-													</Flex>
-												}
-												placement="right"
-												borderRadius="15px"
-												backgroundColor={colors(platform, darkMode, "backgroundSecondary")}
-												shadow="none"
-											>
-												<Flex marginLeft="5px">
-													<AiOutlineInfoCircle
-														size={18}
-														color={colors(platform, darkMode, "textPrimary")}
-													/>
-												</Flex>
-											</Tooltip>
-										</Flex>
-										<Flex>
-											<Link
-												color={colors(platform, darkMode, "link")}
-												textDecoration="none"
-												_hover={{ textDecoration: "none" }}
-												onClick={() => {
-													if (typeof currentSyncLocation.remote !== "string") {
-														return false
+									{typeof currentSyncLocation.remote === "string" && (
+										<Flex
+											width="100%"
+											height="auto"
+											justifyContent="space-between"
+											alignItems="center"
+											marginTop="10px"
+										>
+											<Flex alignItems="center">
+												<Text
+													color={colors(platform, darkMode, "textPrimary")}
+													fontSize={14}
+												>
+													{i18n(lang, "selectiveSync")}
+												</Text>
+												<Tooltip
+													label={
+														<Flex flexDirection="column">
+															<Text color={colors(platform, darkMode, "textPrimary")}>
+																{i18n(lang, "selectiveSyncTooltip")}
+															</Text>
+														</Flex>
 													}
+													placement="right"
+													borderRadius="15px"
+													backgroundColor={colors(platform, darkMode, "backgroundSecondary")}
+													shadow="none"
+												>
+													<Flex marginLeft="5px">
+														<AiOutlineInfoCircle
+															size={18}
+															color={colors(platform, darkMode, "textPrimary")}
+														/>
+													</Flex>
+												</Tooltip>
+											</Flex>
+											<Flex>
+												<Link
+													color={colors(platform, darkMode, "link")}
+													textDecoration="none"
+													_hover={{ textDecoration: "none" }}
+													onClick={() => {
+														setSyncSettingsModalOpen(false)
 
-													setSyncSettingsModalOpen(false)
-
-													ipc.openSelectiveSyncWindow(currentSyncLocation)
-												}}
-											>
-												{i18n(lang, "configure")}
-											</Link>
+														ipc.openSelectiveSyncWindow(currentSyncLocation)
+													}}
+												>
+													{i18n(lang, "configure")}
+												</Link>
+											</Flex>
 										</Flex>
-									</Flex>
+									)}
 									<Flex
 										width="100%"
 										height="auto"

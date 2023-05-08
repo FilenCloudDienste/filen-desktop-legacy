@@ -34,6 +34,7 @@ import { showToast } from "../../components/Toast"
 import { createFolder } from "../../lib/api"
 import { v4 as uuidv4 } from "uuid"
 import { updateKeys } from "../../lib/user"
+import { decryptFolderName, decryptFileMetadata } from "../../lib/crypto"
 
 const log = window.require("electron-log")
 const { ipcRenderer } = window.require("electron")
@@ -195,7 +196,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 
 			for (let i = 0; i < response.folders.length; i++) {
 				const folder: any = response.folders[i]
-				const folderName: string = await ipc.decryptFolderName(folder.name)
+				const folderName: string = await decryptFolderName(folder.name, masterKeys)
 
 				if (folderName.length > 0) {
 					folderNames[folder.uuid] = folderName
@@ -210,7 +211,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 
 			for (let i = 0; i < response.uploads.length; i++) {
 				const file: any = response.uploads[i]
-				const metadata: any = await ipc.decryptFileMetadata(file.metadata, masterKeys)
+				const metadata: any = await decryptFileMetadata(file.metadata, masterKeys)
 
 				if (metadata.name.length > 0) {
 					files.push({
