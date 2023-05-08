@@ -102,37 +102,17 @@ const AuthWindow = memo(({ windowId }: { windowId: string }) => {
 		} catch (e: any) {
 			setIsLoading(false)
 
-			if (e.toString() == "Please enter your Two Factor Authentication code.") {
+			if (e.toString().toLowerCase().indexOf("enter_2fa") !== -1) {
 				setTwoFactorCode("")
 				setShowTwoFactor(true)
 
-				return false
-			} else if (e.toString() == "Invalid email.") {
-				setEmail("")
-				setTwoFactorCode("")
-
-				return showToast({ message: i18n(lang, "loginInvalidEmailOrPassword"), status: "error" })
-			} else if (e.toString() == "Invalid password.") {
-				setPassword("")
-				setTwoFactorCode("")
-
-				return showToast({ message: i18n(lang, "loginInvalidEmailOrPassword"), status: "error" })
-			} else if (e.toString() == "Account not yet activated.") {
-				setPassword("")
-				setTwoFactorCode("")
-
-				return showToast({ message: i18n(lang, "loginAccountNotYetActivated"), status: "error" })
-			} else if (e.toString() == "Account not found.") {
+				return
+			} else if (e.toString().toLowerCase().indexOf("email_or_password_wrong") !== -1) {
 				setPassword("")
 				setTwoFactorCode("")
 
 				return showToast({ message: i18n(lang, "loginWrongEmailOrPassword"), status: "error" })
-			} else if (e.toString() == "Email address or password wrong.") {
-				setPassword("")
-				setTwoFactorCode("")
-
-				return showToast({ message: i18n(lang, "loginWrongEmailOrPassword"), status: "error" })
-			} else if (e.toString() == "Invalid Two Factor Authentication code." || e.toString() == "Invalid 2fa key") {
+			} else if (e.toString().toLowerCase().indexOf("wrong_2fa") !== -1) {
 				setTwoFactorCode("")
 				setShowTwoFactor(true)
 
@@ -154,12 +134,14 @@ const AuthWindow = memo(({ windowId }: { windowId: string }) => {
 		}
 
 		try {
-			await db.set("apiKey", loginResponse.apiKey)
-			await db.set("email", emailToSend)
-			await db.set("userId", userInfoResponse.id)
-			await db.set("masterKeys", [masterKeys])
-			await db.set("authVersion", authVersion)
-			await db.set("isLoggedIn", true)
+			await Promise.all([
+				db.set("apiKey", loginResponse.apiKey),
+				db.set("email", emailToSend),
+				db.set("userId", userInfoResponse.id),
+				db.set("masterKeys", [masterKeys]),
+				db.set("authVersion", authVersion),
+				db.set("isLoggedIn", true)
+			])
 		} catch (e: any) {
 			log.error("Could not save login values to DB")
 			log.error(e)

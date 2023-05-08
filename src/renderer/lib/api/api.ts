@@ -254,7 +254,7 @@ export const login = async ({
 	})
 
 	if (!response.status) {
-		throw new Error(response.message)
+		throw new Error(response.code)
 	}
 
 	return response.data
@@ -1737,13 +1737,8 @@ export const trashItem = async ({ type, uuid }: { type: string; uuid: string }):
 
 	if (!response.status) {
 		if (
-			response.message.toString().toLowerCase().indexOf("already") !== -1 ||
-			response.message.toString().toLowerCase().indexOf("does not exist") !== -1 ||
-			response.message.toString().toLowerCase().indexOf("you cannot move this file to the trash") !== -1 ||
-			response.message.toString().toLowerCase().indexOf("you cannot move this folder to the trash") !== -1 ||
 			response.message.toString().toLowerCase().indexOf("folder not found") !== -1 ||
 			response.message.toString().toLowerCase().indexOf("file not found") !== -1 ||
-			response.message.toString().toLowerCase().indexOf("belong") !== -1 ||
 			(response.message.toString().toLowerCase().indexOf("not found") !== -1 &&
 				response.message.toString().toLowerCase().indexOf("api") == -1)
 		) {
@@ -1766,11 +1761,8 @@ export const moveFile = async ({ file, parent }: { file: any; parent: string }):
 
 	if (!response.status) {
 		if (
-			response.message.toString().toLowerCase().indexOf("already") !== -1 ||
-			response.message.toString().toLowerCase().indexOf("does not exist") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("folder not found") !== -1 ||
 			response.message.toString().toLowerCase().indexOf("file not found") !== -1 ||
-			response.message.toString().toLowerCase().indexOf("belong") !== -1 ||
-			response.message.toString().toLowerCase().indexOf("trash") !== -1 ||
 			(response.message.toString().toLowerCase().indexOf("not found") !== -1 &&
 				response.message.toString().toLowerCase().indexOf("api") == -1)
 		) {
@@ -1806,12 +1798,10 @@ export const moveFolder = async ({ folder, parent }: { folder: any; parent: stri
 
 	if (!response.status) {
 		if (
-			response.message.toString().toLowerCase().indexOf("already") !== -1 ||
-			response.message.toString().toLowerCase().indexOf("does not exist") !== -1 ||
-			response.message.toString().toLowerCase().indexOf("not found") !== -1 ||
 			response.message.toString().toLowerCase().indexOf("folder not found") !== -1 ||
-			response.message.toString().toLowerCase().indexOf("trash") !== -1 ||
-			response.message.toString().toLowerCase().indexOf("belong") !== -1
+			response.message.toString().toLowerCase().indexOf("file not found") !== -1 ||
+			(response.message.toString().toLowerCase().indexOf("not found") !== -1 &&
+				response.message.toString().toLowerCase().indexOf("api") == -1)
 		) {
 			return
 		}
@@ -1859,10 +1849,8 @@ export const renameFile = async ({ file, name }: { file: any; name: string }): P
 
 	if (!response.status) {
 		if (
-			response.message.toString().toLowerCase().indexOf("already") !== -1 ||
-			response.message.toString().toLowerCase().indexOf("does not exist") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("folder not found") !== -1 ||
 			response.message.toString().toLowerCase().indexOf("file not found") !== -1 ||
-			response.message.toString().toLowerCase().indexOf("belong") !== -1 ||
 			(response.message.toString().toLowerCase().indexOf("not found") !== -1 &&
 				response.message.toString().toLowerCase().indexOf("api") == -1)
 		) {
@@ -1901,10 +1889,8 @@ export const renameFolder = async ({ folder, name }: { folder: any; name: string
 
 	if (!response.status) {
 		if (
-			response.message.toString().toLowerCase().indexOf("already") !== -1 ||
-			response.message.toString().toLowerCase().indexOf("does not exist") !== -1 ||
 			response.message.toString().toLowerCase().indexOf("folder not found") !== -1 ||
-			response.message.toString().toLowerCase().indexOf("belong") !== -1 ||
+			response.message.toString().toLowerCase().indexOf("file not found") !== -1 ||
 			(response.message.toString().toLowerCase().indexOf("not found") !== -1 &&
 				response.message.toString().toLowerCase().indexOf("api") == -1)
 		) {
