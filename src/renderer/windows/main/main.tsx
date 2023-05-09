@@ -50,7 +50,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number; email: s
 			if (doneTasks.length > 0) {
 				db.set("doneTasks:" + userId, doneTasks.slice(0, 1024)).catch(log.error)
 			}
-		}, 5000),
+		}, 2500),
 		[]
 	)
 
@@ -82,7 +82,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number; email: s
 					timestamp: task.timestamp
 				}))
 			])
-		}, 500),
+		}, 100),
 		[]
 	)
 
