@@ -8,7 +8,7 @@ import ipc from "../../lib/ipc"
 import useDb from "../../lib/hooks/useDb"
 import eventListener from "../../lib/eventListener"
 import useAppVersion from "../../lib/hooks/useAppVersion"
-import { SyncIssue } from "../../../types"
+import { SyncIssue, Location } from "../../../types"
 import { listen as socketListen } from "../../lib/worker/socket"
 import { debounce } from "lodash"
 import { initLocalTrashDirs } from "../../lib/fs/local"
@@ -24,37 +24,42 @@ export const checkInternet = async () => {
 	return window.navigator.onLine
 }
 
-const WorkerWindow = memo(() => {
+const WorkerWindow = memo(({ userId }: { userId: number }) => {
 	const initDone = useRef<boolean>(false)
-	const isOnline: boolean = useIsOnline()
+	const isOnline = useIsOnline()
 	const syncIssues = useSyncIssues()
 	const paused: boolean = useDb("paused", false)
 	const [runningSyncTasks, setRunningSyncTasks] = useState<number>(0)
-	const appVersion: string = useAppVersion()
+	const appVersion = useAppVersion()
 	const isLoggedIn: boolean = useDb("isLoggedIn", false)
 	const lang = useLang()
+	const syncLocations: Location[] = useDb("syncLocations:" + userId, [])
 
-	const init = async (): Promise<any> => {
+	const init = async () => {
 		if (initDone.current) {
 			return false
 		}
 
-		await new Promise(resolve => {
-			const wait = async (): Promise<any> => {
+		await new Promise<void>(resolve => {
+			const wait = async () => {
 				try {
 					const loggedIn: boolean | null = await db.get("isLoggedIn")
 
-					if (typeof loggedIn == "boolean" && loggedIn !== null && loggedIn === true && window.navigator.onLine) {
-						return resolve(true)
+					if (typeof loggedIn === "boolean" && loggedIn && window.navigator.onLine) {
+						resolve()
+
+						return
 					}
 				} catch (e) {
 					log.error(e)
 				}
 
-				return setTimeout(wait, 100)
+				setTimeout(wait, 100)
+
+				return
 			}
 
-			return wait()
+			wait()
 		})
 
 		if (!initDone.current) {
@@ -62,28 +67,24 @@ const WorkerWindow = memo(() => {
 
 			socketListen()
 
-			updateKeys()
-				.then(() => {
-					Promise.all([
-						db.set("paused", false),
-						db.set("maxStorageReached", false),
-						db.set("suspend", false),
-						db.set("uploadPaused", false),
-						db.set("downloadPaused", false),
-						db.set("isOnline", true)
-					])
-						.then(() => {
-							initLocalTrashDirs()
-							checkInternet()
-							sync()
-						})
-						.catch(err => {
-							log.error(err)
-						})
-				})
-				.catch(err => {
-					log.error(err)
-				})
+			try {
+				await updateKeys()
+
+				await Promise.all([
+					db.set("paused", false),
+					db.set("maxStorageReached", false),
+					db.set("suspend", false),
+					db.set("uploadPaused", false),
+					db.set("downloadPaused", false),
+					db.set("isOnline", true)
+				])
+
+				initLocalTrashDirs()
+				checkInternet().catch(log.error)
+				sync()
+			} catch (e) {
+				log.error(e)
+			}
 		}
 	}
 
@@ -96,75 +97,69 @@ const WorkerWindow = memo(() => {
 	)
 
 	const processTray = useCallback(
-		debounce((isLoggedIn: boolean, isOnline: boolean, paused: boolean, syncIssues: SyncIssue[], runningSyncTasks: number) => {
-			if (!isLoggedIn) {
-				updateTray("paused", i18n(lang, "pleaseLogin"))
+		debounce(
+			(
+				isLoggedIn: boolean,
+				isOnline: boolean,
+				paused: boolean,
+				syncIssues: SyncIssue[],
+				runningSyncTasks: number,
+				syncLocations: Location[]
+			) => {
+				if (!isLoggedIn) {
+					updateTray("paused", i18n(lang, "pleaseLogin"))
 
-				return
-			}
+					return
+				}
 
-			if (!isOnline) {
-				updateTray("error", i18n(lang, "youAreOffline"))
+				if (!isOnline) {
+					updateTray("error", i18n(lang, "youAreOffline"))
 
-				return
-			}
+					return
+				}
 
-			if (paused) {
-				updateTray("paused", i18n(lang, "paused"))
+				if (paused) {
+					updateTray("paused", i18n(lang, "paused"))
 
-				return
-			}
+					return
+				}
 
-			if (syncIssues.filter(issue => issue.type == "critical").length > 0) {
-				updateTray("error", i18n(lang, "traySyncIssues", true, ["__NUM__"], [syncIssues.length.toString()]))
+				if (syncIssues.filter(issue => issue.type == "critical").length > 0) {
+					updateTray("error", i18n(lang, "traySyncIssues", true, ["__NUM__"], [syncIssues.length.toString()]))
 
-				return
-			}
+					return
+				}
 
-			if (runningSyncTasks > 0) {
-				updateTray("sync", i18n(lang, "traySyncing", true, ["__NUM__"], [runningSyncTasks.toString()]))
+				if (runningSyncTasks > 0) {
+					updateTray("sync", i18n(lang, "traySyncing", true, ["__NUM__"], [runningSyncTasks.toString()]))
 
-				return
-			}
+					return
+				}
 
-			db.get("userId")
-				.then((userId: number) => {
-					db.get("syncLocations:" + userId)
-						.then((syncLocations: any) => {
-							if (Array.isArray(syncLocations) && syncLocations.length > 0) {
-								if (syncLocations.filter(item => typeof item.remoteUUID == "string").length > 0) {
-									const warnings = syncIssues.filter(issue => issue.type == "conflict" || issue.type == "warning").length
+				if (Array.isArray(syncLocations) && syncLocations.length > 0) {
+					if (syncLocations.filter(item => typeof item.remoteUUID == "string").length > 0) {
+						const warnings = syncIssues.filter(issue => issue.type == "conflict" || issue.type == "warning").length
 
-									if (warnings > 0) {
-										updateTray("paused", i18n(lang, "trayWarnings", true, ["__NUM__"], [warnings.toString()]))
-									} else {
-										updateTray("normal", i18n(lang, "everythingSynced"))
-									}
-								} else {
-									updateTray("paused", i18n(lang, "trayNoSyncRemoteSetup"))
-								}
-							} else {
-								updateTray("paused", i18n(lang, "trayNoSyncSetup"))
-							}
-						})
-						.catch(err => {
-							log.error(err)
-
+						if (warnings > 0) {
+							updateTray("paused", i18n(lang, "trayWarnings", true, ["__NUM__"], [warnings.toString()]))
+						} else {
 							updateTray("normal", i18n(lang, "everythingSynced"))
-						})
-				})
-				.catch(err => {
-					log.error(err)
-
-					updateTray("normal", i18n(lang, "everythingSynced"))
-				})
-		}, 250),
+						}
+					} else {
+						updateTray("paused", i18n(lang, "trayNoSyncRemoteSetup"))
+					}
+				} else {
+					updateTray("paused", i18n(lang, "trayNoSyncSetup"))
+				}
+			},
+			250
+		),
 		[appVersion, lang]
 	)
 
 	useEffect(() => {
-		processTray(isLoggedIn, isOnline, paused, syncIssues, runningSyncTasks)
-	}, [isLoggedIn, isOnline, paused, syncIssues, runningSyncTasks])
+		processTray(isLoggedIn, isOnline, paused, syncIssues, runningSyncTasks, syncLocations)
+	}, [isLoggedIn, isOnline, paused, syncIssues, runningSyncTasks, syncLocations])
 
 	useEffect(() => {
 		if (!paused) {
