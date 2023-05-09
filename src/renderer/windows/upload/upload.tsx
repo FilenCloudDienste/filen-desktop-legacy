@@ -591,7 +591,7 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number; email:
 		throttle(() => {
 			setSpeed(calcSpeed(Date.now(), started.current, bytes.current))
 			setPercent(Math.round((bytes.current / (totalBytes.current * constants.sizeOverheadMultiplier)) * 100))
-		}, 250),
+		}, 100),
 		[]
 	)
 

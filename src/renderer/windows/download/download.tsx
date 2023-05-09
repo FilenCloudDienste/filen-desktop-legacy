@@ -601,7 +601,7 @@ const DownloadFolder = memo(
 			throttle(() => {
 				setSpeed(calcSpeed(Date.now(), started.current, bytes.current))
 				setPercent((bytes.current / totalBytes.current) * 100)
-			}, 250),
+			}, 100),
 			[]
 		)
 
