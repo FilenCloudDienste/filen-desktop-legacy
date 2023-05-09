@@ -160,10 +160,9 @@ const CloudItem = memo(
 )
 
 const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: string; windowId: string }) => {
-	const darkMode: boolean = useDarkMode()
-	const lang: string = useLang()
-	const platform: string = usePlatform()
-
+	const darkMode = useDarkMode()
+	const lang = useLang()
+	const platform = usePlatform()
 	const [isLoading, setIsLoading] = useState<boolean>(true)
 	const url = useRef<any>("")
 	const path = useRef<any>("")
@@ -183,13 +182,12 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 		setIsLoading(true)
 
 		try {
-			let masterKeys = await db.get("masterKeys")
+			let [masterKeys, response] = await Promise.all([db.get("masterKeys"), folderContent(uuid)])
 
 			if (!Array.isArray(masterKeys)) {
 				masterKeys = []
 			}
 
-			const response: any = await folderContent(uuid)
 			const promises: Promise<void>[] = []
 			const folders: any[] = []
 			const files: any[] = []
@@ -237,7 +235,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 				)
 			}
 
-			await Promise.all(promises)
+			await Promise.allSettled(promises)
 
 			setSelectedFolder((prev: any) =>
 				prev.uuid !== uuid
@@ -252,8 +250,10 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 				...folders.sort((a, b) => a.name.localeCompare(b.name)),
 				...files.sort((a, b) => a.metadata.name.localeCompare(b.metadata.name))
 			])
-		} catch (e) {
+		} catch (e: any) {
 			log.error(e)
+
+			showToast({ message: e.toString(), status: "error" })
 		}
 
 		setIsLoading(false)
@@ -279,7 +279,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 			newPath = newPath.slice(0, newPath.length - 1)
 		}
 
-		if (typeof uuid == "string" && uuid.length > 16) {
+		if (typeof uuid === "string" && uuid.length > 16) {
 			url.current = newURL
 			path.current = newPath
 
@@ -290,12 +290,16 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 	const createDir = async () => {
 		const folderName = createFolderName.trim()
 
-		if (folderName.length == 0) {
-			return showToast({ message: i18n(lang, "invalidFolderName"), status: "error" })
+		if (folderName.length === 0) {
+			showToast({ message: i18n(lang, "invalidFolderName"), status: "error" })
+
+			return
 		}
 
 		if (!fileAndFolderNameValidation(folderName)) {
-			return showToast({ message: i18n(lang, "invalidFolderName"), status: "error" })
+			showToast({ message: i18n(lang, "invalidFolderName"), status: "error" })
+
+			return
 		}
 
 		const ex = url.current.split("/")
@@ -314,7 +318,9 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 
 			setIsCreatingFolder(false)
 
-			return showToast({ message: e.toString(), status: "error" })
+			showToast({ message: e.toString(), status: "error" })
+
+			return
 		}
 
 		setCreateFolderModalOpen(false)
@@ -339,11 +345,15 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 				defaultFolderName.current = "Cloud Drive"
 				folderNames[baseFolderUUID] = "Cloud Drive"
 			} catch (e) {
-				return log.error(e)
+				log.error(e)
+
+				return
 			}
 
-			if (typeof defaultFolderUUID.current == "undefined") {
-				return log.info("No default folder found")
+			if (typeof defaultFolderUUID.current === "undefined") {
+				log.info(new Error("No default folder found"))
+
+				return
 			}
 
 			setSelectedFolder({

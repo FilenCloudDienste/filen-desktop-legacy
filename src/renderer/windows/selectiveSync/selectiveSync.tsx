@@ -245,60 +245,76 @@ const Tree = memo(
 		const [items, setItems] = useState<any>([])
 
 		useEffect(() => {
-			setLoading(true)
+			;(async () => {
+				setLoading(true)
 
-			db.get("masterKeys")
-				.then(masterKeys => {
-					folderContent(parent)
-						.then(async response => {
-							const folders: any[] = []
-							const files: any[] = []
+				try {
+					let [masterKeys, response] = await Promise.all([db.get("masterKeys"), folderContent(parent)])
 
-							for (let i = 0; i < response.folders.length; i++) {
-								const folder = response.folders[i]
-								const folderName = await decryptFolderName(folder.name, masterKeys)
+					if (!Array.isArray(masterKeys)) {
+						masterKeys = []
+					}
 
-								if (folderName.length > 0) {
-									folders.push({
-										...folder,
-										name: folderName,
-										type: "folder",
-										path: currentPath.length == 0 ? folderName : currentPath + "/" + folderName
+					const folders: any[] = []
+					const files: any[] = []
+					const promises: Promise<void>[] = []
+
+					for (const folder of response.folders) {
+						promises.push(
+							new Promise((resolve, reject) => {
+								decryptFolderName(folder.name, masterKeys)
+									.then(folderName => {
+										if (folderName.length > 0) {
+											folders.push({
+												...folder,
+												name: folderName,
+												type: "folder",
+												path: currentPath.length == 0 ? folderName : currentPath + "/" + folderName
+											})
+										}
+
+										resolve()
 									})
-								}
-							}
+									.catch(reject)
+							})
+						)
+					}
 
-							for (let i = 0; i < response.uploads.length; i++) {
-								const file = response.uploads[i]
-								const metadata = await decryptFileMetadata(file.metadata, masterKeys)
+					for (const file of response.uploads) {
+						promises.push(
+							new Promise((resolve, reject) => {
+								decryptFileMetadata(file.metadata, masterKeys)
+									.then(metadata => {
+										if (metadata.name.length > 0) {
+											files.push({
+												...file,
+												...metadata,
+												type: "file",
+												path: currentPath.length == 0 ? metadata.name : currentPath + "/" + metadata.name
+											})
+										}
 
-								if (metadata.name.length > 0) {
-									files.push({
-										...file,
-										...metadata,
-										type: "file",
-										path: currentPath.length == 0 ? metadata.name : currentPath + "/" + metadata.name
+										resolve()
 									})
-								}
-							}
+									.catch(reject)
+							})
+						)
+					}
 
-							setItems([
-								...folders.sort((a, b) => a.name.localeCompare(b.name)),
-								...files.sort((a, b) => a.name.localeCompare(b.name))
-							])
-							setLoading(false)
-						})
-						.catch(err => {
-							showToast({ message: err.toString(), status: "error" })
+					await Promise.allSettled(promises)
 
-							log.error(err)
-						})
-				})
-				.catch(err => {
-					showToast({ message: err.toString(), status: "error" })
+					setItems([
+						...folders.sort((a, b) => a.name.localeCompare(b.name)),
+						...files.sort((a, b) => a.name.localeCompare(b.name))
+					])
+				} catch (e: any) {
+					log.error(e)
 
-					log.error(err)
-				})
+					showToast({ message: e.toString(), status: "error" })
+				}
+
+				setLoading(false)
+			})()
 		}, [])
 
 		if (loading && currentPath.length > 0) {
@@ -336,9 +352,9 @@ const Tree = memo(
 )
 
 const SelectiveSyncWindow = memo(({ userId, email, windowId }: { userId: number; email: string; windowId: string }) => {
-	const darkMode: boolean = useDarkMode()
-	const lang: string = useLang()
-	const platform: string = usePlatform()
+	const darkMode = useDarkMode()
+	const lang = useLang()
+	const platform = usePlatform()
 	const location: Location = useRef(
 		JSON.parse(Base64.decode(decodeURIComponent(new URLSearchParams(window.location.search).get("args") as string)))
 	).current
