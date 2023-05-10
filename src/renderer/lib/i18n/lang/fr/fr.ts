@@ -146,6 +146,51 @@ const fr: {
 	cancel: "Annuler",
 	cannotCreateSyncLocationLoop2:
 		"L'emplacement distant sélectionné est déjà un emplacement de synchronisation configuré. Cela pourrait amener à des boucles de synchronisation sans fin"
+titlebarUpdateAvailable: "Update available",
+	updateWindowInfo:
+		"A new version has been downloaded and is ready to be installed. Please install it as soon as possible to benefit from bug fixes and new features.",
+	updateWindowButton: "Install",
+	updateWindowInfo2: "The app will exit and start the update flow. Please do not interrupt this process.",
+	titlebarUpdateInstalled: "Update installed",
+	clearLocalEventLog: "Clear local event log",
+	clearLocalEventLogInfo: "This will clear the local event log shown. Are you sure? This action cannot be undone!",
+	copied: "Copied",
+	publicLinkCopied: "Public link copied to clipboard",
+	clearLocalTrashDirs: "Clear local trash bins",
+	clearLocalTrashDirsInfo: "Clearing the local trash bins cannot be undone! Are you sure?",
+	updateWindowInfo3:
+		"The client will exit and start the update flow in the background. It will restart itself when it is done. Please do not interrupt this process.",
+	pleaseLogin: "Veuillez vous connecter",
+	traySyncIssues: "__NUM__ erreurs de synchro",
+	traySyncing: "Sychro de __NUM__ objets",
+	everythingSynced: "Tout est à jour",
+	trayWarnings: "__NUM__ alertes",
+	trayNoSyncSetup: "Aucun emplacement n'est encore configuré",
+	trayNoSyncRemoteSetup: "Aucun emplacement distant n'est encore configuré",
+	timeSinceSeconds: "il y a __TIME__ secondes",
+	timeSinceMinutes: "il y a __TIME__ minutes",
+	timeSinceHours: "il y a __TIME__ heure(s)",
+	timeSinceDays: "il y a __TIME__ jour(s)",
+	timeSinceMonths: "il y a __TIME__ mois",
+	timeSinceYears: "il y a __TIME__ an(s)",
+	trayMenuShow: "Affiher",
+	trayMenuForceSync: "Forcer la synchro",
+	trayMenuUploadFolders: "Charger des dossier",
+	trayMenuUploadFiles: "Charger des fichiers",
+	trayMenuSettings: "Paramètres",
+	trayMenuQuit: "Quitter Filen",
+	openLocalFolder: "Ouvrir un dossier local",
+	openLocalTrash: "Ouvrir le dossier local de la corbeille",
+	help: "Aide",
+	possibleSolution: "Solution possible",
+	possibleSolutionEPERM: "Veuillez vous assurer que le client a toutes les permissions recquises pour lire et écrire dans ce chemin.",
+	possibleSolutionENOENT: "Veuillez vous assurer que le chemin ci-dessus existes sur votre ordinateur.",
+	possibleSolutionEBUSY:
+		"Le client ne peut pas accéder au chemin ci-dessus. veuillez vérifier si d'autres programmes ne serraient pas en train de l'utiliser et donc de le vérouiller.",
+	possibleSolutionEMFILE: "Il n'y a pas assez de descripteurs de fichiers ou d'espace disque sur votre ordinateur.",
+	possibleSolutionELOOP: "Veuillez vous assurer que le chemin de synchro locale ne contient pas de liens symboliques, ce qui causerait des boucles infinies.",
+	issue: "Erreur",
+	path: "Chemin"
 }
 
 export default fr
