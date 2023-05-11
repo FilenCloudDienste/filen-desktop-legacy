@@ -517,6 +517,13 @@ const syncLocation = async (location: Location): Promise<void> => {
 
 		try {
 			await ipc.initWatcher(pathModule.normalize(location.local), location.uuid)
+
+			WATCHERS[location.local] = true
+
+			emitSyncStatusLocation("initWatcher", {
+				status: "done",
+				location
+			})
 		} catch (e: any) {
 			log.error("Could not start local directory watcher for location " + location.uuid)
 			log.error(e)
@@ -537,13 +544,6 @@ const syncLocation = async (location: Location): Promise<void> => {
 				err: e
 			})
 		}
-
-		WATCHERS[location.local] = true
-
-		emitSyncStatusLocation("initWatcher", {
-			status: "done",
-			location
-		})
 	}
 
 	if (await isSyncLocationPaused(location.uuid)) {
@@ -766,7 +766,7 @@ const syncLocation = async (location: Location): Promise<void> => {
 	})
 
 	try {
-		var { doneTasks, resync } = await consumeTasks({
+		var { doneTasks } = await consumeTasks({
 			uploadToRemote,
 			downloadFromRemote,
 			renameInLocal,
@@ -865,7 +865,9 @@ const syncLocation = async (location: Location): Promise<void> => {
 			db.set("lastLocalTree:" + location.uuid, doneTasks.length > 0 ? localTreeNowApplied : localTreeNow),
 			db.set("lastRemoteTree:" + location.uuid, doneTasks.length > 0 ? remoteTreeNowApplied : remoteTreeNow),
 			ipc.clearApplyDoneTasks(location.uuid),
-			...(resync ? [db.set("localDataChanged:" + location.uuid, true), db.set("remoteDataChanged:" + location.uuid, true)] : [])
+			...(doneTasks.length > 0
+				? [db.set("localDataChanged:" + location.uuid, true), db.set("remoteDataChanged:" + location.uuid, true)]
+				: [])
 		])
 	} catch (e: any) {
 		log.error("Could not save lastLocalTree to DB for location " + location.uuid)
