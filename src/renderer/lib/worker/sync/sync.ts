@@ -559,13 +559,15 @@ const syncLocation = async (location: Location): Promise<void> => {
 
 	try {
 		var [{ data: localTreeNow, changed: localDataChanged }, { data: remoteTreeNow, changed: remoteDataChanged }] = await Promise.all([
-			fsLocal.directoryTree(pathModule.normalize(location.local), typeof IS_FIRST_REQUEST[location.uuid] == "undefined", location),
-			fsRemote.directoryTree(location.remoteUUID!, typeof IS_FIRST_REQUEST[location.uuid] == "undefined", location)
+			fsLocal.directoryTree(pathModule.normalize(location.local), typeof IS_FIRST_REQUEST[location.uuid] === "undefined", location),
+			fsRemote.directoryTree(location.remoteUUID!, typeof IS_FIRST_REQUEST[location.uuid] === "undefined", location)
 		])
 
 		if (typeof IS_FIRST_REQUEST[location.uuid] !== "undefined") {
 			await Promise.all([db.set("localDataChanged:" + location.uuid, false), db.set("remoteDataChanged:" + location.uuid, false)])
 		}
+
+		IS_FIRST_REQUEST[location.uuid] = false
 	} catch (e: any) {
 		if (e.toString().toLowerCase().indexOf("folder not found") !== -1) {
 			await removeRemoteLocation(location)
@@ -580,10 +582,10 @@ const syncLocation = async (location: Location): Promise<void> => {
 			})
 		}
 
+		delete IS_FIRST_REQUEST[location.uuid]
+
 		return
 	}
-
-	IS_FIRST_REQUEST[location.uuid] = false
 
 	if (!localDataChanged && !remoteDataChanged && typeof IS_FIRST_REQUEST[location.uuid] !== "undefined") {
 		log.info("Data did not change since last sync, skipping cycle")

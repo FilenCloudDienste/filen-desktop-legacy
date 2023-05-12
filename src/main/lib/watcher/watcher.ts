@@ -7,7 +7,6 @@ import { emitGlobal } from "../ipc"
 import { getRandomArbitrary } from "../helpers"
 import fs from "fs-extra"
 
-const POLLING_TIME = 60000
 const SUBS: Record<string, ReturnType<typeof nodeWatch>> = {}
 const SUBS_INFO: Record<string, string> = {}
 const pollingTimeout: Record<string, NodeJS.Timer> = {}
@@ -104,7 +103,16 @@ export const watch = (path: string, locationUUID: string) => {
 					watchPath: path,
 					locationUUID
 				})
-			}, getRandomArbitrary(Math.floor(POLLING_TIME - 15000), POLLING_TIME))
+			}, getRandomArbitrary(30000, 60000))
+
+			setTimeout(() => {
+				emitToWorker({
+					event: "dummy",
+					name: "dummy",
+					watchPath: path,
+					locationUUID
+				})
+			}, 5000)
 
 			resolve(SUBS[path])
 
