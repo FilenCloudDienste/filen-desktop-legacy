@@ -146,16 +146,16 @@ const ipc = {
 			value
 		})
 	},
-	closeAuthWindow: (): Promise<any> => {
+	closeAuthWindow: (): Promise<void> => {
 		return invokeProxy("closeAuthWindow")
 	},
-	createMainWindow: (): Promise<any> => {
+	createMainWindow: (): Promise<void> => {
 		return invokeProxy("createMainWindow")
 	},
-	loginDone: (): Promise<any> => {
+	loginDone: (): Promise<void> => {
 		return invokeProxy("loginDone")
 	},
-	openSettingsWindow: (page: string = "general"): Promise<any> => {
+	openSettingsWindow: (page: string = "general"): Promise<void> => {
 		return invokeProxy("openSettingsWindow", {
 			page
 		})
@@ -203,7 +203,7 @@ const ipc = {
 	updateTrayMenu: (): Promise<void> => {
 		return invokeProxy("updateTrayMenu")
 	},
-	updateTrayTooltip: (text: string = "Filen"): Promise<any> => {
+	updateTrayTooltip: (text: string = "Filen"): Promise<void> => {
 		return invokeProxy("updateTrayTooltip", {
 			text
 		})
@@ -219,12 +219,12 @@ const ipc = {
 	exitApp: (): Promise<void> => {
 		return invokeProxy("exitApp")
 	},
-	openDownloadWindow: (args: any): Promise<any> => {
+	openDownloadWindow: (args: any): Promise<void> => {
 		return invokeProxy("openDownloadWindow", {
 			args
 		})
 	},
-	openSelectiveSyncWindow: (location: Location): Promise<any> => {
+	openSelectiveSyncWindow: (location: Location): Promise<void> => {
 		return invokeProxy("openSelectiveSyncWindow", location)
 	},
 	updateKeybinds: (): Promise<void> => {
@@ -236,7 +236,7 @@ const ipc = {
 	restartApp: (): Promise<void> => {
 		return invokeProxy("restartApp")
 	},
-	openUploadWindow: (type: string = "files"): Promise<any> => {
+	openUploadWindow: (type: string = "files"): Promise<void> => {
 		return invokeProxy("openUploadWindow", {
 			type
 		})

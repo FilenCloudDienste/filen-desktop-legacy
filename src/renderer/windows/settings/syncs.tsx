@@ -934,7 +934,7 @@ const SettingsWindowSyncs = memo(
 													onClick={() => {
 														setSyncSettingsModalOpen(false)
 
-														ipc.openSelectiveSyncWindow(currentSyncLocation)
+														ipc.openSelectiveSyncWindow(currentSyncLocation).catch(log.error)
 													}}
 												>
 													{i18n(lang, "configure")}

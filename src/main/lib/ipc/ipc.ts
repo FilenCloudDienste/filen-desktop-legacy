@@ -120,8 +120,6 @@ handlerProxy("loginDone", async () => {
 			log.error(e)
 		}
 	}
-
-	return true
 })
 
 handlerProxy("openSettingsWindow", async (_, { page }) => {
