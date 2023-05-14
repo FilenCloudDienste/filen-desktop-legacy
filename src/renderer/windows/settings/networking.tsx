@@ -31,11 +31,13 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }: { darkMode:
 	const [downloadKbps, setDownloadKbps] = useState(0)
 
 	const updateThrottling = async (): Promise<void> => {
-		db.set("networkingSettings", {
-			...networkingSettings,
-			uploadKbps: parseInt(uploadKbps.toString()) > 0 ? parseInt(uploadKbps.toString()) : 0,
-			downloadKbps: parseInt(downloadKbps.toString()) > 0 ? parseInt(downloadKbps.toString()) : 0
-		}).catch(log.error)
+		await db
+			.set("networkingSettings", {
+				...networkingSettings,
+				uploadKbps: parseInt(uploadKbps.toString()) > 0 ? parseInt(uploadKbps.toString()) : 0,
+				downloadKbps: parseInt(downloadKbps.toString()) > 0 ? parseInt(downloadKbps.toString()) : 0
+			})
+			.catch(log.error)
 
 		setThrottlingModalOpen(false)
 	}

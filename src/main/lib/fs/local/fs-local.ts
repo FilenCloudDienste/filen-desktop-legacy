@@ -709,47 +709,6 @@ export const checkLastModified = (path: string): Promise<{ changed: boolean; mti
 	})
 }
 
-export const isFileBusy = (path: string): Promise<boolean> => {
-	return new Promise((resolve, reject) => {
-		path = normalizePath(path)
-
-		let currentTries = -1
-		const maxTries = 30
-		const timeout = 1000
-		let lastErr: any
-
-		const req = () => {
-			currentTries += 1
-
-			if (currentTries >= maxTries) {
-				if (lastErr && lastErr.code && lastErr.code == "EBUSY") {
-					return resolve(true)
-				}
-
-				return resolve(false)
-			}
-
-			fs.open(path, "r+", (err, fd) => {
-				if (err) {
-					lastErr = err
-
-					if (err.code == "EBUSY") {
-						setTimeout(req, timeout)
-
-						return
-					}
-
-					return resolve(false)
-				}
-
-				fs.close(fd, () => resolve(false))
-			})
-		}
-
-		req()
-	})
-}
-
 export const directoryTree = (path: string, skipCache = false, location: Location): Promise<{ changed: boolean; data: any }> => {
 	return new Promise((resolve, reject) => {
 		const cacheKey = "directoryTreeLocal:" + location.uuid

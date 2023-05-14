@@ -8,13 +8,11 @@ import memoryCache from "../memoryCache"
 import { positionWindow, createTray } from "../tray"
 import { listen } from "../ipc"
 import db from "../db"
-import { Location } from "../../../types"
+import { Location, Window } from "../../../types"
 
-const STATIC_PATH = is.dev()
-	? "http://localhost:3000/"
-	: "file://" + path.join(__dirname, "../../../../build/index.html")
+const STATIC_PATH = is.dev() ? "http://localhost:3000/" : "file://" + path.join(__dirname, "../../../../build/index.html")
 const DEV_TOOLS = is.dev() ? true : false
-let activeWindows: { id: number; type: string }[] = []
+let activeWindows: Window[] = []
 
 export const wasOpenedAtSystemStart = (): boolean => {
 	try {
@@ -296,12 +294,7 @@ export const createUpload = async (args: Record<string, unknown> = {}): Promise<
 	const windowId = window.id
 
 	window.loadURL(
-		STATIC_PATH +
-			"?args=" +
-			encodeURIComponent(Base64.encode(JSON.stringify(args))) +
-			"&id=" +
-			encodeURIComponent(windowId) +
-			"#upload"
+		STATIC_PATH + "?args=" + encodeURIComponent(Base64.encode(JSON.stringify(args))) + "&id=" + encodeURIComponent(windowId) + "#upload"
 	)
 
 	if (DEV_TOOLS) {

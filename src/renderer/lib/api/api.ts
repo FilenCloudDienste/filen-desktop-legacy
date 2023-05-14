@@ -15,6 +15,7 @@ import { logout } from "../../windows/settings/account"
 import striptags from "striptags"
 import { isSyncLocationPaused } from "../worker/sync/sync.utils"
 import { v4 as uuidv4 } from "uuid"
+import packageJSON from "../../../../package.json"
 
 const https = window.require("https")
 const log = window.require("electron-log")
@@ -104,7 +105,7 @@ export const doAPIRequest = ({
 					agent: httpsAPIAgent,
 					headers: {
 						"Content-Type": "application/json",
-						"User-Agent": "filen-desktop",
+						"User-Agent": "filen-desktop/" + packageJSON.version + "-" + packageJSON.buildNumber,
 						Authorization: "Bearer " + apiKey
 					}
 				},
@@ -254,7 +255,7 @@ export const login = async ({
 	})
 
 	if (!response.status) {
-		throw new Error(response.code)
+		throw new Error(response.message + ": " + response.code)
 	}
 
 	return response.data
@@ -1433,7 +1434,7 @@ export const uploadChunk = ({
 							timeout: 3600000,
 							agent: httpsUploadAgent,
 							headers: {
-								"User-Agent": "filen-desktop",
+								"User-Agent": "filen-desktop/" + packageJSON.version + "-" + packageJSON.buildNumber,
 								Authorization: "Bearer " + apiKey,
 								"Content-Type": "application/x-www-form-urlencoded"
 							}
@@ -1650,7 +1651,7 @@ export const downloadChunk = ({
 						agent: httpsDownloadAgent,
 						timeout: 86400000,
 						headers: {
-							"User-Agent": "filen-desktop"
+							"User-Agent": "filen-desktop/" + packageJSON.version + "-" + packageJSON.buildNumber
 						}
 					})
 

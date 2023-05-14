@@ -29,7 +29,8 @@ import {
 	decryptFileMetadataLink,
 	decryptFolderName,
 	decryptFolderNameLink,
-	decryptFolderNamePrivateKey
+	decryptFolderNamePrivateKey,
+	hashFn
 } from "../../lib/crypto"
 
 const log = window.require("electron-log")
@@ -235,7 +236,7 @@ const DownloadFolder = memo(
 									password:
 										typeof args.linkPassword == "string"
 											? args.linkPassword.length < 32
-												? await ipc.hashFn(args.linkPassword)
+												? await hashFn(args.linkPassword)
 												: args.linkPassword
 											: ""
 							  }

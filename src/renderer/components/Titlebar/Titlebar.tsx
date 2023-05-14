@@ -4,6 +4,7 @@ import colors from "../../styles/colors"
 import { BsDash } from "react-icons/bs"
 import { IoMdClose } from "react-icons/io"
 import ipc from "../../lib/ipc"
+import eventListener from "../../lib/eventListener"
 
 interface Props {
 	darkMode: boolean
@@ -17,9 +18,16 @@ const Titlebar = memo(({ darkMode, lang, platform, title }: Props) => {
 	const currentWindow: string = useRef(window.location.hash.split("#")[1]).current
 	const showX: boolean = useRef(currentWindow !== "main").current
 	const [isTrayAvailable, setIsTrayAvailable] = useState<boolean>(true)
+	const [ignoredFilesModalOpen, setIgnoredFilesModalOpen] = useState<boolean>(false)
 
 	useEffect(() => {
 		ipc.trayAvailable().then(setIsTrayAvailable).catch(console.error)
+
+		const ignoredFilesModalOpenListener = eventListener.on("ignoredFilesModalOpen", setIgnoredFilesModalOpen)
+
+		return () => {
+			ignoredFilesModalOpenListener.remove()
+		}
 	}, [])
 
 	return (
@@ -94,7 +102,15 @@ const Titlebar = memo(({ darkMode, lang, platform, title }: Props) => {
 							pointerEvents="all"
 							alignItems="center"
 							backgroundColor={hoveringExit ? "red" : "transparent"}
-							onClick={() => ipc.closeWindow(currentWindow, new URLSearchParams(window.location.search).get("id") as string)}
+							onClick={() => {
+								if (ignoredFilesModalOpen) {
+									eventListener.emit("closeIgnoredFilesModalOpen")
+
+									return
+								}
+
+								ipc.closeWindow(currentWindow, new URLSearchParams(window.location.search).get("id") as string)
+							}}
 							onMouseEnter={() => setHoveringExit(true)}
 							onMouseLeave={() => setHoveringExit(false)}
 						>

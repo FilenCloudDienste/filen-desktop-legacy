@@ -33,6 +33,7 @@ import { isSubdir } from "../../lib/helpers"
 import List from "react-virtualized/dist/commonjs/List"
 import { debounce } from "lodash"
 import { Location } from "../../../types"
+import eventListener from "../../lib/eventListener"
 
 const log = window.require("electron-log")
 const { shell } = window.require("electron")
@@ -284,6 +285,21 @@ const SettingsWindowSyncs = memo(
 					})
 			}
 		}, [currentSyncLocation, ignoredFilesModalOpen])
+
+		useEffect(() => {
+			eventListener.emit("ignoredFilesModalOpen", ignoredFilesModalOpen)
+		}, [ignoredFilesModalOpen])
+
+		useEffect(() => {
+			const closeIgnoredFilesModalOpenListener = eventListener.on("closeIgnoredFilesModalOpen", () => {
+				setIgnoredFilesModalOpen(false)
+				setTimeout(() => setSyncSettingsModalOpen(true), 100)
+			})
+
+			return () => {
+				closeIgnoredFilesModalOpenListener.remove()
+			}
+		}, [])
 
 		return (
 			<>

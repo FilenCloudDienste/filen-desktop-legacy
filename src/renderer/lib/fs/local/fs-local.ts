@@ -307,10 +307,6 @@ export const initLocalTrashDirs = () => {
 	invokeProxy("fsInitLocalTrashDirs").catch(console.error)
 }
 
-export const isFileBusy = async (path: string): Promise<boolean> => {
-	return await invokeProxy("fsIsFileBusy", path)
-}
-
 export const mkdirNormal = async (path: string, options = { recursive: true }): Promise<void> => {
 	return await invokeProxy("fsMkdirNormal", {
 		path,

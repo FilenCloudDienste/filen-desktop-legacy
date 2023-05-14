@@ -15,6 +15,7 @@ import { showToast } from "../../components/Toast"
 import ipc from "../../lib/ipc"
 import colors from "../../styles/colors"
 import Container from "../../components/Container"
+import { generatePasswordAndMasterKeysBasedOnAuthVersion } from "../../lib/crypto"
 
 const { shell, ipcRenderer } = window.require("electron")
 const log = window.require("electron-log")
@@ -31,10 +32,10 @@ const AuthWindow = memo(({ windowId }: { windowId: string }) => {
 	const [isLoading, setIsLoading] = useState<boolean>(false)
 	const passwordFieldRef = useRef<any>()
 
-	const doLogin = async (): Promise<any> => {
-		let emailToSend: string = email.trim()
-		let passwordToSend: string = password.trim()
-		let twoFactorCodeToSend: string = twoFactorCode.trim()
+	const doLogin = async () => {
+		let emailToSend = email.trim()
+		let passwordToSend = password.trim()
+		let twoFactorCodeToSend = twoFactorCode.trim()
 
 		if (twoFactorCodeToSend.length == 0) {
 			twoFactorCodeToSend = "XXXXXX"
@@ -75,7 +76,7 @@ const AuthWindow = memo(({ windowId }: { windowId: string }) => {
 		let masterKeys: string = ""
 
 		try {
-			const { derivedPassword, derivedMasterKeys } = await ipc.generatePasswordAndMasterKeysBasedOnAuthVersion({
+			const { derivedPassword, derivedMasterKeys } = await generatePasswordAndMasterKeysBasedOnAuthVersion({
 				rawPassword: passwordToSend,
 				authVersion,
 				salt

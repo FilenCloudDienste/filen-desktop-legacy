@@ -34,6 +34,7 @@ import { isSyncLocationPaused } from "../../worker/sync/sync.utils"
 import memoryCache from "../../memoryCache"
 import { RemoteItem, RemoteUUIDs, RemoteDirectoryTreeResult, Location } from "../../../../types"
 import { Stats } from "fs-extra"
+import ipc from "../../ipc"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
@@ -309,7 +310,7 @@ export const directoryTree = (uuid: string, skipCache: boolean = false, location
 															path: entryPath
 														}
 
-														memoryCache.set("fileKey:" + uuid, decrypted.key)
+														ipc.setFileKey(uuid, decrypted.key).catch(log.error)
 													}
 
 													return resolve(true)
@@ -800,7 +801,7 @@ export const upload = (path: string, remoteTreeNow: any, location: Location, tas
 											lastModified
 										})
 
-										memoryCache.set("fileKey:" + uuid, key)
+										ipc.setFileKey(uuid, key).catch(log.error)
 
 										return resolve({
 											uuid,

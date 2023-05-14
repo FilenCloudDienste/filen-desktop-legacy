@@ -22,6 +22,16 @@ const autoLauncher = new AutoLaunch({
 
 let syncIssues: SyncIssue[] = []
 
+export const validateSender = (event: Electron.IpcMainInvokeEvent) => {
+	const url = new URL(event.senderFrame.url)
+
+	if (url.host === "localhost" || url.hostname === "localhost" || url.protocol === "file:") {
+		return true
+	}
+
+	return false
+}
+
 export const encodeError = (e: any) => {
 	return {
 		name: e.name,
@@ -34,6 +44,12 @@ export const encodeError = (e: any) => {
 
 export const handlerProxy = (channel: string, handler: (event: Electron.IpcMainInvokeEvent, ...args: any[]) => any) => {
 	ipcMain.handle(channel, async (...args) => {
+		if (!validateSender(args[0])) {
+			return {
+				error: encodeError(new Error("Invalid sender"))
+			}
+		}
+
 		try {
 			return {
 				result: await Promise.resolve(handler(...args))
@@ -46,24 +62,20 @@ export const handlerProxy = (channel: string, handler: (event: Electron.IpcMainI
 	})
 }
 
-handlerProxy("db", async (_, { action, key, value }) => {
-	if (action == "get") {
+handlerProxy("db", async (e, { action, key, value }) => {
+	if (action === "get") {
 		return await db.get(key)
-	} else if (action == "set") {
+	} else if (action === "set") {
 		await db.set(key, value)
-	} else if (action == "remove") {
+	} else if (action === "remove") {
 		await db.remove(key)
-	} else if (action == "clear") {
+	} else if (action === "clear") {
 		await db.clear()
-	} else if (action == "keys") {
+	} else if (action === "keys") {
 		return db.keys()
 	} else {
 		throw new Error("Invalid db action: " + action.toString())
 	}
-})
-
-handlerProxy("ping", async () => {
-	return "pong"
 })
 
 handlerProxy("getAppPath", async (_, { path }) => {
@@ -169,155 +181,149 @@ handlerProxy("restartApp", async () => {
 })
 
 handlerProxy("minimizeWindow", async (_, { window, windowId }) => {
-	if (window == "settings") {
+	if (window === "settings") {
 		const windows = memoryCache.get("SETTINGS_WINDOWS")
 
 		if (windows) {
 			for (const prop in windows) {
-				if (parseInt(windowId) == windows[prop].id) {
+				if (parseInt(windowId) === windows[prop].id) {
 					windows[prop].minimize()
 				}
 			}
 		}
-	} else if (window == "auth") {
+	} else if (window === "auth") {
 		try {
 			memoryCache.get("AUTH_WINDOW").minimize()
 		} catch (e) {
 			log.error(e)
 		}
-	} else if (window == "cloud") {
+	} else if (window === "cloud") {
 		const windows = memoryCache.get("CLOUD_WINDOWS")
 
 		if (windows) {
 			for (const prop in windows) {
-				if (parseInt(windowId) == windows[prop].id) {
+				if (parseInt(windowId) === windows[prop].id) {
 					windows[prop].minimize()
 				}
 			}
 		}
-	} else if (window == "download") {
+	} else if (window === "download") {
 		const windows = memoryCache.get("DOWNLOAD_WINDOWS")
 
 		if (windows) {
 			for (const prop in windows) {
-				if (parseInt(windowId) == windows[prop].id) {
+				if (parseInt(windowId) === windows[prop].id) {
 					windows[prop].minimize()
 				}
 			}
 		}
-	} else if (window == "upload") {
+	} else if (window === "upload") {
 		const windows = memoryCache.get("UPLOAD_WINDOWS")
 
 		if (windows) {
 			for (const prop in windows) {
-				if (parseInt(windowId) == windows[prop].id) {
+				if (parseInt(windowId) === windows[prop].id) {
 					windows[prop].minimize()
 				}
 			}
 		}
-	} else if (window == "selectiveSync") {
+	} else if (window === "selectiveSync") {
 		const windows = memoryCache.get("SELECTIVE_SYNC_WINDOWS")
 
 		if (windows) {
 			for (const prop in windows) {
-				if (parseInt(windowId) == windows[prop].id) {
+				if (parseInt(windowId) === windows[prop].id) {
 					windows[prop].minimize()
 				}
 			}
 		}
-	} else if (window == "main") {
+	} else if (window === "main") {
 		try {
 			memoryCache.get("MAIN_WINDOW").minimize()
 		} catch (e) {
 			log.error(e)
 		}
-	} else if (window == "update") {
+	} else if (window === "update") {
 		try {
 			memoryCache.get("UPDATE_WINDOW").minimize()
 		} catch (e) {
 			log.error(e)
 		}
 	}
-
-	return true
 })
 
 handlerProxy("closeWindow", async (_, { window, windowId }) => {
-	if (window == "settings") {
+	if (window === "settings") {
 		const windows = memoryCache.get("SETTINGS_WINDOWS")
 
 		if (windows) {
 			for (const prop in windows) {
-				if (parseInt(windowId) == windows[prop].id) {
+				if (parseInt(windowId) === windows[prop].id) {
 					windows[prop].close()
 				}
 			}
 		}
-	} else if (window == "auth") {
+	} else if (window === "auth") {
 		app.quit()
-	} else if (window == "cloud") {
+	} else if (window === "cloud") {
 		const windows = memoryCache.get("CLOUD_WINDOWS")
 
 		if (windows) {
 			for (const prop in windows) {
-				if (parseInt(windowId) == windows[prop].id) {
+				if (parseInt(windowId) === windows[prop].id) {
 					windows[prop].close()
 				}
 			}
 		}
-	} else if (window == "download") {
+	} else if (window === "download") {
 		const windows = memoryCache.get("DOWNLOAD_WINDOWS")
 
 		if (windows) {
 			for (const prop in windows) {
-				if (parseInt(windowId) == windows[prop].id) {
+				if (parseInt(windowId) === windows[prop].id) {
 					windows[prop].close()
 				}
 			}
 		}
-	} else if (window == "upload") {
+	} else if (window === "upload") {
 		const windows = memoryCache.get("UPLOAD_WINDOWS")
 
 		if (windows) {
 			for (const prop in windows) {
-				if (parseInt(windowId) == windows[prop].id) {
+				if (parseInt(windowId) === windows[prop].id) {
 					windows[prop].close()
 				}
 			}
 		}
-	} else if (window == "selectiveSync") {
+	} else if (window === "selectiveSync") {
 		const windows = memoryCache.get("SELECTIVE_SYNC_WINDOWS")
 
 		if (windows) {
 			for (const prop in windows) {
-				if (parseInt(windowId) == windows[prop].id) {
+				if (parseInt(windowId) === windows[prop].id) {
 					windows[prop].close()
 				}
 			}
 		}
-	} else if (window == "main") {
+	} else if (window === "main") {
 		try {
 			memoryCache.get("MAIN_WINDOW").minimize()
 		} catch (e) {
 			log.error(e)
 		}
-	} else if (window == "update") {
+	} else if (window === "update") {
 		try {
 			memoryCache.get("UPDATE_WINDOW").close()
 		} catch (e) {
 			log.error(e)
 		}
 	}
-
-	return true
 })
 
 handlerProxy("setOpenOnStartup", async (_, { open }) => {
 	const promise = open ? autoLauncher.enable() : autoLauncher.disable()
 
 	await promise
-
-	return true
 })
 
 handlerProxy("getOpenOnStartup", async () => {
@@ -331,7 +337,7 @@ handlerProxy("getVersion", async () => {
 handlerProxy("saveLogs", async () => {
 	let selectWindow = BrowserWindow.getFocusedWindow()
 
-	if (selectWindow == null) {
+	if (selectWindow === null) {
 		selectWindow = memoryCache.get("WORKER_WINDOW")
 
 		if (selectWindow) {
@@ -382,43 +388,6 @@ handlerProxy("updateTrayMenu", async () => {
 
 handlerProxy("updateTrayTooltip", async (_, { text }) => {
 	updateTrayTooltip(text)
-})
-
-handlerProxy("getFileIcon", async (_, { path }) => {
-	if (memoryCache.has("fileIcon:" + path)) {
-		return memoryCache.get("fileIcon:" + path)
-	}
-
-	const image = await app.getFileIcon(pathModule.normalize(path))
-	const dataURL = image.toDataURL()
-
-	memoryCache.set("fileIcon:" + path, dataURL)
-
-	return dataURL
-})
-
-handlerProxy("getFileIconExt", async (_, { ext }) => {
-	if (memoryCache.has("fileIconExt:" + ext)) {
-		return memoryCache.get("fileIconExt:" + ext)
-	}
-
-	const tempPath = pathModule.normalize(
-		pathModule.join(
-			app.getPath("temp"),
-			uuidv4() + (typeof ext == "string" && ext.length > 0 ? (ext.indexOf(".") == -1 ? "" : "." + ext) : "")
-		)
-	)
-
-	await fs.writeFile(tempPath, "")
-
-	const image = await app.getFileIcon(tempPath)
-	const dataURL = image.toDataURL()
-
-	await fs.unlink(tempPath)
-
-	memoryCache.set("fileIconExt:" + ext, dataURL)
-
-	return dataURL
 })
 
 handlerProxy("getFileIconName", async (_, { name }) => {
@@ -499,7 +468,7 @@ handlerProxy("installUpdate", async () => {
 handlerProxy("trayAvailable", async () => {
 	const trayAvailable = memoryCache.get("trayAvailable")
 
-	if (typeof trayAvailable == "boolean") {
+	if (typeof trayAvailable === "boolean") {
 		return trayAvailable
 	}
 
@@ -606,10 +575,6 @@ handlerProxy("fsCanReadAtPath", async (_, path) => {
 	return await fsLocal.canReadAtPath(path)
 })
 
-handlerProxy("fsIsFileBusy", async (_, path) => {
-	return await fsLocal.isFileBusy(path)
-})
-
 handlerProxy("fsDirectoryTree", async (_, { path, skipCache, location }) => {
 	return await fsLocal.directoryTree(path, skipCache, location)
 })
@@ -658,6 +623,18 @@ handlerProxy("addToApplyDoneTasks", async (_, { locationUUID, task }) => {
 	return await fsLocal.addToApplyDoneTasks(locationUUID, task)
 })
 
+handlerProxy("setFileKey", async (_, { uuid, key }) => {
+	memoryCache.set("fileKey:" + uuid, key)
+})
+
+handlerProxy("getFileKey", async (_, { uuid }) => {
+	if (!memoryCache.has("fileKey:" + uuid)) {
+		throw new Error("No key for " + uuid + " found")
+	}
+
+	return memoryCache.get("fileKey:" + uuid)
+})
+
 export const updateKeybinds = async (): Promise<void> => {
 	let keybinds = await db.get("keybinds")
 
@@ -673,17 +650,17 @@ export const updateKeybinds = async (): Promise<void> => {
 		}
 
 		globalShortcut.register(keybinds[i].keybind, () => {
-			if (keybinds[i].type == "uploadFolders") {
+			if (keybinds[i].type === "uploadFolders") {
 				upload("folders")
-			} else if (keybinds[i].type == "uploadFiles") {
+			} else if (keybinds[i].type === "uploadFiles") {
 				upload("files")
-			} else if (keybinds[i].type == "openSettings") {
+			} else if (keybinds[i].type === "openSettings") {
 				createSettings().catch(log.error)
-			} else if (keybinds[i].type == "pauseSync") {
+			} else if (keybinds[i].type === "pauseSync") {
 				db.set("paused", true).catch(log.error)
-			} else if (keybinds[i].type == "resumeSync") {
+			} else if (keybinds[i].type === "resumeSync") {
 				db.set("paused", false).catch(log.error)
-			} else if (keybinds[i].type == "openWebsite") {
+			} else if (keybinds[i].type === "openWebsite") {
 				shell.openExternal("https://drive.filen.io").catch(log.error)
 			}
 		})
@@ -695,19 +672,35 @@ export const emitGlobal = (channel: string = "global-message", data: any) => {
 		if (memoryCache.has("MAIN_WINDOW")) {
 			memoryCache.get("MAIN_WINDOW").webContents.send(channel, data)
 		}
+	} catch (e) {
+		log.error(e)
+	}
 
+	try {
 		if (memoryCache.has("WORKER_WINDOW")) {
 			memoryCache.get("WORKER_WINDOW").webContents.send(channel, data)
 		}
+	} catch (e) {
+		log.error(e)
+	}
 
+	try {
 		if (memoryCache.has("AUTH_WINDOW")) {
 			memoryCache.get("AUTH_WINDOW").webContents.send(channel, data)
 		}
+	} catch (e) {
+		log.error(e)
+	}
 
+	try {
 		if (memoryCache.has("UPDATE_WINDOW")) {
 			memoryCache.get("UPDATE_WINDOW").webContents.send(channel, data)
 		}
+	} catch (e) {
+		log.error(e)
+	}
 
+	try {
 		const settingsWindows = memoryCache.get("SETTINGS_WINDOWS")
 
 		if (settingsWindows) {
@@ -715,7 +708,11 @@ export const emitGlobal = (channel: string = "global-message", data: any) => {
 				settingsWindows[id].webContents.send(channel, data)
 			}
 		}
+	} catch (e) {
+		log.error(e)
+	}
 
+	try {
 		const downloadWindows = memoryCache.get("DOWNLOAD_WINDOWS")
 
 		if (downloadWindows) {
@@ -723,7 +720,11 @@ export const emitGlobal = (channel: string = "global-message", data: any) => {
 				downloadWindows[id].webContents.send(channel, data)
 			}
 		}
+	} catch (e) {
+		log.error(e)
+	}
 
+	try {
 		const cloudWindows = memoryCache.get("CLOUD_WINDOWS")
 
 		if (cloudWindows) {
@@ -731,7 +732,11 @@ export const emitGlobal = (channel: string = "global-message", data: any) => {
 				cloudWindows[id].webContents.send(channel, data)
 			}
 		}
+	} catch (e) {
+		log.error(e)
+	}
 
+	try {
 		const uploadWindows = memoryCache.get("UPLOAD_WINDOWS")
 
 		if (uploadWindows) {
@@ -739,7 +744,11 @@ export const emitGlobal = (channel: string = "global-message", data: any) => {
 				uploadWindows[id].webContents.send(channel, data)
 			}
 		}
+	} catch (e) {
+		log.error(e)
+	}
 
+	try {
 		const selectiveSyncWindows = memoryCache.get("SELECTIVE_SYNC_WINDOWS")
 
 		if (selectiveSyncWindows) {
@@ -755,14 +764,6 @@ export const emitGlobal = (channel: string = "global-message", data: any) => {
 export const listen = async () => {
 	ipcMain.on("proxy-global-message", (_, data) => {
 		emitGlobal("global-message", data)
-	})
-
-	ipcMain.on("proxy-from-worker", (_, data) => {
-		emitGlobal("from-worker", data)
-	})
-
-	ipcMain.on("proxy-for-worker", (_, data) => {
-		emitGlobal("for-worker", data)
 	})
 }
 
