@@ -493,6 +493,10 @@ handlerProxy("clearSyncIssues", async () => {
 	syncIssues = []
 })
 
+handlerProxy("fsNormalizePath", async (_, path) => {
+	return fsLocal.normalizePath(path)
+})
+
 handlerProxy("fsGetTempDir", async () => {
 	return fsLocal.getTempDir()
 })
@@ -599,10 +603,6 @@ handlerProxy("fsAppendFile", async (_, { path, data, options }) => {
 
 handlerProxy("fsEnsureDir", async (_, path) => {
 	return await fsLocal.ensureDir(path)
-})
-
-handlerProxy("fsRealPath", async (_, path) => {
-	return await fsLocal.realPath(path)
 })
 
 handlerProxy("emitGlobal", async (_, { channel, data }) => {

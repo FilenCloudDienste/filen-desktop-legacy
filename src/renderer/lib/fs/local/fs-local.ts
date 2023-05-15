@@ -20,10 +20,6 @@ export const normalizePath = (path: string): string => {
 	return pathModule.normalize(path)
 }
 
-export const realPath = async (path: string): Promise<string> => {
-	return await invokeProxy("fsRealPath", path)
-}
-
 export const checkLastModified = async (path: string): Promise<{ changed: boolean; mtimeMs?: number }> => {
 	return await invokeProxy("fsCheckLastModified", path)
 }
