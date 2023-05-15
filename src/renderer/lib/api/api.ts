@@ -16,6 +16,7 @@ import striptags from "striptags"
 import { isSyncLocationPaused } from "../worker/sync/sync.utils"
 import { v4 as uuidv4 } from "uuid"
 import packageJSON from "../../../../package.json"
+import { RemoteFileMetadata } from "../../../types"
 
 const https = window.require("https")
 const log = window.require("electron-log")
@@ -2002,4 +2003,26 @@ export const disableItemPublicLink = async (uuid: string, type: "folder" | "file
 			throw new Error(response.message)
 		}
 	}
+}
+
+export const getFileMetadata = async (uuid: string): Promise<RemoteFileMetadata> => {
+	const masterKeys = await db.get("masterKeys")
+
+	if (!Array.isArray(masterKeys)) {
+		throw new Error("Invalid master keys")
+	}
+
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v3/file",
+		data: {
+			uuid
+		}
+	})
+
+	if (!response.status) {
+		throw new Error(response.message + ": " + response.code)
+	}
+
+	return await decryptFileMetadata(response.data.metadata, masterKeys)
 }

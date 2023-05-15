@@ -8,9 +8,9 @@ import { AiOutlinePauseCircle, AiOutlineLink } from "react-icons/ai"
 import ipc from "../../lib/ipc"
 import memoryCache from "../../lib/memoryCache"
 import { i18n } from "../../lib/i18n"
-import { itemPublicLinkInfo, enableItemPublicLink, filePresent } from "../../lib/api"
+import { itemPublicLinkInfo, enableItemPublicLink, filePresent, getFileMetadata } from "../../lib/api"
 import { copyToClipboard } from "../../lib/helpers"
-import { decryptFolderLinkKey } from "../../lib/crypto"
+import { decryptFolderLinkKey, decryptFileMetadata } from "../../lib/crypto"
 import db from "../../lib/db"
 import { v4 as uuidv4 } from "uuid"
 import { ItemProps } from "../../../types"
@@ -82,7 +82,7 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
 			if (memoryCache.has(itemIconCacheKey)) {
 				setItemIcon(memoryCache.get(itemIconCacheKey))
 			} else {
-				ipc.getFileIcon(uuidv4() + itemExt)
+				ipc.getFileIconName(uuidv4() + itemName)
 					.then(icon => {
 						if (typeof icon == "string" && icon.indexOf("data:") !== -1) {
 							memoryCache.set(itemIconCacheKey, icon)
@@ -143,9 +143,9 @@ const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOn
 	const copyPublicLink = useCallback(
 		(uuid: string, type: "folder" | "file", info: any) => {
 			if (type == "file") {
-				ipc.getFileKey(uuid)
-					.then(fileKey => {
-						copyToClipboard("https://drive.filen.io/d/" + info.uuid + "#" + fileKey)
+				getFileMetadata(uuid)
+					.then(metadata => {
+						copyToClipboard("https://drive.filen.io/d/" + info.uuid + "#" + metadata.key)
 							.then(() => {
 								toast({
 									position: "bottom",
