@@ -73,7 +73,7 @@ const SettingsWindowSyncs = memo(
 			db.get("syncLocations:" + userId)
 				.then((currentSyncLocations: Location[] | null) => {
 					ipc.selectFolder()
-						.then(result => {
+						.then(async result => {
 							if (result.canceled) {
 								return false
 							}
@@ -84,11 +84,11 @@ const SettingsWindowSyncs = memo(
 								return false
 							}
 
-							const localPath = pathModule.normalize(paths[0])
-
-							if (typeof localPath !== "string") {
+							if (typeof paths[0] !== "string") {
 								return false
 							}
+
+							const localPath = await fsLocal.realPath(pathModule.normalize(paths[0]))
 
 							if (["/", "c:", "c:/", "c://", "c:\\", "c:\\\\"].includes(localPath.toLowerCase())) {
 								return toast({
@@ -143,59 +143,102 @@ const SettingsWindowSyncs = memo(
 							}
 
 							fsLocal
-								.smokeTest(localPath)
-								.then(async () => {
-									const uuid: string = uuidv4()
-									let created: boolean = false
+								.gracefulLStat(localPath)
+								.then(stats => {
+									if (stats.isLink) {
+										toast({
+											title: i18n(lang, "cannotCreateSyncLocation"),
+											description: i18n(lang, "cannotCreateSyncLocationLoop"),
+											status: "error",
+											duration: 10000,
+											isClosable: true,
+											position: "bottom",
+											containerStyle: {
+												backgroundColor: "rgba(255, 69, 58, 1)",
+												maxWidth: "85%",
+												height: "auto",
+												fontSize: 14,
+												borderRadius: "15px"
+											}
+										})
 
-									try {
-										let currentSyncLocations: Location[] | null = await db.get("syncLocations:" + userId)
+										return
+									}
 
-										if (!Array.isArray(currentSyncLocations)) {
-											currentSyncLocations = []
-										}
+									fsLocal
+										.smokeTest(localPath)
+										.then(async () => {
+											const uuid: string = uuidv4()
+											let created: boolean = false
 
-										if (currentSyncLocations.filter(location => location.local == localPath).length == 0) {
-											currentSyncLocations.push({
-												uuid,
-												local: localPath,
-												remote: undefined,
-												remoteUUID: undefined,
-												remoteName: undefined,
-												type: "twoWay",
-												paused: true,
-												busy: false,
-												localChanged: false
-											})
+											try {
+												let currentSyncLocations: Location[] | null = await db.get("syncLocations:" + userId)
 
-											created = true
-										}
+												if (!Array.isArray(currentSyncLocations)) {
+													currentSyncLocations = []
+												}
 
-										await db.set("syncLocations:" + userId, currentSyncLocations)
+												if (currentSyncLocations.filter(location => location.local == localPath).length == 0) {
+													currentSyncLocations.push({
+														uuid,
+														local: localPath,
+														remote: undefined,
+														remoteUUID: undefined,
+														remoteName: undefined,
+														type: "twoWay",
+														paused: true,
+														busy: false,
+														localChanged: false
+													})
 
-										if (created) {
+													created = true
+												}
+
+												await db.set("syncLocations:" + userId, currentSyncLocations)
+
+												if (created) {
+													toast({
+														description: i18n(lang, "syncLocationCreated"),
+														status: "success",
+														duration: 7500,
+														isClosable: true,
+														position: "bottom",
+														containerStyle: {
+															backgroundColor: "#0ac09d",
+															maxWidth: "85%",
+															height: "auto",
+															fontSize: 14,
+															borderRadius: "15px"
+														}
+													})
+
+													ipc.emitGlobal("global-message", {
+														type: "forceSync"
+													}).catch(log.error)
+												}
+											} catch (e) {
+												log.error(e)
+											}
+										})
+										.catch(err => {
+											log.error(err)
+
 											toast({
-												description: i18n(lang, "syncLocationCreated"),
-												status: "success",
-												duration: 7500,
+												title: i18n(lang, "cannotCreateSyncLocation"),
+												description: i18n(lang, "cannotCreateSyncLocationAccess"),
+												status: "error",
+												duration: 10000,
 												isClosable: true,
 												position: "bottom",
 												containerStyle: {
-													backgroundColor: "#0ac09d",
+													backgroundColor: "rgba(255, 69, 58, 1)",
 													maxWidth: "85%",
 													height: "auto",
 													fontSize: 14,
 													borderRadius: "15px"
 												}
 											})
-
-											ipc.emitGlobal("global-message", {
-												type: "forceSync"
-											}).catch(log.error)
-										}
-									} catch (e) {
-										log.error(e)
-									}
+										})
 								})
 								.catch(err => {
 									log.error(err)
@@ -1052,8 +1095,8 @@ const SettingsWindowSyncs = memo(
 													textDecoration="none"
 													_hover={{ textDecoration: "none" }}
 													fontSize={13}
-													onClick={() =>
-														shell.openPath(pathModule.normalize(currentSyncLocation.local)).catch(log.error)
+													onClick={async () =>
+														shell.openPath(await fsLocal.realPath(currentSyncLocation.local)).catch(log.error)
 													}
 													marginRight="15px"
 												>
@@ -1072,8 +1115,12 @@ const SettingsWindowSyncs = memo(
 													textDecoration="none"
 													_hover={{ textDecoration: "none" }}
 													fontSize={13}
-													onClick={() =>
-														shell.openPath(pathModule.normalize(currentSyncLocation.local)).catch(log.error)
+													onClick={async () =>
+														shell
+															.openPath(
+																await fsLocal.realPath(currentSyncLocation.local + "/.filen.trash.local")
+															)
+															.catch(log.error)
 													}
 													marginRight="15px"
 												>

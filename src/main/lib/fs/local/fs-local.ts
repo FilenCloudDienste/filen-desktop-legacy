@@ -52,6 +52,14 @@ export const normalizePath = (path: string): string => {
 	return pathModule.normalize(path)
 }
 
+export const realPath = async (path: string): Promise<string> => {
+	try {
+		return await fs.realpath(pathModule.normalize(path))
+	} catch {
+		return pathModule.normalize(path)
+	}
+}
+
 export const getTempDir = (): string => {
 	const tmpDirRes = app.getPath("temp")
 	const tmpDir = normalizePath(tmpDirRes)
@@ -66,8 +74,8 @@ export interface Stats extends fs.Stats {
 }
 
 export const gracefulLStat = (path: string): Promise<Stats> => {
-	return new Promise((resolve, reject) => {
-		path = normalizePath(path)
+	return new Promise(async (resolve, reject) => {
+		path = await realPath(path)
 
 		const cacheKey = "gracefulLStat:" + path
 		let currentTries = 0
@@ -113,8 +121,8 @@ export const gracefulLStat = (path: string): Promise<Stats> => {
 }
 
 export const exists = (fullPath: string): Promise<boolean> => {
-	return new Promise(resolve => {
-		const path = normalizePath(fullPath)
+	return new Promise(async resolve => {
+		const path = await realPath(fullPath)
 
 		fs.access(path, fs.constants.F_OK, err => {
 			if (err) {
@@ -130,17 +138,15 @@ export const exists = (fullPath: string): Promise<boolean> => {
 
 export const doesExistLocally = async (path: string): Promise<boolean> => {
 	try {
-		await exists(normalizePath(path))
-
-		return true
+		return await exists(await realPath(path))
 	} catch {
 		return false
 	}
 }
 
 export const canReadWriteAtPath = (fullPath: string): Promise<boolean> => {
-	return new Promise(resolve => {
-		fullPath = normalizePath(fullPath)
+	return new Promise(async resolve => {
+		fullPath = await realPath(fullPath)
 
 		const req = (path: string) => {
 			fs.access(path, fs.constants.W_OK | fs.constants.R_OK, err => {
@@ -175,8 +181,8 @@ export const canReadWriteAtPath = (fullPath: string): Promise<boolean> => {
 }
 
 export const canReadAtPath = (fullPath: string): Promise<boolean> => {
-	return new Promise(resolve => {
-		fullPath = normalizePath(fullPath)
+	return new Promise(async resolve => {
+		fullPath = await realPath(fullPath)
 
 		const req = (path: string) => {
 			fs.access(path, fs.constants.R_OK, err => {
@@ -211,7 +217,7 @@ export const canReadAtPath = (fullPath: string): Promise<boolean> => {
 }
 
 export const smokeTest = async (path: string): Promise<void> => {
-	path = normalizePath(path)
+	path = await realPath(path)
 
 	const tmpDir = getTempDir()
 
@@ -227,8 +233,8 @@ export const smokeTest = async (path: string): Promise<void> => {
 }
 
 export const readChunk = (path: string, offset: number, length: number): Promise<Buffer> => {
-	return new Promise((resolve, reject) => {
-		path = normalizePath(path)
+	return new Promise(async (resolve, reject) => {
+		path = await realPath(path)
 
 		let currentTries = 0
 		let lastErr: Error
@@ -294,9 +300,9 @@ export const readChunk = (path: string, offset: number, length: number): Promise
 }
 
 export const rm = async (path: string, location: Location): Promise<void> => {
-	path = normalizePath(path)
+	path = await realPath(path)
 
-	const trashDirPath = normalizePath(pathModule.join(location.local, ".filen.trash.local"))
+	const trashDirPath = await realPath(pathModule.join(location.local, ".filen.trash.local"))
 	const basename = pathModule.basename(path)
 
 	if (!(await doesExistLocally(path))) {
@@ -324,10 +330,10 @@ export const rm = async (path: string, location: Location): Promise<void> => {
 
 export const rmPermanent = (path: string): Promise<void> => {
 	return new Promise(async (resolve, reject) => {
-		path = normalizePath(path)
+		path = await realPath(path)
 
 		if (!(await doesExistLocally(path))) {
-			cache.delete("gracefulLStat:" + normalizePath(path))
+			cache.delete("gracefulLStat:" + path)
 
 			return resolve()
 		}
@@ -336,7 +342,7 @@ export const rmPermanent = (path: string): Promise<void> => {
 			var stats = await gracefulLStat(path)
 		} catch (e: any) {
 			if (e.code && e.code == "ENOENT") {
-				cache.delete("gracefulLStat:" + normalizePath(path))
+				cache.delete("gracefulLStat:" + path)
 
 				return resolve()
 			}
@@ -358,12 +364,12 @@ export const rmPermanent = (path: string): Promise<void> => {
 				try {
 					await fs.unlink(path)
 
-					cache.delete("gracefulLStat:" + normalizePath(path))
+					cache.delete("gracefulLStat:" + path)
 				} catch (e: any) {
 					lastErr = e
 
 					if (e.code && e.code == "ENOENT") {
-						cache.delete("gracefulLStat:" + normalizePath(path))
+						cache.delete("gracefulLStat:" + path)
 
 						return resolve()
 					}
@@ -378,12 +384,12 @@ export const rmPermanent = (path: string): Promise<void> => {
 				try {
 					await fs.remove(path)
 
-					cache.delete("gracefulLStat:" + normalizePath(path))
+					cache.delete("gracefulLStat:" + path)
 				} catch (e: any) {
 					lastErr = e
 
 					if (e.code && e.code == "ENOENT") {
-						cache.delete("gracefulLStat:" + normalizePath(path))
+						cache.delete("gracefulLStat:" + path)
 
 						return resolve()
 					}
@@ -404,8 +410,8 @@ export const rmPermanent = (path: string): Promise<void> => {
 }
 
 export const mkdir = (path: string, location: Location): Promise<void> => {
-	return new Promise((resolve, reject) => {
-		const absolutePath = normalizePath(pathModule.join(location.local, path))
+	return new Promise(async (resolve, reject) => {
+		const absolutePath = await realPath(pathModule.join(location.local, path))
 		let currentTries = 0
 		let lastErr: Error
 
@@ -447,12 +453,8 @@ export const mkdir = (path: string, location: Location): Promise<void> => {
 
 export const move = (before: string, after: string, overwrite = true): Promise<void> => {
 	return new Promise(async (resolve, reject) => {
-		try {
-			before = normalizePath(before)
-			after = normalizePath(after)
-		} catch (e) {
-			return reject(e)
-		}
+		before = await realPath(before)
+		after = await realPath(after)
 
 		if (!(await doesExistLocally(before))) {
 			return resolve()
@@ -489,12 +491,8 @@ export const move = (before: string, after: string, overwrite = true): Promise<v
 
 export const rename = (before: string, after: string): Promise<void> => {
 	return new Promise(async (resolve, reject) => {
-		try {
-			before = normalizePath(before)
-			after = normalizePath(after)
-		} catch (e) {
-			return reject(e)
-		}
+		before = await realPath(before)
+		after = await realPath(after)
 
 		if (!(await doesExistLocally(before))) {
 			return resolve()
@@ -562,8 +560,8 @@ export const clearLocalTrashDirs = (clearNow = false): Promise<void> => {
 						Promise.allSettled([
 							...syncLocations.map(
 								location =>
-									new Promise<void>((resolve, reject) => {
-										const path = normalizePath(pathModule.join(location.local, ".filen.trash.local"))
+									new Promise<void>(async (resolve, reject) => {
+										const path = await realPath(pathModule.join(location.local, ".filen.trash.local"))
 
 										const dirStream = readdirp(path, {
 											alwaysStat: false,
@@ -660,8 +658,8 @@ export const initLocalTrashDirs = (): void => {
 }
 
 export const checkLastModified = (path: string): Promise<{ changed: boolean; mtimeMs: number }> => {
-	return new Promise((resolve, reject) => {
-		path = normalizePath(path)
+	return new Promise(async (resolve, reject) => {
+		path = await realPath(path)
 
 		gracefulLStat(path)
 			.then(async stat => {
@@ -726,7 +724,7 @@ export const directoryTree = (path: string, skipCache = false, location: Locatio
 					})
 				}
 
-				path = normalizePath(path)
+				path = await realPath(path)
 
 				const files: Record<
 					string,
@@ -889,32 +887,32 @@ export const directoryTree = (path: string, skipCache = false, location: Locatio
 }
 
 export const utimes = async (path: string, atime: Date, mtime: Date): Promise<void> => {
-	path = normalizePath(path)
+	path = await realPath(path)
 
 	return await fs.utimes(path, atime, mtime)
 }
 
 export const unlink = async (path: string): Promise<void> => {
-	path = normalizePath(path)
+	path = await realPath(path)
 
 	return await fs.unlink(path)
 }
 
 export const remove = async (path: string): Promise<void> => {
-	path = normalizePath(path)
+	path = await realPath(path)
 
 	return await fs.remove(path)
 }
 
 export const mkdirNormal = async (path: string, options = { recursive: true }): Promise<void> => {
-	path = normalizePath(path)
+	path = await realPath(path)
 
 	return await fs.mkdir(path, options)
 }
 
 export const access = (path: string, mode: number): Promise<void> => {
-	return new Promise((resolve, reject) => {
-		path = normalizePath(path)
+	return new Promise(async (resolve, reject) => {
+		path = await realPath(path)
 
 		fs.access(path, mode, err => {
 			if (err) {
@@ -927,13 +925,13 @@ export const access = (path: string, mode: number): Promise<void> => {
 }
 
 export const appendFile = async (path: string, data: Buffer | string, options = undefined): Promise<void> => {
-	path = normalizePath(path)
+	path = await realPath(path)
 
 	return await fs.appendFile(path, data, options)
 }
 
 export const ensureDir = async (path: string): Promise<void> => {
-	path = normalizePath(path)
+	path = await realPath(path)
 
 	return await fs.ensureDir(path)
 }
@@ -959,7 +957,7 @@ export const loadApplyDoneTasks = (locationUUID: string): Promise<any[]> => {
 		await applyDoneTasksSemaphore.acquire()
 
 		try {
-			var path = await getApplyDoneTaskPath(locationUUID)
+			var path = await realPath(await getApplyDoneTaskPath(locationUUID))
 		} catch (e: any) {
 			applyDoneTasksSemaphore.release()
 
@@ -1029,7 +1027,7 @@ export const addToApplyDoneTasks = async (locationUUID: string, task: any): Prom
 	await applyDoneTasksSemaphore.acquire()
 
 	try {
-		const path = await getApplyDoneTaskPath(locationUUID)
+		const path = await realPath(await getApplyDoneTaskPath(locationUUID))
 
 		await appendFile(path, JSON.stringify(task) + "\n")
 	} catch (e) {
@@ -1043,7 +1041,7 @@ export const clearApplyDoneTasks = async (locationUUID: string): Promise<void> =
 	await applyDoneTasksSemaphore.acquire()
 
 	try {
-		var path = await getApplyDoneTaskPath(locationUUID)
+		var path = await realPath(await getApplyDoneTaskPath(locationUUID))
 
 		await fs.access(path, fs.constants.F_OK)
 	} catch (e) {
