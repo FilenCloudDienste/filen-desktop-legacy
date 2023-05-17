@@ -605,6 +605,10 @@ handlerProxy("fsEnsureDir", async (_, path) => {
 	return await fsLocal.ensureDir(path)
 })
 
+handlerProxy("fsRealPath", async (_, path) => {
+	return await fsLocal.realPath(path)
+})
+
 handlerProxy("emitGlobal", async (_, { channel, data }) => {
 	emitGlobal(channel, data)
 })

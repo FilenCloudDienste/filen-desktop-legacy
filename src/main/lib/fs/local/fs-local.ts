@@ -52,6 +52,14 @@ export const normalizePath = (path: string): string => {
 	return pathModule.normalize(path)
 }
 
+export const realPath = async (path: string): Promise<string> => {
+	try {
+		return fs.realpath(path)
+	} catch {
+		return normalizePath(path)
+	}
+}
+
 export const getTempDir = (): string => {
 	const tmpDirRes = app.getPath("temp")
 	const tmpDir = normalizePath(tmpDirRes)

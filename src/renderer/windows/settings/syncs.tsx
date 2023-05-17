@@ -75,20 +75,20 @@ const SettingsWindowSyncs = memo(
 					ipc.selectFolder()
 						.then(result => {
 							if (result.canceled) {
-								return false
+								return
 							}
 
 							const paths = result.filePaths
 
 							if (!Array.isArray(paths)) {
-								return false
+								return
+							}
+
+							if (typeof paths[0] !== "string") {
+								return
 							}
 
 							const localPath = pathModule.normalize(paths[0])
-
-							if (typeof localPath !== "string") {
-								return false
-							}
 
 							if (["/", "c:", "c:/", "c://", "c:\\", "c:\\\\"].includes(localPath.toLowerCase())) {
 								return toast({
@@ -124,7 +124,7 @@ const SettingsWindowSyncs = memo(
 								}
 
 								if (found) {
-									return toast({
+									toast({
 										title: i18n(lang, "cannotCreateSyncLocation"),
 										description: i18n(lang, "cannotCreateSyncLocationLoop"),
 										status: "error",
@@ -139,6 +139,8 @@ const SettingsWindowSyncs = memo(
 											borderRadius: "15px"
 										}
 									})
+
+									return
 								}
 							}
 
@@ -192,6 +194,12 @@ const SettingsWindowSyncs = memo(
 											ipc.emitGlobal("global-message", {
 												type: "forceSync"
 											}).catch(log.error)
+
+											setTimeout(() => {
+												ipc.emitGlobal("global-message", {
+													type: "forceSync"
+												}).catch(log.error)
+											}, 15000)
 										}
 									} catch (e) {
 										log.error(e)
@@ -1052,8 +1060,8 @@ const SettingsWindowSyncs = memo(
 													textDecoration="none"
 													_hover={{ textDecoration: "none" }}
 													fontSize={13}
-													onClick={() =>
-														shell.openPath(pathModule.normalize(currentSyncLocation.local)).catch(log.error)
+													onClick={async () =>
+														shell.openPath(await fsLocal.realPath(currentSyncLocation.local)).catch(log.error)
 													}
 													marginRight="15px"
 												>
@@ -1072,8 +1080,12 @@ const SettingsWindowSyncs = memo(
 													textDecoration="none"
 													_hover={{ textDecoration: "none" }}
 													fontSize={13}
-													onClick={() =>
-														shell.openPath(pathModule.normalize(currentSyncLocation.local)).catch(log.error)
+													onClick={async () =>
+														shell
+															.openPath(
+																await fsLocal.realPath(currentSyncLocation.local + "/.filen.trash.local")
+															)
+															.catch(log.error)
 													}
 													marginRight="15px"
 												>
