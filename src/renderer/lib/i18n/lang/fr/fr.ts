@@ -145,8 +145,8 @@ const fr: {
 		"Télécharge seulement les données depuis le cloud, ne supprime jamais rien ni ne prend en compte les changements locaux",
 	cancel: "Annuler",
 	cannotCreateSyncLocationLoop2:
-		"L'emplacement distant sélectionné est déjà un emplacement de synchronisation configuré. Cela pourrait amener à des boucles de synchronisation sans fin"
-titlebarUpdateAvailable: "Mise à jour disponible",
+		"L'emplacement distant sélectionné est déjà un emplacement de synchronisation configuré. Cela pourrait amener à des boucles de synchronisation sans fin",
+	titlebarUpdateAvailable: "Mise à jour disponible",
 	updateWindowInfo:
 		"Une nouvelle version a été téléchargée et est prête à être installée. Veuillez l'installer au plus vite pour bénéficier des corrections de bugs et de nouvelles fonctionnalités.",
 	updateWindowButton: "Installer",
@@ -188,7 +188,8 @@ titlebarUpdateAvailable: "Mise à jour disponible",
 	possibleSolutionEBUSY:
 		"Le client ne peut pas accéder au chemin ci-dessus. veuillez vérifier si d'autres programmes ne serraient pas en train de l'utiliser et donc de le verrouiller.",
 	possibleSolutionEMFILE: "Il n'y a pas assez de descripteurs de fichiers ou d'espace disque sur votre ordinateur.",
-	possibleSolutionELOOP: "Veuillez vous assurer que le chemin de synchro locale ne contient pas de liens symboliques, ce qui causerait des boucles infinies.",
+	possibleSolutionELOOP:
+		"Veuillez vous assurer que le chemin de synchro locale ne contient pas de liens symboliques, ce qui causerait des boucles infinies.",
 	issue: "Erreur",
 	path: "Chemin"
 }
