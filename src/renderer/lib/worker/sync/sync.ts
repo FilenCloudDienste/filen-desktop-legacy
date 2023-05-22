@@ -30,8 +30,8 @@ const applyDoneTasksToSavedState = async ({
 	localTreeNow: any
 	remoteTreeNow: any
 }): Promise<{ localTreeNowApplied: any; remoteTreeNowApplied: any }> => {
-	for (let i = 0; i < doneTasks.length; i++) {
-		const { type, task } = doneTasks[i]
+	for (const doneTask of doneTasks) {
+		const { type, task } = doneTask
 
 		if (typeof task == "undefined" || task == null) {
 			continue
@@ -1083,19 +1083,19 @@ const sync = async (): Promise<any> => {
 			syncLocations
 		})
 
-		for (let i = 0; i < syncLocations.length; i++) {
+		for (const location of syncLocations) {
 			if (
-				typeof syncLocations[i].remote == "undefined" ||
-				typeof syncLocations[i].remoteUUID == "undefined" ||
-				typeof syncLocations[i].remoteName == "undefined"
+				typeof location.remote == "undefined" ||
+				typeof location.remoteUUID == "undefined" ||
+				typeof location.remoteName == "undefined"
 			) {
 				continue
 			}
 
 			try {
-				await syncLocation(syncLocations[i])
+				await syncLocation(location)
 			} catch (e: any) {
-				log.error("Sync task for location " + syncLocations[i].uuid + " failed, reason:")
+				log.error("Sync task for location " + location.uuid + " failed, reason:")
 				log.error(e)
 
 				emitSyncStatus("sync", {

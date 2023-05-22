@@ -54,7 +54,7 @@ export const normalizePath = (path: string): string => {
 
 export const realPath = async (path: string): Promise<string> => {
 	try {
-		return fs.realpath(path)
+		return await fs.realpath(path)
 	} catch {
 		return normalizePath(path)
 	}
@@ -335,7 +335,7 @@ export const rmPermanent = (path: string): Promise<void> => {
 		path = normalizePath(path)
 
 		if (!(await doesExistLocally(path))) {
-			cache.delete("gracefulLStat:" + normalizePath(path))
+			cache.delete("gracefulLStat:" + path)
 
 			return resolve()
 		}
@@ -344,7 +344,7 @@ export const rmPermanent = (path: string): Promise<void> => {
 			var stats = await gracefulLStat(path)
 		} catch (e: any) {
 			if (e.code && e.code == "ENOENT") {
-				cache.delete("gracefulLStat:" + normalizePath(path))
+				cache.delete("gracefulLStat:" + path)
 
 				return resolve()
 			}
@@ -366,12 +366,12 @@ export const rmPermanent = (path: string): Promise<void> => {
 				try {
 					await fs.unlink(path)
 
-					cache.delete("gracefulLStat:" + normalizePath(path))
+					cache.delete("gracefulLStat:" + path)
 				} catch (e: any) {
 					lastErr = e
 
 					if (e.code && e.code == "ENOENT") {
-						cache.delete("gracefulLStat:" + normalizePath(path))
+						cache.delete("gracefulLStat:" + path)
 
 						return resolve()
 					}
@@ -386,12 +386,12 @@ export const rmPermanent = (path: string): Promise<void> => {
 				try {
 					await fs.remove(path)
 
-					cache.delete("gracefulLStat:" + normalizePath(path))
+					cache.delete("gracefulLStat:" + path)
 				} catch (e: any) {
 					lastErr = e
 
 					if (e.code && e.code == "ENOENT") {
-						cache.delete("gracefulLStat:" + normalizePath(path))
+						cache.delete("gracefulLStat:" + path)
 
 						return resolve()
 					}

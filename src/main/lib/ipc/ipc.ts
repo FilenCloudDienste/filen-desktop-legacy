@@ -72,7 +72,7 @@ handlerProxy("db", async (e, { action, key, value }) => {
 	} else if (action === "clear") {
 		await db.clear()
 	} else if (action === "keys") {
-		return db.keys()
+		return await db.keys()
 	} else {
 		throw new Error("Invalid db action: " + action.toString())
 	}
@@ -424,7 +424,7 @@ handlerProxy("openSelectiveSyncWindow", async (_, location) => {
 })
 
 handlerProxy("updateKeybinds", async () => {
-	return await updateKeybinds()
+	await updateKeybinds()
 })
 
 handlerProxy("disableKeybinds", async () => {
@@ -518,7 +518,7 @@ handlerProxy("fsCanReadWriteAtPath", async (_, path) => {
 })
 
 handlerProxy("fsSmokeTest", async (_, path) => {
-	return await fsLocal.smokeTest(path)
+	await fsLocal.smokeTest(path)
 })
 
 handlerProxy("fsReadChunk", async (_, { path, offset, length }) => {
@@ -526,23 +526,23 @@ handlerProxy("fsReadChunk", async (_, { path, offset, length }) => {
 })
 
 handlerProxy("fsRm", async (_, { path, location }) => {
-	return await fsLocal.rm(path, location)
+	await fsLocal.rm(path, location)
 })
 
 handlerProxy("fsRmPermanent", async (_, path) => {
-	return await fsLocal.rmPermanent(path)
+	await fsLocal.rmPermanent(path)
 })
 
 handlerProxy("fsMkdir", async (_, { path, location }) => {
-	return await fsLocal.mkdir(path, location)
+	await fsLocal.mkdir(path, location)
 })
 
 handlerProxy("fsMove", async (_, { before, after, overwrite }) => {
-	return await fsLocal.move(before, after, overwrite)
+	await fsLocal.move(before, after, overwrite)
 })
 
 handlerProxy("fsRename", async (_, { before, after }) => {
-	return await fsLocal.rename(before, after)
+	await fsLocal.rename(before, after)
 })
 
 handlerProxy("fsCreateLocalTrashDirs", async () => {
@@ -578,31 +578,31 @@ handlerProxy("fsDirectoryTree", async (_, { path, skipCache, location }) => {
 })
 
 handlerProxy("fsUnlink", async (_, path) => {
-	return await fsLocal.unlink(path)
+	await fsLocal.unlink(path)
 })
 
 handlerProxy("fsUtimes", async (_, { path, atime, mtime }) => {
-	return await fsLocal.utimes(path, atime, mtime)
+	await fsLocal.utimes(path, atime, mtime)
 })
 
 handlerProxy("fsRemove", async (_, path) => {
-	return await fsLocal.remove(path)
+	await fsLocal.remove(path)
 })
 
 handlerProxy("fsMkdirNormal", async (_, { path, options }) => {
-	return await fsLocal.mkdirNormal(path, options)
+	await fsLocal.mkdirNormal(path, options)
 })
 
 handlerProxy("fsAccess", async (_, { path, mode }) => {
-	return await fsLocal.access(path, mode)
+	await fsLocal.access(path, mode)
 })
 
 handlerProxy("fsAppendFile", async (_, { path, data, options }) => {
-	return await fsLocal.appendFile(path, data, options)
+	await fsLocal.appendFile(path, data, options)
 })
 
 handlerProxy("fsEnsureDir", async (_, path) => {
-	return await fsLocal.ensureDir(path)
+	await fsLocal.ensureDir(path)
 })
 
 handlerProxy("fsRealPath", async (_, path) => {
@@ -618,11 +618,11 @@ handlerProxy("loadApplyDoneTasks", async (_, locationUUID) => {
 })
 
 handlerProxy("clearApplyDoneTasks", async (_, locationUUID) => {
-	return await fsLocal.clearApplyDoneTasks(locationUUID)
+	await fsLocal.clearApplyDoneTasks(locationUUID)
 })
 
 handlerProxy("addToApplyDoneTasks", async (_, { locationUUID, task }) => {
-	return await fsLocal.addToApplyDoneTasks(locationUUID, task)
+	await fsLocal.addToApplyDoneTasks(locationUUID, task)
 })
 
 handlerProxy("setFileKey", async (_, { uuid, key }) => {

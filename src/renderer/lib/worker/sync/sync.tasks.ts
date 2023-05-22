@@ -17,7 +17,6 @@ import ipc from "../../ipc"
 import { v4 as uuidv4 } from "uuid"
 import * as fsLocal from "../../fs/local"
 import * as fsRemote from "../../fs/remote"
-import db from "../../db"
 
 const log = window.require("electron-log")
 const pathModule = window.require("path")
