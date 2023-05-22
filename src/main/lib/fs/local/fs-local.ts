@@ -842,14 +842,14 @@ export const directoryTree = (path: string, skipCache = false, location: Locatio
 							}
 						}
 					} catch (e: any) {
-						log.error(e)
-
 						if (
 							!filenIgnoreCompiled.denies(item.path) &&
 							!filenIgnoreCompiled.denies(item.fullPath) &&
 							!isIgnoredBySelectiveSync(selectiveSyncRemote, item.path) &&
 							!isIgnoredBySelectiveSync(selectiveSyncRemote, item.fullPath)
 						) {
+							log.error(e)
+
 							addSyncIssue({
 								uuid: uuidv4(),
 								type: "warning",
