@@ -2,8 +2,8 @@
 	"name": "filen-desktop",
 	"author": "Filen Cloud Dienste UG (haftungsbeschränkt) <support@filen.io>",
 	"description": "Filen Desktop Client",
-	"version": "2.0.21",
-	"buildNumber": 2021,
+	"version": "2.0.22",
+	"buildNumber": 2022,
 	"private": true,
 	"engines": {
 		"node": "14.x"

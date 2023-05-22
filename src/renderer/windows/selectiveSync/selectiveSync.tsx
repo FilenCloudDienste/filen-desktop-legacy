@@ -45,7 +45,7 @@ const TreeItem = memo(
 		const [itemIcon, setItemIcon] = useState<string | undefined>(undefined)
 
 		const isItemExcluded = (): boolean => {
-			if (typeof excluded[item.path] !== "undefined") {
+			if (typeof excluded[item.path] === "boolean") {
 				return true
 			}
 
@@ -73,22 +73,16 @@ const TreeItem = memo(
 				return false
 			}
 
-			const isExcluded = typeof excluded[item.path] !== "undefined"
+			const isExcluded = typeof excluded[item.path] === "boolean"
 
 			try {
-				let currentExcluded = await db.get("selectiveSync:remote:" + location.uuid)
-
-				if (currentExcluded == null) {
-					currentExcluded = {}
-				}
-
 				if (isExcluded) {
-					delete currentExcluded[item.path]
+					delete excluded[item.path]
 				} else {
-					currentExcluded[item.path] = true
+					excluded[item.path] = true
 				}
 
-				await db.set("selectiveSync:remote:" + location.uuid, currentExcluded)
+				await db.set("selectiveSync:remote:" + location.uuid, excluded)
 
 				ipc.emitGlobal("global-message", {
 					type: "forceSync"
@@ -134,7 +128,7 @@ const TreeItem = memo(
 						width="auto"
 					>
 						<Checkbox
-							checked={!isItemExcluded()}
+							isChecked={isItemExcluded()}
 							onChange={onToggleExcluded}
 						/>
 					</Flex>

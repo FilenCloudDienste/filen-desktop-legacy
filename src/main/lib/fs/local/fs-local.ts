@@ -22,6 +22,8 @@ import { addSyncIssue } from "../../ipc"
 import { v4 as uuidv4 } from "uuid"
 import readline from "readline"
 
+const gitignoreParser = require("@gerhobbelt/gitignore-parser")
+
 const FS_RETRIES = 8
 const FS_RETRY_TIMEOUT = 100
 const FS_RETRY_CODES = [
@@ -721,11 +723,22 @@ export const directoryTree = (path: string, skipCache = false, location: Locatio
 	return new Promise((resolve, reject) => {
 		const cacheKey = "directoryTreeLocal:" + location.uuid
 
-		Promise.all([db.get("localDataChanged:" + location.uuid), db.get(cacheKey), db.get("excludeDot")])
-			.then(async ([localDataChanged, cachedLocalTree, excludeDot]) => {
+		Promise.all([
+			db.get("localDataChanged:" + location.uuid),
+			db.get(cacheKey),
+			db.get("excludeDot"),
+			db.get("filenIgnore:" + location.uuid)
+		])
+			.then(async ([localDataChanged, cachedLocalTree, excludeDot, filenIgnore]) => {
 				if (excludeDot == null) {
 					excludeDot = true
 				}
+
+				if (typeof filenIgnore !== "string") {
+					filenIgnore = ""
+				}
+
+				const filenIgnoreCompiled = gitignoreParser.compile(filenIgnore)
 
 				if (!localDataChanged && cachedLocalTree !== null && !skipCache) {
 					return resolve({
@@ -829,15 +842,17 @@ export const directoryTree = (path: string, skipCache = false, location: Locatio
 					} catch (e: any) {
 						log.error(e)
 
-						addSyncIssue({
-							uuid: uuidv4(),
-							type: "warning",
-							where: "local",
-							path: item.fullPath,
-							err: e,
-							info: "Could not read " + item.fullPath,
-							timestamp: Date.now()
-						})
+						if (!filenIgnoreCompiled.denies(item.path) && !filenIgnoreCompiled.denies(item.fullPath)) {
+							addSyncIssue({
+								uuid: uuidv4(),
+								type: "warning",
+								where: "local",
+								path: item.fullPath,
+								err: e,
+								info: "Could not read " + item.fullPath,
+								timestamp: Date.now()
+							})
+						}
 					}
 
 					statting -= 1
