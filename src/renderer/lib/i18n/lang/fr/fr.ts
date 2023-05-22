@@ -148,7 +148,7 @@ const fr: {
 		"L'emplacement distant sélectionné est déjà un emplacement de synchronisation configuré. Cela pourrait amener à des boucles de synchronisation sans fin"
 titlebarUpdateAvailable: "Mise à jour disponible",
 	updateWindowInfo:
-		"Une nouvelle version a été téléchargée et est prête à être installée. Veuillez l'installer au plus vite pour bénéficier des corrections de bugs et de nouvelles fonctionnalités.",
+		"Une nouvelle version de Filen a été téléchargée et est prête à être installée. Veuillez l'installer au plus vite pour bénéficier des corrections de bugs et de nouvelles fonctionnalités.",
 	updateWindowButton: "Installer",
 	updateWindowInfo2: "L'appli se fermera et la mise à jour commencera. Veuillez ne pas interrompre le processus.",
 	titlebarUpdateInstalled: "Mise à jour installée",
