@@ -740,14 +740,14 @@ export const directoryTree = (path: string, skipCache = false, location: Locatio
 					filenIgnore = ""
 				}
 
-				const filenIgnoreCompiled = gitignoreParser.compile(filenIgnore)
-
 				if (!localDataChanged && cachedLocalTree !== null && !skipCache) {
 					return resolve({
 						changed: false,
 						data: cachedLocalTree
 					})
 				}
+
+				const filenIgnoreCompiled = gitignoreParser.compile(filenIgnore)
 
 				path = normalizePath(path)
 
