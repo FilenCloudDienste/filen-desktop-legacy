@@ -16,7 +16,8 @@ import {
 	isSystemPathExcluded,
 	isNameOverMaxLength,
 	isPathOverMaxLength,
-	Semaphore
+	Semaphore,
+	isIgnoredBySelectiveSync
 } from "../../helpers"
 import { addSyncIssue } from "../../ipc"
 import { v4 as uuidv4 } from "uuid"
@@ -727,9 +728,10 @@ export const directoryTree = (path: string, skipCache = false, location: Locatio
 			db.get("localDataChanged:" + location.uuid),
 			db.get(cacheKey),
 			db.get("excludeDot"),
-			db.get("filenIgnore:" + location.uuid)
+			db.get("filenIgnore:" + location.uuid),
+			db.get("selectiveSync:remote:" + location.uuid)
 		])
-			.then(async ([localDataChanged, cachedLocalTree, excludeDot, filenIgnore]) => {
+			.then(async ([localDataChanged, cachedLocalTree, excludeDot, filenIgnore, selectiveSyncRemote]) => {
 				if (excludeDot == null) {
 					excludeDot = true
 				}
@@ -842,7 +844,12 @@ export const directoryTree = (path: string, skipCache = false, location: Locatio
 					} catch (e: any) {
 						log.error(e)
 
-						if (!filenIgnoreCompiled.denies(item.path) && !filenIgnoreCompiled.denies(item.fullPath)) {
+						if (
+							!filenIgnoreCompiled.denies(item.path) &&
+							!filenIgnoreCompiled.denies(item.fullPath) &&
+							!isIgnoredBySelectiveSync(selectiveSyncRemote, item.path) &&
+							!isIgnoredBySelectiveSync(selectiveSyncRemote, item.fullPath)
+						) {
 							addSyncIssue({
 								uuid: uuidv4(),
 								type: "warning",

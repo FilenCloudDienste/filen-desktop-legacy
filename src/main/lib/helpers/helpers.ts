@@ -233,3 +233,28 @@ export const Semaphore = function (this: SemaphoreInterface, max: number) {
 		return unresolved
 	}
 } as any as { new (max: number): SemaphoreInterface }
+
+export const isSubdir = (parent: string, path: string) => {
+	const relative = pathModule.relative(parent, path)
+	const isSubdir = relative && !relative.startsWith("..") && !pathModule.isAbsolute(relative)
+
+	return isSubdir
+}
+
+export const isIgnoredBySelectiveSync = (selectiveSyncRemoteIgnore: { [key: string]: boolean }, path: string): boolean => {
+	if (typeof selectiveSyncRemoteIgnore == "undefined" || !selectiveSyncRemoteIgnore || selectiveSyncRemoteIgnore == null) {
+		return false
+	}
+
+	if (Object.keys(selectiveSyncRemoteIgnore).length <= 0) {
+		return false
+	}
+
+	for (const prop in selectiveSyncRemoteIgnore) {
+		if (prop == path || isSubdir(prop, path) || isSubdir(path, prop)) {
+			return true
+		}
+	}
+
+	return false
+}
