@@ -12,7 +12,7 @@ import {
 import { sendToAllPorts } from "../ipc"
 import constants from "../../../../constants.json"
 import { Location } from "../../../../types"
-import { Semaphore } from "../../helpers"
+import { Semaphore, chunkedPromiseAll } from "../../helpers"
 import ipc from "../../ipc"
 import { v4 as uuidv4 } from "uuid"
 import * as fsLocal from "../../fs/local"
@@ -404,10 +404,10 @@ export const consumeTasks = async ({
 	}
 
 	if (renameInRemoteTasks.length > 0) {
-		await Promise.allSettled([
+		await chunkedPromiseAll([
 			...renameInRemoteTasks.map(
 				(task: any) =>
-					new Promise((resolve, reject) => {
+					new Promise(resolve => {
 						if (typeof task !== "object" || typeof task.item !== "object" || typeof task.item.uuid !== "string") {
 							updateSyncTasksToDo()
 
@@ -473,7 +473,8 @@ export const consumeTasks = async ({
 
 										updateSyncTasksToDo()
 
-										ipc.addToApplyDoneTasks(location.uuid, doneTask)
+										fsLocal
+											.addToApplyDoneTasks(location.uuid, doneTask)
 											.then(() => {
 												maxSyncTasksSemaphore.release()
 
@@ -508,10 +509,10 @@ export const consumeTasks = async ({
 	}
 
 	if (renameInLocalTasks.length > 0) {
-		await Promise.allSettled([
+		await chunkedPromiseAll([
 			...renameInLocalTasks.map(
 				(task: any) =>
-					new Promise((resolve, reject) => {
+					new Promise(resolve => {
 						if (typeof task !== "object" || typeof task.from !== "string" || typeof task.to !== "string") {
 							updateSyncTasksToDo()
 
@@ -580,7 +581,8 @@ export const consumeTasks = async ({
 
 										updateSyncTasksToDo()
 
-										ipc.addToApplyDoneTasks(location.uuid, doneTask)
+										fsLocal
+											.addToApplyDoneTasks(location.uuid, doneTask)
 											.then(() => {
 												maxSyncTasksSemaphore.release()
 
@@ -666,10 +668,10 @@ export const consumeTasks = async ({
 	}
 
 	if (moveInRemoteTasks.length > 0) {
-		await Promise.allSettled([
+		await chunkedPromiseAll([
 			...moveInRemoteTasks.map(
 				(task: any) =>
-					new Promise((resolve, reject) => {
+					new Promise(resolve => {
 						if (typeof task !== "object" || typeof task.item !== "object" || typeof task.item.uuid !== "string") {
 							updateSyncTasksToDo()
 
@@ -735,7 +737,8 @@ export const consumeTasks = async ({
 
 										updateSyncTasksToDo()
 
-										ipc.addToApplyDoneTasks(location.uuid, doneTask)
+										fsLocal
+											.addToApplyDoneTasks(location.uuid, doneTask)
 											.then(() => {
 												maxSyncTasksSemaphore.release()
 
@@ -770,10 +773,10 @@ export const consumeTasks = async ({
 	}
 
 	if (moveInLocalTasks.length > 0) {
-		await Promise.allSettled([
+		await chunkedPromiseAll([
 			...moveInLocalTasks.map(
 				(task: any) =>
-					new Promise((resolve, reject) => {
+					new Promise(resolve => {
 						if (typeof task !== "object" || typeof task.from !== "string" || typeof task.to !== "string") {
 							updateSyncTasksToDo()
 
@@ -842,7 +845,8 @@ export const consumeTasks = async ({
 
 										updateSyncTasksToDo()
 
-										ipc.addToApplyDoneTasks(location.uuid, doneTask)
+										fsLocal
+											.addToApplyDoneTasks(location.uuid, doneTask)
 											.then(() => {
 												maxSyncTasksSemaphore.release()
 
@@ -928,10 +932,10 @@ export const consumeTasks = async ({
 	}
 
 	if (deleteInRemoteTasks.length > 0) {
-		await Promise.allSettled([
+		await chunkedPromiseAll([
 			...deleteInRemoteTasks.map(
 				(task: any) =>
-					new Promise((resolve, reject) => {
+					new Promise(resolve => {
 						if (typeof task !== "object" || typeof task.item !== "object" || typeof task.item.uuid !== "string") {
 							updateSyncTasksToDo()
 
@@ -997,7 +1001,8 @@ export const consumeTasks = async ({
 
 										updateSyncTasksToDo()
 
-										ipc.addToApplyDoneTasks(location.uuid, doneTask)
+										fsLocal
+											.addToApplyDoneTasks(location.uuid, doneTask)
 											.then(() => {
 												maxSyncTasksSemaphore.release()
 
@@ -1032,10 +1037,10 @@ export const consumeTasks = async ({
 	}
 
 	if (deleteInLocalTasks.length > 0) {
-		await Promise.allSettled([
+		await chunkedPromiseAll([
 			...deleteInLocalTasks.map(
 				(task: any) =>
-					new Promise((resolve, reject) => {
+					new Promise(resolve => {
 						if (typeof task !== "object" || typeof task.path !== "string") {
 							updateSyncTasksToDo()
 
@@ -1101,7 +1106,8 @@ export const consumeTasks = async ({
 
 										updateSyncTasksToDo()
 
-										ipc.addToApplyDoneTasks(location.uuid, doneTask)
+										fsLocal
+											.addToApplyDoneTasks(location.uuid, doneTask)
 											.then(() => {
 												maxSyncTasksSemaphore.release()
 
@@ -1177,10 +1183,10 @@ export const consumeTasks = async ({
 	}
 
 	if (uploadToRemoteTasks.length > 0) {
-		await Promise.allSettled([
+		await chunkedPromiseAll([
 			...uploadToRemoteTasks.map(
 				(task: any) =>
-					new Promise((resolve, reject) => {
+					new Promise(resolve => {
 						if (typeof task !== "object" || typeof task.item !== "object" || typeof task.item.uuid !== "string") {
 							updateSyncTasksToDo()
 
@@ -1262,7 +1268,8 @@ export const consumeTasks = async ({
 
 											updateSyncTasksToDo()
 
-											ipc.addToApplyDoneTasks(location.uuid, doneTask)
+											fsLocal
+												.addToApplyDoneTasks(location.uuid, doneTask)
 												.then(() => {
 													maxConcurrentUploadsSemaphore.release()
 													maxSyncTasksSemaphore.release()
@@ -1350,10 +1357,10 @@ export const consumeTasks = async ({
 	}
 
 	if (downloadFromRemoteTasks.length > 0) {
-		await Promise.allSettled([
+		await chunkedPromiseAll([
 			...downloadFromRemoteTasks.map(
 				(task: any) =>
-					new Promise((resolve, reject) => {
+					new Promise(resolve => {
 						if (typeof task !== "object" || typeof task.path !== "string") {
 							updateSyncTasksToDo()
 
@@ -1470,7 +1477,8 @@ export const consumeTasks = async ({
 
 													updateSyncTasksToDo()
 
-													ipc.addToApplyDoneTasks(location.uuid, doneTask)
+													fsLocal
+														.addToApplyDoneTasks(location.uuid, doneTask)
 														.then(() => {
 															maxConcurrentDownloadsSemaphore.release()
 															maxSyncTasksSemaphore.release()

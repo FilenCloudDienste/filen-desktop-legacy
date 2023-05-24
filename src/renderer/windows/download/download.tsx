@@ -13,7 +13,7 @@ import ipc from "../../lib/ipc"
 import * as fsLocal from "../../lib/fs/local"
 import db from "../../lib/db"
 import { apiRequest, downloadChunk } from "../../lib/api"
-import { convertTimestampToMs, bpsToReadable, getTimeRemaining, Semaphore } from "../../lib/helpers"
+import { convertTimestampToMs, bpsToReadable, getTimeRemaining, Semaphore, chunkedPromiseAll } from "../../lib/helpers"
 import { v4 as uuidv4 } from "uuid"
 import constants from "../../../constants.json"
 import eventListener from "../../lib/eventListener"
@@ -35,7 +35,6 @@ import {
 
 const log = window.require("electron-log")
 const pathModule = window.require("path")
-const fs = window.require("fs-extra")
 const { shell, ipcRenderer } = window.require("electron")
 
 const FROM_ID: string = "download-" + uuidv4()
@@ -482,7 +481,7 @@ const DownloadFolder = memo(
 															let filesDownloaded: number = 0
 
 															try {
-																await Promise.all([
+																await chunkedPromiseAll([
 																	...Object.keys(obj.files).map(
 																		path =>
 																			new Promise((resolve, reject) => {

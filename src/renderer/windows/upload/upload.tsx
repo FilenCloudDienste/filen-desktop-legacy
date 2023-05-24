@@ -13,7 +13,14 @@ import * as fsLocal from "../../lib/fs/local"
 import * as fsRemote from "../../lib/fs/remote"
 import db from "../../lib/db"
 import { markUploadAsDone, checkIfItemParentIsShared, uploadChunk } from "../../lib/api"
-import { convertTimestampToMs, getTimeRemaining, bpsToReadable, Semaphore, generateRandomString } from "../../lib/helpers"
+import {
+	convertTimestampToMs,
+	getTimeRemaining,
+	bpsToReadable,
+	Semaphore,
+	generateRandomString,
+	chunkedPromiseAll
+} from "../../lib/helpers"
 import { v4 as uuidv4 } from "uuid"
 import constants from "../../../constants.json"
 import eventListener from "../../lib/eventListener"
@@ -110,7 +117,6 @@ const uploadFile = (path: string, parent: string): Promise<boolean> => {
 									var key = generateRandomString(32)
 									var rm = generateRandomString(32)
 									var uploadKey = generateRandomString(32)
-									var nameH = nameHashed
 									var [nameEnc, mimeEnc, sizeEnc, metaData, origStats]: [string, string, string, string, Stats] =
 										await Promise.all([
 											encryptMetadata(name, key),
@@ -352,7 +358,7 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number; email:
 
 			if (filesToUpload.length > 0) {
 				try {
-					await Promise.all([
+					await chunkedPromiseAll([
 						...filesToUpload.map(
 							path =>
 								new Promise((resolve, reject) => {
@@ -517,7 +523,7 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number; email:
 
 											if (Object.keys(files).length > 0) {
 												try {
-													await Promise.all([
+													await chunkedPromiseAll([
 														...Object.keys(files).map(
 															filePath =>
 																new Promise((resolve, reject) => {

@@ -282,16 +282,15 @@ const ipc = {
 			data
 		})
 	},
-	loadApplyDoneTasks: (locationUUID: string): Promise<any[]> => {
-		return invokeProxy("loadApplyDoneTasks", locationUUID)
+	acquireSemaphore: (key: string, limit: number): Promise<void> => {
+		return invokeProxy("acquireSemaphore", {
+			key,
+			limit
+		})
 	},
-	clearApplyDoneTasks: (locationUUID: string): Promise<void> => {
-		return invokeProxy("clearApplyDoneTasks", locationUUID)
-	},
-	addToApplyDoneTasks: (locationUUID: string, task: any): Promise<void> => {
-		return invokeProxy("addToApplyDoneTasks", {
-			locationUUID,
-			task
+	releaseSemaphore: (key: string): Promise<void> => {
+		return invokeProxy("releaseSemaphore", {
+			key
 		})
 	}
 }

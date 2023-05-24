@@ -271,7 +271,10 @@ const SettingsWindowIssues = memo(({ darkMode, lang, platform }: { darkMode: boo
 											return i18n(lang, "possibleSolutionENOENT")
 										}
 
-										if (syncIssueHelp.err.message.indexOf("ELOOP") !== -1) {
+										if (
+											syncIssueHelp.err.message.indexOf("ELOOP") !== -1 ||
+											syncIssueHelp.err.message.indexOf("Circular symlink detected") !== -1
+										) {
 											return i18n(lang, "possibleSolutionELOOP")
 										}
 
@@ -294,6 +297,10 @@ const SettingsWindowIssues = memo(({ darkMode, lang, platform }: { darkMode: boo
 											syncIssueHelp.err.message.indexOf("ENOSPC") !== -1
 										) {
 											return i18n(lang, "possibleSolutionEMFILE")
+										}
+
+										if (syncIssueHelp.err.message.indexOf("ENAMETOOLONG") !== -1) {
+											return i18n(lang, "possibleSolutionENAMETOOLONG")
 										}
 
 										return i18n(lang, "possibleSolutionEPERM")

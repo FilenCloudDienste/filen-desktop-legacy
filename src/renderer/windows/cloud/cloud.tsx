@@ -22,7 +22,7 @@ import { i18n } from "../../lib/i18n"
 import { baseFolder, folderContent } from "../../lib/api"
 import db from "../../lib/db"
 import { IoChevronForwardOutline, IoFolderOpenOutline, IoChevronBackOutline } from "react-icons/io5"
-import { getParentFromParentFromURL, fileAndFolderNameValidation } from "../../lib/helpers"
+import { getParentFromParentFromURL, fileAndFolderNameValidation, chunkedPromiseAll } from "../../lib/helpers"
 import ipc from "../../lib/ipc"
 import colors from "../../styles/colors"
 import Container from "../../components/Container"
@@ -235,7 +235,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 				)
 			}
 
-			await Promise.allSettled(promises)
+			await chunkedPromiseAll(promises)
 
 			setSelectedFolder((prev: any) =>
 				prev.uuid !== uuid

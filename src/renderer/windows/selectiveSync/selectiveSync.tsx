@@ -21,6 +21,7 @@ import { BsFileEarmarkFill } from "react-icons/bs"
 import { AiOutlineCaretRight, AiOutlineCaretDown } from "react-icons/ai"
 import { Location } from "../../../types"
 import { decryptFileMetadata, decryptFolderName } from "../../lib/crypto"
+import { chunkedPromiseAll } from "../../lib/helpers"
 
 const log = window.require("electron-log")
 const { ipcRenderer } = window.require("electron")
@@ -295,7 +296,7 @@ const Tree = memo(
 						)
 					}
 
-					await Promise.allSettled(promises)
+					await chunkedPromiseAll(promises)
 
 					setItems([
 						...folders.sort((a, b) => a.name.localeCompare(b.name)),

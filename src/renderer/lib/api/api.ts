@@ -1,5 +1,5 @@
 import constants from "../../../constants.json"
-import { getRandomArbitrary, Semaphore, nodeBufferToArrayBuffer, generateRandomString } from "../helpers"
+import { getRandomArbitrary, Semaphore, nodeBufferToArrayBuffer, generateRandomString, chunkedPromiseAll } from "../helpers"
 import {
 	hashFn,
 	encryptMetadata,
@@ -106,7 +106,7 @@ export const doAPIRequest = ({
 					agent: httpsAPIAgent,
 					headers: {
 						"Content-Type": "application/json",
-						"User-Agent": "filen-desktop/" + packageJSON.version + "-" + packageJSON.buildNumber,
+						"User-Agent": "filen-desktop/" + packageJSON.version + "-" + packageJSON.buildNumber + "-" + process.platform,
 						Authorization: "Bearer " + apiKey
 					}
 				},
@@ -1300,7 +1300,7 @@ export const uploadChunk = ({
 	location?: any
 }): Promise<any> => {
 	return new Promise((resolve, reject) => {
-		Promise.all([
+		chunkedPromiseAll([
 			db.get("networkingSettings"),
 			db.get("maxStorageReached"),
 			db.get("apiKey"),
@@ -1315,7 +1315,7 @@ export const uploadChunk = ({
 					const getPausedStatus = () => {
 						if (from == "sync") {
 							if (typeof location !== "undefined" && typeof location.uuid == "string") {
-								Promise.all([db.get("paused"), isSyncLocationPaused(location.uuid)])
+								chunkedPromiseAll([db.get("paused"), isSyncLocationPaused(location.uuid)])
 									.then(([paused, locationPaused]) => {
 										if (paused || locationPaused) {
 											return setTimeout(getPausedStatus, 1000)
@@ -1435,7 +1435,8 @@ export const uploadChunk = ({
 							timeout: 3600000,
 							agent: httpsUploadAgent,
 							headers: {
-								"User-Agent": "filen-desktop/" + packageJSON.version + "-" + packageJSON.buildNumber,
+								"User-Agent":
+									"filen-desktop/" + packageJSON.version + "-" + packageJSON.buildNumber + "-" + process.platform,
 								Authorization: "Bearer " + apiKey,
 								"Content-Type": "application/x-www-form-urlencoded"
 							}
@@ -1565,7 +1566,7 @@ export const downloadChunk = ({
 					const getPausedStatus = () => {
 						if (from == "sync") {
 							if (typeof location !== "undefined" && typeof location.uuid == "string") {
-								Promise.all([db.get("paused"), isSyncLocationPaused(location.uuid)])
+								chunkedPromiseAll([db.get("paused"), isSyncLocationPaused(location.uuid)])
 									.then(([paused, locationPaused]) => {
 										if (paused || locationPaused) {
 											return setTimeout(getPausedStatus, 1000)
@@ -1652,7 +1653,7 @@ export const downloadChunk = ({
 						agent: httpsDownloadAgent,
 						timeout: 86400000,
 						headers: {
-							"User-Agent": "filen-desktop/" + packageJSON.version + "-" + packageJSON.buildNumber
+							"User-Agent": "filen-desktop/" + packageJSON.version + "-" + packageJSON.buildNumber + "-" + process.platform
 						}
 					})
 
@@ -1824,7 +1825,7 @@ export const moveFolder = async ({ folder, parent }: { folder: any; parent: stri
 export const renameFile = async ({ file, name }: { file: any; name: string }): Promise<void> => {
 	const nameHashed = hashFn(name.toLowerCase())
 	const masterKeys = await db.get("masterKeys")
-	const [encrypted, encryptedName] = await Promise.all([
+	const [encrypted, encryptedName] = await chunkedPromiseAll([
 		encryptMetadata(
 			JSON.stringify({
 				name,

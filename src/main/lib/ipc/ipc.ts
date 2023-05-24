@@ -14,6 +14,8 @@ import { updateTrayIcon, updateTrayMenu, updateTrayTooltip } from "../tray"
 import { upload } from "../trayMenu"
 import * as fsLocal from "../fs/local"
 import { watch } from "../watcher"
+import { writeMutexes } from "../db/db"
+import { Semaphore } from "../helpers"
 
 const autoLauncher = new AutoLaunch({
 	name: "Filen",
@@ -545,36 +547,12 @@ handlerProxy("fsRename", async (_, { before, after }) => {
 	await fsLocal.rename(before, after)
 })
 
-handlerProxy("fsCreateLocalTrashDirs", async () => {
-	try {
-		await fsLocal.createLocalTrashDirs()
-	} catch (e) {
-		log.error(e)
-	}
-})
-
-handlerProxy("fsClearLocalTrashDirs", async (_, clearNow) => {
-	try {
-		await fsLocal.clearLocalTrashDirs(clearNow)
-	} catch (e) {
-		log.error(e)
-	}
-})
-
-handlerProxy("fsInitLocalTrashDirs", async () => {
-	fsLocal.initLocalTrashDirs()
-})
-
 handlerProxy("fsCheckLastModified", async (_, path) => {
 	return await fsLocal.checkLastModified(path)
 })
 
 handlerProxy("fsCanReadAtPath", async (_, path) => {
 	return await fsLocal.canReadAtPath(path)
-})
-
-handlerProxy("fsDirectoryTree", async (_, { path, skipCache, location }) => {
-	return await fsLocal.directoryTree(path, skipCache, location)
 })
 
 handlerProxy("fsUnlink", async (_, path) => {
@@ -613,18 +591,6 @@ handlerProxy("emitGlobal", async (_, { channel, data }) => {
 	emitGlobal(channel, data)
 })
 
-handlerProxy("loadApplyDoneTasks", async (_, locationUUID) => {
-	return await fsLocal.loadApplyDoneTasks(locationUUID)
-})
-
-handlerProxy("clearApplyDoneTasks", async (_, locationUUID) => {
-	await fsLocal.clearApplyDoneTasks(locationUUID)
-})
-
-handlerProxy("addToApplyDoneTasks", async (_, { locationUUID, task }) => {
-	await fsLocal.addToApplyDoneTasks(locationUUID, task)
-})
-
 handlerProxy("setFileKey", async (_, { uuid, key }) => {
 	memoryCache.set("fileKey:" + uuid, key)
 })
@@ -635,6 +601,22 @@ handlerProxy("getFileKey", async (_, { uuid }) => {
 	}
 
 	return memoryCache.get("fileKey:" + uuid)
+})
+
+handlerProxy("acquireSemaphore", async (_, { key, limit }) => {
+	if (!writeMutexes[key]) {
+		writeMutexes[key] = new Semaphore(limit)
+	}
+
+	await writeMutexes[key].acquire()
+})
+
+handlerProxy("releaseSemaphore", async (_, { key }) => {
+	if (!writeMutexes[key]) {
+		return
+	}
+
+	writeMutexes[key].release()
 })
 
 export const updateKeybinds = async (): Promise<void> => {

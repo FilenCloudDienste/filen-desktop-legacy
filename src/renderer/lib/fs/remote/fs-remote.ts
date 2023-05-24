@@ -23,7 +23,8 @@ import {
 	pathValidation,
 	isPathOverMaxLength,
 	isNameOverMaxLength,
-	pathIncludesDot
+	pathIncludesDot,
+	chunkedPromiseAll
 } from "../../helpers"
 import { normalizePath, canReadAtPath, readChunk, checkLastModified, gracefulLStat, exists } from "../local"
 import constants from "../../../../constants.json"
@@ -60,7 +61,7 @@ export const smokeTest = async (uuid: string): Promise<boolean> => {
 
 export const directoryTree = (uuid: string, skipCache: boolean = false, location: Location): Promise<RemoteDirectoryTreeResult> => {
 	return new Promise((resolve, reject) => {
-		Promise.all([db.get("deviceId"), db.get("masterKeys"), db.get("excludeDot")])
+		chunkedPromiseAll([db.get("deviceId"), db.get("masterKeys"), db.get("excludeDot")])
 			.then(([deviceId, masterKeys, excludeDot]) => {
 				if (excludeDot == null) {
 					excludeDot = true
@@ -323,7 +324,7 @@ export const directoryTree = (uuid: string, skipCache: boolean = false, location
 						]
 
 						try {
-							await Promise.all(promises)
+							await chunkedPromiseAll(promises)
 						} catch (e) {
 							log.error(e)
 
@@ -526,7 +527,7 @@ export const upload = (path: string, remoteTreeNow: any, location: Location, tas
 	return new Promise(async (resolve, reject) => {
 		await new Promise(resolve => {
 			const getPausedStatus = () => {
-				Promise.all([db.get("paused"), isSyncLocationPaused(location.uuid)])
+				chunkedPromiseAll([db.get("paused"), isSyncLocationPaused(location.uuid)])
 					.then(([paused, locationPaused]) => {
 						if (paused || locationPaused) {
 							return setTimeout(getPausedStatus, 1000)
@@ -564,7 +565,7 @@ export const upload = (path: string, remoteTreeNow: any, location: Location, tas
 			return reject("deletedLocally")
 		}
 
-		Promise.all([db.get("masterKeys"), remoteStorageLeft()])
+		chunkedPromiseAll([db.get("masterKeys"), remoteStorageLeft()])
 			.then(([masterKeys, remoteStorageFree]) => {
 				canReadAtPath(absolutePath)
 					.then(canRead => {
@@ -598,7 +599,6 @@ export const upload = (path: string, remoteTreeNow: any, location: Location, tas
 											var key = generateRandomString(32)
 											var rm = generateRandomString(32)
 											var uploadKey = generateRandomString(32)
-											var nameH = nameHashed
 											var [nameEnc, mimeEnc, sizeEnc, metaData, origStats]: [string, string, string, string, Stats] =
 												await Promise.all([
 													encryptMetadata(name, key),

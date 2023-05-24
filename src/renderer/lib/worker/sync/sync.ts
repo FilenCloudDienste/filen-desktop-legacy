@@ -431,6 +431,11 @@ const applyDoneTasksToSavedState = async ({
 
 const syncLocation = async (location: Location): Promise<void> => {
 	if (location.paused) {
+		emitSyncStatusLocation("paused", {
+			status: "paused",
+			location
+		})
+
 		log.info(
 			"Sync location " + location.uuid + " -> " + location.local + " <-> " + location.remote + " [" + location.type + "] is paused"
 		)
@@ -580,6 +585,18 @@ const syncLocation = async (location: Location): Promise<void> => {
 				location,
 				err: e
 			})
+
+			if (e && e.code && ["ENAMETOOLONG", "EPERM", "ENOENT", "ELOOP", "EACCES"].includes(e.code)) {
+				ipc.addSyncIssue({
+					uuid: uuidv4(),
+					type: "warning",
+					where: "local",
+					path: pathModule.normalize(location.local),
+					err: e,
+					info: "Could not get last local/remote directory tree for location " + location.uuid,
+					timestamp: Date.now()
+				}).catch(console.error)
+			}
 		}
 
 		delete IS_FIRST_REQUEST[location.uuid]
@@ -597,7 +614,7 @@ const syncLocation = async (location: Location): Promise<void> => {
 		var [lastLocalTree, lastRemoteTree, applyDoneTasksPast] = await Promise.all([
 			db.get("lastLocalTree:" + location.uuid),
 			db.get("lastRemoteTree:" + location.uuid),
-			ipc.loadApplyDoneTasks(location.uuid)
+			fsLocal.loadApplyDoneTasks(location.uuid)
 		])
 
 		if (applyDoneTasksPast && Array.isArray(applyDoneTasksPast)) {
@@ -866,7 +883,7 @@ const syncLocation = async (location: Location): Promise<void> => {
 		await Promise.all([
 			db.set("lastLocalTree:" + location.uuid, doneTasks.length > 0 ? localTreeNowApplied : localTreeNow),
 			db.set("lastRemoteTree:" + location.uuid, doneTasks.length > 0 ? remoteTreeNowApplied : remoteTreeNow),
-			ipc.clearApplyDoneTasks(location.uuid),
+			fsLocal.clearApplyDoneTasks(location.uuid),
 			...(doneTasks.length > 0
 				? [db.set("localDataChanged:" + location.uuid, true), db.set("remoteDataChanged:" + location.uuid, true)]
 				: [])

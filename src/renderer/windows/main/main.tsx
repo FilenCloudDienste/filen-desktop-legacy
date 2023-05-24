@@ -26,21 +26,20 @@ export interface TransferProgress {
 }
 
 const MainWindow = memo(({ userId, email, windowId }: { userId: number; email: string; windowId: string }) => {
-	const darkMode: boolean = useDarkMode()
-	const lang: string = useLang()
-	const platform: string = usePlatform()
-	const isOnline: boolean = useIsOnline()
-
+	const darkMode = useDarkMode()
+	const lang = useLang()
+	const platform = usePlatform()
+	const isOnline = useIsOnline()
 	const [currentUploads, setCurrentUploads] = useState<any>({})
 	const [currentDownloads, setCurrentDownloads] = useState<any>({})
 	const [doneTasks, setDoneTasks] = useState<any>([])
 	const [runningTasks, setRunningTasks] = useState<any>([])
 	const [activity, setActivity] = useState<any>([])
 	const [totalRemaining, setTotalRemaining] = useState<number>(0)
-	const [checkingChanges, setCheckingChanges] = useState<boolean>(false)
+	const [checkingChanges, setCheckingChanges] = useState<boolean>(true)
 	const [syncTasksToDo, setSyncTasksToDo] = useState<number>(0)
 	const [isTrayAvailable, setIsTrayAvailable] = useState<boolean>(true)
-
+	const checkingChangesTimeout = useRef<NodeJS.Timer>()
 	const bytesSent = useRef<number>(0)
 	const allBytes = useRef<number>(0)
 	const progressStarted = useRef<number>(-1)
@@ -391,7 +390,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number; email: s
 		const syncStatusListener = eventListener.on("syncStatus", (data: any) => {
 			const type: string = data.type
 
-			if (type == "init") {
+			if (type === "init") {
 				bytesSent.current = 0
 				progressStarted.current = -1
 				allBytes.current = 0
@@ -401,10 +400,27 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number; email: s
 				setRunningTasks([])
 
 				setTotalRemaining(0)
-			} else if (type == "sync" || type == "cleanup") {
+			} else if (type === "sync" || type === "cleanup") {
 				setCheckingChanges(false)
-			} else if (type == "dataChanged") {
+			} else if (type === "dataChanged") {
 				setCheckingChanges(true)
+			}
+		})
+
+		const syncStatusLocationListener = eventListener.on("syncStatusLocation", (data: any) => {
+			const type: string = data.type
+			const status: string = data.data.status
+
+			if (["smokeTest", "getTrees", "initWatcher", "getDeltas", "consumeDeltas"].includes(type)) {
+				clearTimeout(checkingChangesTimeout.current)
+
+				if (status && status === "start") {
+					checkingChangesTimeout.current = setTimeout(() => setCheckingChanges(true), 5000)
+				}
+			} else if (["consumeTasks", "cleanup", "applyDoneTasksToSavedState", "paused"].includes(type)) {
+				clearTimeout(checkingChangesTimeout.current)
+
+				setCheckingChanges(false)
 			}
 		})
 
@@ -420,6 +436,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number; email: s
 			syncStatusListener.remove()
 			doneTasksClearedListener.remove()
 			syncTasksToDoListener.remove()
+			syncStatusLocationListener.remove()
 		}
 	}, [])
 

@@ -258,3 +258,16 @@ export const isIgnoredBySelectiveSync = (selectiveSyncRemoteIgnore: { [key: stri
 
 	return false
 }
+
+export const chunkedPromiseAll = async <T>(promises: Promise<T>[], chunkSize = 100000): Promise<T[]> => {
+	const results: T[] = []
+
+	for (let i = 0; i < promises.length; i += chunkSize) {
+		const chunk = promises.slice(i, i + chunkSize)
+		const chunkResults = await Promise.all(chunk)
+
+		results.push(...chunkResults)
+	}
+
+	return results
+}

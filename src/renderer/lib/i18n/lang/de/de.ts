@@ -189,6 +189,8 @@ const de: {
 	possibleSolutionEMFILE: "Auf Ihrem System sind nicht genügend Dateideskriptoren oder Speicherplatz vorhanden.",
 	possibleSolutionELOOP:
 		"Bitte stellen Sie sicher, dass Ihr lokaler Synchronisierungsort keine symbolischen Links enthält, die zu Endlosschleifen führen.",
+	possibleSolutionENAMETOOLONG:
+		"Dateiname oder Pfad zu lang. Bitte reduzieren Sie die Länge auf einen Wert der von Ihrem Betriebssystem unterstützt wird.",
 	issue: "Problem",
 	path: "Pfad"
 }

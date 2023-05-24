@@ -10,11 +10,14 @@ import memoryCache from "./lib/memoryCache"
 // @ts-ignore
 process.noAsar = true
 
+process.on("uncaughtException", log.error)
+process.on("unhandledRejection", log.error)
+
 app.disableHardwareAcceleration()
 //app.commandLine.appendSwitch("wm-window-animations-disabled")
 app.commandLine.appendSwitch("disable-renderer-backgrounding")
 app.commandLine.appendSwitch("disable-pinch")
-app.commandLine.appendSwitch("js-flags", "--max-old-space-size=16384")
+app.commandLine.appendSwitch("js-flags", "--max-old-space-size=32768")
 app.commandLine.appendSwitch("no-sandbox")
 app.commandLine.appendSwitch("no-proxy-server")
 

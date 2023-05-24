@@ -3,25 +3,17 @@ import { app } from "electron"
 import fs from "fs-extra"
 import writeFileAtomic from "write-file-atomic"
 import { getRandomArbitrary, hashKey, Semaphore } from "../helpers"
-import memoryCache from "../memoryCache"
 import { emitGlobal } from "../ipc"
 import { SemaphoreInterface } from "../../../types"
 
 const DB_VERSION = 1
 const DB_PATH = pathModule.join(app.getPath("userData"), "db_v" + DB_VERSION)
-const USE_MEMORY_CACHE = false
-const MEMORY_CACHE_KEY = "db:"
 const MAX_RETRIES = 30
 const RETRY_TIMEOUT = 500
-const writeMutexes: Record<string, SemaphoreInterface> = {}
+
+export const writeMutexes: Record<string, SemaphoreInterface> = {}
 
 export const get = async (key: string): Promise<any> => {
-	if (USE_MEMORY_CACHE) {
-		if (memoryCache.has(MEMORY_CACHE_KEY + key)) {
-			return memoryCache.get(MEMORY_CACHE_KEY + key)
-		}
-	}
-
 	const keyHash = hashKey(key)
 
 	try {
@@ -37,10 +29,6 @@ export const get = async (key: string): Promise<any> => {
 
 		if (val.key !== key) {
 			return null
-		}
-
-		if (USE_MEMORY_CACHE) {
-			memoryCache.set(MEMORY_CACHE_KEY + key, val.value)
 		}
 
 		return val.value
@@ -94,10 +82,6 @@ export const set = (key: string, value: any): Promise<void> => {
 				.then(() => {
 					writeFileAtomic(dbFilePath, val)
 						.then(() => {
-							if (USE_MEMORY_CACHE) {
-								memoryCache.set(MEMORY_CACHE_KEY + key, value)
-							}
-
 							emitGlobal("global-message", {
 								type: "dbSet",
 								data: {
@@ -151,10 +135,6 @@ export const remove = (key: string): Promise<void> => {
 
 			fs.access(pathModule.join(DB_PATH, keyHash + ".json"), fs.constants.F_OK, err => {
 				if (err) {
-					if (USE_MEMORY_CACHE) {
-						memoryCache.delete(MEMORY_CACHE_KEY + key)
-					}
-
 					emitGlobal("global-message", {
 						type: "dbRemove",
 						data: {
@@ -171,10 +151,6 @@ export const remove = (key: string): Promise<void> => {
 
 				fs.unlink(pathModule.join(DB_PATH, keyHash + ".json"))
 					.then(() => {
-						if (USE_MEMORY_CACHE) {
-							memoryCache.delete(MEMORY_CACHE_KEY + key)
-						}
-
 						emitGlobal("global-message", {
 							type: "dbRemove",
 							data: {
@@ -188,10 +164,6 @@ export const remove = (key: string): Promise<void> => {
 					})
 					.catch(err => {
 						if (err.code === "ENOENT") {
-							if (USE_MEMORY_CACHE) {
-								memoryCache.delete(MEMORY_CACHE_KEY + key)
-							}
-
 							emitGlobal("global-message", {
 								type: "dbRemove",
 								data: {
@@ -218,39 +190,15 @@ export const remove = (key: string): Promise<void> => {
 }
 
 export const clear = async (): Promise<void> => {
-	for (const mutex in writeMutexes) {
-		await writeMutexes[mutex].acquire()
+	const dir = await fs.readdir(DB_PATH)
+
+	for (const entry of dir) {
+		await fs.unlink(pathModule.join(DB_PATH, entry))
 	}
 
-	try {
-		const dir = await fs.readdir(DB_PATH)
-
-		for (const entry of dir) {
-			await fs.unlink(pathModule.join(DB_PATH, entry))
-		}
-
-		if (USE_MEMORY_CACHE) {
-			memoryCache.cache.forEach((_, key) => {
-				if (key.startsWith(MEMORY_CACHE_KEY)) {
-					memoryCache.delete(key)
-				}
-			})
-		}
-
-		emitGlobal("global-message", {
-			type: "dbClear"
-		})
-
-		for (const mutex in writeMutexes) {
-			writeMutexes[mutex].release()
-		}
-	} catch (e) {
-		throw e
-	}
-
-	for (const mutex in writeMutexes) {
-		writeMutexes[mutex].release()
-	}
+	emitGlobal("global-message", {
+		type: "dbClear"
+	})
 }
 
 export const keys = async (): Promise<string[]> => {
@@ -260,10 +208,8 @@ export const keys = async (): Promise<string[]> => {
 	for (const file of dir) {
 		const obj = JSON.parse(await fs.readFile(pathModule.join(DB_PATH, file), "utf-8"))
 
-		if (typeof obj === "object") {
-			if (typeof obj.key === "string") {
-				keys.push(obj.key)
-			}
+		if (typeof obj === "object" && typeof obj.key === "string") {
+			keys.push(obj.key)
 		}
 	}
 

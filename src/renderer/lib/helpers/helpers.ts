@@ -1,9 +1,11 @@
 import constants from "../../../constants.json"
 import { SemaphoreInterface } from "../../../types"
 import { i18n } from "../i18n"
+import { memoize } from "lodash"
 
 const pathModule = window.require("path")
 const is = window.require("electron-is")
+const crypto = window.require("crypto")
 
 export const isPathOverMaxLength = (path: string) => {
 	if (is.linux()) {
@@ -639,3 +641,22 @@ export const calcTimeLeft = (loadedBytes: number, totalBytes: number, started: n
 export const windowsPathToUnixStyle = (path: string) => {
 	return path.split("\\").join("/")
 }
+
+export const chunkedPromiseAll = async <T>(promises: Promise<T>[], chunkSize = 100000): Promise<T[]> => {
+	const results: T[] = []
+
+	for (let i = 0; i < promises.length; i += chunkSize) {
+		const chunk = promises.slice(i, i + chunkSize)
+		const chunkResults = await Promise.all(chunk)
+
+		results.push(...chunkResults)
+	}
+
+	return results
+}
+
+export const hashKey = memoize((key: string) => {
+	const hash = crypto.createHash("sha256").update(key).digest("hex")
+
+	return hash
+})

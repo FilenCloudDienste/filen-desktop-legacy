@@ -186,6 +186,7 @@ const en: {
 		"The client could not access the above path. Please check if other programs are actively using it or locking it.",
 	possibleSolutionEMFILE: "Not enough file descriptors or space left on your system.",
 	possibleSolutionELOOP: "Please make sure your local sync location does not contain symlinks that result into infinite loops.",
+	possibleSolutionENAMETOOLONG: "File name or path too long. Please reduce the length to a value supported by your operating system.",
 	issue: "Issue",
 	path: "Path"
 }

@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from "react"
 import eventListener from "../../eventListener"
 import db from "../../db"
-import memoryCache from "../../memoryCache"
 
 const log = window.require("electron-log")
 
@@ -38,10 +37,6 @@ const useDb = (dbKey: string, defaultValue: any): any => {
 				return
 			}
 
-			if (memoryCache.has(db.dbCacheKey + key)) {
-				memoryCache.delete(db.dbCacheKey + key)
-			}
-
 			fetchDataFromDb(key)
 		})
 
@@ -50,10 +45,6 @@ const useDb = (dbKey: string, defaultValue: any): any => {
 		const removeListener = eventListener.on("dbRemove", ({ key }: { key: string }) => {
 			if (key !== dbKey) {
 				return
-			}
-
-			if (memoryCache.has(db.dbCacheKey + key)) {
-				memoryCache.delete(db.dbCacheKey + key)
 			}
 
 			setData(defaultValue)
