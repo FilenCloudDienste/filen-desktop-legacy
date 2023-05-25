@@ -414,8 +414,10 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number; email: s
 			if (["smokeTest", "getTrees", "initWatcher", "getDeltas", "consumeDeltas"].includes(type)) {
 				clearTimeout(checkingChangesTimeout.current)
 
-				if (status && status === "start") {
+				if (status === "start") {
 					checkingChangesTimeout.current = setTimeout(() => setCheckingChanges(true), 5000)
+				} else if (status === "err") {
+					setCheckingChanges(false)
 				}
 			} else if (["consumeTasks", "cleanup", "applyDoneTasksToSavedState", "paused"].includes(type)) {
 				clearTimeout(checkingChangesTimeout.current)

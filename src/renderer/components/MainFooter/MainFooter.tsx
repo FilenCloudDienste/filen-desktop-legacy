@@ -5,6 +5,8 @@ import { AiOutlineCheckCircle, AiOutlinePauseCircle } from "react-icons/ai"
 import colors from "../../styles/colors"
 import { i18n } from "../../lib/i18n"
 import useDb from "../../lib/hooks/useDb"
+import useSyncIssues from "../../lib/hooks/useSyncIssues"
+import { GoIssueReopened } from "react-icons/go"
 
 export interface MainFooterProps {
 	platform: string
@@ -18,6 +20,14 @@ export interface MainFooterProps {
 
 const MainFooter = memo(({ platform, darkMode, lang, totalRemaining, syncTasksToDo, isOnline, checkingChanges }: MainFooterProps) => {
 	const paused = useDb("paused", false)
+	const syncIssues = useSyncIssues()
+
+	const [syncIssuesIncludesCritical] = useMemo(() => {
+		const filtered = syncIssues.filter(issue => ["critical", "conflict", "warning"].includes(issue.type))
+		const includesCritical = filtered.filter(issue => issue.type == "critical").length > 0
+
+		return [includesCritical]
+	}, [syncIssues])
 
 	const remainingReadable = useMemo(() => {
 		totalRemaining = totalRemaining + Math.floor(syncTasksToDo / 2)
@@ -93,6 +103,21 @@ const MainFooter = memo(({ platform, darkMode, lang, totalRemaining, syncTasksTo
 									noOfLines={1}
 								>
 									{i18n(lang, "syncing")}
+								</Text>
+							</Flex>
+						) : syncIssues.length > 0 ? (
+							<Flex alignItems="center">
+								<GoIssueReopened
+									size={13}
+									color={syncIssuesIncludesCritical ? "rgba(255, 69, 58, 1)" : "rgba(255, 149, 0, 1)"}
+								/>
+								<Text
+									fontSize={12}
+									color={colors(platform, darkMode, "textPrimary")}
+									marginLeft="5px"
+									noOfLines={1}
+								>
+									{i18n(lang, "traySyncIssues", true, ["__NUM__"], [syncIssues.length.toString()])}
 								</Text>
 							</Flex>
 						) : (
