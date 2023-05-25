@@ -1,5 +1,5 @@
-import { Delta, Location } from "../../../../types"
-import { getSyncMode } from "./sync.utils"
+import { Delta, Location, DeltaType } from "../../../../types"
+import { getSyncMode, isPathIncluded } from "./sync.utils"
 import { v4 as uuidv4 } from "uuid"
 
 const pathModule = window.require("path")
@@ -80,9 +80,12 @@ export const getDeltas = async (type: "local" | "remote", before: any, now: any)
 						const beforePathDir = pathModule.dirname(beforePath)
 						const nowBasename = pathModule.basename(nowPath)
 						const beforeBasename = pathModule.basename(beforePath)
-						const action = nowPathDir !== beforePathDir ? "MOVED" : "RENAMED"
+						const action: DeltaType = nowBasename !== beforeBasename ? "RENAMED" : "MOVED"
 
-						if (action == "RENAMED" && nowBasename == beforeBasename) {
+						if (
+							(action == "RENAMED" && nowBasename == beforeBasename) ||
+							(action === "MOVED" && nowPathDir === beforePathDir)
+						) {
 							deltasFiles[beforePath] = {
 								type: "UNCHANGED"
 							}
@@ -207,9 +210,27 @@ export const getDeltas = async (type: "local" | "remote", before: any, now: any)
 						const beforePathDir = pathModule.dirname(beforePath)
 						const nowBasename = pathModule.basename(nowPath)
 						const beforeBasename = pathModule.basename(beforePath)
-						const action = nowPathDir !== beforePathDir ? "MOVED" : "RENAMED"
+						const action: DeltaType = nowBasename !== beforeBasename ? "RENAMED" : "MOVED"
 
-						if (action == "RENAMED" && nowBasename == beforeBasename) {
+						if (
+							(action == "RENAMED" && nowBasename == beforeBasename) ||
+							(action === "MOVED" && nowPathDir === beforePathDir)
+						) {
+							deltasFiles[beforePath] = {
+								type: "UNCHANGED"
+							}
+
+							deltasFiles[nowPath] = {
+								type: "UNCHANGED"
+							}
+
+							continue
+						}
+
+						if (
+							(action == "RENAMED" && nowBasename == beforeBasename) ||
+							(action === "MOVED" && nowPathDir === beforePathDir)
+						) {
 							deltasFiles[beforePath] = {
 								type: "UNCHANGED"
 							}
@@ -600,6 +621,7 @@ export const consumeDeltas = async ({
 
 		if (remoteDelta == "DELETED" && localDelta !== "DELETED" && !addedToList[path]) {
 			addedToList[path] = true
+
 			deleteInLocal.push({
 				uuid: uuidv4(),
 				path,

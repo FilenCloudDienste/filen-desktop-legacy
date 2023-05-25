@@ -24,7 +24,7 @@ const FS_RETRY_CODES = [
 	"EAI_CANCELED",
 	"EUNKNOWN"
 ]
-const FS_NORETRY_CODES = ["ENOENT", "ENODEV", "EACCES", "EPERM", "EINVAL", "ENAMETOOLONG", "ENOBUFS", "ENOSPC", "EROFS", "ENAMETOOLONG"]
+const FS_NORETRY_CODES = ["ENOENT", "ENODEV", "EACCES", "EPERM", "EINVAL", "ENAMETOOLONG", "ENOBUFS", "ENOSPC", "EROFS"]
 
 export const normalizePath = (path: string): string => {
 	return pathModule.normalize(path)

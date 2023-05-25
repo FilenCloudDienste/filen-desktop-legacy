@@ -10,6 +10,7 @@ import ipc from "../../ipc"
 import eventListener from "../../eventListener"
 import { consumeTasks } from "./sync.tasks"
 import { getDeltas, consumeDeltas } from "./sync.deltas"
+import constants from "../../../../constants.json"
 
 const pathModule = window.require("path")
 const log = window.require("electron-log")
@@ -586,14 +587,14 @@ const syncLocation = async (location: Location): Promise<void> => {
 				err: e
 			})
 
-			if (e && e.code && ["ENAMETOOLONG", "EPERM", "ENOENT", "ELOOP", "EACCES"].includes(e.code)) {
+			if (e && e.code && constants.fsErrors.includes(e.code)) {
 				ipc.addSyncIssue({
 					uuid: uuidv4(),
 					type: "warning",
 					where: "local",
 					path: pathModule.normalize(location.local),
 					err: e,
-					info: "Could not get last local/remote directory tree for location " + location.uuid,
+					info: "Could not get directory tree for location " + pathModule.normalize(location.local),
 					timestamp: Date.now()
 				}).catch(console.error)
 			}
@@ -617,35 +618,31 @@ const syncLocation = async (location: Location): Promise<void> => {
 			fsLocal.loadApplyDoneTasks(location.uuid)
 		])
 
-		if (applyDoneTasksPast && Array.isArray(applyDoneTasksPast)) {
-			if (applyDoneTasksPast.length > 0) {
-				log.info("Applying " + applyDoneTasksPast.length + " done tasks (past) to saved state for location " + location.uuid)
+		if (applyDoneTasksPast && Array.isArray(applyDoneTasksPast) && applyDoneTasksPast.length > 0) {
+			log.info("Applying " + applyDoneTasksPast.length + " done tasks (past) to saved state for location " + location.uuid)
 
-				const { localTreeNowApplied, remoteTreeNowApplied } = await applyDoneTasksToSavedState({
-					doneTasks: applyDoneTasksPast,
-					localTreeNow: lastLocalTree,
-					remoteTreeNow: lastRemoteTree
-				})
+			const { localTreeNowApplied, remoteTreeNowApplied } = await applyDoneTasksToSavedState({
+				doneTasks: applyDoneTasksPast,
+				localTreeNow: lastLocalTree,
+				remoteTreeNow: lastRemoteTree
+			})
 
-				lastLocalTree = localTreeNowApplied
-				lastRemoteTree = remoteTreeNowApplied
-			}
+			lastLocalTree = localTreeNowApplied
+			lastRemoteTree = remoteTreeNowApplied
 		}
 	} catch (e: any) {
 		log.error("Could not get last local/remote tree for location " + location.uuid)
 		log.error(e)
 
-		if (window.navigator.onLine) {
-			ipc.addSyncIssue({
-				uuid: uuidv4(),
-				type: "critical",
-				where: "local",
-				path: pathModule.normalize(location.local),
-				err: e,
-				info: "Could not get last local/remote directory tree for location " + location.uuid,
-				timestamp: Date.now()
-			}).catch(console.error)
-		}
+		ipc.addSyncIssue({
+			uuid: uuidv4(),
+			type: "critical",
+			where: "local",
+			path: pathModule.normalize(location.local),
+			err: e,
+			info: "Could not get last local/remote directory tree for location " + location.uuid,
+			timestamp: Date.now()
+		}).catch(console.error)
 
 		emitSyncStatusLocation("getTrees", {
 			status: "err",
@@ -823,7 +820,7 @@ const syncLocation = async (location: Location): Promise<void> => {
 	try {
 		const syncIssues = await ipc.getSyncIssues()
 
-		if (syncIssues.filter(issue => issue.type == "critical").length > 0) {
+		if (syncIssues.filter(issue => issue.type === "critical").length > 0) {
 			log.info("Got critical sync issues after consume, won't apply anything to saved state")
 
 			return
@@ -985,7 +982,7 @@ const sync = async (): Promise<any> => {
 		return startSyncLoop()
 	}
 
-	if (syncIssues.filter(issue => issue.type == "critical").length > 0) {
+	if (syncIssues.filter(issue => issue.type === "critical").length > 0) {
 		syncMutex.release()
 
 		eventListener.emit("syncLoopDone")
@@ -1045,7 +1042,7 @@ const sync = async (): Promise<any> => {
 		return startSyncLoop()
 	}
 
-	if (syncLocations.length == 0) {
+	if (syncLocations.length === 0) {
 		syncMutex.release()
 
 		eventListener.emit("syncLoopDone")
@@ -1102,9 +1099,9 @@ const sync = async (): Promise<any> => {
 
 		for (const location of syncLocations) {
 			if (
-				typeof location.remote == "undefined" ||
-				typeof location.remoteUUID == "undefined" ||
-				typeof location.remoteName == "undefined"
+				typeof location.remote === "undefined" ||
+				typeof location.remoteUUID === "undefined" ||
+				typeof location.remoteName === "undefined"
 			) {
 				continue
 			}

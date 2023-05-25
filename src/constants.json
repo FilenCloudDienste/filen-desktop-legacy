@@ -98,5 +98,35 @@
 			"//C:\\Program Files (x86)\\WindowsPowerShell",
 			"//C:\\Program Files (x86)\\Reference Assemblies"
 		]
-	}
+	},
+	"fsErrors": [
+		"EPERM",
+		"EACCES",
+		"ELOOP",
+		"ENOENT",
+		"ENAMETOOLONG",
+		"EISDIR",
+		"EISFILE",
+		"EEXIST",
+		"ENOTDIR",
+		"ENOTEMPTY",
+		"ENFILE",
+		"EBUSY",
+		"EAGAIN",
+		"ENOMEM",
+		"EPIPE",
+		"ETXTBSY",
+		"EAI_SYSTEM",
+		"EAI_CANCELED",
+		"EUNKNOWN",
+		"ENODEV",
+		"EINVAL",
+		"ENOBUFS",
+		"ENOSPC",
+		"EROFS",
+		"ECANCELED",
+		"EBADF",
+		"EIO",
+		"EINTR"
+	]
 }

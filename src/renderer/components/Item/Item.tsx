@@ -10,11 +10,13 @@ import memoryCache from "../../lib/memoryCache"
 import { i18n } from "../../lib/i18n"
 import { itemPublicLinkInfo, enableItemPublicLink, filePresent, getFileMetadata } from "../../lib/api"
 import { copyToClipboard } from "../../lib/helpers"
-import { decryptFolderLinkKey, decryptFileMetadata } from "../../lib/crypto"
+import { decryptFolderLinkKey } from "../../lib/crypto"
 import db from "../../lib/db"
 import { v4 as uuidv4 } from "uuid"
 import { ItemProps } from "../../../types"
 import { createLocalTrashDirs } from "../../lib/fs/local"
+import useDarkMode from "../../lib/hooks/useDarkMode"
+import useLang from "../../lib/hooks/useLang"
 
 const pathModule = window.require("path")
 const { shell } = window.require("electron")
@@ -62,7 +64,9 @@ const ItemTimeSince = memo(({ task, lang }: { task: any; lang: string }) => {
 	return <>{itemTimeSince}</>
 })
 
-const Item = memo(({ task, style, userId, platform, darkMode, paused, lang, isOnline }: ItemProps) => {
+const Item = memo(({ task, style, userId, platform, paused, isOnline }: ItemProps) => {
+	const darkMode = useDarkMode()
+	const lang = useLang()
 	const itemName: string = useRef(pathModule.basename(task.task.path)).current
 	const itemExt: string = useRef(itemName.indexOf(".") !== -1 ? pathModule.extname(itemName) : "").current
 	const itemIconCacheKey: string = useRef("fileIconExt:" + itemExt).current

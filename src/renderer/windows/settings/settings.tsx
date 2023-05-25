@@ -79,43 +79,43 @@ const SettingsSelectionButton = memo(
 					{type == "general" && (
 						<HiOutlineCog
 							size={20}
-							color={darkMode ? "white" : "gray"}
+							color={darkMode ? "white" : "#333333"}
 						/>
 					)}
 					{type == "syncs" && (
 						<AiOutlineSync
 							size={20}
-							color={darkMode ? "white" : "gray"}
+							color={darkMode ? "white" : "#333333"}
 						/>
 					)}
 					{type == "account" && (
 						<VscAccount
 							size={20}
-							color={darkMode ? "white" : "gray"}
+							color={darkMode ? "white" : "#333333"}
 						/>
 					)}
 					{type == "issues" && (
 						<GoIssueReopened
 							size={20}
-							color={typeof color == "string" ? color : darkMode ? "white" : "gray"}
+							color={typeof color == "string" ? color : darkMode ? "white" : "#333333"}
 						/>
 					)}
 					{type == "networking" && (
 						<MdOutlineNetworkCheck
 							size={20}
-							color={darkMode ? "white" : "gray"}
+							color={darkMode ? "white" : "#333333"}
 						/>
 					)}
 					{type == "keybinds" && (
 						<BsKeyboard
 							size={20}
-							color={darkMode ? "white" : "gray"}
+							color={darkMode ? "white" : "#333333"}
 						/>
 					)}
 					<Text
 						fontSize={13}
 						fontWeight="bold"
-						color={darkMode ? "white" : "gray"}
+						color={darkMode ? "white" : "#333333"}
 						userSelect="none"
 					>
 						{title}
