@@ -34,6 +34,7 @@ const WorkerWindow = memo(({ userId }: { userId: number }) => {
 	const isLoggedIn: boolean = useDb("isLoggedIn", false)
 	const lang = useLang()
 	const syncLocations: Location[] = useDb("syncLocations:" + userId, [])
+	const lastTrayState = useRef<{ icon: string; message: string }>({ icon: "", message: "" })
 
 	const init = async () => {
 		if (initDone.current) {
@@ -90,8 +91,15 @@ const WorkerWindow = memo(({ userId }: { userId: number }) => {
 
 	const updateTray = useCallback(
 		(icon: "paused" | "error" | "sync" | "normal", message: string) => {
-			ipc.updateTrayIcon(icon)
-			ipc.updateTrayTooltip("Filen v" + appVersion + "\n" + message)
+			if (lastTrayState.current.icon !== icon || lastTrayState.current.message !== message) {
+				lastTrayState.current = {
+					icon,
+					message
+				}
+
+				ipc.updateTrayIcon(icon)
+				ipc.updateTrayTooltip("Filen v" + appVersion + "\n" + message)
+			}
 		},
 		[appVersion]
 	)

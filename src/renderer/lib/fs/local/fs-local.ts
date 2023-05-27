@@ -484,7 +484,7 @@ export const createLocalTrashDirs = async (): Promise<void> => {
 	}
 
 	await chunkedPromiseAll([
-		...syncLocations.map(location => fs.ensureDir(normalizePath(pathModule.join(location.local, ".filen.trash.local"))))
+		...syncLocations.map(location => ensureDir(normalizePath(pathModule.join(location.local, ".filen.trash.local"))))
 	])
 }
 
@@ -629,7 +629,7 @@ export const ensureDir = async (path: string) => {
 }
 
 export const getApplyDoneTaskPath = async (locationUUID: string): Promise<string> => {
-	if (typeof APPLY_DONE_TASKS_PATH[locationUUID] == "string" && APPLY_DONE_TASKS_PATH[locationUUID].length > 0) {
+	if (typeof APPLY_DONE_TASKS_PATH[locationUUID] === "string" && APPLY_DONE_TASKS_PATH[locationUUID].length > 0) {
 		return APPLY_DONE_TASKS_PATH[locationUUID]
 	}
 
@@ -696,7 +696,7 @@ export const loadApplyDoneTasks = (locationUUID: string): Promise<any[]> => {
 				}
 			})
 
-			reader.on("error", (err: any) => {
+			reader.on("error", (err: Error) => {
 				applyDoneTasksSemaphore.release()
 
 				return reject(err)
@@ -721,7 +721,7 @@ export const addToApplyDoneTasks = async (locationUUID: string, task: any): Prom
 	try {
 		const path = await getApplyDoneTaskPath(locationUUID)
 
-		await appendFile(path, JSON.stringify(task) + "\n")
+		await fs.appendFile(path, JSON.stringify(task) + "\n")
 	} catch (e) {
 		log.error(e)
 	}

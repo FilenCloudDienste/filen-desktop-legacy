@@ -62,7 +62,7 @@ export interface SemaphoreInterface {
 	purge: Function
 }
 
-export type DeltaType = "NEW" | "NEWER" | "OLDER" | "UNCHANGED" | "DELETED" | "RENAMED" | "MOVED"
+export type DeltaType = "NEW" | "NEWER" | "OLDER" | "UNCHANGED" | "DELETED" | "RENAMED" | "MOVED" | "RENAMED_MOVED"
 
 export type Delta = {
 	[key: string]: {

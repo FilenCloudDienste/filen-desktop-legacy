@@ -390,6 +390,8 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number; email: s
 		const syncStatusListener = eventListener.on("syncStatus", (data: any) => {
 			const type: string = data.type
 
+			clearTimeout(checkingChangesTimeout.current)
+
 			if (type === "init") {
 				bytesSent.current = 0
 				progressStarted.current = -1
@@ -411,17 +413,15 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number; email: s
 			const type: string = data.type
 			const status: string = data.data.status
 
-			if (["smokeTest", "getTrees", "initWatcher", "getDeltas", "consumeDeltas"].includes(type)) {
-				clearTimeout(checkingChangesTimeout.current)
+			clearTimeout(checkingChangesTimeout.current)
 
+			if (["smokeTest", "getTrees", "initWatcher", "getDeltas", "consumeDeltas"].includes(type)) {
 				if (status === "start") {
 					checkingChangesTimeout.current = setTimeout(() => setCheckingChanges(true), 5000)
 				} else if (status === "err") {
 					setCheckingChanges(false)
 				}
 			} else if (["consumeTasks", "cleanup", "applyDoneTasksToSavedState", "paused"].includes(type)) {
-				clearTimeout(checkingChangesTimeout.current)
-
 				setCheckingChanges(false)
 			}
 		})
