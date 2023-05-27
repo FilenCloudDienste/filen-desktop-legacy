@@ -1,5 +1,5 @@
-import { Delta, Location, DeltaType } from "../../../../types"
-import { getSyncMode, isPathIncluded } from "./sync.utils"
+import { Delta, Location } from "../../../../types"
+import { getSyncMode } from "./sync.utils"
 import { v4 as uuidv4 } from "uuid"
 
 const pathModule = window.require("path")
@@ -80,9 +80,19 @@ export const getDeltas = async (type: "local" | "remote", before: any, now: any)
 						const beforePathDir = pathModule.dirname(beforePath)
 						const nowBasename = pathModule.basename(nowPath)
 						const beforeBasename = pathModule.basename(beforePath)
-						const action: DeltaType = nowBasename !== beforeBasename ? "RENAMED" : "MOVED"
+						const action =
+							nowPathDir === beforePathDir && nowBasename === beforeBasename
+								? "UNCHANGED"
+								: nowPathDir === beforePathDir && nowBasename !== beforeBasename
+								? "RENAMED"
+								: nowPathDir !== beforePathDir && nowBasename === beforeBasename
+								? "MOVED"
+								: nowPathDir !== beforePathDir && nowBasename !== beforeBasename
+								? "RENAMED_MOVED"
+								: "UNCHANGED"
 
 						if (
+							action === "UNCHANGED" ||
 							(action == "RENAMED" && nowBasename == beforeBasename) ||
 							(action === "MOVED" && nowPathDir === beforePathDir)
 						) {
@@ -210,24 +220,19 @@ export const getDeltas = async (type: "local" | "remote", before: any, now: any)
 						const beforePathDir = pathModule.dirname(beforePath)
 						const nowBasename = pathModule.basename(nowPath)
 						const beforeBasename = pathModule.basename(beforePath)
-						const action: DeltaType = nowBasename !== beforeBasename ? "RENAMED" : "MOVED"
+						const action =
+							nowPathDir === beforePathDir && nowBasename === beforeBasename
+								? "UNCHANGED"
+								: nowPathDir === beforePathDir && nowBasename !== beforeBasename
+								? "RENAMED"
+								: nowPathDir !== beforePathDir && nowBasename === beforeBasename
+								? "MOVED"
+								: nowPathDir !== beforePathDir && nowBasename !== beforeBasename
+								? "RENAMED_MOVED"
+								: "UNCHANGED"
 
 						if (
-							(action == "RENAMED" && nowBasename == beforeBasename) ||
-							(action === "MOVED" && nowPathDir === beforePathDir)
-						) {
-							deltasFiles[beforePath] = {
-								type: "UNCHANGED"
-							}
-
-							deltasFiles[nowPath] = {
-								type: "UNCHANGED"
-							}
-
-							continue
-						}
-
-						if (
+							action === "UNCHANGED" ||
 							(action == "RENAMED" && nowBasename == beforeBasename) ||
 							(action === "MOVED" && nowPathDir === beforePathDir)
 						) {
@@ -309,12 +314,6 @@ export const consumeDeltas = async ({
 	location: Location
 }): Promise<any> => {
 	const syncMode = await getSyncMode(location)
-
-	const localFileDeltas = localDeltas.files
-	const localFolderDeltas = localDeltas.folders
-	const remoteFileDeltas = remoteDeltas.files
-	const remoteFolderDeltas = remoteDeltas.folders
-
 	const uploadToRemote: any[] = []
 	const downloadFromRemote: any[] = []
 	const renameInLocal: any[] = []
@@ -323,12 +322,41 @@ export const consumeDeltas = async ({
 	const moveInRemote: any[] = []
 	const deleteInLocal: any[] = []
 	const deleteInRemote: any[] = []
-
 	const addedToList: Record<string, boolean> = {}
 
-	for (const path in localFolderDeltas) {
-		const localDelta = localFolderDeltas[path]?.type
-		const existsInRemote = typeof remoteFolderDeltas[path] !== "undefined"
+	for (const path in localDeltas.folders) {
+		const localDelta = localDeltas.folders[path]?.type
+		const existsInRemote = typeof remoteDeltas.folders[path] !== "undefined"
+
+		if (localDelta == "RENAMED_MOVED" && !addedToList[path]) {
+			addedToList[path] = true
+
+			renameInRemote.push({
+				uuid: uuidv4(),
+				path,
+				type: "folder",
+				item:
+					typeof remoteTreeNow.folders[localDeltas.folders[path]?.from] !== "undefined"
+						? remoteTreeNow.folders[localDeltas.folders[path]?.from]
+						: lastRemoteTree.folders[localDeltas.folders[path]?.from],
+				from: localDeltas.folders[path]?.from,
+				to: localDeltas.folders[path]?.to
+			})
+
+			moveInRemote.push({
+				uuid: uuidv4(),
+				path,
+				type: "folder",
+				item:
+					typeof remoteTreeNow.folders[localDeltas.folders[path]?.from] !== "undefined"
+						? remoteTreeNow.folders[localDeltas.folders[path]?.from]
+						: lastRemoteTree.folders[localDeltas.folders[path]?.from],
+				from: localDeltas.folders[path]?.from,
+				to: localDeltas.folders[path]?.to
+			})
+
+			continue
+		}
 
 		if (localDelta == "RENAMED" && !addedToList[path]) {
 			addedToList[path] = true
@@ -338,12 +366,14 @@ export const consumeDeltas = async ({
 				path,
 				type: "folder",
 				item:
-					typeof remoteTreeNow.folders[localFolderDeltas[path]?.from] !== "undefined"
-						? remoteTreeNow.folders[localFolderDeltas[path]?.from]
-						: lastRemoteTree.folders[localFolderDeltas[path]?.from],
-				from: localFolderDeltas[path]?.from,
-				to: localFolderDeltas[path]?.to
+					typeof remoteTreeNow.folders[localDeltas.folders[path]?.from] !== "undefined"
+						? remoteTreeNow.folders[localDeltas.folders[path]?.from]
+						: lastRemoteTree.folders[localDeltas.folders[path]?.from],
+				from: localDeltas.folders[path]?.from,
+				to: localDeltas.folders[path]?.to
 			})
+
+			continue
 		}
 
 		if (localDelta == "MOVED" && !addedToList[path]) {
@@ -354,12 +384,14 @@ export const consumeDeltas = async ({
 				path,
 				type: "folder",
 				item:
-					typeof remoteTreeNow.folders[localFolderDeltas[path]?.from] !== "undefined"
-						? remoteTreeNow.folders[localFolderDeltas[path]?.from]
-						: lastRemoteTree.folders[localFolderDeltas[path]?.from],
-				from: localFolderDeltas[path]?.from,
-				to: localFolderDeltas[path]?.to
+					typeof remoteTreeNow.folders[localDeltas.folders[path]?.from] !== "undefined"
+						? remoteTreeNow.folders[localDeltas.folders[path]?.from]
+						: lastRemoteTree.folders[localDeltas.folders[path]?.from],
+				from: localDeltas.folders[path]?.from,
+				to: localDeltas.folders[path]?.to
 			})
+
+			continue
 		}
 
 		if (localDelta == "DELETED" && !addedToList[path]) {
@@ -371,6 +403,8 @@ export const consumeDeltas = async ({
 				type: "folder",
 				item: lastRemoteTree.folders[path]
 			})
+
+			continue
 		}
 
 		if (!existsInRemote && !addedToList[path]) {
@@ -385,13 +419,39 @@ export const consumeDeltas = async ({
 					uuid: uuidv4()
 				}
 			})
+
+			continue
 		}
 	}
 
-	for (const path in remoteFolderDeltas) {
-		const localDelta = localFolderDeltas[path]?.type
-		const remoteDelta = remoteFolderDeltas[path]?.type
-		const existsInLocal = typeof localFolderDeltas[path] !== "undefined"
+	for (const path in remoteDeltas.folders) {
+		const localDelta = localDeltas.folders[path]?.type
+		const remoteDelta = remoteDeltas.folders[path]?.type
+		const existsInLocal = typeof localDeltas.folders[path] !== "undefined"
+
+		if (remoteDelta == "RENAMED_MOVED" && localDelta !== "RENAMED_MOVED" && !addedToList[path]) {
+			addedToList[path] = true
+
+			renameInLocal.push({
+				uuid: uuidv4(),
+				path,
+				type: "folder",
+				item: remoteTreeNow.folders[path],
+				from: remoteDeltas.folders[path]?.from,
+				to: remoteDeltas.folders[path]?.to
+			})
+
+			moveInLocal.push({
+				uuid: uuidv4(),
+				path,
+				type: "folder",
+				item: { path },
+				from: remoteDeltas.folders[path]?.from,
+				to: remoteDeltas.folders[path]?.to
+			})
+
+			continue
+		}
 
 		if (remoteDelta == "RENAMED" && localDelta !== "RENAMED" && !addedToList[path]) {
 			addedToList[path] = true
@@ -401,9 +461,11 @@ export const consumeDeltas = async ({
 				path,
 				type: "folder",
 				item: remoteTreeNow.folders[path],
-				from: remoteFolderDeltas[path]?.from,
-				to: remoteFolderDeltas[path]?.to
+				from: remoteDeltas.folders[path]?.from,
+				to: remoteDeltas.folders[path]?.to
 			})
+
+			continue
 		}
 
 		if (remoteDelta == "MOVED" && localDelta !== "MOVED" && !addedToList[path]) {
@@ -414,9 +476,11 @@ export const consumeDeltas = async ({
 				path,
 				type: "folder",
 				item: { path },
-				from: remoteFolderDeltas[path]?.from,
-				to: remoteFolderDeltas[path]?.to
+				from: remoteDeltas.folders[path]?.from,
+				to: remoteDeltas.folders[path]?.to
 			})
+
+			continue
 		}
 
 		if (remoteDelta == "DELETED" && localDelta !== "DELETED" && !addedToList[path]) {
@@ -428,6 +492,8 @@ export const consumeDeltas = async ({
 				type: "folder",
 				item: remoteTreeNow.folders[path]
 			})
+
+			continue
 		}
 
 		if (!existsInLocal && !addedToList[path]) {
@@ -439,16 +505,48 @@ export const consumeDeltas = async ({
 				type: "folder",
 				item: remoteTreeNow.folders[path]
 			})
+
+			continue
 		}
 	}
 
-	for (const path in localFileDeltas) {
-		const localDelta = localFileDeltas[path]?.type
-		const remoteDelta = remoteFileDeltas[path]?.type
-		const existsInRemote = typeof remoteFileDeltas[path] !== "undefined"
+	for (const path in localDeltas.files) {
+		const localDelta = localDeltas.files[path]?.type
+		const remoteDelta = remoteDeltas.files[path]?.type
+		const existsInRemote = typeof remoteDeltas.files[path] !== "undefined"
 		const localLastModified = localTreeNow[path]?.lastModified
 		const remoteLastModified = remoteTreeNow[path]?.metadata.lastModified
 		const sameLastModified = localLastModified === remoteTreeNow[path]?.metadata?.lastModified
+
+		if (localDelta == "RENAMED_MOVED" && !addedToList[path]) {
+			addedToList[path] = true
+
+			renameInRemote.push({
+				uuid: uuidv4(),
+				path,
+				type: "file",
+				item:
+					typeof remoteTreeNow.files[localDeltas.files[path]?.from] !== "undefined"
+						? remoteTreeNow.files[localDeltas.files[path]?.from]
+						: lastRemoteTree.files[localDeltas.files[path]?.from],
+				from: localDeltas.files[path]?.from,
+				to: localDeltas.files[path]?.to
+			})
+
+			moveInRemote.push({
+				uuid: uuidv4(),
+				path,
+				type: "file",
+				item:
+					typeof remoteTreeNow.files[localDeltas.files[path]?.from] !== "undefined"
+						? remoteTreeNow.files[localDeltas.files[path]?.from]
+						: lastRemoteTree.files[localDeltas.files[path]?.from],
+				from: localDeltas.files[path]?.from,
+				to: localDeltas.files[path]?.to
+			})
+
+			continue
+		}
 
 		if (localDelta == "RENAMED" && !addedToList[path]) {
 			addedToList[path] = true
@@ -458,12 +556,14 @@ export const consumeDeltas = async ({
 				path,
 				type: "file",
 				item:
-					typeof remoteTreeNow.files[localFileDeltas[path]?.from] !== "undefined"
-						? remoteTreeNow.files[localFileDeltas[path]?.from]
-						: lastRemoteTree.files[localFileDeltas[path]?.from],
-				from: localFileDeltas[path]?.from,
-				to: localFileDeltas[path]?.to
+					typeof remoteTreeNow.files[localDeltas.files[path]?.from] !== "undefined"
+						? remoteTreeNow.files[localDeltas.files[path]?.from]
+						: lastRemoteTree.files[localDeltas.files[path]?.from],
+				from: localDeltas.files[path]?.from,
+				to: localDeltas.files[path]?.to
 			})
+
+			continue
 		}
 
 		if (localDelta == "MOVED" && !addedToList[path]) {
@@ -474,12 +574,14 @@ export const consumeDeltas = async ({
 				path,
 				type: "file",
 				item:
-					typeof remoteTreeNow.files[localFileDeltas[path]?.from] !== "undefined"
-						? remoteTreeNow.files[localFileDeltas[path]?.from]
-						: lastRemoteTree.files[localFileDeltas[path]?.from],
-				from: localFileDeltas[path]?.from,
-				to: localFileDeltas[path]?.to
+					typeof remoteTreeNow.files[localDeltas.files[path]?.from] !== "undefined"
+						? remoteTreeNow.files[localDeltas.files[path]?.from]
+						: lastRemoteTree.files[localDeltas.files[path]?.from],
+				from: localDeltas.files[path]?.from,
+				to: localDeltas.files[path]?.to
 			})
+
+			continue
 		}
 
 		if (localDelta == "DELETED" && !addedToList[path]) {
@@ -491,6 +593,8 @@ export const consumeDeltas = async ({
 				type: "file",
 				item: lastRemoteTree.files[path]
 			})
+
+			continue
 		}
 
 		if (localDelta == "NEW" && remoteDelta == "NEW" && !sameLastModified && !addedToList[path]) {
@@ -506,6 +610,8 @@ export const consumeDeltas = async ({
 						uuid: uuidv4()
 					}
 				})
+
+				continue
 			} else {
 				downloadFromRemote.push({
 					uuid: uuidv4(),
@@ -513,6 +619,8 @@ export const consumeDeltas = async ({
 					type: "file",
 					item: remoteTreeNow.files[path]
 				})
+
+				continue
 			}
 		}
 
@@ -529,6 +637,8 @@ export const consumeDeltas = async ({
 						uuid: uuidv4()
 					}
 				})
+
+				continue
 			} else {
 				downloadFromRemote.push({
 					uuid: uuidv4(),
@@ -536,6 +646,8 @@ export const consumeDeltas = async ({
 					type: "file",
 					item: remoteTreeNow.files[path]
 				})
+
+				continue
 			}
 		}
 
@@ -551,6 +663,8 @@ export const consumeDeltas = async ({
 					uuid: uuidv4()
 				}
 			})
+
+			continue
 		}
 
 		if (!existsInRemote && !addedToList[path]) {
@@ -565,6 +679,8 @@ export const consumeDeltas = async ({
 					uuid: uuidv4()
 				}
 			})
+
+			continue
 		}
 
 		if (syncMode == "localBackup" || syncMode == "localToCloud") {
@@ -584,14 +700,40 @@ export const consumeDeltas = async ({
 						uuid: uuidv4()
 					}
 				})
+
+				continue
 			}
 		}
 	}
 
-	for (const path in remoteFileDeltas) {
-		const localDelta = localFileDeltas[path]?.type
-		const remoteDelta = remoteFileDeltas[path]?.type
-		const existsInLocal = typeof localFileDeltas[path] !== "undefined"
+	for (const path in remoteDeltas.files) {
+		const localDelta = localDeltas.files[path]?.type
+		const remoteDelta = remoteDeltas.files[path]?.type
+		const existsInLocal = typeof localDeltas.files[path] !== "undefined"
+
+		if (remoteDelta == "RENAMED_MOVED" && localDelta !== "RENAMED_MOVED" && !addedToList[path]) {
+			addedToList[path] = true
+
+			renameInLocal.push({
+				uuid: uuidv4(),
+				path,
+				type: "file",
+				item: remoteTreeNow.files[path],
+				from: remoteDeltas.files[path]?.from,
+				to: remoteDeltas.files[path]?.to
+			})
+
+			moveInLocal.push({
+				uuid: uuidv4(),
+				path,
+				type: "file",
+				item: { path },
+				from: remoteDeltas.files[path]?.from,
+				to: remoteDeltas.files[path]?.to
+			})
+
+			continue
+		}
 
 		if (remoteDelta == "RENAMED" && localDelta !== "RENAMED" && !addedToList[path]) {
 			addedToList[path] = true
@@ -601,9 +743,11 @@ export const consumeDeltas = async ({
 				path,
 				type: "file",
 				item: remoteTreeNow.files[path],
-				from: remoteFileDeltas[path]?.from,
-				to: remoteFileDeltas[path]?.to
+				from: remoteDeltas.files[path]?.from,
+				to: remoteDeltas.files[path]?.to
 			})
+
+			continue
 		}
 
 		if (remoteDelta == "MOVED" && localDelta !== "MOVED" && !addedToList[path]) {
@@ -614,9 +758,11 @@ export const consumeDeltas = async ({
 				path,
 				type: "file",
 				item: { path },
-				from: remoteFileDeltas[path]?.from,
-				to: remoteFileDeltas[path]?.to
+				from: remoteDeltas.files[path]?.from,
+				to: remoteDeltas.files[path]?.to
 			})
+
+			continue
 		}
 
 		if (remoteDelta == "DELETED" && localDelta !== "DELETED" && !addedToList[path]) {
@@ -628,6 +774,8 @@ export const consumeDeltas = async ({
 				type: "file",
 				item: remoteTreeNow.files[path]
 			})
+
+			continue
 		}
 
 		if (remoteDelta == "NEWER" && localDelta !== "NEWER" && !addedToList[path]) {
@@ -639,6 +787,8 @@ export const consumeDeltas = async ({
 				type: "file",
 				item: remoteTreeNow.files[path]
 			})
+
+			continue
 		}
 
 		if (!existsInLocal && !addedToList[path]) {
@@ -650,6 +800,8 @@ export const consumeDeltas = async ({
 				type: "file",
 				item: remoteTreeNow.files[path]
 			})
+
+			continue
 		}
 	}
 

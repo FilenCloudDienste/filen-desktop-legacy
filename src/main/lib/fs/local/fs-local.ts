@@ -5,8 +5,8 @@ import { app, shell } from "electron"
 import { Location } from "../../../../types"
 import { chunkedPromiseAll } from "../../helpers"
 
-const FS_RETRIES = 8
-const FS_RETRY_TIMEOUT = 100
+const FS_RETRIES = 16
+const FS_RETRY_TIMEOUT = 200
 const FS_RETRY_CODES = [
 	"EAGAIN",
 	"EBUSY",
@@ -283,7 +283,15 @@ export const rm = async (path: string, location: Location): Promise<void> => {
 	}
 
 	if (!(await doesExistLocally(trashDirPath))) {
-		await shell.trashItem(path)
+		try {
+			await shell.trashItem(path)
+		} catch (e: any) {
+			if (e.code && e.code == "ENOENT") {
+				return
+			}
+
+			throw e
+		}
 
 		return
 	}
@@ -440,6 +448,12 @@ export const move = (before: string, after: string, overwrite = true): Promise<v
 				.catch(err => {
 					lastErr = err
 
+					if (err.code && err.code === "ENOENT") {
+						resolve()
+
+						return
+					}
+
 					if (err.code && FS_RETRY_CODES.includes(err.code)) {
 						return setTimeout(req, FS_RETRY_TIMEOUT)
 					}
@@ -479,6 +493,12 @@ export const rename = (before: string, after: string): Promise<void> => {
 				.then(() => resolve())
 				.catch(err => {
 					lastErr = err
+
+					if (err.code && err.code === "ENOENT") {
+						resolve()
+
+						return
+					}
 
 					if (err.code && FS_RETRY_CODES.includes(err.code)) {
 						return setTimeout(req, FS_RETRY_TIMEOUT)

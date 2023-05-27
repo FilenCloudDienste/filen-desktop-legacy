@@ -75,7 +75,7 @@ const Item = memo(({ task, style, userId, platform, paused, isOnline }: ItemProp
 		task.task.type == "folder" ? "folder" : memoryCache.has(itemIconCacheKey) ? memoryCache.get(itemIconCacheKey) : undefined
 	)
 	const [creatingPublicLink, setCreatingPublicLink] = useState<boolean>(false)
-	const [canCreatePublicLink, setCanCreatePublicLink] = useState<boolean>(true)
+	const [canCreatePublicLink, setCanCreatePublicLink] = useState<boolean>(false)
 	const toast = useToast()
 	const publicLinkInfo = useRef<any>(undefined)
 	const publicLinkKey = useRef<string>("")
@@ -275,7 +275,9 @@ const Item = memo(({ task, style, userId, platform, paused, isOnline }: ItemProp
 			!didCheckIfCanCreatePublicLinkOnHover.current &&
 			PUBLIC_LINK_ALLOWED_TYPES.includes(task.type) &&
 			typeof task.task.type == "string" &&
-			task.task.type == "file"
+			task.task.type == "file" &&
+			typeof task.task.item !== "undefined" &&
+			typeof task.task.item.uuid === "string"
 		) {
 			didCheckIfCanCreatePublicLinkOnHover.current = true
 

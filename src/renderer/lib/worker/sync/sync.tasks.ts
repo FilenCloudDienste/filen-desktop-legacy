@@ -1,14 +1,5 @@
 import { filePresent, folderPresent } from "../../api"
-import {
-	getIgnored,
-	getSyncMode,
-	onlyGetBaseParentMove,
-	onlyGetBaseParentDelete,
-	sortMoveRenameTasks,
-	emitSyncTask,
-	isPathIncluded,
-	isIgnoredBySelectiveSync
-} from "./sync.utils"
+import { getIgnored, getSyncMode, sortMoveRenameTasks, emitSyncTask, isIgnoredBySelectiveSync } from "./sync.utils"
 import { sendToAllPorts } from "../ipc"
 import constants from "../../../../constants.json"
 import { Location } from "../../../../types"
@@ -39,21 +30,18 @@ export const sortTasks = async ({
 	deleteInRemote,
 	location
 }: {
-	uploadToRemote: any
-	downloadFromRemote: any
-	renameInLocal: any
-	renameInRemote: any
-	moveInLocal: any
-	moveInRemote: any
-	deleteInLocal: any
-	deleteInRemote: any
+	uploadToRemote: any[]
+	downloadFromRemote: any[]
+	renameInLocal: any[]
+	renameInRemote: any[]
+	moveInLocal: any[]
+	moveInRemote: any[]
+	deleteInLocal: any[]
+	deleteInRemote: any[]
 	location: Location
 }): Promise<any> => {
 	const ignored = []
-
 	const [{ selectiveSyncRemoteIgnore, filenIgnore }, syncMode] = await Promise.all([getIgnored(location), getSyncMode(location)])
-
-	// Filter by ignored
 
 	for (let i = 0; i < renameInLocal.length; i++) {
 		if (filenIgnore.denies(renameInLocal[i].path) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, renameInLocal[i].path)) {
@@ -130,149 +118,70 @@ export const sortTasks = async ({
 		}
 	}
 
-	let uploadToRemoteTasks: any[] = []
-	let downloadFromRemoteTasks: any[] = []
-	let renameInLocalTasks: any[] = []
-	let renameInRemoteTasks: any[] = []
-	let moveInLocalTasks: any[] = []
-	let moveInRemoteTasks: any[] = []
-	let deleteInLocalTasks: any[] = []
-	let deleteInRemoteTasks: any[] = []
+	const renameInRemoteTasksSorted: any[] = sortMoveRenameTasks(renameInRemote)
+	const moveInRemoteTasksSorted: any[] = sortMoveRenameTasks(moveInRemote)
+	const renameInLocalTasksSorted: any[] = sortMoveRenameTasks(renameInLocal)
+	const moveInLocalTasksSorted: any[] = sortMoveRenameTasks(moveInLocal)
 
-	const renameInRemoteTasksSorted = sortMoveRenameTasks(renameInRemote)
-	const renamedInRemote: any[] = []
-	const moveInRemoteTasksSorted = sortMoveRenameTasks(moveInRemote)
-	const movedInRemote: any[] = []
+	const renameInRemoteTasks = renameInRemoteTasksSorted
+		.filter(
+			task =>
+				typeof task !== "undefined" &&
+				task !== null &&
+				typeof task.path === "string" &&
+				typeof task.from === "string" &&
+				typeof task.to === "string"
+		)
+		.sort((a, b) => a.path.length - b.path.length)
 
-	const renameInLocalTasksSorted = sortMoveRenameTasks(renameInLocal)
-	const renamedInLocal: any[] = []
-	const moveInLocalTasksSorted = sortMoveRenameTasks(moveInLocal)
-	const movedInLocal: any[] = []
+	const renameInLocalTasks = renameInLocalTasksSorted
+		.filter(
+			task =>
+				typeof task !== "undefined" &&
+				task !== null &&
+				typeof task.path === "string" &&
+				typeof task.from === "string" &&
+				typeof task.to === "string"
+		)
+		.sort((a, b) => a.path.length - b.path.length)
 
-	for (let i = 0; i < renameInRemoteTasksSorted.length; i++) {
-		if (
-			typeof renameInRemoteTasksSorted[i] == "undefined" ||
-			renameInRemoteTasksSorted[i] == null ||
-			typeof renameInRemoteTasksSorted[i].from !== "string" ||
-			typeof renameInRemoteTasksSorted[i].to !== "string" ||
-			typeof renameInRemoteTasksSorted[i].path !== "string"
-		) {
-			continue
-		}
+	const moveInRemoteTasks = moveInRemoteTasksSorted
+		.filter(
+			task =>
+				typeof task !== "undefined" &&
+				task !== null &&
+				typeof task.path === "string" &&
+				typeof task.from === "string" &&
+				typeof task.to === "string"
+		)
+		.sort((a, b) => a.path.length - b.path.length)
 
-		if (!isPathIncluded(movedInRemote, renameInRemoteTasksSorted[i].path)) {
-			renameInRemoteTasks.push(renameInRemoteTasksSorted[i])
+	const moveInLocalTasks = moveInLocalTasksSorted
+		.filter(
+			task =>
+				typeof task !== "undefined" &&
+				task !== null &&
+				typeof task.path === "string" &&
+				typeof task.from === "string" &&
+				typeof task.to === "string"
+		)
+		.sort((a, b) => a.path.length - b.path.length)
 
-			//renamedInRemote.push(renameInRemoteTasksSorted[i].from)
-			//renamedInRemote.push(renameInRemoteTasksSorted[i].to)
-		}
-	}
+	const deleteInRemoteTasks = deleteInRemote
+		.filter(task => typeof task !== "undefined" && task !== null && typeof task.path === "string")
+		.sort((a, b) => a.path.length - b.path.length)
 
-	for (let i = 0; i < renameInLocalTasksSorted.length; i++) {
-		if (
-			typeof renameInLocalTasksSorted[i] == "undefined" ||
-			renameInLocalTasksSorted[i] == null ||
-			typeof renameInLocalTasksSorted[i].from !== "string" ||
-			typeof renameInLocalTasksSorted[i].to !== "string" ||
-			typeof renameInLocalTasksSorted[i].path !== "string"
-		) {
-			continue
-		}
+	const deleteInLocalTasks = deleteInLocal
+		.filter(task => typeof task !== "undefined" && task !== null && typeof task.path === "string")
+		.sort((a, b) => a.path.length - b.path.length)
 
-		if (!isPathIncluded(movedInLocal, renameInLocalTasksSorted[i].path)) {
-			renameInLocalTasks.push(renameInLocalTasksSorted[i])
+	const uploadToRemoteTasks = uploadToRemote
+		.filter(task => typeof task !== "undefined" && task !== null && typeof task.path === "string")
+		.sort((a, b) => a.path.length - b.path.length)
 
-			//renamedInLocal.push(renameInLocalTasksSorted[i].from)
-			//renamedInLocal.push(renameInLocalTasksSorted[i].to)
-		}
-	}
-
-	for (let i = 0; i < moveInRemoteTasksSorted.length; i++) {
-		if (
-			typeof moveInRemoteTasksSorted[i] == "undefined" ||
-			moveInRemoteTasksSorted[i] == null ||
-			typeof moveInRemoteTasksSorted[i].from !== "string" ||
-			typeof moveInRemoteTasksSorted[i].to !== "string" ||
-			typeof moveInRemoteTasksSorted[i].path !== "string"
-		) {
-			continue
-		}
-
-		if (!isPathIncluded(movedInRemote, moveInRemoteTasksSorted[i].path)) {
-			moveInRemoteTasks.push(moveInRemoteTasksSorted[i])
-
-			//movedInRemote.push(moveInRemoteTasksSorted[i].from)
-			//movedInRemote.push(moveInRemoteTasksSorted[i].to)
-		}
-	}
-
-	for (let i = 0; i < moveInLocalTasksSorted.length; i++) {
-		if (
-			typeof moveInLocalTasksSorted[i] == "undefined" ||
-			moveInLocalTasksSorted[i] == null ||
-			typeof moveInLocalTasksSorted[i].from !== "string" ||
-			typeof moveInLocalTasksSorted[i].to !== "string" ||
-			typeof moveInLocalTasksSorted[i].path !== "string"
-		) {
-			continue
-		}
-
-		if (!isPathIncluded(movedInLocal, moveInLocalTasksSorted[i].path)) {
-			moveInLocalTasks.push(moveInLocalTasksSorted[i])
-
-			//movedInLocal.push(moveInLocalTasksSorted[i].from)
-			//movedInLocal.push(moveInLocalTasksSorted[i].to)
-		}
-	}
-
-	for (let i = 0; i < deleteInRemote.length; i++) {
-		if (typeof deleteInRemote[i] == "undefined" || deleteInRemote[i] == null || typeof deleteInRemote[i].path !== "string") {
-			continue
-		}
-
-		if (!isPathIncluded(renamedInLocal, deleteInRemote[i].path) && !isPathIncluded(movedInLocal, deleteInRemote[i].path)) {
-			deleteInRemoteTasks.push(deleteInRemote[i])
-		}
-	}
-
-	for (let i = 0; i < deleteInLocal.length; i++) {
-		if (typeof deleteInLocal[i] == "undefined" || deleteInLocal[i] == null || typeof deleteInLocal[i].path !== "string") {
-			continue
-		}
-
-		if (!isPathIncluded(renamedInRemote, deleteInLocal[i].path) && !isPathIncluded(movedInRemote, deleteInLocal[i].path)) {
-			deleteInLocalTasks.push(deleteInLocal[i])
-		}
-	}
-
-	for (let i = 0; i < uploadToRemote.length; i++) {
-		if (typeof uploadToRemote[i] == "undefined" || uploadToRemote[i] == null || typeof uploadToRemote[i].path !== "string") {
-			continue
-		}
-
-		if (!isPathIncluded(renamedInLocal, uploadToRemote[i].path) && !isPathIncluded(movedInLocal, uploadToRemote[i].path)) {
-			uploadToRemoteTasks.push(uploadToRemote[i])
-		}
-	}
-
-	for (let i = 0; i < downloadFromRemote.length; i++) {
-		if (
-			typeof downloadFromRemote[i] == "undefined" ||
-			downloadFromRemote[i] == null ||
-			typeof downloadFromRemote[i].path !== "string"
-		) {
-			continue
-		}
-
-		if (!isPathIncluded(renamedInRemote, downloadFromRemote[i].path) && !isPathIncluded(movedInRemote, downloadFromRemote[i].path)) {
-			downloadFromRemoteTasks.push(downloadFromRemote[i])
-		}
-	}
-
-	//moveInRemoteTasks = onlyGetBaseParentMove(moveInRemoteTasks)
-	//moveInLocalTasks = onlyGetBaseParentMove(moveInLocalTasks)
-	//deleteInRemoteTasks = onlyGetBaseParentDelete(deleteInRemoteTasks)
-	//deleteInLocalTasks = onlyGetBaseParentDelete(deleteInLocalTasks)
+	const downloadFromRemoteTasks = downloadFromRemote
+		.filter(task => typeof task !== "undefined" && task !== null && typeof task.path === "string")
+		.sort((a, b) => a.path.length - b.path.length)
 
 	return {
 		renameInRemoteTasks: syncMode == "twoWay" || syncMode == "localToCloud" || syncMode == "localBackup" ? renameInRemoteTasks : [],
@@ -296,38 +205,23 @@ export const consumeTasks = async ({
 	moveInRemote,
 	deleteInLocal,
 	deleteInRemote,
-	lastLocalTree,
-	lastRemoteTree,
-	localTreeNow,
 	remoteTreeNow,
 	location
 }: {
-	uploadToRemote: any
-	downloadFromRemote: any
-	renameInLocal: any
-	renameInRemote: any
-	moveInLocal: any
-	moveInRemote: any
-	deleteInLocal: any
-	deleteInRemote: any
-	lastLocalTree: any
-	lastRemoteTree: any
-	localTreeNow: any
+	uploadToRemote: any[]
+	downloadFromRemote: any[]
+	renameInLocal: any[]
+	renameInRemote: any[]
+	moveInLocal: any[]
+	moveInRemote: any[]
+	deleteInLocal: any[]
+	deleteInRemote: any[]
 	remoteTreeNow: any
 	location: Location
 }): Promise<{
 	doneTasks: any[]
 	resync: boolean
 }> => {
-	log.info("renameInRemote", renameInRemote)
-	log.info("renameInLocal", renameInLocal)
-	log.info("moveInRemote", moveInRemote)
-	log.info("moveInLocal", moveInLocal)
-	log.info("deleteInRemote", deleteInRemote)
-	log.info("deleteInLocal", deleteInLocal)
-	log.info("uploadToRemote", uploadToRemote)
-	log.info("downloadFromRemote", downloadFromRemote)
-
 	const {
 		uploadToRemoteTasks,
 		downloadFromRemoteTasks,
@@ -349,8 +243,6 @@ export const consumeTasks = async ({
 		location
 	})
 
-	console.log("---------------------------------------------------------")
-
 	log.info("renameInRemote", renameInRemoteTasks.length)
 	log.info("renameInLocal", renameInLocalTasks.length)
 	log.info("moveInRemote", moveInRemoteTasks.length)
@@ -364,7 +256,7 @@ export const consumeTasks = async ({
 
 	let resync = false
 	const doneTasks: any[] = []
-	let syncTasksToDo: number =
+	let syncTasksToDo =
 		renameInRemoteTasks.length +
 		renameInLocalTasks.length +
 		moveInRemoteTasks.length +
@@ -1227,7 +1119,7 @@ export const consumeTasks = async ({
 
 									const promise =
 										task.type == "folder"
-											? fsRemote.mkdir(task.path, remoteTreeNow, location, task, task.item.uuid)
+											? fsRemote.mkdir(task.path, remoteTreeNow, location, task.item.uuid)
 											: fsRemote.upload(task.path, remoteTreeNow, location, task, task.item.uuid)
 
 									promise

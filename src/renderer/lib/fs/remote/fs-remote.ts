@@ -45,6 +45,7 @@ const findOrCreateParentDirectorySemaphore = new Semaphore(1)
 const createDirectorySemaphore = new Semaphore(1)
 const uploadThreadsSemaphore = new Semaphore(constants.maxUploadThreads)
 const folderPathUUID = new Map<string, string>()
+const trashSemaphore = new Semaphore(1)
 
 const UPLOAD_VERSION: number = 2
 const previousDatasets: Record<string, string> = {}
@@ -493,13 +494,7 @@ export const findOrCreateParentDirectory = (
 	})
 }
 
-export const mkdir = async (
-	path: string,
-	remoteTreeNow: any,
-	location: any,
-	task: any,
-	uuid: string
-): Promise<{ parent: string; uuid: string }> => {
+export const mkdir = async (path: string, remoteTreeNow: any, location: any, uuid: string): Promise<{ parent: string; uuid: string }> => {
 	const name = pathModule.basename(path)
 
 	if (typeof uuid !== "string") {
@@ -847,7 +842,19 @@ export const upload = (path: string, remoteTreeNow: any, location: Location, tas
 	})
 }
 
-export const rm = (type: string, uuid: string): Promise<void> => trashItem({ type, uuid })
+export const rm = async (type: string, uuid: string): Promise<void> => {
+	await trashSemaphore.acquire()
+
+	try {
+		await trashItem({ type, uuid })
+
+		trashSemaphore.release()
+	} catch (e) {
+		trashSemaphore.release()
+
+		throw e
+	}
+}
 
 export const move = async (type: string, task: any, location: any, remoteTreeNow: any): Promise<void> => {
 	const parent = await findOrCreateParentDirectory(task.to, location.remoteUUID, remoteTreeNow)

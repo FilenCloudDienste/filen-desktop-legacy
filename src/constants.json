@@ -18,8 +18,8 @@
 	"retryDownloadTimeout": 1000,
 	"sizeOverheadMultiplier": 1,
 	"speedMultiplier": 1,
-	"maxConcurrentSyncTasks": 128,
-	"maxConcurrentAPIRequest": 128,
+	"maxConcurrentSyncTasks": 256,
+	"maxConcurrentAPIRequest": 2048,
 	"clearLocalTrashDirsInterval": 900000,
 	"deleteFromLocalTrashAfter": 2592000000,
 	"defaultIgnored": {
