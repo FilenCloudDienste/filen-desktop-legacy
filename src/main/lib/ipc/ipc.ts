@@ -9,7 +9,7 @@ import is from "electron-is"
 import db from "../db"
 import { SyncIssue } from "../../../types"
 import memoryCache from "../memoryCache"
-import { createMain, createSettings, createCloud, createDownload, createSelectiveSync } from "../windows"
+import { createMain, createSettings, createCloud, createDownload, createSelectiveSync, createWorker } from "../windows"
 import { updateTrayIcon, updateTrayMenu, updateTrayTooltip } from "../tray"
 import { upload } from "../trayMenu"
 import * as fsLocal from "../fs/local"
@@ -23,6 +23,7 @@ const autoLauncher = new AutoLaunch({
 })
 
 let syncIssues: SyncIssue[] = []
+const semaphoreTimeouts: Record<string, NodeJS.Timer> = {}
 
 export const validateSender = (event: Electron.IpcMainInvokeEvent) => {
 	const url = new URL(event.senderFrame.url)
@@ -35,11 +36,21 @@ export const validateSender = (event: Electron.IpcMainInvokeEvent) => {
 }
 
 export const encodeError = (e: any) => {
-	return {
-		name: e.name,
-		message: e.message,
-		extra: {
-			...e
+	try {
+		return {
+			name: e.name,
+			message: e.message,
+			extra: {
+				...e
+			}
+		}
+	} catch (err: any) {
+		return {
+			name: err.name,
+			message: err.message,
+			extra: {
+				...err
+			}
 		}
 	}
 }
@@ -63,22 +74,6 @@ export const handlerProxy = (channel: string, handler: (event: Electron.IpcMainI
 		}
 	})
 }
-
-handlerProxy("db", async (e, { action, key, value }) => {
-	if (action === "get") {
-		return await db.get(key)
-	} else if (action === "set") {
-		await db.set(key, value)
-	} else if (action === "remove") {
-		await db.remove(key)
-	} else if (action === "clear") {
-		await db.clear()
-	} else if (action === "keys") {
-		return await db.keys()
-	} else {
-		throw new Error("Invalid db action: " + action.toString())
-	}
-})
 
 handlerProxy("getAppPath", async (_, { path }) => {
 	return app.getPath(path)
@@ -105,23 +100,8 @@ handlerProxy("createMainWindow", async () => {
 })
 
 handlerProxy("loginDone", async () => {
-	if (memoryCache.has("MAIN_WINDOW")) {
-		try {
-			memoryCache.get("MAIN_WINDOW").close()
-		} catch (e) {
-			log.error(e)
-		}
-	}
-
-	await createMain(true)
-
-	if (memoryCache.has("AUTH_WINDOW")) {
-		try {
-			memoryCache.get("AUTH_WINDOW").close()
-		} catch (e) {
-			log.error(e)
-		}
-	}
+	app.relaunch()
+	app.exit()
 })
 
 handlerProxy("openSettingsWindow", async (_, { page }) => {
@@ -608,12 +588,22 @@ handlerProxy("acquireSemaphore", async (_, { key, limit }) => {
 		writeMutexes[key] = new Semaphore(limit)
 	}
 
+	clearTimeout(semaphoreTimeouts[key])
+
+	semaphoreTimeouts[key] = setTimeout(() => {
+		writeMutexes[key].release()
+	}, 30000)
+
 	await writeMutexes[key].acquire()
 })
 
 handlerProxy("releaseSemaphore", async (_, { key }) => {
 	if (!writeMutexes[key]) {
 		return
+	}
+
+	if (semaphoreTimeouts[key]) {
+		clearTimeout(semaphoreTimeouts[key])
 	}
 
 	writeMutexes[key].release()

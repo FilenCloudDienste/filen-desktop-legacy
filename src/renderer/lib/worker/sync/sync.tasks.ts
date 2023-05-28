@@ -331,38 +331,86 @@ export const consumeTasks = async ({
 
 								currentTries += 1
 
-								fsRemote
-									.rename(task.type, task)
-									.then(done => {
-										emitSyncTask("renameInRemote", {
-											status: "done",
-											task,
-											location
-										})
+								const isPresent = new Promise<boolean>((resolve, reject) => {
+									if (task.type == "folder") {
+										folderPresent(task.item.uuid)
+											.then(present => {
+												if (!present.present || present.trash) {
+													return resolve(false)
+												}
 
-										const doneTask = {
-											type: "renameInRemote",
-											task,
-											location
+												return resolve(true)
+											})
+											.catch(reject)
+									} else {
+										filePresent(task.item.uuid)
+											.then(present => {
+												if (!present.present || present.versioned || present.trash) {
+													return resolve(false)
+												}
+
+												return resolve(true)
+											})
+											.catch(reject)
+									}
+								})
+
+								isPresent
+									.then(present => {
+										if (!present) {
+											maxSyncTasksSemaphore.release()
+
+											emitSyncTask("renameInRemote", {
+												status: "err",
+												task,
+												location
+											})
+
+											updateSyncTasksToDo()
+
+											return resolve(true)
 										}
 
-										doneTasks.push(doneTask)
+										fsRemote
+											.rename(task.type, task)
+											.then(done => {
+												emitSyncTask("renameInRemote", {
+													status: "done",
+													task,
+													location
+												})
 
-										updateSyncTasksToDo()
+												const doneTask = {
+													type: "renameInRemote",
+													task,
+													location
+												}
 
-										fsLocal
-											.addToApplyDoneTasks(location.uuid, doneTask)
-											.then(() => {
-												maxSyncTasksSemaphore.release()
+												doneTasks.push(doneTask)
 
-												return resolve(done)
+												updateSyncTasksToDo()
+
+												fsLocal
+													.addToApplyDoneTasks(location.uuid, doneTask)
+													.then(() => {
+														maxSyncTasksSemaphore.release()
+
+														return resolve(done)
+													})
+													.catch(err => {
+														log.error(err)
+
+														maxSyncTasksSemaphore.release()
+
+														return resolve(done)
+													})
 											})
 											.catch(err => {
 												log.error(err)
 
-												maxSyncTasksSemaphore.release()
-
-												return resolve(done)
+												return setTimeout(() => {
+													doTask(err)
+												}, constants.retrySyncTaskTimeout)
 											})
 									})
 									.catch(err => {
@@ -595,38 +643,86 @@ export const consumeTasks = async ({
 
 								currentTries += 1
 
-								fsRemote
-									.move(task.type, task, location, remoteTreeNow)
-									.then(done => {
-										emitSyncTask("moveInRemote", {
-											status: "done",
-											task,
-											location
-										})
+								const isPresent = new Promise<boolean>((resolve, reject) => {
+									if (task.type == "folder") {
+										folderPresent(task.item.uuid)
+											.then(present => {
+												if (!present.present || present.trash) {
+													return resolve(false)
+												}
 
-										const doneTask = {
-											type: "moveInRemote",
-											task,
-											location
+												return resolve(true)
+											})
+											.catch(reject)
+									} else {
+										filePresent(task.item.uuid)
+											.then(present => {
+												if (!present.present || present.versioned || present.trash) {
+													return resolve(false)
+												}
+
+												return resolve(true)
+											})
+											.catch(reject)
+									}
+								})
+
+								isPresent
+									.then(present => {
+										if (!present) {
+											maxSyncTasksSemaphore.release()
+
+											emitSyncTask("moveInRemote", {
+												status: "err",
+												task,
+												location
+											})
+
+											updateSyncTasksToDo()
+
+											return resolve(true)
 										}
 
-										doneTasks.push(doneTask)
+										fsRemote
+											.move(task.type, task, location, remoteTreeNow)
+											.then(done => {
+												emitSyncTask("moveInRemote", {
+													status: "done",
+													task,
+													location
+												})
 
-										updateSyncTasksToDo()
+												const doneTask = {
+													type: "moveInRemote",
+													task,
+													location
+												}
 
-										fsLocal
-											.addToApplyDoneTasks(location.uuid, doneTask)
-											.then(() => {
-												maxSyncTasksSemaphore.release()
+												doneTasks.push(doneTask)
 
-												return resolve(done)
+												updateSyncTasksToDo()
+
+												fsLocal
+													.addToApplyDoneTasks(location.uuid, doneTask)
+													.then(() => {
+														maxSyncTasksSemaphore.release()
+
+														return resolve(done)
+													})
+													.catch(err => {
+														log.error(err)
+
+														maxSyncTasksSemaphore.release()
+
+														return resolve(done)
+													})
 											})
 											.catch(err => {
 												log.error(err)
 
-												maxSyncTasksSemaphore.release()
-
-												return resolve(done)
+												return setTimeout(() => {
+													doTask(err)
+												}, constants.retrySyncTaskTimeout)
 											})
 									})
 									.catch(err => {
@@ -1320,6 +1416,12 @@ export const consumeTasks = async ({
 											if (!present) {
 												maxConcurrentDownloadsSemaphore.release()
 												maxSyncTasksSemaphore.release()
+
+												emitSyncTask("downloadFromRemote", {
+													status: "err",
+													task,
+													location
+												})
 
 												updateSyncTasksToDo()
 

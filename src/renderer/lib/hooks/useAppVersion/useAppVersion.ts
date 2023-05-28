@@ -1,18 +1,7 @@
-import { useEffect, useState } from "react"
-import ipc from "../../ipc"
-
-const log = window.require("electron-log")
+import packageJSON from "../../../../../package.json"
 
 const useAppVersion = (): string => {
-	const [data, setData] = useState<string>("1")
-
-	useEffect(() => {
-		ipc.getVersion()
-			.then((version: string) => setData(version))
-			.catch(log.error)
-	}, [])
-
-	return data
+	return packageJSON.version
 }
 
 export default useAppVersion

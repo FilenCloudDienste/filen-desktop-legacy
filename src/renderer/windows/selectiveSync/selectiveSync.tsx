@@ -129,7 +129,7 @@ const TreeItem = memo(
 						width="auto"
 					>
 						<Checkbox
-							isChecked={isItemExcluded()}
+							isChecked={!isItemExcluded()}
 							onChange={onToggleExcluded}
 						/>
 					</Flex>

@@ -39,25 +39,6 @@ const log = window.require("electron-log")
 const { shell } = window.require("electron")
 const pathModule = window.require("path")
 
-export const logout = async () => {
-	try {
-		await Promise.all([
-			db.remove("apiKey"),
-			db.remove("email"),
-			db.remove("userId"),
-			db.remove("masterKeys"),
-			db.remove("authVersion"),
-			db.remove("isLoggedIn"),
-			db.remove("privateKey"),
-			db.remove("publicKey")
-		])
-
-		ipc.exitApp().catch(log.error)
-	} catch (e) {
-		log.error(e)
-	}
-}
-
 const SettingsWindowSyncs = memo(
 	({ darkMode, lang, platform, userId }: { darkMode: boolean; lang: string; platform: string; userId: number }) => {
 		const syncLocations: Location[] = useDb("syncLocations:" + userId, [])

@@ -35,6 +35,8 @@ const WorkerWindow = memo(({ userId }: { userId: number }) => {
 	const lang = useLang()
 	const syncLocations: Location[] = useDb("syncLocations:" + userId, [])
 	const lastTrayState = useRef<{ icon: string; message: string }>({ icon: "", message: "" })
+	const checkingChangesTimeout = useRef<NodeJS.Timer>()
+	const [checkingChanges, setCheckingChanges] = useState<boolean>(true)
 
 	const init = async () => {
 		if (initDone.current) {
@@ -112,7 +114,8 @@ const WorkerWindow = memo(({ userId }: { userId: number }) => {
 				paused: boolean,
 				syncIssues: SyncIssue[],
 				runningSyncTasks: number,
-				syncLocations: Location[]
+				syncLocations: Location[],
+				checkingChanges: boolean
 			) => {
 				if (!isLoggedIn) {
 					updateTray("paused", i18n(lang, "pleaseLogin"))
@@ -151,6 +154,12 @@ const WorkerWindow = memo(({ userId }: { userId: number }) => {
 						if (warnings > 0) {
 							updateTray("paused", i18n(lang, "trayWarnings", true, ["__NUM__"], [warnings.toString()]))
 						} else {
+							if (checkingChanges) {
+								updateTray("sync", i18n(lang, "checkingChanges"))
+
+								return
+							}
+
 							updateTray("normal", i18n(lang, "everythingSynced"))
 						}
 					} else {
@@ -160,14 +169,14 @@ const WorkerWindow = memo(({ userId }: { userId: number }) => {
 					updateTray("paused", i18n(lang, "trayNoSyncSetup"))
 				}
 			},
-			250
+			1000
 		),
 		[appVersion, lang]
 	)
 
 	useEffect(() => {
-		processTray(isLoggedIn, isOnline, paused, syncIssues, runningSyncTasks, syncLocations)
-	}, [isLoggedIn, isOnline, paused, syncIssues, runningSyncTasks, syncLocations])
+		processTray(isLoggedIn, isOnline, paused, syncIssues, runningSyncTasks, syncLocations, checkingChanges)
+	}, [isLoggedIn, isOnline, paused, syncIssues, runningSyncTasks, syncLocations, checkingChanges])
 
 	useEffect(() => {
 		if (!paused) {
@@ -179,6 +188,35 @@ const WorkerWindow = memo(({ userId }: { userId: number }) => {
 
 	useEffect(() => {
 		const syncTasksToDoListener = eventListener.on("syncTasksToDo", setRunningSyncTasks)
+
+		const syncStatusListener = eventListener.on("syncStatus", (data: any) => {
+			const type: string = data.type
+
+			clearTimeout(checkingChangesTimeout.current)
+
+			if (type === "sync" || type === "cleanup") {
+				setCheckingChanges(false)
+			} else if (type === "dataChanged") {
+				setCheckingChanges(true)
+			}
+		})
+
+		const syncStatusLocationListener = eventListener.on("syncStatusLocation", (data: any) => {
+			const type: string = data.type
+			const status: string = data.data.status
+
+			clearTimeout(checkingChangesTimeout.current)
+
+			if (["smokeTest", "getTrees", "initWatcher", "getDeltas", "consumeDeltas"].includes(type)) {
+				if (status === "start") {
+					checkingChangesTimeout.current = setTimeout(() => setCheckingChanges(true), 5000)
+				} else if (status === "err") {
+					setCheckingChanges(false)
+				}
+			} else if (["consumeTasks", "cleanup", "applyDoneTasksToSavedState", "paused"].includes(type)) {
+				setCheckingChanges(false)
+			}
+		})
 
 		listen()
 		init()
@@ -192,6 +230,8 @@ const WorkerWindow = memo(({ userId }: { userId: number }) => {
 
 		return () => {
 			syncTasksToDoListener.remove()
+			syncStatusLocationListener.remove()
+			syncStatusListener.remove()
 
 			window.removeEventListener("online", onlineListener)
 			window.removeEventListener("offline", onlineListener)

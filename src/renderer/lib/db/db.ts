@@ -215,8 +215,8 @@ export const clear = async (): Promise<void> => {
 
 	const dir = await fs.readdir(DB_PATH)
 
-	for (const entry of dir) {
-		await fs.unlink(pathModule.join(DB_PATH, entry))
+	for (const file of dir) {
+		await fs.unlink(pathModule.join(DB_PATH, file))
 	}
 
 	sendToAllPorts({

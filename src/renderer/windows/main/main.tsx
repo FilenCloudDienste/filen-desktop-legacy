@@ -206,6 +206,13 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number; email: s
 							],
 							...prev
 						])
+					} else if (task.status == "err") {
+						setCurrentUploads((prev: any) =>
+							Object.keys(prev)
+								.filter(key => key !== task.task.item.uuid)
+								.reduce((current, key) => Object.assign(current, { [key]: prev[key] }), {})
+						)
+						setRunningTasks((prev: any) => [...prev.filter((item: any) => item.task.uuid !== task.task.uuid)])
 					}
 				}
 			} else if (type == "downloadFromRemote") {
@@ -292,6 +299,13 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number; email: s
 							],
 							...prev
 						])
+					} else if (task.status == "err") {
+						setCurrentDownloads((prev: any) =>
+							Object.keys(prev)
+								.filter(key => key !== task.task.item.uuid)
+								.reduce((current, key) => Object.assign(current, { [key]: prev[key] }), {})
+						)
+						setRunningTasks((prev: any) => [...prev.filter((item: any) => item.task.uuid !== task.task.uuid)])
 					}
 				}
 			} else {
@@ -327,6 +341,8 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number; email: s
 							],
 							...prev
 						])
+					} else if (task.status == "err") {
+						setRunningTasks((prev: any) => [...prev.filter((item: any) => item.task.uuid !== task.task.uuid)])
 					}
 				}
 			}
@@ -476,6 +492,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number; email: s
 				isOnline={isOnline}
 			/>
 			<MainFooter
+				userId={userId}
 				platform={platform}
 				darkMode={darkMode}
 				lang={lang}

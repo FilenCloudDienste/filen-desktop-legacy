@@ -21,6 +21,8 @@ let NEXT_SYNC = Date.now() - SYNC_TIMEOUT
 const IS_FIRST_REQUEST: Record<string, boolean> = {}
 const WATCHERS: Record<string, boolean> = {}
 const syncMutex = new Semaphore(1)
+const syncModes: Record<string, string> = {}
+let startSyncLoopTimeoutCounter = 0
 
 const applyDoneTasksToSavedState = async ({
 	doneTasks,
@@ -205,6 +207,14 @@ const applyDoneTasksToSavedState = async ({
 	}
 }
 
+export const requestFreshStateOnNextSyncCycle = async (location: Location) => {
+	await Promise.all([db.set("localDataChanged:" + location.uuid, true), db.set("remoteDataChanged:" + location.uuid, true)]).catch(
+		log.error
+	)
+
+	delete IS_FIRST_REQUEST[location.uuid]
+}
+
 const syncLocation = async (location: Location): Promise<void> => {
 	if (location.paused) {
 		emitSyncStatusLocation("paused", {
@@ -216,11 +226,21 @@ const syncLocation = async (location: Location): Promise<void> => {
 			"Sync location " + location.uuid + " -> " + location.local + " <-> " + location.remote + " [" + location.type + "] is paused"
 		)
 
+		await requestFreshStateOnNextSyncCycle(location).catch(log.error)
+
 		return
 	}
 
 	if (await isSyncLocationPaused(location.uuid)) {
+		await requestFreshStateOnNextSyncCycle(location).catch(log.error)
+
 		return
+	}
+
+	if (location.type !== syncModes[location.uuid]) {
+		syncModes[location.uuid] = location.type
+
+		await requestFreshStateOnNextSyncCycle(location).catch(log.error)
 	}
 
 	log.info(
@@ -328,6 +348,8 @@ const syncLocation = async (location: Location): Promise<void> => {
 	}
 
 	if (await isSyncLocationPaused(location.uuid)) {
+		await requestFreshStateOnNextSyncCycle(location).catch(log.error)
+
 		return
 	}
 
@@ -452,6 +474,8 @@ const syncLocation = async (location: Location): Promise<void> => {
 	}
 
 	if (await isSyncLocationPaused(location.uuid)) {
+		await requestFreshStateOnNextSyncCycle(location).catch(log.error)
+
 		return
 	}
 
@@ -496,6 +520,8 @@ const syncLocation = async (location: Location): Promise<void> => {
 	})
 
 	if (await isSyncLocationPaused(location.uuid)) {
+		await requestFreshStateOnNextSyncCycle(location).catch(log.error)
+
 		return
 	}
 
@@ -546,6 +572,8 @@ const syncLocation = async (location: Location): Promise<void> => {
 	})
 
 	if (await isSyncLocationPaused(location.uuid)) {
+		await requestFreshStateOnNextSyncCycle(location).catch(log.error)
+
 		return
 	}
 
@@ -691,7 +719,17 @@ const syncLocation = async (location: Location): Promise<void> => {
 }
 
 const startSyncLoop = () => {
-	return setTimeout(sync, SYNC_TIMEOUT)
+	if (startSyncLoopTimeoutCounter >= 10) {
+		return
+	}
+
+	startSyncLoopTimeoutCounter += 1
+
+	setTimeout(() => {
+		startSyncLoopTimeoutCounter -= 1
+
+		sync()
+	}, SYNC_TIMEOUT)
 }
 
 const sync = async (): Promise<any> => {
@@ -704,7 +742,7 @@ const sync = async (): Promise<any> => {
 
 		eventListener.emit("syncLoopDone")
 
-		return
+		return setTimeout(sync, SYNC_TIMEOUT)
 	}
 
 	try {
@@ -912,7 +950,6 @@ const sync = async (): Promise<any> => {
 
 	SYNC_RUNNING = false
 	NEXT_SYNC = Date.now() + SYNC_TIMEOUT
-
 	syncMutex.release()
 
 	eventListener.emit("syncLoopDone")

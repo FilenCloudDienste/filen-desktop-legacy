@@ -78,11 +78,11 @@ export const directoryTree = (uuid: string, skipCache: boolean = false, location
 
 				dirTree({ uuid, deviceId, skipCache, includeRaw: true })
 					.then(async res => {
-						const cacheKey: string = "directoryTree:" + uuid + ":" + deviceId
+						const cacheKey = "directoryTree:" + uuid + ":" + deviceId
 						const response = res.data
 						const raw = res.raw
 
-						if (response.folders.length == 0 && response.files.length == 0) {
+						if (response.folders.length === 0 && response.files.length === 0) {
 							// Data did not change
 							try {
 								var dbCache = await db.get(cacheKey)
