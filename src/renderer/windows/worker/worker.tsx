@@ -1,5 +1,4 @@
 import { memo, useEffect, useRef, useState, useCallback } from "react"
-import { listen } from "../../lib/worker/ipc"
 import sync from "../../lib/worker/sync"
 import { updateKeys } from "../../lib/user"
 import db from "../../lib/db"
@@ -9,7 +8,6 @@ import useDb from "../../lib/hooks/useDb"
 import eventListener from "../../lib/eventListener"
 import useAppVersion from "../../lib/hooks/useAppVersion"
 import { SyncIssue, Location } from "../../../types"
-import { listen as socketListen } from "../../lib/worker/socket"
 import { debounce } from "lodash"
 import { initLocalTrashDirs } from "../../lib/fs/local"
 import useSyncIssues from "../../lib/hooks/useSyncIssues"
@@ -67,8 +65,6 @@ const WorkerWindow = memo(({ userId }: { userId: number }) => {
 
 		if (!initDone.current) {
 			initDone.current = true
-
-			socketListen()
 
 			try {
 				await updateKeys()
@@ -218,7 +214,6 @@ const WorkerWindow = memo(({ userId }: { userId: number }) => {
 			}
 		})
 
-		listen()
 		init()
 
 		const onlineListener = () => {
