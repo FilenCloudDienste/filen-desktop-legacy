@@ -1519,7 +1519,7 @@ export const uploadChunk = ({
 	})
 }
 
-export const markUploadAsDone = async (data: {
+export const markUploadAsDone = (data: {
 	uuid: string
 	name: string
 	nameHashed: string
@@ -1531,17 +1531,44 @@ export const markUploadAsDone = async (data: {
 	version: number
 	uploadKey: string
 }): Promise<{ chunks: number; size: number }> => {
-	const response = await apiRequest({
-		method: "POST",
-		endpoint: "/v3/upload/done",
-		data
+	return new Promise<{ chunks: number; size: number }>((resolve, reject) => {
+		let tries = 0
+		let lastErr: Error
+
+		const req = async () => {
+			if (tries >= 10) {
+				reject(lastErr)
+
+				return
+			}
+
+			tries += 1
+
+			try {
+				const response = await apiRequest({
+					method: "POST",
+					endpoint: "/v3/upload/done",
+					data
+				})
+
+				if (!response.status) {
+					lastErr = new Error(response.message)
+
+					setTimeout(req, 3000)
+
+					return
+				}
+
+				resolve(response.data)
+			} catch (e: any) {
+				lastErr = e
+
+				setTimeout(req, 3000)
+			}
+		}
+
+		req()
 	})
-
-	if (!response.status) {
-		throw new Error(response.message)
-	}
-
-	return response.data
 }
 
 export const downloadChunk = ({

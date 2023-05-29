@@ -484,95 +484,120 @@ export const consumeTasks = async ({
 
 								currentTries += 1
 
-								fsLocal
-									.rename(
-										pathModule.normalize(location.local + "/" + task.from),
-										pathModule.normalize(location.local + "/" + task.to)
-									)
-									.then(done => {
-										emitSyncTask("renameInLocal", {
-											status: "done",
-											task,
-											location
-										})
+								fsRemote
+									.doesExistLocally(pathModule.normalize(location.local + "/" + task.from))
+									.then(exists => {
+										if (!exists) {
+											emitSyncTask("renameInLocal", {
+												status: "err",
+												task,
+												location
+											})
 
-										const doneTask = {
-											type: "renameInLocal",
-											task,
-											location
+											maxSyncTasksSemaphore.release()
+
+											updateSyncTasksToDo()
+
+											return resolve(true)
 										}
-
-										doneTasks.push(doneTask)
-
-										updateSyncTasksToDo()
 
 										fsLocal
-											.addToApplyDoneTasks(location.uuid, doneTask)
-											.then(() => {
-												maxSyncTasksSemaphore.release()
+											.rename(
+												pathModule.normalize(location.local + "/" + task.from),
+												pathModule.normalize(location.local + "/" + task.to)
+											)
+											.then(done => {
+												emitSyncTask("renameInLocal", {
+													status: "done",
+													task,
+													location
+												})
 
-												return resolve(done)
+												const doneTask = {
+													type: "renameInLocal",
+													task,
+													location
+												}
+
+												doneTasks.push(doneTask)
+
+												updateSyncTasksToDo()
+
+												fsLocal
+													.addToApplyDoneTasks(location.uuid, doneTask)
+													.then(() => {
+														maxSyncTasksSemaphore.release()
+
+														return resolve(done)
+													})
+													.catch(err => {
+														log.error(err)
+
+														maxSyncTasksSemaphore.release()
+
+														return resolve(done)
+													})
 											})
-											.catch(err => {
+											.catch(async err => {
+												if (
+													!(await fsRemote.doesExistLocally(
+														pathModule.normalize(location.local + "/" + task.from)
+													))
+												) {
+													emitSyncTask("renameInLocal", {
+														status: "err",
+														task,
+														location,
+														err
+													})
+
+													maxSyncTasksSemaphore.release()
+
+													updateSyncTasksToDo()
+
+													return resolve(true)
+												}
+
+												if (
+													err.toString() == "eperm" ||
+													(typeof err.code == "string" && err.code == "EPERM") ||
+													(typeof err.code == "string" && err.code == "EBUSY") ||
+													err.toString() == "deletedLocally"
+												) {
+													emitSyncTask("renameInLocal", {
+														status: "err",
+														task,
+														location,
+														err: err
+													})
+
+													maxSyncTasksSemaphore.release()
+
+													updateSyncTasksToDo()
+
+													resync = true
+
+													return resolve(true)
+												}
+
+												if (typeof err.code == "string" && err.code == "ENOENT") {
+													updateSyncTasksToDo()
+
+													maxSyncTasksSemaphore.release()
+
+													resync = true
+
+													return resolve(true)
+												}
+
 												log.error(err)
 
-												maxSyncTasksSemaphore.release()
-
-												return resolve(done)
+												return setTimeout(() => {
+													doTask(err)
+												}, constants.retrySyncTaskTimeout)
 											})
 									})
-									.catch(async err => {
-										if (
-											!(await fsRemote.doesExistLocally(
-												pathModule.normalize(pathModule.join(location.local, task.path))
-											))
-										) {
-											emitSyncTask("renameInLocal", {
-												status: "err",
-												task,
-												location,
-												err
-											})
-
-											maxSyncTasksSemaphore.release()
-
-											updateSyncTasksToDo()
-
-											return resolve(true)
-										}
-
-										if (
-											err.toString() == "eperm" ||
-											(typeof err.code == "string" && err.code == "EPERM") ||
-											(typeof err.code == "string" && err.code == "EBUSY") ||
-											err.toString() == "deletedLocally"
-										) {
-											emitSyncTask("renameInLocal", {
-												status: "err",
-												task,
-												location,
-												err: err
-											})
-
-											maxSyncTasksSemaphore.release()
-
-											updateSyncTasksToDo()
-
-											resync = true
-
-											return resolve(true)
-										}
-
-										if (typeof err.code == "string" && err.code == "ENOENT") {
-											updateSyncTasksToDo()
-
-											maxSyncTasksSemaphore.release()
-
-											resync = true
-
-											return resolve(true)
-										}
-
+									.catch(err => {
 										log.error(err)
 
 										return setTimeout(() => {
@@ -796,95 +821,120 @@ export const consumeTasks = async ({
 
 								currentTries += 1
 
-								fsLocal
-									.move(
-										pathModule.normalize(location.local + "/" + task.from),
-										pathModule.normalize(location.local + "/" + task.to)
-									)
-									.then(done => {
-										emitSyncTask("moveInLocal", {
-											status: "done",
-											task,
-											location
-										})
+								fsRemote
+									.doesExistLocally(pathModule.normalize(location.local + "/" + task.from))
+									.then(exists => {
+										if (!exists) {
+											emitSyncTask("moveInLocal", {
+												status: "err",
+												task,
+												location
+											})
 
-										const doneTask = {
-											type: "moveInLocal",
-											task,
-											location
+											maxSyncTasksSemaphore.release()
+
+											updateSyncTasksToDo()
+
+											return resolve(true)
 										}
-
-										doneTasks.push(doneTask)
-
-										updateSyncTasksToDo()
 
 										fsLocal
-											.addToApplyDoneTasks(location.uuid, doneTask)
-											.then(() => {
-												maxSyncTasksSemaphore.release()
+											.move(
+												pathModule.normalize(location.local + "/" + task.from),
+												pathModule.normalize(location.local + "/" + task.to)
+											)
+											.then(done => {
+												emitSyncTask("moveInLocal", {
+													status: "done",
+													task,
+													location
+												})
 
-												return resolve(done)
+												const doneTask = {
+													type: "moveInLocal",
+													task,
+													location
+												}
+
+												doneTasks.push(doneTask)
+
+												updateSyncTasksToDo()
+
+												fsLocal
+													.addToApplyDoneTasks(location.uuid, doneTask)
+													.then(() => {
+														maxSyncTasksSemaphore.release()
+
+														return resolve(done)
+													})
+													.catch(err => {
+														log.error(err)
+
+														maxSyncTasksSemaphore.release()
+
+														return resolve(done)
+													})
 											})
-											.catch(err => {
+											.catch(async err => {
+												if (
+													!(await fsRemote.doesExistLocally(
+														pathModule.normalize(location.local + "/" + task.from)
+													))
+												) {
+													emitSyncTask("moveInLocal", {
+														status: "err",
+														task,
+														location,
+														err
+													})
+
+													maxSyncTasksSemaphore.release()
+
+													updateSyncTasksToDo()
+
+													return resolve(true)
+												}
+
+												if (
+													err.toString() == "eperm" ||
+													(typeof err.code == "string" && err.code == "EPERM") ||
+													(typeof err.code == "string" && err.code == "EBUSY") ||
+													err.toString() == "deletedLocally"
+												) {
+													emitSyncTask("moveInLocal", {
+														status: "err",
+														task,
+														location,
+														err: err
+													})
+
+													maxSyncTasksSemaphore.release()
+
+													updateSyncTasksToDo()
+
+													resync = true
+
+													return resolve(true)
+												}
+
+												if (typeof err.code == "string" && err.code == "ENOENT") {
+													updateSyncTasksToDo()
+
+													maxSyncTasksSemaphore.release()
+
+													resync = true
+
+													return resolve(true)
+												}
+
 												log.error(err)
 
-												maxSyncTasksSemaphore.release()
-
-												return resolve(done)
+												return setTimeout(() => {
+													doTask(err)
+												}, constants.retrySyncTaskTimeout)
 											})
 									})
-									.catch(async err => {
-										if (
-											!(await fsRemote.doesExistLocally(
-												pathModule.normalize(pathModule.join(location.local, task.path))
-											))
-										) {
-											emitSyncTask("moveInLocal", {
-												status: "err",
-												task,
-												location,
-												err
-											})
-
-											maxSyncTasksSemaphore.release()
-
-											updateSyncTasksToDo()
-
-											return resolve(true)
-										}
-
-										if (
-											err.toString() == "eperm" ||
-											(typeof err.code == "string" && err.code == "EPERM") ||
-											(typeof err.code == "string" && err.code == "EBUSY") ||
-											err.toString() == "deletedLocally"
-										) {
-											emitSyncTask("moveInLocal", {
-												status: "err",
-												task,
-												location,
-												err: err
-											})
-
-											maxSyncTasksSemaphore.release()
-
-											updateSyncTasksToDo()
-
-											resync = true
-
-											return resolve(true)
-										}
-
-										if (typeof err.code == "string" && err.code == "ENOENT") {
-											updateSyncTasksToDo()
-
-											maxSyncTasksSemaphore.release()
-
-											resync = true
-
-											return resolve(true)
-										}
-
+									.catch(err => {
 										log.error(err)
 
 										return setTimeout(() => {
@@ -1060,82 +1110,107 @@ export const consumeTasks = async ({
 
 								currentTries += 1
 
-								fsLocal
-									.rm(pathModule.normalize(location.local + "/" + task.path), location)
-									.then(done => {
-										emitSyncTask("deleteInLocal", {
-											status: "done",
-											task,
-											location
-										})
+								fsRemote
+									.doesExistLocally(pathModule.normalize(pathModule.join(location.local, task.path)))
+									.then(exists => {
+										if (!exists) {
+											emitSyncTask("deleteInLocal", {
+												status: "err",
+												task,
+												location
+											})
 
-										const doneTask = {
-											type: "deleteInLocal",
-											task,
-											location
+											maxSyncTasksSemaphore.release()
+
+											updateSyncTasksToDo()
+
+											return resolve(true)
 										}
-
-										doneTasks.push(doneTask)
-
-										updateSyncTasksToDo()
 
 										fsLocal
-											.addToApplyDoneTasks(location.uuid, doneTask)
-											.then(() => {
-												maxSyncTasksSemaphore.release()
+											.rm(pathModule.normalize(location.local + "/" + task.path), location)
+											.then(done => {
+												emitSyncTask("deleteInLocal", {
+													status: "done",
+													task,
+													location
+												})
 
-												return resolve(done)
+												const doneTask = {
+													type: "deleteInLocal",
+													task,
+													location
+												}
+
+												doneTasks.push(doneTask)
+
+												updateSyncTasksToDo()
+
+												fsLocal
+													.addToApplyDoneTasks(location.uuid, doneTask)
+													.then(() => {
+														maxSyncTasksSemaphore.release()
+
+														return resolve(done)
+													})
+													.catch(err => {
+														log.error(err)
+
+														maxSyncTasksSemaphore.release()
+
+														return resolve(done)
+													})
 											})
-											.catch(err => {
+											.catch(async err => {
+												if (
+													!(await fsRemote.doesExistLocally(
+														pathModule.normalize(pathModule.join(location.local, task.path))
+													))
+												) {
+													emitSyncTask("deleteInLocal", {
+														status: "err",
+														task,
+														location,
+														err
+													})
+
+													maxSyncTasksSemaphore.release()
+
+													updateSyncTasksToDo()
+
+													return resolve(true)
+												}
+
+												if (
+													err.toString() == "eperm" ||
+													err.toString() == "deletedLocally" ||
+													(typeof err.code == "string" && err.code == "EPERM") ||
+													(typeof err.code == "string" && err.code == "EBUSY")
+												) {
+													emitSyncTask("deleteInLocal", {
+														status: "err",
+														task,
+														location,
+														err: err
+													})
+
+													maxSyncTasksSemaphore.release()
+
+													updateSyncTasksToDo()
+
+													resync = true
+
+													return resolve(true)
+												}
+
 												log.error(err)
 
-												maxSyncTasksSemaphore.release()
-
-												return resolve(done)
+												return setTimeout(() => {
+													doTask(err)
+												}, constants.retrySyncTaskTimeout)
 											})
 									})
-									.catch(async err => {
-										if (
-											!(await fsRemote.doesExistLocally(
-												pathModule.normalize(pathModule.join(location.local, task.path))
-											))
-										) {
-											emitSyncTask("deleteInLocal", {
-												status: "err",
-												task,
-												location,
-												err
-											})
-
-											maxSyncTasksSemaphore.release()
-
-											updateSyncTasksToDo()
-
-											return resolve(true)
-										}
-
-										if (
-											err.toString() == "eperm" ||
-											err.toString() == "deletedLocally" ||
-											(typeof err.code == "string" && err.code == "EPERM") ||
-											(typeof err.code == "string" && err.code == "EBUSY")
-										) {
-											emitSyncTask("deleteInLocal", {
-												status: "err",
-												task,
-												location,
-												err: err
-											})
-
-											maxSyncTasksSemaphore.release()
-
-											updateSyncTasksToDo()
-
-											resync = true
-
-											return resolve(true)
-										}
-
+									.catch(err => {
 										log.error(err)
 
 										return setTimeout(() => {
