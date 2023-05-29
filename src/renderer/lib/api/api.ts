@@ -202,10 +202,11 @@ export const apiRequest = async ({
 	const response = await doAPIRequest({ method, endpoint, data, apiKey: dbAPIKey, includeRaw })
 
 	if (typeof response === "object") {
-		if (typeof response.message === "string") {
+		if (typeof response.code === "string" && typeof response.message === "string") {
 			if (
 				response.message.toLowerCase().indexOf("api key not found") !== -1 ||
-				response.message.toLowerCase().indexOf("invalid api key") !== -1
+				response.message.toLowerCase().indexOf("invalid api key") !== -1 ||
+				response.code === "api_key_not_found"
 			) {
 				logout().catch(console.error)
 
@@ -1766,12 +1767,7 @@ export const trashItem = async ({ type, uuid }: { type: string; uuid: string }):
 	})
 
 	if (!response.status) {
-		if (
-			response.message.toString().toLowerCase().indexOf("folder not found") !== -1 ||
-			response.message.toString().toLowerCase().indexOf("file not found") !== -1 ||
-			(response.message.toString().toLowerCase().indexOf("not found") !== -1 &&
-				response.message.toString().toLowerCase().indexOf("api") == -1)
-		) {
+		if (["folder_not_found", "file_not_found"].includes(response.code)) {
 			return
 		}
 
@@ -1790,12 +1786,7 @@ export const moveFile = async ({ file, parent }: { file: any; parent: string }):
 	})
 
 	if (!response.status) {
-		if (
-			response.message.toString().toLowerCase().indexOf("folder not found") !== -1 ||
-			response.message.toString().toLowerCase().indexOf("file not found") !== -1 ||
-			(response.message.toString().toLowerCase().indexOf("not found") !== -1 &&
-				response.message.toString().toLowerCase().indexOf("api") == -1)
-		) {
+		if (["file_not_found"].includes(response.code)) {
 			return
 		}
 
@@ -1827,12 +1818,7 @@ export const moveFolder = async ({ folder, parent }: { folder: any; parent: stri
 	})
 
 	if (!response.status) {
-		if (
-			response.message.toString().toLowerCase().indexOf("folder not found") !== -1 ||
-			response.message.toString().toLowerCase().indexOf("file not found") !== -1 ||
-			(response.message.toString().toLowerCase().indexOf("not found") !== -1 &&
-				response.message.toString().toLowerCase().indexOf("api") == -1)
-		) {
+		if (["folder_not_found"].includes(response.code)) {
 			return
 		}
 
@@ -1878,12 +1864,7 @@ export const renameFile = async ({ file, name }: { file: any; name: string }): P
 	})
 
 	if (!response.status) {
-		if (
-			response.message.toString().toLowerCase().indexOf("folder not found") !== -1 ||
-			response.message.toString().toLowerCase().indexOf("file not found") !== -1 ||
-			(response.message.toString().toLowerCase().indexOf("not found") !== -1 &&
-				response.message.toString().toLowerCase().indexOf("api") == -1)
-		) {
+		if (["file_not_found"].includes(response.code)) {
 			return
 		}
 
@@ -1918,12 +1899,7 @@ export const renameFolder = async ({ folder, name }: { folder: any; name: string
 	})
 
 	if (!response.status) {
-		if (
-			response.message.toString().toLowerCase().indexOf("folder not found") !== -1 ||
-			response.message.toString().toLowerCase().indexOf("file not found") !== -1 ||
-			(response.message.toString().toLowerCase().indexOf("not found") !== -1 &&
-				response.message.toString().toLowerCase().indexOf("api") == -1)
-		) {
+		if (["folder_not_found"].includes(response.code)) {
 			return
 		}
 

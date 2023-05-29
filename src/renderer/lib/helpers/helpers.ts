@@ -314,7 +314,7 @@ export const Semaphore = function (this: SemaphoreInterface, max: number) {
 		if (counter < maxCount) {
 			counter++
 			return new Promise(resolve => {
-				resolve(true)
+				resolve()
 			})
 		} else {
 			return new Promise((resolve, err) => {
@@ -660,3 +660,7 @@ export const hashKey = memoize((key: string) => {
 
 	return hash
 })
+
+export const replaceFirstNChars = (str: string, replacement: string, n: number) => {
+	return replacement + str.substring(n)
+}

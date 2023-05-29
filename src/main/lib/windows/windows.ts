@@ -11,7 +11,7 @@ import db from "../db"
 import { Location, Window } from "../../../types"
 
 const STATIC_PATH = is.dev() ? "http://localhost:3000/" : "file://" + path.join(__dirname, "../../../../build/index.html")
-const DEV_TOOLS = is.dev() ? true : false
+const DEV_TOOLS = is.dev()
 let activeWindows: Window[] = []
 
 export const wasOpenedAtSystemStart = (): boolean => {
@@ -198,6 +198,8 @@ export const createSettings = async (page: string = "general"): Promise<BrowserW
 	}
 
 	window.once("closed", () => {
+		activeWindows = activeWindows.filter(w => w.id !== windowId)
+
 		const settingsWindows = memoryCache.get("SETTINGS_WINDOWS")
 
 		if (settingsWindows) {
@@ -209,8 +211,6 @@ export const createSettings = async (page: string = "general"): Promise<BrowserW
 
 			memoryCache.set("SETTINGS_WINDOWS", settingsWindows)
 		}
-
-		activeWindows = activeWindows.filter(w => w.id !== windowId)
 
 		if (is.macOS()) {
 			const active = JSON.stringify(activeWindows.map(w => w.type))
@@ -302,6 +302,8 @@ export const createUpload = async (args: Record<string, unknown> = {}): Promise<
 	}
 
 	window.once("closed", () => {
+		activeWindows = activeWindows.filter(w => w.id !== windowId)
+
 		const currentUploadWindows = memoryCache.get("UPLOAD_WINDOWS")
 
 		if (currentUploadWindows) {
@@ -313,8 +315,6 @@ export const createUpload = async (args: Record<string, unknown> = {}): Promise<
 
 			memoryCache.set("UPLOAD_WINDOWS", currentUploadWindows)
 		}
-
-		activeWindows = activeWindows.filter(w => w.id !== windowId)
 
 		if (is.macOS()) {
 			const active = JSON.stringify(activeWindows.map(w => w.type))
@@ -411,6 +411,8 @@ export const createDownload = async (args: Record<string, unknown> = {}): Promis
 	}
 
 	window.once("closed", () => {
+		activeWindows = activeWindows.filter(w => w.id !== windowId)
+
 		const currentDownloadWindows = memoryCache.get("DOWNLOAD_WINDOWS")
 
 		if (currentDownloadWindows) {
@@ -422,8 +424,6 @@ export const createDownload = async (args: Record<string, unknown> = {}): Promis
 
 			memoryCache.set("DOWNLOAD_WINDOWS", currentDownloadWindows)
 		}
-
-		activeWindows = activeWindows.filter(w => w.id !== windowId)
 
 		if (is.macOS()) {
 			const active = JSON.stringify(activeWindows.map(w => w.type))
@@ -512,6 +512,8 @@ export const createCloud = async (mode: string = "selectFolder"): Promise<Browse
 	}
 
 	window.once("closed", () => {
+		activeWindows = activeWindows.filter(w => w.id !== windowId)
+
 		const cloudWindows = memoryCache.get("CLOUD_WINDOWS")
 
 		if (cloudWindows) {
@@ -523,8 +525,6 @@ export const createCloud = async (mode: string = "selectFolder"): Promise<Browse
 
 			memoryCache.set("CLOUD_WINDOWS", cloudWindows)
 		}
-
-		activeWindows = activeWindows.filter(w => w.id !== windowId)
 
 		if (is.macOS()) {
 			const active = JSON.stringify(activeWindows.map(w => w.type))
@@ -620,6 +620,8 @@ export const createSelectiveSync = async (location: Location): Promise<BrowserWi
 	}
 
 	window.once("closed", () => {
+		activeWindows = activeWindows.filter(w => w.id !== windowId)
+
 		const selectiveSyncWindows = memoryCache.get("SELECTIVE_SYNC_WINDOWS")
 
 		if (selectiveSyncWindows) {
@@ -631,8 +633,6 @@ export const createSelectiveSync = async (location: Location): Promise<BrowserWi
 
 			memoryCache.set("SELECTIVE_SYNC_WINDOWS", selectiveSyncWindows)
 		}
-
-		activeWindows = activeWindows.filter(w => w.id !== windowId)
 
 		if (is.macOS()) {
 			const active = JSON.stringify(activeWindows.map(w => w.type))
@@ -729,6 +729,8 @@ export const createAuth = async (): Promise<BrowserWindow> => {
 	}
 
 	window.once("closed", () => {
+		activeWindows = activeWindows.filter(w => w.id !== windowId)
+
 		memoryCache.delete("AUTH_WINDOW")
 
 		setTimeout(() => {
@@ -736,8 +738,6 @@ export const createAuth = async (): Promise<BrowserWindow> => {
 				app.quit()
 			}
 		}, 3000)
-
-		activeWindows = activeWindows.filter(w => w.id !== windowId)
 
 		if (is.macOS()) {
 			const active = JSON.stringify(activeWindows.map(w => w.type))
@@ -898,9 +898,16 @@ export const createWorker = async (): Promise<BrowserWindow> => {
 
 	window.once("closed", () => {
 		memoryCache.delete("WORKER_WINDOW")
-		memoryCache.delete("WORKER_WINDOW_DEBUGGER")
 
 		activeWindows = activeWindows.filter(w => w.id !== windowId)
+
+		setTimeout(() => {
+			if (activeWindows.length > 0) {
+				log.info("[MAIN] Worker closed, restarting")
+
+				createWorker().catch(log.error)
+			}
+		}, 2500)
 	})
 
 	memoryCache.set("WORKER_WINDOW", window)

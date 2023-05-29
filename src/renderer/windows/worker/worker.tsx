@@ -38,7 +38,7 @@ const WorkerWindow = memo(({ userId }: { userId: number }) => {
 
 	const init = async () => {
 		if (initDone.current) {
-			return false
+			return
 		}
 
 		await new Promise<void>(resolve => {
@@ -46,7 +46,7 @@ const WorkerWindow = memo(({ userId }: { userId: number }) => {
 				try {
 					const loggedIn: boolean | null = await db.get("isLoggedIn")
 
-					if (typeof loggedIn === "boolean" && loggedIn && window.navigator.onLine) {
+					if (typeof loggedIn === "boolean" && loggedIn === true && window.navigator.onLine) {
 						resolve()
 
 						return

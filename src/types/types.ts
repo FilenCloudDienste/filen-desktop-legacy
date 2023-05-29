@@ -55,11 +55,11 @@ export interface ReaddirFallbackEntry {
 }
 
 export interface SemaphoreInterface {
-	acquire: Function
-	release: Function
-	count: Function
-	setMax: Function
-	purge: Function
+	acquire: () => Promise<void>
+	release: () => void
+	count: () => number
+	setMax: (max: number) => void
+	purge: () => void
 }
 
 export type DeltaType = "NEW" | "NEWER" | "OLDER" | "UNCHANGED" | "DELETED" | "RENAMED" | "MOVED" | "RENAMED_MOVED"

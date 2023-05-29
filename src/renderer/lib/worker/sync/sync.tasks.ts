@@ -3,7 +3,7 @@ import { getIgnored, getSyncMode, sortMoveRenameTasks, emitSyncTask, isIgnoredBy
 import { sendToAllPorts } from "../ipc"
 import constants from "../../../../constants.json"
 import { Location } from "../../../../types"
-import { Semaphore, chunkedPromiseAll } from "../../helpers"
+import { Semaphore, chunkedPromiseAll, replaceFirstNChars } from "../../helpers"
 import ipc from "../../ipc"
 import { v4 as uuidv4 } from "uuid"
 import * as fsLocal from "../../fs/local"
@@ -252,8 +252,6 @@ export const consumeTasks = async ({
 	log.info("uploadToRemote", uploadToRemoteTasks.length)
 	log.info("downloadFromRemote", downloadFromRemoteTasks.length)
 
-	//await new Promise(resolve => setTimeout(resolve, 86400000))
-
 	let resync = false
 	const doneTasks: any[] = []
 	let syncTasksToDo =
@@ -280,678 +278,602 @@ export const consumeTasks = async ({
 		})
 	}
 
-	if (renameInRemoteTasks.length > 0) {
-		await chunkedPromiseAll([
-			...renameInRemoteTasks.map(
-				(task: any) =>
-					new Promise(resolve => {
-						if (typeof task !== "object" || typeof task.item !== "object" || typeof task.item.uuid !== "string") {
-							updateSyncTasksToDo()
+	for (const task of renameInRemoteTasks) {
+		await new Promise<void>(resolve => {
+			if (typeof task !== "object" || typeof task.item !== "object" || typeof task.item.uuid !== "string") {
+				updateSyncTasksToDo()
+				resolve()
 
-							return resolve(true)
-						}
+				return
+			}
 
-						maxSyncTasksSemaphore.acquire().then(() => {
+			emitSyncTask("renameInRemote", {
+				status: "start",
+				task,
+				location
+			})
+
+			let currentTries = 0
+
+			const doTask = (lastErr?: any) => {
+				if (currentTries >= constants.maxRetrySyncTask && typeof lastErr !== "undefined") {
+					log.error("renameInRemote task failed: " + JSON.stringify(task))
+					log.error(lastErr)
+
+					ipc.addSyncIssue({
+						uuid: uuidv4(),
+						type: "conflict",
+						where: "remote",
+						path: pathModule.normalize(location.local + "/" + task.path),
+						err: lastErr,
+						info: "Could not rename " + pathModule.normalize(location.local + "/" + task.path) + " remotely",
+						timestamp: Date.now()
+					}).catch(console.error)
+
+					emitSyncTask("renameInRemote", {
+						status: "err",
+						task,
+						location,
+						err: lastErr
+					})
+
+					updateSyncTasksToDo()
+					resolve()
+
+					return
+				}
+
+				currentTries += 1
+
+				const isPresent = new Promise<boolean>((resolve, reject) => {
+					if (task.type == "folder") {
+						folderPresent(task.item.uuid)
+							.then(present => {
+								if (!present.present || present.trash) {
+									resolve(false)
+
+									return
+								}
+
+								resolve(true)
+							})
+							.catch(reject)
+					} else {
+						filePresent(task.item.uuid)
+							.then(present => {
+								if (!present.present || present.versioned || present.trash) {
+									resolve(false)
+
+									return
+								}
+
+								resolve(true)
+							})
+							.catch(reject)
+					}
+				})
+
+				isPresent
+					.then(present => {
+						if (!present) {
 							emitSyncTask("renameInRemote", {
-								status: "start",
+								status: "err",
 								task,
 								location
 							})
 
-							let currentTries = 0
+							updateSyncTasksToDo()
+							resolve()
 
-							const doTask = (lastErr?: any) => {
-								if (currentTries >= constants.maxRetrySyncTask && typeof lastErr !== "undefined") {
-									maxSyncTasksSemaphore.release()
+							return
+						}
 
-									log.error("renameInRemote task failed: " + JSON.stringify(task))
-									log.error(lastErr)
-
-									ipc.addSyncIssue({
-										uuid: uuidv4(),
-										type: "conflict",
-										where: "remote",
-										path: pathModule.normalize(location.local + "/" + task.path),
-										err: lastErr,
-										info: "Could not rename " + pathModule.normalize(location.local + "/" + task.path) + " remotely",
-										timestamp: Date.now()
-									}).catch(console.error)
-
-									emitSyncTask("renameInRemote", {
-										status: "err",
-										task,
-										location,
-										err: lastErr
-									})
-
-									updateSyncTasksToDo()
-
-									return resolve(true)
-								}
-
-								currentTries += 1
-
-								const isPresent = new Promise<boolean>((resolve, reject) => {
-									if (task.type == "folder") {
-										folderPresent(task.item.uuid)
-											.then(present => {
-												if (!present.present || present.trash) {
-													return resolve(false)
-												}
-
-												return resolve(true)
-											})
-											.catch(reject)
-									} else {
-										filePresent(task.item.uuid)
-											.then(present => {
-												if (!present.present || present.versioned || present.trash) {
-													return resolve(false)
-												}
-
-												return resolve(true)
-											})
-											.catch(reject)
-									}
+						fsRemote
+							.rename(task.type, task)
+							.then(() => {
+								emitSyncTask("renameInRemote", {
+									status: "done",
+									task,
+									location
 								})
 
-								isPresent
-									.then(present => {
-										if (!present) {
-											maxSyncTasksSemaphore.release()
+								const doneTask = {
+									type: "renameInRemote",
+									task,
+									location
+								}
 
-											emitSyncTask("renameInRemote", {
-												status: "err",
-												task,
-												location
-											})
+								doneTasks.push(doneTask)
 
-											updateSyncTasksToDo()
+								updateSyncTasksToDo()
 
-											return resolve(true)
-										}
-
-										fsRemote
-											.rename(task.type, task)
-											.then(done => {
-												emitSyncTask("renameInRemote", {
-													status: "done",
-													task,
-													location
-												})
-
-												const doneTask = {
-													type: "renameInRemote",
-													task,
-													location
-												}
-
-												doneTasks.push(doneTask)
-
-												updateSyncTasksToDo()
-
-												fsLocal
-													.addToApplyDoneTasks(location.uuid, doneTask)
-													.then(() => {
-														maxSyncTasksSemaphore.release()
-
-														return resolve(done)
-													})
-													.catch(err => {
-														log.error(err)
-
-														maxSyncTasksSemaphore.release()
-
-														return resolve(done)
-													})
-											})
-											.catch(err => {
-												log.error(err)
-
-												return setTimeout(() => {
-													doTask(err)
-												}, constants.retrySyncTaskTimeout)
-											})
-									})
+								fsLocal
+									.addToApplyDoneTasks(location.uuid, doneTask)
+									.then(() => resolve())
 									.catch(err => {
 										log.error(err)
 
-										return setTimeout(() => {
-											doTask(err)
-										}, constants.retrySyncTaskTimeout)
+										resolve()
 									})
-							}
+							})
+							.catch(err => {
+								log.error(err)
 
-							return doTask()
-						})
+								setTimeout(() => {
+									doTask(err)
+								}, constants.retrySyncTaskTimeout)
+							})
 					})
-			)
-		])
+					.catch(err => {
+						log.error(err)
 
-		for (let i = 0; i < renameInRemoteTasks.length; i++) {
-			maxSyncTasksSemaphore.release()
-		}
+						setTimeout(() => {
+							doTask(err)
+						}, constants.retrySyncTaskTimeout)
+					})
+			}
+
+			doTask()
+		})
 	}
 
-	if (renameInLocalTasks.length > 0) {
-		await chunkedPromiseAll([
-			...renameInLocalTasks.map(
-				(task: any) =>
-					new Promise(resolve => {
-						if (typeof task !== "object" || typeof task.from !== "string" || typeof task.to !== "string") {
-							updateSyncTasksToDo()
+	for (const task of renameInLocalTasks) {
+		await new Promise<void>(resolve => {
+			if (typeof task !== "object" || typeof task.from !== "string" || typeof task.to !== "string") {
+				updateSyncTasksToDo()
+				resolve()
 
-							return resolve(true)
-						}
+				return
+			}
 
-						maxSyncTasksSemaphore.acquire().then(() => {
+			emitSyncTask("renameInLocal", {
+				status: "start",
+				task,
+				location
+			})
+
+			let currentTries = 0
+
+			const doTask = (lastErr?: any) => {
+				if (currentTries >= constants.maxRetrySyncTask && typeof lastErr !== "undefined") {
+					log.error("renameInLocal task failed: " + JSON.stringify(task))
+					log.error(lastErr)
+
+					ipc.addSyncIssue({
+						uuid: uuidv4(),
+						type: "conflict",
+						where: "local",
+						path: pathModule.normalize(location.local + "/" + task.path),
+						err: lastErr,
+						info: "Could not rename " + pathModule.normalize(location.local + "/" + task.path) + " locally",
+						timestamp: Date.now()
+					}).catch(console.error)
+
+					emitSyncTask("renameInLocal", {
+						status: "err",
+						task,
+						location,
+						err: lastErr
+					})
+
+					updateSyncTasksToDo()
+					resolve()
+
+					return
+				}
+
+				currentTries += 1
+
+				fsRemote
+					.doesExistLocally(pathModule.normalize(location.local + "/" + task.from))
+					.then(exists => {
+						if (!exists) {
 							emitSyncTask("renameInLocal", {
-								status: "start",
+								status: "err",
 								task,
 								location
 							})
 
-							let currentTries = 0
+							updateSyncTasksToDo()
+							resolve()
 
-							const doTask = (lastErr?: any) => {
-								if (currentTries >= constants.maxRetrySyncTask && typeof lastErr !== "undefined") {
-									maxSyncTasksSemaphore.release()
+							return
+						}
 
-									log.error("renameInLocal task failed: " + JSON.stringify(task))
-									log.error(lastErr)
+						fsLocal
+							.rename(
+								pathModule.normalize(location.local + "/" + task.from),
+								pathModule.normalize(location.local + "/" + task.to)
+							)
+							.then(() => {
+								emitSyncTask("renameInLocal", {
+									status: "done",
+									task,
+									location
+								})
 
-									ipc.addSyncIssue({
-										uuid: uuidv4(),
-										type: "conflict",
-										where: "local",
-										path: pathModule.normalize(location.local + "/" + task.path),
-										err: lastErr,
-										info: "Could not rename " + pathModule.normalize(location.local + "/" + task.path) + " locally",
-										timestamp: Date.now()
-									}).catch(console.error)
+								const doneTask = {
+									type: "renameInLocal",
+									task,
+									location
+								}
 
+								doneTasks.push(doneTask)
+
+								updateSyncTasksToDo()
+
+								fsLocal
+									.addToApplyDoneTasks(location.uuid, doneTask)
+									.then(() => resolve())
+									.catch(err => {
+										log.error(err)
+
+										resolve()
+									})
+							})
+							.catch(async err => {
+								if (!(await fsRemote.doesExistLocally(pathModule.normalize(location.local + "/" + task.from)))) {
 									emitSyncTask("renameInLocal", {
 										status: "err",
 										task,
 										location,
-										err: lastErr
+										err
 									})
 
 									updateSyncTasksToDo()
+									resolve()
 
-									return resolve(true)
+									return
 								}
 
-								currentTries += 1
-
-								fsRemote
-									.doesExistLocally(pathModule.normalize(location.local + "/" + task.from))
-									.then(exists => {
-										if (!exists) {
-											emitSyncTask("renameInLocal", {
-												status: "err",
-												task,
-												location
-											})
-
-											maxSyncTasksSemaphore.release()
-
-											updateSyncTasksToDo()
-
-											return resolve(true)
-										}
-
-										fsLocal
-											.rename(
-												pathModule.normalize(location.local + "/" + task.from),
-												pathModule.normalize(location.local + "/" + task.to)
-											)
-											.then(done => {
-												emitSyncTask("renameInLocal", {
-													status: "done",
-													task,
-													location
-												})
-
-												const doneTask = {
-													type: "renameInLocal",
-													task,
-													location
-												}
-
-												doneTasks.push(doneTask)
-
-												updateSyncTasksToDo()
-
-												fsLocal
-													.addToApplyDoneTasks(location.uuid, doneTask)
-													.then(() => {
-														maxSyncTasksSemaphore.release()
-
-														return resolve(done)
-													})
-													.catch(err => {
-														log.error(err)
-
-														maxSyncTasksSemaphore.release()
-
-														return resolve(done)
-													})
-											})
-											.catch(async err => {
-												if (
-													!(await fsRemote.doesExistLocally(
-														pathModule.normalize(location.local + "/" + task.from)
-													))
-												) {
-													emitSyncTask("renameInLocal", {
-														status: "err",
-														task,
-														location,
-														err
-													})
-
-													maxSyncTasksSemaphore.release()
-
-													updateSyncTasksToDo()
-
-													return resolve(true)
-												}
-
-												if (
-													err.toString() == "eperm" ||
-													(typeof err.code == "string" && err.code == "EPERM") ||
-													(typeof err.code == "string" && err.code == "EBUSY") ||
-													err.toString() == "deletedLocally"
-												) {
-													emitSyncTask("renameInLocal", {
-														status: "err",
-														task,
-														location,
-														err: err
-													})
-
-													maxSyncTasksSemaphore.release()
-
-													updateSyncTasksToDo()
-
-													resync = true
-
-													return resolve(true)
-												}
-
-												if (typeof err.code == "string" && err.code == "ENOENT") {
-													updateSyncTasksToDo()
-
-													maxSyncTasksSemaphore.release()
-
-													resync = true
-
-													return resolve(true)
-												}
-
-												log.error(err)
-
-												return setTimeout(() => {
-													doTask(err)
-												}, constants.retrySyncTaskTimeout)
-											})
-									})
-									.catch(err => {
-										log.error(err)
-
-										return setTimeout(() => {
-											doTask(err)
-										}, constants.retrySyncTaskTimeout)
-									})
-							}
-
-							return doTask()
-						})
-					})
-			)
-		])
-
-		for (let i = 0; i < renameInLocal.length; i++) {
-			maxSyncTasksSemaphore.release()
-		}
-	}
-
-	if (moveInRemoteTasks.length > 0) {
-		await chunkedPromiseAll([
-			...moveInRemoteTasks.map(
-				(task: any) =>
-					new Promise(resolve => {
-						if (typeof task !== "object" || typeof task.item !== "object" || typeof task.item.uuid !== "string") {
-							updateSyncTasksToDo()
-
-							return resolve(true)
-						}
-
-						maxSyncTasksSemaphore.acquire().then(() => {
-							emitSyncTask("moveInRemote", {
-								status: "start",
-								task,
-								location
-							})
-
-							let currentTries = 0
-
-							const doTask = (lastErr?: any) => {
-								if (currentTries >= constants.maxRetrySyncTask && typeof lastErr !== "undefined") {
-									maxSyncTasksSemaphore.release()
-
-									log.error("moveInRemote task failed: " + JSON.stringify(task))
-									log.error(lastErr)
-
-									ipc.addSyncIssue({
-										uuid: uuidv4(),
-										type: "conflict",
-										where: "remote",
-										path: pathModule.normalize(location.local + "/" + task.path),
-										err: lastErr,
-										info: "Could not move " + pathModule.normalize(location.local + "/" + task.path) + " remotely",
-										timestamp: Date.now()
-									}).catch(console.error)
-
-									emitSyncTask("moveInRemote", {
+								if (
+									err.toString() == "eperm" ||
+									(typeof err.code == "string" && err.code == "EPERM") ||
+									(typeof err.code == "string" && err.code == "EBUSY") ||
+									err.toString() == "deletedLocally"
+								) {
+									emitSyncTask("renameInLocal", {
 										status: "err",
 										task,
 										location,
-										err: lastErr
+										err: err
 									})
+
+									resync = true
 
 									updateSyncTasksToDo()
+									resolve()
 
-									return resolve(true)
+									return
 								}
 
-								currentTries += 1
+								if (typeof err.code == "string" && err.code == "ENOENT") {
+									resync = true
 
-								const isPresent = new Promise<boolean>((resolve, reject) => {
-									if (task.type == "folder") {
-										folderPresent(task.item.uuid)
-											.then(present => {
-												if (!present.present || present.trash) {
-													return resolve(false)
-												}
+									updateSyncTasksToDo()
+									resolve()
 
-												return resolve(true)
-											})
-											.catch(reject)
-									} else {
-										filePresent(task.item.uuid)
-											.then(present => {
-												if (!present.present || present.versioned || present.trash) {
-													return resolve(false)
-												}
+									return
+								}
 
-												return resolve(true)
-											})
-											.catch(reject)
-									}
-								})
+								log.error(err)
 
-								isPresent
-									.then(present => {
-										if (!present) {
-											maxSyncTasksSemaphore.release()
-
-											emitSyncTask("moveInRemote", {
-												status: "err",
-												task,
-												location
-											})
-
-											updateSyncTasksToDo()
-
-											return resolve(true)
-										}
-
-										fsRemote
-											.move(task.type, task, location, remoteTreeNow)
-											.then(done => {
-												emitSyncTask("moveInRemote", {
-													status: "done",
-													task,
-													location
-												})
-
-												const doneTask = {
-													type: "moveInRemote",
-													task,
-													location
-												}
-
-												doneTasks.push(doneTask)
-
-												updateSyncTasksToDo()
-
-												fsLocal
-													.addToApplyDoneTasks(location.uuid, doneTask)
-													.then(() => {
-														maxSyncTasksSemaphore.release()
-
-														return resolve(done)
-													})
-													.catch(err => {
-														log.error(err)
-
-														maxSyncTasksSemaphore.release()
-
-														return resolve(done)
-													})
-											})
-											.catch(err => {
-												log.error(err)
-
-												return setTimeout(() => {
-													doTask(err)
-												}, constants.retrySyncTaskTimeout)
-											})
-									})
-									.catch(err => {
-										log.error(err)
-
-										return setTimeout(() => {
-											doTask(err)
-										}, constants.retrySyncTaskTimeout)
-									})
-							}
-
-							return doTask()
-						})
+								setTimeout(() => {
+									doTask(err)
+								}, constants.retrySyncTaskTimeout)
+							})
 					})
-			)
-		])
+					.catch(err => {
+						log.error(err)
 
-		for (let i = 0; i < moveInRemoteTasks.length; i++) {
-			maxSyncTasksSemaphore.release()
-		}
+						setTimeout(() => {
+							doTask(err)
+						}, constants.retrySyncTaskTimeout)
+					})
+			}
+
+			doTask()
+		})
 	}
 
-	if (moveInLocalTasks.length > 0) {
-		await chunkedPromiseAll([
-			...moveInLocalTasks.map(
-				(task: any) =>
-					new Promise(resolve => {
-						if (typeof task !== "object" || typeof task.from !== "string" || typeof task.to !== "string") {
-							updateSyncTasksToDo()
+	for (const task of moveInRemoteTasks) {
+		await new Promise<void>(resolve => {
+			if (typeof task !== "object" || typeof task.item !== "object" || typeof task.item.uuid !== "string") {
+				updateSyncTasksToDo()
+				resolve()
 
-							return resolve(true)
-						}
+				return
+			}
 
-						maxSyncTasksSemaphore.acquire().then(() => {
-							emitSyncTask("moveInLocal", {
-								status: "start",
+			emitSyncTask("moveInRemote", {
+				status: "start",
+				task,
+				location
+			})
+
+			let currentTries = 0
+
+			const doTask = (lastErr?: any) => {
+				if (currentTries >= constants.maxRetrySyncTask && typeof lastErr !== "undefined") {
+					maxSyncTasksSemaphore.release()
+
+					log.error("moveInRemote task failed: " + JSON.stringify(task))
+					log.error(lastErr)
+
+					ipc.addSyncIssue({
+						uuid: uuidv4(),
+						type: "conflict",
+						where: "remote",
+						path: pathModule.normalize(location.local + "/" + task.path),
+						err: lastErr,
+						info: "Could not move " + pathModule.normalize(location.local + "/" + task.path) + " remotely",
+						timestamp: Date.now()
+					}).catch(console.error)
+
+					emitSyncTask("moveInRemote", {
+						status: "err",
+						task,
+						location,
+						err: lastErr
+					})
+
+					updateSyncTasksToDo()
+					resolve()
+
+					return
+				}
+
+				currentTries += 1
+
+				const isPresent = new Promise<boolean>((resolve, reject) => {
+					if (task.type == "folder") {
+						folderPresent(task.item.uuid)
+							.then(present => {
+								if (!present.present || present.trash) {
+									resolve(false)
+
+									return
+								}
+
+								resolve(true)
+							})
+							.catch(reject)
+					} else {
+						filePresent(task.item.uuid)
+							.then(present => {
+								if (!present.present || present.versioned || present.trash) {
+									resolve(false)
+
+									return
+								}
+
+								resolve(true)
+							})
+							.catch(reject)
+					}
+				})
+
+				isPresent
+					.then(present => {
+						if (!present) {
+							emitSyncTask("moveInRemote", {
+								status: "err",
 								task,
 								location
 							})
 
-							let currentTries = 0
+							updateSyncTasksToDo()
+							resolve()
 
-							const doTask = (lastErr?: any) => {
-								if (currentTries >= constants.maxRetrySyncTask && typeof lastErr !== "undefined") {
-									maxSyncTasksSemaphore.release()
+							return
+						}
 
-									log.error("moveInLocal task failed: " + JSON.stringify(task))
-									log.error(lastErr)
+						fsRemote
+							.move(task.type, task, location, remoteTreeNow)
+							.then(() => {
+								emitSyncTask("moveInRemote", {
+									status: "done",
+									task,
+									location
+								})
 
-									ipc.addSyncIssue({
-										uuid: uuidv4(),
-										type: "conflict",
-										where: "local",
-										path: pathModule.normalize(location.local + "/" + task.path),
-										err: lastErr,
-										info: "Could not move " + pathModule.normalize(location.local + "/" + task.path) + " locally",
-										timestamp: Date.now()
-									}).catch(console.error)
+								const doneTask = {
+									type: "moveInRemote",
+									task,
+									location
+								}
 
+								doneTasks.push(doneTask)
+
+								updateSyncTasksToDo()
+
+								fsLocal
+									.addToApplyDoneTasks(location.uuid, doneTask)
+									.then(() => resolve())
+									.catch(err => {
+										log.error(err)
+
+										resolve()
+									})
+							})
+							.catch(err => {
+								log.error(err)
+
+								setTimeout(() => {
+									doTask(err)
+								}, constants.retrySyncTaskTimeout)
+							})
+					})
+					.catch(err => {
+						log.error(err)
+
+						setTimeout(() => {
+							doTask(err)
+						}, constants.retrySyncTaskTimeout)
+					})
+			}
+
+			doTask()
+		})
+	}
+
+	for (const task of moveInLocalTasks) {
+		await new Promise<void>(resolve => {
+			if (typeof task !== "object" || typeof task.from !== "string" || typeof task.to !== "string") {
+				updateSyncTasksToDo()
+				resolve()
+
+				return
+			}
+
+			emitSyncTask("moveInLocal", {
+				status: "start",
+				task,
+				location
+			})
+
+			let currentTries = 0
+
+			const doTask = (lastErr?: any) => {
+				if (currentTries >= constants.maxRetrySyncTask && typeof lastErr !== "undefined") {
+					log.error("moveInLocal task failed: " + JSON.stringify(task))
+					log.error(lastErr)
+
+					ipc.addSyncIssue({
+						uuid: uuidv4(),
+						type: "conflict",
+						where: "local",
+						path: pathModule.normalize(location.local + "/" + task.path),
+						err: lastErr,
+						info: "Could not move " + pathModule.normalize(location.local + "/" + task.path) + " locally",
+						timestamp: Date.now()
+					}).catch(console.error)
+
+					emitSyncTask("moveInLocal", {
+						status: "err",
+						task,
+						location,
+						err: lastErr
+					})
+
+					updateSyncTasksToDo()
+					resolve()
+
+					return
+				}
+
+				currentTries += 1
+
+				fsRemote
+					.doesExistLocally(pathModule.normalize(location.local + "/" + task.from))
+					.then(exists => {
+						if (!exists) {
+							emitSyncTask("moveInLocal", {
+								status: "err",
+								task,
+								location
+							})
+
+							updateSyncTasksToDo()
+							resolve()
+
+							return
+						}
+
+						fsLocal
+							.move(
+								pathModule.normalize(location.local + "/" + task.from),
+								pathModule.normalize(location.local + "/" + task.to)
+							)
+							.then(() => {
+								emitSyncTask("moveInLocal", {
+									status: "done",
+									task,
+									location
+								})
+
+								const doneTask = {
+									type: "moveInLocal",
+									task,
+									location
+								}
+
+								doneTasks.push(doneTask)
+
+								updateSyncTasksToDo()
+
+								fsLocal
+									.addToApplyDoneTasks(location.uuid, doneTask)
+									.then(() => resolve())
+									.catch(err => {
+										log.error(err)
+
+										resolve()
+									})
+							})
+							.catch(async err => {
+								if (!(await fsRemote.doesExistLocally(pathModule.normalize(location.local + "/" + task.from)))) {
 									emitSyncTask("moveInLocal", {
 										status: "err",
 										task,
 										location,
-										err: lastErr
+										err
 									})
 
 									updateSyncTasksToDo()
+									resolve()
 
-									return resolve(true)
+									return
 								}
 
-								currentTries += 1
-
-								fsRemote
-									.doesExistLocally(pathModule.normalize(location.local + "/" + task.from))
-									.then(exists => {
-										if (!exists) {
-											emitSyncTask("moveInLocal", {
-												status: "err",
-												task,
-												location
-											})
-
-											maxSyncTasksSemaphore.release()
-
-											updateSyncTasksToDo()
-
-											return resolve(true)
-										}
-
-										fsLocal
-											.move(
-												pathModule.normalize(location.local + "/" + task.from),
-												pathModule.normalize(location.local + "/" + task.to)
-											)
-											.then(done => {
-												emitSyncTask("moveInLocal", {
-													status: "done",
-													task,
-													location
-												})
-
-												const doneTask = {
-													type: "moveInLocal",
-													task,
-													location
-												}
-
-												doneTasks.push(doneTask)
-
-												updateSyncTasksToDo()
-
-												fsLocal
-													.addToApplyDoneTasks(location.uuid, doneTask)
-													.then(() => {
-														maxSyncTasksSemaphore.release()
-
-														return resolve(done)
-													})
-													.catch(err => {
-														log.error(err)
-
-														maxSyncTasksSemaphore.release()
-
-														return resolve(done)
-													})
-											})
-											.catch(async err => {
-												if (
-													!(await fsRemote.doesExistLocally(
-														pathModule.normalize(location.local + "/" + task.from)
-													))
-												) {
-													emitSyncTask("moveInLocal", {
-														status: "err",
-														task,
-														location,
-														err
-													})
-
-													maxSyncTasksSemaphore.release()
-
-													updateSyncTasksToDo()
-
-													return resolve(true)
-												}
-
-												if (
-													err.toString() == "eperm" ||
-													(typeof err.code == "string" && err.code == "EPERM") ||
-													(typeof err.code == "string" && err.code == "EBUSY") ||
-													err.toString() == "deletedLocally"
-												) {
-													emitSyncTask("moveInLocal", {
-														status: "err",
-														task,
-														location,
-														err: err
-													})
-
-													maxSyncTasksSemaphore.release()
-
-													updateSyncTasksToDo()
-
-													resync = true
-
-													return resolve(true)
-												}
-
-												if (typeof err.code == "string" && err.code == "ENOENT") {
-													updateSyncTasksToDo()
-
-													maxSyncTasksSemaphore.release()
-
-													resync = true
-
-													return resolve(true)
-												}
-
-												log.error(err)
-
-												return setTimeout(() => {
-													doTask(err)
-												}, constants.retrySyncTaskTimeout)
-											})
+								if (
+									err.toString() == "eperm" ||
+									(typeof err.code == "string" && err.code == "EPERM") ||
+									(typeof err.code == "string" && err.code == "EBUSY") ||
+									err.toString() == "deletedLocally"
+								) {
+									emitSyncTask("moveInLocal", {
+										status: "err",
+										task,
+										location,
+										err: err
 									})
-									.catch(err => {
-										log.error(err)
 
-										return setTimeout(() => {
-											doTask(err)
-										}, constants.retrySyncTaskTimeout)
-									})
-							}
+									resync = true
 
-							return doTask()
-						})
+									updateSyncTasksToDo()
+									resolve()
+
+									return
+								}
+
+								if (typeof err.code == "string" && err.code == "ENOENT") {
+									resync = true
+
+									updateSyncTasksToDo()
+									resolve()
+
+									return
+								}
+
+								log.error(err)
+
+								setTimeout(() => {
+									doTask(err)
+								}, constants.retrySyncTaskTimeout)
+							})
 					})
-			)
-		])
+					.catch(err => {
+						log.error(err)
 
-		for (let i = 0; i < moveInLocalTasks.length; i++) {
-			maxSyncTasksSemaphore.release()
-		}
+						setTimeout(() => {
+							doTask(err)
+						}, constants.retrySyncTaskTimeout)
+					})
+			}
+
+			doTask()
+		})
 	}
 
 	if (deleteInRemoteTasks.length > 0) {
