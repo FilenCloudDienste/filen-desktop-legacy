@@ -33,42 +33,131 @@ const applyDoneTasksToSavedState = async ({
 	localTreeNow: any
 	remoteTreeNow: any
 }): Promise<any> => {
-	for (let i = 0; i < doneTasks.length; i++) {
-		const { type, task } = doneTasks[i]
+	console.log(localTreeNow, remoteTreeNow, doneTasks)
 
-		if (typeof task == "undefined" || task == null) {
+	for (const doneTask of doneTasks) {
+		const { type, task } = doneTask
+
+		if (typeof task === "undefined" || task === null || task.type !== "string") {
 			continue
 		}
 
-		if (type == "renameInRemote") {
+		if (type === "renameInRemote" || type === "moveInRemote") {
 			if (typeof task.from !== "string" || typeof task.to !== "string") {
 				continue
 			}
 
-			if (task.type == "folder") {
-				const oldParentPath = task.from + "/"
-				const newParentPath = task.to + "/"
+			const oldParentPath = task.from + "/"
+			const newParentPath = task.to + "/"
 
+			for (const path in remoteTreeNow.folders) {
+				if (path.startsWith(oldParentPath)) {
+					const newPath = newParentPath + path.slice(oldParentPath.length)
+
+					remoteTreeNow.folders[newPath] = {
+						...remoteTreeNow.folders[path],
+						path: newPath,
+						name: pathModule.basename(newPath),
+						metadata: {
+							...remoteTreeNow.folders[path].metadata,
+							name: pathModule.basename(newPath)
+						}
+					}
+
+					delete remoteTreeNow.folders[path]
+				}
+			}
+
+			for (const path in remoteTreeNow.files) {
+				if (path.startsWith(oldParentPath)) {
+					const newPath = newParentPath + path.slice(oldParentPath.length)
+
+					remoteTreeNow.files[newPath] = {
+						...remoteTreeNow.files[path],
+						path: newPath,
+						name: pathModule.basename(newPath),
+						metadata: {
+							...remoteTreeNow.files[path].metadata,
+							name: pathModule.basename(newPath)
+						}
+					}
+
+					delete remoteTreeNow.files[path]
+				}
+			}
+
+			for (const prop in remoteTreeNow.uuids) {
+				const path = remoteTreeNow.uuids[prop].path
+
+				if (task.from === path) {
+					remoteTreeNow.uuids[prop].path = task.to
+				} else if (path.startsWith(oldParentPath)) {
+					const newPath = newParentPath + path.slice(oldParentPath.length)
+
+					remoteTreeNow.uuids[prop].path = newPath
+				}
+			}
+		} else if (type === "renameInLocal" || type === "moveInLocal") {
+			if (typeof task.from !== "string" || typeof task.to !== "string") {
+				continue
+			}
+
+			const oldParentPath = task.from + "/"
+			const newParentPath = task.to + "/"
+
+			for (const path in localTreeNow.folders) {
+				if (path.startsWith(oldParentPath)) {
+					const newPath = newParentPath + path.slice(oldParentPath.length)
+
+					localTreeNow.folders[newPath] = {
+						...localTreeNow.folders[path],
+						name: pathModule.basename(newPath)
+					}
+
+					delete localTreeNow.folders[path]
+				}
+			}
+
+			for (const path in localTreeNow.files) {
+				if (path.startsWith(oldParentPath)) {
+					const newPath = newParentPath + path.slice(oldParentPath.length)
+
+					localTreeNow.files[newPath] = {
+						...localTreeNow.files[path],
+						name: pathModule.basename(newPath)
+					}
+
+					delete localTreeNow.files[path]
+				}
+			}
+
+			for (const prop in localTreeNow.ino) {
+				const path = localTreeNow.ino[prop].path
+
+				if (task.from === path) {
+					localTreeNow.ino[prop].path = task.to
+				} else if (path.startsWith(oldParentPath)) {
+					const newPath = newParentPath + path.slice(oldParentPath.length)
+
+					localTreeNow.ino[prop].path = newPath
+				}
+			}
+		} else if (type === "deleteInRemote" || type === "deleteInLocal") {
+			if (typeof task.path !== "string") {
+				continue
+			}
+
+			const parentPath = task.path + "/"
+
+			if (type === "deleteInRemote") {
 				for (const path in remoteTreeNow.folders) {
-					if (task.from == path) {
-						remoteTreeNow.folders[task.to] = remoteTreeNow.folders[path]
-
-						delete remoteTreeNow.folders[path]
-					} else if (path.startsWith(oldParentPath)) {
-						const newPath = newParentPath + path.slice(oldParentPath.length)
-
-						remoteTreeNow.folders[newPath] = remoteTreeNow.folders[path]
-
+					if (path.startsWith(parentPath)) {
 						delete remoteTreeNow.folders[path]
 					}
 				}
 
 				for (const path in remoteTreeNow.files) {
-					if (path.startsWith(oldParentPath)) {
-						const newPath = newParentPath + path.slice(oldParentPath.length)
-
-						remoteTreeNow.files[newPath] = remoteTreeNow.files[path]
-
+					if (path.startsWith(parentPath)) {
 						delete remoteTreeNow.files[path]
 					}
 				}
@@ -76,60 +165,21 @@ const applyDoneTasksToSavedState = async ({
 				for (const prop in remoteTreeNow.uuids) {
 					const path = remoteTreeNow.uuids[prop].path
 
-					if (task.from == path) {
-						remoteTreeNow.uuids[prop].path = task.to
-					} else if (path.startsWith(oldParentPath)) {
-						const newPath = newParentPath + path.slice(oldParentPath.length)
-
-						remoteTreeNow.uuids[prop].path = newPath
+					if (task.path === path) {
+						delete remoteTreeNow.uuids[prop]
+					} else if (path.startsWith(parentPath)) {
+						delete remoteTreeNow.uuids[prop]
 					}
 				}
 			} else {
-				for (const path in remoteTreeNow.files) {
-					if (task.from == path) {
-						remoteTreeNow.files[task.to] = remoteTreeNow.files[path]
-
-						delete remoteTreeNow.files[path]
-					}
-				}
-
-				for (const prop in remoteTreeNow.uuids) {
-					const path = remoteTreeNow.uuids[prop].path
-
-					if (task.from == path) {
-						remoteTreeNow.uuids[prop].path = task.to
-					}
-				}
-			}
-		} else if (type == "renameInLocal") {
-			if (typeof task.from !== "string" || typeof task.to !== "string") {
-				continue
-			}
-
-			if (task.type == "folder") {
-				const oldParentPath = task.from + "/"
-				const newParentPath = task.to + "/"
-
 				for (const path in localTreeNow.folders) {
-					if (task.from == path) {
-						localTreeNow.folders[task.to] = localTreeNow.folders[path]
-
-						delete localTreeNow.folders[path]
-					} else if (path.startsWith(oldParentPath)) {
-						const newPath = newParentPath + path.slice(oldParentPath.length)
-
-						localTreeNow.folders[newPath] = localTreeNow.folders[path]
-
+					if (path.startsWith(parentPath)) {
 						delete localTreeNow.folders[path]
 					}
 				}
 
 				for (const path in localTreeNow.files) {
-					if (path.startsWith(oldParentPath)) {
-						const newPath = newParentPath + path.slice(oldParentPath.length)
-
-						localTreeNow.files[newPath] = localTreeNow.files[path]
-
+					if (path.startsWith(parentPath)) {
 						delete localTreeNow.files[path]
 					}
 				}
@@ -137,239 +187,15 @@ const applyDoneTasksToSavedState = async ({
 				for (const prop in localTreeNow.ino) {
 					const path = localTreeNow.ino[prop].path
 
-					if (task.from == path) {
-						localTreeNow.ino[prop].path = task.to
-					} else if (path.startsWith(oldParentPath)) {
-						const newPath = newParentPath + path.slice(oldParentPath.length)
-
-						localTreeNow.ino[prop].path = newPath
-					}
-				}
-			} else {
-				for (const path in localTreeNow.files) {
-					if (task.from == path) {
-						localTreeNow.files[task.to] = localTreeNow.files[path]
-
-						delete localTreeNow.files[path]
-					}
-				}
-
-				for (const prop in localTreeNow.ino) {
-					const path = localTreeNow.ino[prop].path
-
-					if (task.from == path) {
-						localTreeNow.ino[prop].path = task.to
+					if (task.path === path) {
+						delete localTreeNow.ino[prop]
+					} else if (path.startsWith(parentPath)) {
+						delete localTreeNow.ino[prop]
 					}
 				}
 			}
-		} else if (type == "moveInRemote") {
-			if (typeof task.from !== "string" || typeof task.to !== "string") {
-				continue
-			}
-
-			if (task.type == "folder") {
-				const oldParentPath = task.from + "/"
-				const newParentPath = task.to + "/"
-
-				for (const path in remoteTreeNow.folders) {
-					if (task.from == path) {
-						remoteTreeNow.folders[task.to] = remoteTreeNow.folders[path]
-
-						delete remoteTreeNow.folders[path]
-					} else if (path.startsWith(oldParentPath)) {
-						const newPath = newParentPath + path.slice(oldParentPath.length)
-
-						remoteTreeNow.folders[newPath] = remoteTreeNow.folders[path]
-
-						delete remoteTreeNow.folders[path]
-					}
-				}
-
-				for (const path in remoteTreeNow.files) {
-					if (path.startsWith(oldParentPath)) {
-						const newPath = newParentPath + path.slice(oldParentPath.length)
-
-						remoteTreeNow.files[newPath] = remoteTreeNow.files[path]
-
-						delete remoteTreeNow.files[path]
-					}
-				}
-
-				for (const prop in remoteTreeNow.uuids) {
-					const path = remoteTreeNow.uuids[prop].path
-
-					if (task.from == path) {
-						remoteTreeNow.uuids[prop].path = task.to
-					} else if (path.startsWith(oldParentPath)) {
-						const newPath = newParentPath + path.slice(oldParentPath.length)
-
-						remoteTreeNow.uuids[prop].path = newPath
-					}
-				}
-			} else {
-				for (const path in remoteTreeNow.files) {
-					if (task.from == path) {
-						remoteTreeNow.files[task.to] = remoteTreeNow.files[path]
-
-						delete remoteTreeNow.files[path]
-					}
-				}
-
-				for (const prop in remoteTreeNow.uuids) {
-					const path = remoteTreeNow.uuids[prop].path
-
-					if (task.from == path) {
-						remoteTreeNow.uuids[prop].path = task.to
-					}
-				}
-			}
-		} else if (type == "moveInLocal") {
-			if (typeof task.from !== "string" || typeof task.to !== "string") {
-				continue
-			}
-
-			if (task.type == "folder") {
-				const oldParentPath = task.from + "/"
-				const newParentPath = task.to + "/"
-
-				for (const path in localTreeNow.folders) {
-					if (task.from == path) {
-						localTreeNow.folders[task.to] = localTreeNow.folders[path]
-
-						delete localTreeNow.folders[path]
-					} else if (path.startsWith(oldParentPath)) {
-						const newPath = newParentPath + path.slice(oldParentPath.length)
-
-						localTreeNow.folders[newPath] = localTreeNow.folders[path]
-
-						delete localTreeNow.folders[path]
-					}
-				}
-
-				for (const path in localTreeNow.files) {
-					if (path.startsWith(oldParentPath)) {
-						const newPath = newParentPath + path.slice(oldParentPath.length)
-
-						localTreeNow.files[newPath] = localTreeNow.files[path]
-
-						delete localTreeNow.files[path]
-					}
-				}
-
-				for (const prop in localTreeNow.ino) {
-					const path = localTreeNow.ino[prop].path
-
-					if (task.from == path) {
-						localTreeNow.ino[prop].path = task.to
-					} else if (path.startsWith(oldParentPath)) {
-						const newPath = newParentPath + path.slice(oldParentPath.length)
-
-						localTreeNow.ino[prop].path = newPath
-					}
-				}
-			} else {
-				for (const path in localTreeNow.files) {
-					if (task.from == path) {
-						localTreeNow.files[task.to] = localTreeNow.files[path]
-
-						delete localTreeNow.files[path]
-					}
-				}
-
-				for (const prop in localTreeNow.ino) {
-					const path = localTreeNow.ino[prop].path
-
-					if (task.from == path) {
-						localTreeNow.ino[prop].path = task.to
-					}
-				}
-			}
-		} else if (type == "deleteInRemote" || type == "deleteInLocal") {
-			if (task.type == "folder") {
-				const parentPath = task.path + "/"
-
-				if (type == "deleteInRemote") {
-					for (const path in remoteTreeNow.folders) {
-						if (task.path == path) {
-							delete remoteTreeNow.folders[path]
-						} else if (path.startsWith(parentPath)) {
-							delete remoteTreeNow.folders[path]
-						}
-					}
-
-					for (const path in remoteTreeNow.files) {
-						if (path.startsWith(parentPath)) {
-							delete remoteTreeNow.files[path]
-						}
-					}
-
-					for (const prop in remoteTreeNow.uuids) {
-						const path = remoteTreeNow.uuids[prop].path
-
-						if (task.path == path) {
-							delete remoteTreeNow.uuids[prop]
-						} else if (path.startsWith(parentPath)) {
-							delete remoteTreeNow.uuids[prop]
-						}
-					}
-				} else {
-					for (const path in localTreeNow.folders) {
-						if (task.path == path) {
-							delete localTreeNow.folders[path]
-						} else if (path.startsWith(parentPath)) {
-							delete localTreeNow.folders[path]
-						}
-					}
-
-					for (const path in localTreeNow.files) {
-						if (path.startsWith(parentPath)) {
-							delete localTreeNow.files[path]
-						}
-					}
-
-					for (const prop in localTreeNow.ino) {
-						const path = localTreeNow.ino[prop].path
-
-						if (task.path == path) {
-							delete localTreeNow.ino[prop]
-						} else if (path.startsWith(parentPath)) {
-							delete localTreeNow.ino[prop]
-						}
-					}
-				}
-			} else {
-				if (type == "deleteInRemote") {
-					for (const path in remoteTreeNow.files) {
-						if (task.path == path) {
-							delete remoteTreeNow.files[path]
-						}
-					}
-
-					for (const prop in remoteTreeNow.uuids) {
-						const path = remoteTreeNow.uuids[prop].path
-
-						if (task.path == path) {
-							delete remoteTreeNow.uuids[prop]
-						}
-					}
-				} else {
-					for (const path in localTreeNow.files) {
-						if (task.path == path) {
-							delete localTreeNow.files[path]
-						}
-					}
-
-					for (const prop in localTreeNow.ino) {
-						const path = localTreeNow.ino[prop].path
-
-						if (task.path == path) {
-							delete localTreeNow.ino[prop]
-						}
-					}
-				}
-			}
-		} else if (type == "uploadToRemote") {
-			if (task.type == "folder") {
+		} else if (type === "uploadToRemote") {
+			if (task.type === "folder") {
 				remoteTreeNow.folders[task.path] = {
 					name: task.item.name,
 					parent: task.info.parent,
@@ -400,8 +226,8 @@ const applyDoneTasksToSavedState = async ({
 					path: task.path
 				}
 			}
-		} else if (type == "downloadFromRemote") {
-			if (task.type == "folder") {
+		} else if (type === "downloadFromRemote") {
+			if (task.type === "folder") {
 				localTreeNow.folders[task.path] = {
 					name: task.item.name,
 					lastModified: Math.floor(task.info.mtimeMs)

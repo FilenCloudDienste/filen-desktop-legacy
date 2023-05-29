@@ -733,7 +733,7 @@ export const consumeDeltas = async ({
 			continue
 		}
 
-		if (!existsInRemote && !addedToList[addedToListPath] && !sameLastModified) {
+		if (!existsInRemote && !addedToList[addedToListPath]) {
 			addedToList[addedToListPath] = true
 
 			uploadToRemote.push({
@@ -865,7 +865,7 @@ export const consumeDeltas = async ({
 			continue
 		}
 
-		if (!existsInLocal && !addedToList[addedToListPath] && !sameLastModified) {
+		if (!existsInLocal && !addedToList[addedToListPath]) {
 			addedToList[addedToListPath] = true
 
 			downloadFromRemote.push({
