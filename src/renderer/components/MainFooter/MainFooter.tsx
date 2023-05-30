@@ -136,6 +136,21 @@ const MainFooter = memo(
 												{i18n(lang, "traySyncIssues", true, ["__NUM__"], [syncIssues.length.toString()])}
 											</Text>
 										</Flex>
+									) : paused ? (
+										<Flex alignItems="center">
+											<AiOutlinePauseCircle
+												size={13}
+												color="green"
+											/>
+											<Text
+												fontSize={12}
+												color={colors(platform, darkMode, "textPrimary")}
+												marginLeft="5px"
+												noOfLines={1}
+											>
+												{i18n(lang, "paused")}
+											</Text>
+										</Flex>
 									) : (
 										<Flex alignItems="center">
 											<AiOutlineCheckCircle

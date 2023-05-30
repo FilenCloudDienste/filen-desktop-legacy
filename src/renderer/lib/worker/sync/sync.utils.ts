@@ -12,7 +12,7 @@ export const isSyncLocationPaused = async (uuid: string): Promise<boolean> => {
 		const syncLocations = await db.get("syncLocations:" + userId)
 
 		for (let i = 0; i < syncLocations.length; i++) {
-			if (syncLocations[i].uuid == uuid) {
+			if (syncLocations[i].uuid === uuid) {
 				return syncLocations[i].paused
 			}
 		}
@@ -27,7 +27,7 @@ export const isSuspended = async (): Promise<boolean> => {
 	try {
 		const suspend = await db.get("suspend")
 
-		if (typeof suspend == "boolean") {
+		if (typeof suspend === "boolean") {
 			return suspend
 		}
 
@@ -73,7 +73,7 @@ export const getSyncMode = async (location: Location): Promise<SyncModes> => {
 	const userId = await db.get("userId")
 	let syncLocations = await db.get("syncLocations:" + userId)
 
-	if (!Array.isArray(syncLocations)) {
+	if (!syncLocations || syncLocations === null || !Array.isArray(syncLocations)) {
 		return "twoWay"
 	}
 
@@ -109,7 +109,7 @@ export const onlyGetBaseParentMove = (tasks: any): any => {
 	})
 
 	const newTasks: any[] = []
-	const moving: any[] = []
+	const moving: string[] = []
 
 	const exists = (path: string) => {
 		for (let i = 0; i < moving.length; i++) {
@@ -143,7 +143,7 @@ export const onlyGetBaseParentDelete = (tasks: any): any => {
 	})
 
 	const newTasks: any[] = []
-	const deleting: any[] = []
+	const deleting: string[] = []
 
 	const exists = (path: string) => {
 		for (let i = 0; i < deleting.length; i++) {
@@ -187,7 +187,7 @@ Since we only need one of them we sort them and return only one task for each ta
 */
 
 export const sortMoveRenameTasks = (tasks: any): any => {
-	const added: any = {}
+	const added: Record<string, boolean> = {}
 	const newTasks: any[] = []
 
 	tasks = tasks.filter(

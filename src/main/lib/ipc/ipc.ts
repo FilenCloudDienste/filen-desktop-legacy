@@ -9,7 +9,7 @@ import is from "electron-is"
 import db from "../db"
 import { SyncIssue } from "../../../types"
 import memoryCache from "../memoryCache"
-import { createMain, createSettings, createCloud, createDownload, createSelectiveSync, createWorker } from "../windows"
+import { createMain, createSettings, createCloud, createDownload, createSelectiveSync } from "../windows"
 import { updateTrayIcon, updateTrayMenu, updateTrayTooltip } from "../tray"
 import { upload } from "../trayMenu"
 import * as fsLocal from "../fs/local"
@@ -100,8 +100,27 @@ handlerProxy("createMainWindow", async () => {
 })
 
 handlerProxy("loginDone", async () => {
-	app.relaunch()
-	app.exit()
+	if (memoryCache.has("MAIN_WINDOW")) {
+		try {
+			memoryCache.get("MAIN_WINDOW").close()
+		} catch (e) {
+			log.error(e)
+		}
+	}
+
+	for (const key in writeMutexes) {
+		writeMutexes[key].purge()
+	}
+
+	await createMain(true)
+
+	if (memoryCache.has("AUTH_WINDOW")) {
+		try {
+			memoryCache.get("AUTH_WINDOW").close()
+		} catch (e) {
+			log.error(e)
+		}
+	}
 })
 
 handlerProxy("openSettingsWindow", async (_, { page }) => {
@@ -377,7 +396,7 @@ handlerProxy("getFileIconName", async (_, { name }) => {
 
 	const tempPath = pathModule.normalize(pathModule.join(app.getPath("temp"), uuidv4() + "_" + name))
 
-	await fs.writeFile(tempPath, "")
+	await fs.writeFile(tempPath, "1")
 
 	const image = await app.getFileIcon(tempPath)
 	const dataURL = image.toDataURL()

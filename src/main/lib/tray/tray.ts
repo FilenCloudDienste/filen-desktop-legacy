@@ -77,7 +77,7 @@ export const onRightClick = () => {
 	positionWindow()
 }
 
-export const createTray = async () => {
+export const createTray = async (): Promise<Tray | undefined> => {
 	if (!memoryCache.has("trayAvailable")) {
 		return undefined
 	}

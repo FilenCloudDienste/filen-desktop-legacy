@@ -1,5 +1,5 @@
 import { filePresent, folderPresent } from "../../api"
-import { getIgnored, getSyncMode, sortMoveRenameTasks, emitSyncTask, isIgnoredBySelectiveSync } from "./sync.utils"
+import { getIgnored, getSyncMode, sortMoveRenameTasks, emitSyncTask, isIgnoredBySelectiveSync, onlyGetBaseParentDelete } from "./sync.utils"
 import { sendToAllPorts } from "../ipc"
 import constants from "../../../../constants.json"
 import { Location } from "../../../../types"
@@ -16,7 +16,7 @@ export const maxConcurrentUploadsSemaphore = new Semaphore(constants.maxConcurre
 export const maxConcurrentDownloadsSemaphore = new Semaphore(constants.maxConcurrentDownloads)
 export const maxSyncTasksSemaphore = new Semaphore(constants.maxConcurrentSyncTasks)
 
-// Sorting the tasks so we don't have duplicates or for example delete something that has been renamed or move something that has been renamed etc.
+// Sorting the tasks so we don't have duplicates
 // We also filter for ignored files/folders here + the sync mode
 
 export const sortTasks = async ({
@@ -167,13 +167,17 @@ export const sortTasks = async ({
 		)
 		.sort((a, b) => a.path.length - b.path.length)
 
-	const deleteInRemoteTasks = deleteInRemote
-		.filter(task => typeof task !== "undefined" && task !== null && typeof task.path === "string")
-		.sort((a, b) => a.path.length - b.path.length)
+	const deleteInRemoteTasks = onlyGetBaseParentDelete(
+		deleteInRemote
+			.filter(task => typeof task !== "undefined" && task !== null && typeof task.path === "string")
+			.sort((a, b) => a.path.length - b.path.length)
+	)
 
-	const deleteInLocalTasks = deleteInLocal
-		.filter(task => typeof task !== "undefined" && task !== null && typeof task.path === "string")
-		.sort((a, b) => a.path.length - b.path.length)
+	const deleteInLocalTasks = onlyGetBaseParentDelete(
+		deleteInLocal
+			.filter(task => typeof task !== "undefined" && task !== null && typeof task.path === "string")
+			.sort((a, b) => a.path.length - b.path.length)
+	)
 
 	const uploadToRemoteTasks = uploadToRemote
 		.filter(task => typeof task !== "undefined" && task !== null && typeof task.path === "string")
@@ -427,10 +431,6 @@ export const consumeTasks = async ({
 					})
 			)
 		])
-
-		for (let i = 0; i < renameInRemoteTasks.length; i++) {
-			maxSyncTasksSemaphore.release()
-		}
 	}
 
 	if (renameInLocalTasks.length > 0) {
@@ -611,10 +611,6 @@ export const consumeTasks = async ({
 					})
 			)
 		])
-
-		for (let i = 0; i < renameInLocal.length; i++) {
-			maxSyncTasksSemaphore.release()
-		}
 	}
 
 	if (moveInRemoteTasks.length > 0) {
@@ -764,10 +760,6 @@ export const consumeTasks = async ({
 					})
 			)
 		])
-
-		for (let i = 0; i < moveInRemoteTasks.length; i++) {
-			maxSyncTasksSemaphore.release()
-		}
 	}
 
 	if (moveInLocalTasks.length > 0) {
@@ -948,10 +940,6 @@ export const consumeTasks = async ({
 					})
 			)
 		])
-
-		for (let i = 0; i < moveInLocalTasks.length; i++) {
-			maxSyncTasksSemaphore.release()
-		}
 	}
 
 	if (deleteInRemoteTasks.length > 0) {
@@ -1053,10 +1041,6 @@ export const consumeTasks = async ({
 					})
 			)
 		])
-
-		for (let i = 0; i < deleteInRemoteTasks.length; i++) {
-			maxSyncTasksSemaphore.release()
-		}
 	}
 
 	if (deleteInLocalTasks.length > 0) {
@@ -1224,10 +1208,6 @@ export const consumeTasks = async ({
 					})
 			)
 		])
-
-		for (let i = 0; i < deleteInLocalTasks.length; i++) {
-			maxSyncTasksSemaphore.release()
-		}
 	}
 
 	if (uploadToRemoteTasks.length > 0) {
@@ -1397,11 +1377,6 @@ export const consumeTasks = async ({
 					})
 			)
 		])
-
-		for (let i = 0; i < uploadToRemoteTasks.length; i++) {
-			maxSyncTasksSemaphore.release()
-			maxConcurrentUploadsSemaphore.release()
-		}
 	}
 
 	if (downloadFromRemoteTasks.length > 0) {
@@ -1575,11 +1550,6 @@ export const consumeTasks = async ({
 					})
 			)
 		])
-
-		for (let i = 0; i < downloadFromRemoteTasks.length; i++) {
-			maxSyncTasksSemaphore.release()
-			maxConcurrentDownloadsSemaphore.release()
-		}
 	}
 
 	maxSyncTasksSemaphore.purge()
