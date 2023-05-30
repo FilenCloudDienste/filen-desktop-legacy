@@ -1,5 +1,13 @@
 import { filePresent, folderPresent } from "../../api"
-import { getIgnored, getSyncMode, sortMoveRenameTasks, emitSyncTask, isIgnoredBySelectiveSync, onlyGetBaseParentDelete } from "./sync.utils"
+import {
+	getIgnored,
+	getSyncMode,
+	sortMoveRenameTasks,
+	emitSyncTask,
+	isIgnoredBySelectiveSync,
+	onlyGetBaseParentDelete,
+	onlyGetBaseParentMove
+} from "./sync.utils"
 import { sendToAllPorts } from "../ipc"
 import constants from "../../../../constants.json"
 import { Location } from "../../../../types"
@@ -132,7 +140,7 @@ export const sortTasks = async ({
 				typeof task.from === "string" &&
 				typeof task.to === "string"
 		)
-		.sort((a, b) => a.path.length - b.path.length)
+		.sort((a, b) => a.from.split("/").length - b.from.split("/").length)
 
 	const renameInLocalTasks = renameInLocalTasksSorted
 		.filter(
@@ -143,49 +151,53 @@ export const sortTasks = async ({
 				typeof task.from === "string" &&
 				typeof task.to === "string"
 		)
-		.sort((a, b) => a.path.length - b.path.length)
+		.sort((a, b) => a.from.split("/").length - b.from.split("/").length)
 
-	const moveInRemoteTasks = moveInRemoteTasksSorted
-		.filter(
-			task =>
-				typeof task !== "undefined" &&
-				task !== null &&
-				typeof task.path === "string" &&
-				typeof task.from === "string" &&
-				typeof task.to === "string"
-		)
-		.sort((a, b) => a.path.length - b.path.length)
+	const moveInRemoteTasks = onlyGetBaseParentMove(
+		moveInRemoteTasksSorted
+			.filter(
+				task =>
+					typeof task !== "undefined" &&
+					task !== null &&
+					typeof task.path === "string" &&
+					typeof task.from === "string" &&
+					typeof task.to === "string"
+			)
+			.sort((a, b) => a.from.split("/").length - b.from.split("/").length)
+	)
 
-	const moveInLocalTasks = moveInLocalTasksSorted
-		.filter(
-			task =>
-				typeof task !== "undefined" &&
-				task !== null &&
-				typeof task.path === "string" &&
-				typeof task.from === "string" &&
-				typeof task.to === "string"
-		)
-		.sort((a, b) => a.path.length - b.path.length)
+	const moveInLocalTasks = onlyGetBaseParentMove(
+		moveInLocalTasksSorted
+			.filter(
+				task =>
+					typeof task !== "undefined" &&
+					task !== null &&
+					typeof task.path === "string" &&
+					typeof task.from === "string" &&
+					typeof task.to === "string"
+			)
+			.sort((a, b) => a.from.split("/").length - b.from.split("/").length)
+	)
 
 	const deleteInRemoteTasks = onlyGetBaseParentDelete(
 		deleteInRemote
 			.filter(task => typeof task !== "undefined" && task !== null && typeof task.path === "string")
-			.sort((a, b) => a.path.length - b.path.length)
+			.sort((a, b) => a.path.split("/").length - b.path.split("/").length)
 	)
 
 	const deleteInLocalTasks = onlyGetBaseParentDelete(
 		deleteInLocal
 			.filter(task => typeof task !== "undefined" && task !== null && typeof task.path === "string")
-			.sort((a, b) => a.path.length - b.path.length)
+			.sort((a, b) => a.path.split("/").length - b.path.split("/").length)
 	)
 
 	const uploadToRemoteTasks = uploadToRemote
 		.filter(task => typeof task !== "undefined" && task !== null && typeof task.path === "string")
-		.sort((a, b) => a.path.length - b.path.length)
+		.sort((a, b) => a.path.split("/").length - b.path.split("/").length)
 
 	const downloadFromRemoteTasks = downloadFromRemote
 		.filter(task => typeof task !== "undefined" && task !== null && typeof task.path === "string")
-		.sort((a, b) => a.path.length - b.path.length)
+		.sort((a, b) => a.path.split("/").length - b.path.split("/").length)
 
 	return {
 		renameInRemoteTasks: syncMode == "twoWay" || syncMode == "localToCloud" || syncMode == "localBackup" ? renameInRemoteTasks : [],

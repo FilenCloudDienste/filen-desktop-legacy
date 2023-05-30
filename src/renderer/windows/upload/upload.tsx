@@ -484,7 +484,9 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number; email:
 
 											let baseParentUUID: string = uuidv4()
 											const baseParentName: string = pathModule.basename(basePath)
-											const foldersSorted: string[] = [...Object.keys(folders).sort((a, b) => a.length - b.length)]
+											const foldersSorted: string[] = [
+												...Object.keys(folders).sort((a, b) => a.split("/").length - b.split("/").length)
+											]
 											const createdFolderUUIDs: any = {}
 
 											setFoldersNeeded(foldersSorted.length + 1)

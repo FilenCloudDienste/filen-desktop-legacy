@@ -103,9 +103,9 @@ onlyGetBaseParent<Move/Delete>(tasks) will return
 }
 */
 
-export const onlyGetBaseParentMove = (tasks: any): any => {
+export const onlyGetBaseParentMove = (tasks: any[]): any[] => {
 	const sorted = tasks.sort((a: any, b: any) => {
-		return a.path.split("/").length - b.path.split("/").length
+		return a.from.split("/").length - b.from.split("/").length
 	})
 
 	const newTasks: any[] = []
@@ -124,8 +124,8 @@ export const onlyGetBaseParentMove = (tasks: any): any => {
 	for (let i = 0; i < sorted.length; i++) {
 		const task = sorted[i]
 
-		if (typeof task.path == "string") {
-			const path = task.path
+		if (typeof task.to === "string") {
+			const path = task.to
 
 			if (!exists(path)) {
 				moving.push(path)
@@ -137,7 +137,7 @@ export const onlyGetBaseParentMove = (tasks: any): any => {
 	return newTasks
 }
 
-export const onlyGetBaseParentDelete = (tasks: any): any => {
+export const onlyGetBaseParentDelete = (tasks: any[]): any[] => {
 	const sorted = tasks.sort((a: any, b: any) => {
 		return a.path.split("/").length - b.path.split("/").length
 	})
