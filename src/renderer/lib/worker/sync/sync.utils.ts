@@ -9,7 +9,11 @@ const gitignoreParser = window.require("@gerhobbelt/gitignore-parser")
 export const isSyncLocationPaused = async (uuid: string): Promise<boolean> => {
 	try {
 		const userId = await db.get("userId")
-		const syncLocations = await db.get("syncLocations:" + userId)
+		let syncLocations = await db.get("syncLocations:" + userId)
+
+		if (!Array.isArray(syncLocations)) {
+			syncLocations = []
+		}
 
 		for (let i = 0; i < syncLocations.length; i++) {
 			if (syncLocations[i].uuid === uuid) {
@@ -295,4 +299,21 @@ export const isIgnoredBySelectiveSync = (selectiveSyncRemoteIgnore: { [key: stri
 	}
 
 	return false
+}
+
+export const updateSyncLocationBusy = async (uuid: string, busy: boolean): Promise<void> => {
+	const userId = await db.get("userId")
+	let syncLocations = await db.get("syncLocations:" + userId)
+
+	if (!Array.isArray(syncLocations)) {
+		syncLocations = []
+	}
+
+	for (let i = 0; i < syncLocations.length; i++) {
+		if (syncLocations[i].uuid === uuid) {
+			syncLocations[i].busy = busy
+		}
+	}
+
+	await db.set("syncLocations:" + userId, syncLocations)
 }

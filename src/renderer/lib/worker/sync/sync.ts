@@ -3,7 +3,7 @@ import * as fsRemote from "../../fs/remote"
 import db from "../../db"
 import { v4 as uuidv4 } from "uuid"
 import { Semaphore, convertTimestampToMs } from "../../helpers"
-import { isSyncLocationPaused, emitSyncStatus, emitSyncStatusLocation, removeRemoteLocation } from "./sync.utils"
+import { isSyncLocationPaused, emitSyncStatus, emitSyncStatusLocation, removeRemoteLocation, updateSyncLocationBusy } from "./sync.utils"
 import { Location, SyncIssue } from "../../../../types"
 import { checkInternet } from "../../../windows/worker/worker"
 import ipc from "../../ipc"
@@ -1289,6 +1289,8 @@ const sync = async (): Promise<any> => {
 				continue
 			}
 
+			const setBusyTimeout = setTimeout(() => updateSyncLocationBusy(location.uuid, true).catch(log.error), 3000)
+
 			try {
 				await syncLocation(location)
 			} catch (e: any) {
@@ -1301,6 +1303,10 @@ const sync = async (): Promise<any> => {
 					err: e
 				})
 			}
+
+			clearTimeout(setBusyTimeout)
+
+			await updateSyncLocationBusy(location.uuid, false).catch(log.error)
 		}
 
 		emitSyncStatus("sync", {

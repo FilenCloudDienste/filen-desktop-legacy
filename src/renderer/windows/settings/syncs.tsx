@@ -1075,7 +1075,7 @@ const SettingsWindowSyncs = memo(
 											</Flex>
 										</>
 									)}
-									{typeof currentSyncLocation !== "undefined" && (
+									{typeof currentSyncLocation !== "undefined" && !currentSyncLocation.busy && (
 										<Flex
 											width="100%"
 											height="auto"

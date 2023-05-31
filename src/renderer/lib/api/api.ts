@@ -141,6 +141,12 @@ export const doAPIRequest = ({
 							const str = Buffer.concat(res).toString()
 							const obj = JSON.parse(str)
 
+							if (typeof obj.code === "string" && obj.code === "internal_error") {
+								setTimeout(doRequest, constants.retryAPIRequestTimeout)
+
+								return
+							}
+
 							if (includeRaw) {
 								resolve({
 									data: obj,
@@ -1520,7 +1526,7 @@ export const uploadChunk = ({
 	})
 }
 
-export const markUploadAsDone = (data: {
+export const markUploadAsDone = async (data: {
 	uuid: string
 	name: string
 	nameHashed: string
@@ -1532,44 +1538,17 @@ export const markUploadAsDone = (data: {
 	version: number
 	uploadKey: string
 }): Promise<{ chunks: number; size: number }> => {
-	return new Promise<{ chunks: number; size: number }>((resolve, reject) => {
-		let tries = 0
-		let lastErr: Error
-
-		const req = async () => {
-			if (tries >= 10) {
-				reject(lastErr)
-
-				return
-			}
-
-			tries += 1
-
-			try {
-				const response = await apiRequest({
-					method: "POST",
-					endpoint: "/v3/upload/done",
-					data
-				})
-
-				if (!response.status) {
-					lastErr = new Error(response.message)
-
-					setTimeout(req, 3000)
-
-					return
-				}
-
-				resolve(response.data)
-			} catch (e: any) {
-				lastErr = e
-
-				setTimeout(req, 3000)
-			}
-		}
-
-		req()
+	const response = await apiRequest({
+		method: "POST",
+		endpoint: "/v3/upload/done",
+		data
 	})
+
+	if (!response.status) {
+		throw new Error(response.message)
+	}
+
+	return response.data
 }
 
 export const downloadChunk = ({
