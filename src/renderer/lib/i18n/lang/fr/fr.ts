@@ -52,7 +52,7 @@ const fr: {
 	launchAtSystemStartup: "Lancer au démarrage du système",
 	darkMode: "Mode sombre",
 	excludeDot: "Exclure les fichiers et dossiers commençant par un point (recommandé)",
-	excludeDotTooltip: 'Exclut les fichiers et dossiers dont le nom commence par un point, par exemple ".gitignore, .DS_Store"',
+	excludeDotTooltip: 'Exclut les fichiers et dossiers dont le nom commence par un point, par exemple ".cache, .config"',
 	language: "Langue",
 	saveLogs: "Enregistrer les logs",
 	cannotCreateSyncLocation: "Impossible de créer un emplacement de synchronisation",
@@ -148,11 +148,11 @@ const fr: {
 		"L'emplacement distant sélectionné est déjà un emplacement de synchronisation configuré. Cela pourrait amener à des boucles de synchronisation sans fin"
 titlebarUpdateAvailable: "Mise à jour disponible",
 	updateWindowInfo:
-		"Une nouvelle version de Filen a été téléchargée et est prête à être installée. Veuillez l'installer au plus vite pour bénéficier des corrections de bugs et de nouvelles fonctionnalités.",
+		"Une nouvelle version de Filen a été téléchargée. Elle est prête à être installée. Veuillez l'installer au plus vite pour bénéficier des corrections de bugs et de nouvelles fonctionnalités.",
 	updateWindowButton: "Installer",
 	updateWindowInfo2: "L'appli se fermera et la mise à jour commencera. Veuillez ne pas interrompre le processus.",
 	titlebarUpdateInstalled: "Mise à jour installée",
-	clearLocalEventLog: "Effacer le journal d'évènements local",
+	clearLocalEventLog: "Effacer le journal local des évènements",
 	clearLocalEventLogInfo: "Cela effacera tout le journal affiché. OK? Cette action est irréversible!",
 	copied: "Copié",
 	publicLinkCopied: "Le lien public a été copié dans le presse-papier",
