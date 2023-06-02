@@ -1,5 +1,12 @@
 import constants from "../../../constants.json"
-import { getRandomArbitrary, Semaphore, nodeBufferToArrayBuffer, generateRandomString, chunkedPromiseAll } from "../helpers"
+import {
+	getRandomArbitrary,
+	Semaphore,
+	nodeBufferToArrayBuffer,
+	generateRandomString,
+	chunkedPromiseAll,
+	parseURLParamsSearch
+} from "../helpers"
 import {
 	hashFn,
 	encryptMetadata,
@@ -50,6 +57,8 @@ const httpsDownloadAgent = new https.Agent({
 	timeout: 3600000
 })
 
+const textEncoder = new TextEncoder()
+
 export const getAPIServer = () => {
 	return constants.apiServers[getRandomArbitrary(0, constants.apiServers.length - 1)]
 }
@@ -71,123 +80,129 @@ export const doAPIRequest = ({
 	apiKey = undefined
 }): Promise<any> => {
 	return new Promise((resolve, reject) => {
-		let currentTries = 0
+		bufferToHash(textEncoder.encode(JSON.stringify(typeof data !== "undefined" ? data : {})), "SHA-512")
+			.then(checksum => {
+				let currentTries = 0
 
-		const doRequest = (): any => {
-			if (!window.navigator.onLine) {
-				return setTimeout(doRequest, constants.retryAPIRequestTimeout)
-			}
-
-			if (currentTries >= constants.maxRetryAPIRequest) {
-				return reject(
-					new Error(
-						"Maximum retries (" +
-							constants.maxRetryAPIRequest +
-							") reached for API request: " +
-							JSON.stringify({
-								method,
-								endpoint,
-								data,
-								timeout
-							})
-					)
-				)
-			}
-
-			currentTries += 1
-
-			const req = https.request(
-				{
-					method: method.toUpperCase(),
-					hostname: "gateway.filen.io",
-					path: endpoint,
-					port: 443,
-					timeout: 3600000,
-					agent: httpsAPIAgent,
-					headers: {
-						"Content-Type": "application/json",
-						"User-Agent": "filen-desktop/" + packageJSON.version + "-" + packageJSON.buildNumber + "-" + process.platform,
-						Authorization: "Bearer " + apiKey
+				const doRequest = (): any => {
+					if (!window.navigator.onLine) {
+						return setTimeout(doRequest, constants.retryAPIRequestTimeout)
 					}
-				},
-				(response: any) => {
-					if (response.statusCode !== 200) {
-						log.error(
+
+					if (currentTries >= constants.maxRetryAPIRequest) {
+						return reject(
 							new Error(
-								"API response " +
-									response.statusCode +
-									", method: " +
-									method.toUpperCase() +
-									", endpoint: " +
-									endpoint +
-									", data: " +
-									JSON.stringify(data)
+								"Maximum retries (" +
+									constants.maxRetryAPIRequest +
+									") reached for API request: " +
+									JSON.stringify({
+										method,
+										endpoint,
+										data,
+										timeout
+									})
 							)
 						)
-
-						setTimeout(doRequest, constants.retryAPIRequestTimeout)
-
-						return
 					}
 
-					const res: Buffer[] = []
+					currentTries += 1
 
-					response.on("data", (chunk: Buffer) => {
-						res.push(chunk)
-					})
+					const req = https.request(
+						{
+							method: method.toUpperCase(),
+							hostname: "gateway.filen.io",
+							path: endpoint,
+							port: 443,
+							timeout: 3600000,
+							agent: httpsAPIAgent,
+							headers: {
+								"Content-Type": "application/json",
+								"User-Agent":
+									"filen-desktop/" + packageJSON.version + "-" + packageJSON.buildNumber + "-" + process.platform,
+								Authorization: "Bearer " + apiKey,
+								Checksum: checksum
+							}
+						},
+						(response: any) => {
+							if (response.statusCode !== 200) {
+								log.error(
+									new Error(
+										"API response " +
+											response.statusCode +
+											", method: " +
+											method.toUpperCase() +
+											", endpoint: " +
+											endpoint +
+											", data: " +
+											JSON.stringify(data)
+									)
+								)
 
-					response.on("end", () => {
-						try {
-							const str = Buffer.concat(res).toString()
-							const obj = JSON.parse(str)
-
-							if (typeof obj.code === "string" && obj.code === "internal_error") {
 								setTimeout(doRequest, constants.retryAPIRequestTimeout)
 
 								return
 							}
 
-							if (includeRaw) {
-								resolve({
-									data: obj,
-									raw: str
-								})
+							const res: Buffer[] = []
 
-								return
-							}
+							response.on("data", (chunk: Buffer) => {
+								res.push(chunk)
+							})
 
-							resolve(obj)
-						} catch (e) {
-							log.error(e)
+							response.on("end", () => {
+								try {
+									const str = Buffer.concat(res).toString()
+									const obj = JSON.parse(str)
 
-							reject(e)
+									if (typeof obj.code === "string" && obj.code === "internal_error") {
+										setTimeout(doRequest, constants.retryAPIRequestTimeout)
+
+										return
+									}
+
+									if (includeRaw) {
+										resolve({
+											data: obj,
+											raw: str
+										})
+
+										return
+									}
+
+									resolve(obj)
+								} catch (e) {
+									log.error(e)
+
+									reject(e)
+								}
+							})
 						}
+					)
+
+					req.on("error", (err: any) => {
+						log.error(err)
+
+						setTimeout(doRequest, constants.retryAPIRequestTimeout)
 					})
+
+					req.on("timeout", () => {
+						log.error("API request timed out")
+
+						req.destroy()
+
+						setTimeout(doRequest, constants.retryAPIRequestTimeout)
+					})
+
+					if (method.toUpperCase() === "POST") {
+						req.write(JSON.stringify(data))
+					}
+
+					req.end()
 				}
-			)
 
-			req.on("error", (err: any) => {
-				log.error(err)
-
-				setTimeout(doRequest, constants.retryAPIRequestTimeout)
+				doRequest()
 			})
-
-			req.on("timeout", () => {
-				log.error("API request timed out")
-
-				req.destroy()
-
-				setTimeout(doRequest, constants.retryAPIRequestTimeout)
-			})
-
-			if (method.toUpperCase() === "POST") {
-				req.write(JSON.stringify(data))
-			}
-
-			req.end()
-		}
-
-		return doRequest()
+			.catch(reject)
 	})
 }
 
@@ -1371,151 +1386,155 @@ export const uploadChunk = ({
 					return getPausedStatus()
 				})
 
-				if (data.byteLength > 0) {
-					queryParams = queryParams + "&hash=" + encodeURIComponent(chunkHash)
-				}
+				queryParams = queryParams + "&hash=" + encodeURIComponent(chunkHash)
 
 				const urlParams = new URLSearchParams(queryParams)
 				const uuid = urlParams.get("uuid") || ""
+				const parsedURLParams = parseURLParamsSearch(urlParams)
 
-				let bps = 122070 * 1024
+				bufferToHash(textEncoder.encode(JSON.stringify(parsedURLParams)), "SHA-512")
+					.then(checksum => {
+						let bps = 122070 * 1024
 
-				if (networkingSettings !== null && typeof networkingSettings == "object" && from == "sync") {
-					if (typeof networkingSettings.uploadKbps !== "undefined" && networkingSettings.uploadKbps > 0) {
-						bps = Math.floor(networkingSettings.uploadKbps * 1024)
-					}
-				}
-
-				throttleGroupUpload.setRate(bps)
-
-				let currentTries = 0
-
-				const doRequest = async (): Promise<any> => {
-					if (!window.navigator.onLine) {
-						setTimeout(doRequest, constants.retryUploadTimeout)
-
-						return
-					}
-
-					if (currentTries >= constants.maxRetryUpload) {
-						reject(new Error("Max retries reached for upload " + uuid))
-
-						return
-					}
-
-					currentTries += 1
-
-					let lastBytes = 0
-					const throttle = throttleGroupUpload.throttle()
-
-					const calcProgress = (written: number) => {
-						let bytes = written
-
-						if (lastBytes === 0) {
-							lastBytes = written
-						} else {
-							bytes = Math.floor(written - lastBytes)
-							lastBytes = written
+						if (networkingSettings !== null && typeof networkingSettings == "object" && from == "sync") {
+							if (typeof networkingSettings.uploadKbps !== "undefined" && networkingSettings.uploadKbps > 0) {
+								bps = Math.floor(networkingSettings.uploadKbps * 1024)
+							}
 						}
 
-						sendToAllPorts({
-							type: from == "sync" ? "uploadProgress" : "uploadProgressSeperate",
-							data: {
-								uuid,
-								bytes,
-								from
-							}
-						})
-					}
+						throttleGroupUpload.setRate(bps)
 
-					const req = https.request(
-						{
-							method: "POST",
-							hostname: "ingest.filen.io",
-							path: "/v3/upload?" + queryParams,
-							port: 443,
-							timeout: 3600000,
-							agent: httpsUploadAgent,
-							headers: {
-								"User-Agent":
-									"filen-desktop/" + packageJSON.version + "-" + packageJSON.buildNumber + "-" + process.platform,
-								Authorization: "Bearer " + apiKey,
-								"Content-Type": "application/x-www-form-urlencoded"
-							}
-						},
-						(response: any) => {
-							if (response.statusCode !== 200) {
-								log.error(new Error("Upload failed, status code: " + response.statusCode))
+						let currentTries = 0
 
-								throttle.destroy()
-
+						const doRequest = async (): Promise<any> => {
+							if (!window.navigator.onLine) {
 								setTimeout(doRequest, constants.retryUploadTimeout)
 
 								return
 							}
 
-							const res: Buffer[] = []
+							if (currentTries >= constants.maxRetryUpload) {
+								reject(new Error("Max retries reached for upload " + uuid))
 
-							response.on("data", (chunk: Buffer) => {
-								res.push(chunk)
-							})
+								return
+							}
 
-							response.on("end", () => {
-								try {
-									const obj = JSON.parse(Buffer.concat(res).toString())
+							currentTries += 1
 
-									if (!obj.status) {
-										if (obj.message.toLowerCase().indexOf("storage") !== -1) {
-											db.set("paused", true).catch(log.error)
-											db.set("maxStorageReached", true).catch(log.error)
-										}
+							let lastBytes = 0
+							const throttle = throttleGroupUpload.throttle()
+
+							const calcProgress = (written: number) => {
+								let bytes = written
+
+								if (lastBytes === 0) {
+									lastBytes = written
+								} else {
+									bytes = Math.floor(written - lastBytes)
+									lastBytes = written
+								}
+
+								sendToAllPorts({
+									type: from == "sync" ? "uploadProgress" : "uploadProgressSeperate",
+									data: {
+										uuid,
+										bytes,
+										from
+									}
+								})
+							}
+
+							const req = https.request(
+								{
+									method: "POST",
+									hostname: "ingest.filen.io",
+									path: "/v3/upload?" + queryParams,
+									port: 443,
+									timeout: 3600000,
+									agent: httpsUploadAgent,
+									headers: {
+										"User-Agent":
+											"filen-desktop/" + packageJSON.version + "-" + packageJSON.buildNumber + "-" + process.platform,
+										Authorization: "Bearer " + apiKey,
+										"Content-Type": "application/x-www-form-urlencoded",
+										Checksum: checksum
+									}
+								},
+								(response: any) => {
+									if (response.statusCode !== 200) {
+										log.error(new Error("Upload failed, status code: " + response.statusCode))
 
 										throttle.destroy()
 
-										reject(obj.message)
+										setTimeout(doRequest, constants.retryUploadTimeout)
 
 										return
 									}
 
-									resolve(obj)
-								} catch (e) {
-									reject(e)
+									const res: Buffer[] = []
+
+									response.on("data", (chunk: Buffer) => {
+										res.push(chunk)
+									})
+
+									response.on("end", () => {
+										try {
+											const obj = JSON.parse(Buffer.concat(res).toString())
+
+											if (!obj.status) {
+												if (obj.message.toLowerCase().indexOf("storage") !== -1) {
+													db.set("paused", true).catch(log.error)
+													db.set("maxStorageReached", true).catch(log.error)
+												}
+
+												throttle.destroy()
+
+												reject(obj.message)
+
+												return
+											}
+
+											resolve(obj)
+										} catch (e) {
+											reject(e)
+										}
+									})
 								}
+							)
+
+							req.on("error", (err: any) => {
+								log.error(err)
+
+								throttle.destroy()
+
+								reject(err)
 							})
+
+							req.on("timeout", () => {
+								log.error("Upload request timed out")
+
+								throttle.destroy()
+								req.destroy()
+
+								reject(new Error("Upload request timed out"))
+							})
+
+							const str = progress({
+								length: data.byteLength,
+								time: 100
+							})
+
+							str.on("progress", (info: any) => calcProgress(info.transferred))
+
+							Readable.from([data])
+								.pipe(str.on("end", () => str.destroy()))
+								.pipe(throttle.on("end", () => throttle.destroy()))
+								.pipe(req)
 						}
-					)
 
-					req.on("error", (err: any) => {
-						log.error(err)
-
-						throttle.destroy()
-
-						reject(err)
+						doRequest()
 					})
-
-					req.on("timeout", () => {
-						log.error("Upload request timed out")
-
-						throttle.destroy()
-						req.destroy()
-
-						reject(new Error("Upload request timed out"))
-					})
-
-					const str = progress({
-						length: data.byteLength,
-						time: 100
-					})
-
-					str.on("progress", (info: any) => calcProgress(info.transferred))
-
-					Readable.from([data])
-						.pipe(str.on("end", () => str.destroy()))
-						.pipe(throttle.on("end", () => throttle.destroy()))
-						.pipe(req)
-				}
-
-				doRequest()
+					.catch(reject)
 			})
 			.catch(reject)
 	})
