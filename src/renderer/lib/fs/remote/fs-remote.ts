@@ -11,7 +11,6 @@ import {
 	moveFolder,
 	renameFile,
 	renameFolder,
-	fileExists,
 	filePresent
 } from "../../api"
 import db from "../../db"

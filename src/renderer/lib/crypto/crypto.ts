@@ -286,9 +286,9 @@ export const encryptMetadata = async (data: string, key: any): Promise<string> =
 	return "002" + iv + arrayBufferToBase64(new Uint8Array(encrypted))
 }
 
-export const encryptData = async (data: any, key: string): Promise<string | Buffer> => {
-	if (typeof data == "undefined" || typeof data.byteLength == "undefined" || data.byteLength == 0) {
-		return ""
+export const encryptData = async (data: any, key: string): Promise<Buffer> => {
+	if (typeof data === "undefined" || typeof data.byteLength === "undefined" || data.byteLength === 0) {
+		throw new Error("encryptData: Invalid data")
 	}
 
 	const iv = generateRandomString(12)

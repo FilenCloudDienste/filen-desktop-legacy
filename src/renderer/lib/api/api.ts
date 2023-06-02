@@ -1302,17 +1302,12 @@ export const uploadChunk = ({
 	location = undefined
 }: {
 	queryParams: any
-	data: any
+	data: Uint8Array
 	from: string
 	location?: any
 }): Promise<any> => {
 	return new Promise((resolve, reject) => {
-		chunkedPromiseAll([
-			db.get("networkingSettings"),
-			db.get("maxStorageReached"),
-			db.get("apiKey"),
-			bufferToHash(data.byteLength > 0 ? data : new Uint8Array([1]), "SHA-512")
-		])
+		chunkedPromiseAll([db.get("networkingSettings"), db.get("maxStorageReached"), db.get("apiKey"), bufferToHash(data, "SHA-512")])
 			.then(async ([networkingSettings, maxStorageReached, apiKey, chunkHash]) => {
 				if (maxStorageReached) {
 					return reject(new Error("Max storage reached"))
