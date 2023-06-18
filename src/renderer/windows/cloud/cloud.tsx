@@ -104,7 +104,7 @@ const CloudItem = memo(
 						>
 							<BsFillFolderFill
 								size={18}
-								color={platform == "mac" ? "#3ea0d5" : "#ffd04c"}
+								color={platform == "windows" ? "#ffd04c" : "#3ea0d5"}
 							/>
 							<Text
 								noOfLines={1}
