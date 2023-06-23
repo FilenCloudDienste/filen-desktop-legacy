@@ -371,11 +371,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 	}, [])
 
 	return (
-		<Container
-			darkMode={darkMode}
-			lang={lang}
-			platform={platform}
-		>
+		<Container>
 			<Titlebar
 				darkMode={darkMode}
 				lang={lang}

@@ -1,15 +1,17 @@
 import React, { memo } from "react"
 import { Flex } from "@chakra-ui/react"
 import colors from "../../styles/colors"
+import usePlatform from "../../lib/hooks/usePlatform"
+import useDarkMode from "../../lib/hooks/useDarkMode"
 
 export interface ContainerProps {
-	darkMode: boolean
-	lang: string
-	platform: string
 	children: React.ReactNode
 }
 
-export const Container = memo(({ darkMode, lang, platform, children }: ContainerProps) => {
+export const Container = memo(({ children }: ContainerProps) => {
+	const darkMode = useDarkMode()
+	const platform = usePlatform()
+
 	return (
 		<Flex
 			padding="1px"

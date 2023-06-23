@@ -173,11 +173,7 @@ const AuthWindow = memo(({ windowId }: { windowId: string }) => {
 	}, [])
 
 	return (
-		<Container
-			darkMode={darkMode}
-			lang={lang}
-			platform={platform}
-		>
+		<Container>
 			<Titlebar
 				darkMode={darkMode}
 				lang={lang}

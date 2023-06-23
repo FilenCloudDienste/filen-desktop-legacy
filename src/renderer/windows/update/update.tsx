@@ -24,11 +24,7 @@ const UpdateWindow = memo(({ windowId, toVersion }: { windowId: string; toVersio
 	}, [])
 
 	return (
-		<Container
-			darkMode={darkMode}
-			lang={lang}
-			platform={platform}
-		>
+		<Container>
 			<Titlebar
 				darkMode={darkMode}
 				lang={lang}

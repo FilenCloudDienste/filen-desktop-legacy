@@ -1117,11 +1117,7 @@ const DownloadWindow = memo(({ userId, email, windowId }: { userId: number; emai
 	}, [])
 
 	return (
-		<Container
-			darkMode={darkMode}
-			lang={lang}
-			platform={platform}
-		>
+		<Container>
 			<Titlebar
 				darkMode={darkMode}
 				lang={lang}

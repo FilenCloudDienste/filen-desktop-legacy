@@ -268,11 +268,7 @@ const SettingsWindow = memo(
 		}, [])
 
 		return (
-			<Container
-				darkMode={darkMode}
-				lang={lang}
-				platform={platform}
-			>
+			<Container>
 				<Titlebar
 					darkMode={darkMode}
 					lang={lang}
