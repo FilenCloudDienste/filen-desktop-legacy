@@ -60,7 +60,7 @@ const Issue = memo(({ darkMode, lang, platform, issue }: { darkMode: boolean; la
 				{issue.err && issue.err.message && (
 					<Flex flexShrink={0}>
 						<Text
-							color={colors(platform, darkMode, "link")}
+							color={colors(platform, darkMode, "linkPrimary")}
 							fontSize={13}
 							marginLeft="10px"
 							width="100%"
@@ -133,7 +133,7 @@ const SettingsWindowIssues = memo(({ darkMode, lang, platform }: { darkMode: boo
 							</Flex>
 						</Flex>
 						<Link
-							color={colors(platform, darkMode, "link")}
+							color={colors(platform, darkMode, "linkPrimary")}
 							textDecoration="none"
 							_hover={{ textDecoration: "none" }}
 							marginTop="15px"
@@ -169,8 +169,9 @@ const SettingsWindowIssues = memo(({ darkMode, lang, platform }: { darkMode: boo
 			>
 				<ModalOverlay borderRadius="10px" />
 				<ModalContent
-					backgroundColor={colors(platform, darkMode, "backgroundPrimary")}
-					borderRadius="15px"
+					backgroundColor={colors(platform, darkMode, "backgroundSecondary")}
+					borderRadius="10px"
+					border={"1px solid " + colors(platform, darkMode, "borderPrimary")}
 				>
 					<ModalCloseButton
 						color={colors(platform, darkMode, "textPrimary")}
@@ -187,7 +188,7 @@ const SettingsWindowIssues = memo(({ darkMode, lang, platform }: { darkMode: boo
 					</ModalBody>
 					<ModalFooter alignItems="center">
 						<Link
-							color={colors(platform, darkMode, "link")}
+							color={colors(platform, darkMode, "linkPrimary")}
 							textDecoration="none"
 							_hover={{ textDecoration: "none" }}
 							onClick={async () => {
@@ -216,8 +217,9 @@ const SettingsWindowIssues = memo(({ darkMode, lang, platform }: { darkMode: boo
 			>
 				<ModalOverlay borderRadius="10px" />
 				<ModalContent
-					backgroundColor={colors(platform, darkMode, "backgroundPrimary")}
-					borderRadius="15px"
+					backgroundColor={colors(platform, darkMode, "backgroundSecondary")}
+					borderRadius="10px"
+					border={"1px solid " + colors(platform, darkMode, "borderPrimary")}
 				>
 					<ModalCloseButton
 						color={colors(platform, darkMode, "textPrimary")}

@@ -311,11 +311,9 @@ const SettingsWindowSyncs = memo(
 						</Flex>
 						<Flex marginTop="15px">
 							<Link
-								color={colors(platform, darkMode, "link")}
+								color={colors(platform, darkMode, "linkPrimary")}
 								textDecoration="none"
-								_hover={{
-									textDecoration: "none"
-								}}
+								_hover={{ textDecoration: "underline" }}
 								onClick={() => createNewSyncLocation()}
 							>
 								{i18n(lang, "createOne")}
@@ -522,11 +520,9 @@ const SettingsWindowSyncs = memo(
 													</Tooltip>
 												) : (
 													<Link
-														color={colors(platform, darkMode, "link")}
+														color={colors(platform, darkMode, "linkPrimary")}
 														textDecoration="none"
-														_hover={{
-															textDecoration: "none"
-														}}
+														_hover={{ textDecoration: "underline" }}
 														fontSize={14}
 														onClick={() => {
 															db.get("syncLocations:" + userId)
@@ -662,12 +658,10 @@ const SettingsWindowSyncs = memo(
 							}}
 						/>
 						<Link
-							color={colors(platform, darkMode, "link")}
+							color={colors(platform, darkMode, "linkPrimary")}
 							marginTop="10px"
 							textDecoration="none"
-							_hover={{
-								textDecoration: "none"
-							}}
+							_hover={{ textDecoration: "underline" }}
 							onClick={() => createNewSyncLocation()}
 						>
 							{i18n(lang, "createOne")}
@@ -681,8 +675,9 @@ const SettingsWindowSyncs = memo(
 				>
 					<ModalOverlay borderRadius="10px" />
 					<ModalContent
-						backgroundColor={colors(platform, darkMode, "backgroundPrimary")}
-						borderRadius="15px"
+						backgroundColor={colors(platform, darkMode, "backgroundSecondary")}
+						borderRadius="10px"
+						border={"1px solid " + colors(platform, darkMode, "borderPrimary")}
 					>
 						<ModalHeader color={colors(platform, darkMode, "textPrimary")}>{i18n(lang, "settings")}</ModalHeader>
 						<ModalCloseButton
@@ -917,9 +912,9 @@ const SettingsWindowSyncs = memo(
 											</Flex>
 											<Flex>
 												<Link
-													color={colors(platform, darkMode, "link")}
+													color={colors(platform, darkMode, "linkPrimary")}
 													textDecoration="none"
-													_hover={{ textDecoration: "none" }}
+													_hover={{ textDecoration: "underline" }}
 													onClick={() => {
 														setSyncSettingsModalOpen(false)
 
@@ -968,9 +963,9 @@ const SettingsWindowSyncs = memo(
 										</Flex>
 										<Flex>
 											<Link
-												color={colors(platform, darkMode, "link")}
+												color={colors(platform, darkMode, "linkPrimary")}
 												textDecoration="none"
-												_hover={{ textDecoration: "none" }}
+												_hover={{ textDecoration: "underline" }}
 												onClick={() => {
 													setSyncSettingsModalOpen(false)
 													setTimeout(() => setIgnoredFilesModalOpen(true), 100)
@@ -1037,9 +1032,9 @@ const SettingsWindowSyncs = memo(
 												marginTop="25px"
 											>
 												<Link
-													color={colors(platform, darkMode, "link")}
+													color={colors(platform, darkMode, "linkPrimary")}
 													textDecoration="none"
-													_hover={{ textDecoration: "none" }}
+													_hover={{ textDecoration: "underline" }}
 													fontSize={13}
 													onClick={async () =>
 														shell.openPath(await fsLocal.realPath(currentSyncLocation.local)).catch(log.error)
@@ -1057,9 +1052,9 @@ const SettingsWindowSyncs = memo(
 												marginTop="10px"
 											>
 												<Link
-													color={colors(platform, darkMode, "link")}
+													color={colors(platform, darkMode, "linkPrimary")}
 													textDecoration="none"
-													_hover={{ textDecoration: "none" }}
+													_hover={{ textDecoration: "underline" }}
 													fontSize={13}
 													onClick={async () =>
 														shell
@@ -1084,9 +1079,9 @@ const SettingsWindowSyncs = memo(
 											marginTop="25px"
 										>
 											<Link
-												color={colors(platform, darkMode, "danger")}
+												color={colors(platform, darkMode, "red")}
 												textDecoration="none"
-												_hover={{ textDecoration: "none" }}
+												_hover={{ textDecoration: "underline" }}
 												fontSize={11}
 												onClick={() => {
 													setSyncSettingsModalOpen(false)
@@ -1101,16 +1096,7 @@ const SettingsWindowSyncs = memo(
 								</>
 							)}
 						</ModalBody>
-						<ModalFooter>
-							<Link
-								color={colors(platform, darkMode, "link")}
-								textDecoration="none"
-								_hover={{ textDecoration: "none" }}
-								onClick={() => setSyncSettingsModalOpen(false)}
-							>
-								{i18n(lang, "close")}
-							</Link>
-						</ModalFooter>
+						<ModalFooter />
 					</ModalContent>
 				</Modal>
 				<Modal
@@ -1120,8 +1106,9 @@ const SettingsWindowSyncs = memo(
 				>
 					<ModalOverlay borderRadius="10px" />
 					<ModalContent
-						backgroundColor={colors(platform, darkMode, "backgroundPrimary")}
-						borderRadius="15px"
+						backgroundColor={colors(platform, darkMode, "backgroundSecondary")}
+						borderRadius="10px"
+						border={"1px solid " + colors(platform, darkMode, "borderPrimary")}
 					>
 						<ModalHeader color={colors(platform, darkMode, "textPrimary")}>{i18n(lang, "settings")}</ModalHeader>
 						<ModalCloseButton
@@ -1154,9 +1141,9 @@ const SettingsWindowSyncs = memo(
 						</ModalBody>
 						<ModalFooter>
 							<Link
-								color={isDeletingSyncLocation ? "gray" : colors(platform, darkMode, "danger")}
+								color={isDeletingSyncLocation ? "gray" : colors(platform, darkMode, "red")}
 								textDecoration="none"
-								_hover={{ textDecoration: "none" }}
+								_hover={{ textDecoration: "underline" }}
 								onClick={async () => {
 									if (isDeletingSyncLocation) {
 										return false
@@ -1205,8 +1192,9 @@ const SettingsWindowSyncs = memo(
 				>
 					<ModalOverlay borderRadius="10px" />
 					<ModalContent
-						backgroundColor={colors(platform, darkMode, "backgroundPrimary")}
+						backgroundColor={colors(platform, darkMode, "backgroundSecondary")}
 						borderRadius="10px"
+						border={"1px solid " + colors(platform, darkMode, "borderPrimary")}
 					>
 						<ModalBody padding="0px">
 							<Flex

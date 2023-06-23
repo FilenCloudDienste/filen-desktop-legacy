@@ -658,7 +658,7 @@ const DownloadFolder = memo(
 							{i18n(lang, "downloadDone")}
 						</Text>
 						<Link
-							color={colors(platform, darkMode, "link")}
+							color={colors(platform, darkMode, "linkPrimary")}
 							textDecoration="none"
 							_hover={{ textDecoration: "none" }}
 							onClick={() => shell.openPath(downloadPath)}
@@ -879,7 +879,7 @@ const DownloadFolder = memo(
 										<>
 											{paused ? (
 												<Link
-													color={colors(platform, darkMode, "link")}
+													color={colors(platform, darkMode, "linkPrimary")}
 													textDecoration="none"
 													_hover={{ textDecoration: "none" }}
 													marginLeft="10px"
@@ -889,7 +889,7 @@ const DownloadFolder = memo(
 												</Link>
 											) : (
 												<Link
-													color={colors(platform, darkMode, "link")}
+													color={colors(platform, darkMode, "linkPrimary")}
 													textDecoration="none"
 													_hover={{ textDecoration: "none" }}
 													marginLeft="10px"

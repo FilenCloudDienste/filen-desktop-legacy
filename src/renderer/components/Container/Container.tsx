@@ -1,30 +1,42 @@
 import React, { memo } from "react"
-import { Box } from "@chakra-ui/react"
+import { Flex } from "@chakra-ui/react"
 import colors from "../../styles/colors"
 
-interface Props {
+export interface ContainerProps {
 	darkMode: boolean
 	lang: string
 	platform: string
 	children: React.ReactNode
 }
 
-const Container = memo(({ darkMode, lang, platform, children }: Props) => {
+export const Container = memo(({ darkMode, lang, platform, children }: ContainerProps) => {
 	return (
-		<Box
-			backgroundColor={colors(platform, darkMode, "backgroundPrimary")}
+		<Flex
+			padding="1px"
+			flexDirection="column"
 			width={window.innerWidth}
 			height={window.innerHeight}
-			color={colors(platform, darkMode, "textPrimary")}
-			borderBottomLeftRadius="10px"
-			borderBottomRightRadius="10px"
-			borderTopLeftRadius="10px"
-			borderTopRightRadius="10px"
-			border={"1px solid " + colors(platform, darkMode, "borderPrimary")}
-			overflow="hidden"
 		>
-			{children}
-		</Box>
+			<Flex
+				backgroundColor={
+					window.location.href.indexOf("main") !== -1
+						? colors(platform, darkMode, "backgroundSecondary")
+						: colors(platform, darkMode, "backgroundPrimary")
+				}
+				width={"100%"}
+				height={"100%"}
+				color={colors(platform, darkMode, "textPrimary")}
+				borderBottomLeftRadius="10px"
+				borderBottomRightRadius="10px"
+				borderTopLeftRadius="10px"
+				borderTopRightRadius="10px"
+				border={"1px solid " + (darkMode ? "#393939" : "darkgray")}
+				overflow="hidden"
+				flexDirection="column"
+			>
+				{children}
+			</Flex>
+		</Flex>
 	)
 })
 

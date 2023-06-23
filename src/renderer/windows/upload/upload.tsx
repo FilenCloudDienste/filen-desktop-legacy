@@ -758,7 +758,7 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number; email:
 										<>
 											{paused ? (
 												<Link
-													color={colors(platform, darkMode, "link")}
+													color={colors(platform, darkMode, "linkPrimary")}
 													textDecoration="none"
 													_hover={{ textDecoration: "none" }}
 													marginLeft="10px"
@@ -768,7 +768,7 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number; email:
 												</Link>
 											) : (
 												<Link
-													color={colors(platform, darkMode, "link")}
+													color={colors(platform, darkMode, "linkPrimary")}
 													textDecoration="none"
 													_hover={{ textDecoration: "none" }}
 													marginLeft="10px"

@@ -101,13 +101,23 @@ const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }: { darkMode: b
 							width="100%"
 							height="35px"
 							backgroundColor={colors(platform, darkMode, "backgroundSecondary")}
-							borderRadius="15px"
+							borderRadius="10px"
 							flexDirection="row"
 							alignItems="center"
 							justifyContent="space-between"
 							paddingLeft="10px"
 							paddingRight="10px"
-							marginTop={index > 0 ? "10px" : "0px"}
+							marginTop={index > 0 ? "8px" : "0px"}
+							border="1px solid transparent"
+							_hover={{
+								borderColor: colors(platform, darkMode, "borderPrimary")
+							}}
+							onClick={() => {
+								setKeybindToChange(keybind.type)
+								setCurrentKeybind("")
+								setChangeKeybindModalOpen(true)
+							}}
+							cursor="pointer"
 						>
 							<Flex
 								alignItems="center"
@@ -116,6 +126,7 @@ const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }: { darkMode: b
 								<Text
 									fontSize={14}
 									color={colors(platform, darkMode, "textPrimary")}
+									fontWeight="400 !important"
 								>
 									{i18n(lang, "keybinds_" + keybind.type)}
 								</Text>
@@ -146,23 +157,23 @@ const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }: { darkMode: b
 							>
 								<Text
 									fontSize={14}
-									color={colors(platform, darkMode, "textPrimary")}
+									color={colors(platform, darkMode, "textSecondary")}
 								>
 									<Kbd
 										backgroundColor={colors(platform, darkMode, "backgroundPrimary")}
-										color={colors(platform, darkMode, "textPrimary")}
+										color={colors(platform, darkMode, "textSecondary")}
 										borderColor={colors(platform, darkMode, "backgroundPrimary")}
 									>
 										{keybind.keybind == null ? i18n(lang, "keybindNotBound") : keybind.keybind}
 									</Kbd>
 								</Text>
 								<Link
-									color={colors(platform, darkMode, "link")}
+									color={colors(platform, darkMode, "linkPrimary")}
 									fontSize={14}
 									textDecoration="none"
 									marginLeft="10px"
 									_hover={{
-										textDecoration: "none"
+										textDecoration: "underline"
 									}}
 									onClick={() => {
 										setKeybindToChange(keybind.type)
@@ -177,9 +188,9 @@ const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }: { darkMode: b
 					)
 				})}
 				<Link
-					color={colors(platform, darkMode, "link")}
+					color={colors(platform, darkMode, "linkPrimary")}
 					textDecoration="none"
-					_hover={{ textDecoration: "none" }}
+					_hover={{ textDecoration: "underline" }}
 					margin="0px auto"
 					marginTop="25px"
 					onClick={() => db.set("keybinds", defaultKeybinds).catch(log.error)}
@@ -194,8 +205,9 @@ const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }: { darkMode: b
 			>
 				<ModalOverlay borderRadius="10px" />
 				<ModalContent
-					backgroundColor={colors(platform, darkMode, "backgroundPrimary")}
-					borderRadius="15px"
+					backgroundColor={colors(platform, darkMode, "backgroundSecondary")}
+					borderRadius="10px"
+					border={"1px solid " + colors(platform, darkMode, "borderPrimary")}
 				>
 					<ModalCloseButton
 						color={colors(platform, darkMode, "textPrimary")}
@@ -229,9 +241,9 @@ const SettingsWindowKeybinds = memo(({ darkMode, lang, platform }: { darkMode: b
 					</ModalBody>
 					<ModalFooter>
 						<Link
-							color={colors(platform, darkMode, "link")}
+							color={colors(platform, darkMode, "linkPrimary")}
 							textDecoration="none"
-							_hover={{ textDecoration: "none" }}
+							_hover={{ textDecoration: "underline" }}
 							onClick={() => {
 								if (keybindToChange.length == 0 || currentKeybind.length == 0) {
 									return setChangeKeybindModalOpen(false)

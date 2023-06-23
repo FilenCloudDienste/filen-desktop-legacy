@@ -111,7 +111,7 @@ const MainList = memo(({ userId, platform, darkMode, lang, activity, isOnline }:
 					</Flex>
 					<Flex marginTop="15px">
 						<Link
-							color={colors(platform, darkMode, "link")}
+							color={colors(platform, darkMode, "linkPrimary")}
 							textDecoration="none"
 							_hover={{
 								textDecoration: "none"

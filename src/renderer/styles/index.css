@@ -110,6 +110,7 @@
 body {
 	font-family: "Inter", sans-serif !important;
 	user-select: none !important;
+	font-weight: 400 !important;
 }
 
 * {
@@ -117,6 +118,9 @@ body {
 	scrollbar-color: gray #ffffff;
 	outline: none;
 	user-select: none;
+	font-family: "Inter", sans-serif !important;
+	user-select: none !important;
+	font-weight: 450 !important;
 }
 
 *:active,

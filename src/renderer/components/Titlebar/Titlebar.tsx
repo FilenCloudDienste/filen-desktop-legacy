@@ -34,20 +34,18 @@ const Titlebar = memo(({ darkMode, lang, platform, title }: Props) => {
 		<Flex
 			style={{
 				// @ts-ignore
-				WebkitAppRegion: "drag",
-				width: "99.75%",
-				backgroundColor:
-					(!isTrayAvailable && currentWindow == "main") || (currentWindow == "cloud" && platform == "mac")
-						? "transparent"
-						: colors(platform, darkMode, "titlebarBackgroundPrimary"),
-				paddingTop: 0,
-				alignItems: "center",
-				justifyContent: "center",
-				borderTopLeftRadius: "10px",
-				borderTopRightRadius: "10px"
+				WebkitAppRegion: "drag"
 			}}
+			backgroundColor={
+				(!isTrayAvailable && currentWindow == "main") || (currentWindow == "cloud" && platform == "mac")
+					? "transparent"
+					: colors(platform, darkMode, "backgroundSecondary")
+			}
+			borderTopLeftRadius="10px"
+			borderTopRightRadius="10px"
+			justifyContent="center"
+			alignItems="center"
 			zIndex={100001}
-			position="fixed"
 			height={!isTrayAvailable && currentWindow == "main" ? "30px" : platform == "mac" ? "27px" : "35px"}
 		>
 			{(platform == "windows" || platform == "linux") && (
@@ -123,11 +121,10 @@ const Titlebar = memo(({ darkMode, lang, platform, title }: Props) => {
 				</Flex>
 			)}
 			<Text
-				color={darkMode ? "white" : "gray"}
+				color={colors(platform, darkMode, "textPrimary")}
 				userSelect="none"
 				fontWeight="bold"
 				fontSize={14}
-				marginTop="-5px"
 			>
 				{title}
 			</Text>
