@@ -33,8 +33,6 @@ const applyDoneTasksToSavedState = async ({
 	localTreeNow: any
 	remoteTreeNow: any
 }): Promise<any> => {
-	console.log(localTreeNow, remoteTreeNow, doneTasks)
-
 	for (const doneTask of doneTasks) {
 		const { type, task } = doneTask
 

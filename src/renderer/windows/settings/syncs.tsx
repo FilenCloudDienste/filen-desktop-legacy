@@ -619,11 +619,11 @@ const SettingsWindowSyncs = memo(
 																			}
 																		})
 																		.catch(err => {
-																			console.log(err)
+																			log.error(err)
 																		})
 																})
 																.catch(err => {
-																	console.log(err)
+																	log.error(err)
 																})
 														}}
 													>

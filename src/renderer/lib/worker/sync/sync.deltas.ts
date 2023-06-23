@@ -318,8 +318,6 @@ export const getDeltas = async (type: "local" | "remote", before: any, now: any)
 
 		for (const renamedPath in deltasFoldersRenamedOrMoved) {
 			if (path.startsWith(deltasFoldersRenamedOrMoved[renamedPath].to)) {
-				console.log(path, "parent moved")
-
 				delete deltasFolders[path]
 			}
 		}
@@ -332,17 +330,10 @@ export const getDeltas = async (type: "local" | "remote", before: any, now: any)
 
 		for (const renamedPath in deltasFoldersRenamedOrMoved) {
 			if (path.startsWith(deltasFoldersRenamedOrMoved[renamedPath].to)) {
-				console.log(path, "parent moved")
-
 				delete deltasFiles[path]
 			}
 		}
 	}
-
-	console.log({
-		files: deltasFiles,
-		folders: deltasFolders
-	})
 
 	return {
 		files: deltasFiles,
@@ -878,19 +869,6 @@ export const consumeDeltas = async ({
 			continue
 		}
 	}
-
-	console.log({
-		uploadToRemote,
-		downloadFromRemote,
-		renameInLocal,
-		renameInRemote,
-		moveInLocal,
-		moveInRemote,
-		deleteInLocal,
-		deleteInRemote
-	})
-
-	//await new Promise(resolve => setTimeout(resolve, 100101010101))
 
 	return {
 		uploadToRemote,
