@@ -126,7 +126,7 @@ export const generatePasswordAndMasterKeysBasedOnAuthVersion = async ({
 		const derivedKey = (await deriveKeyFromPassword({
 			password: rawPassword,
 			salt,
-			iterations: 200000,
+			iterations: 210000,
 			hash: "SHA-512",
 			bitLength: 512,
 			returnHex: true
