@@ -6,7 +6,7 @@
 /dist
 /.pnp
 .pnp.js
-package-lock.json
+#package-lock.json
 
 scripts/*.cer
 scripts/*.pem
