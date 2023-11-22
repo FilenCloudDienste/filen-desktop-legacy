@@ -270,7 +270,100 @@ const zh: {
 	// Only upload data to the cloud, never delete anything or act on remote changes
 	syncModeLocalBackupInfo: "仅仅上传数据到云端，不会删除任何东西，云端变动不会影响本地",
 	// Only download data from the cloud, never delete anything or act on local changes
-	syncModeCloudBackupInfo: "仅仅下载数据到本地，不会删除任何东西，本地变动不会影响云端"
+	syncModeCloudBackupInfo: "仅仅下载数据到本地，不会删除任何东西，本地变动不会影响云端",
+	// Cancel
+	cancel: "取消",
+	// The remote path you have selected is already a configured sync location. This could lead to endless sync loops
+	cannotCreateSyncLocationLoop2: "您选择的远程路径已经是配置的同步位置。这可能会导致无限的同步循环",
+	// Update available
+	titlebarUpdateAvailable: "有可用的更新",
+	// A new version has been downloaded and is ready to be installed. Please install it as soon as possible to benefit from bug fixes and new features.
+	updateWindowInfo:
+		"新版本已下载并准备安装。请尽快安装它，以便从错误修复和新功能中受益。",
+	// Install
+	updateWindowButton: "安装",
+	// The app will exit and start the update flow. Please do not interrupt this process.
+	updateWindowInfo2: "应用程序将退出并开始更新流程。请不要中断此过程。",
+	// Update installed
+	titlebarUpdateInstalled: "已安装更新",
+	// Clear local event log
+	clearLocalEventLog: "清除本地事件日志",
+	// This will clear the local event log shown. Are you sure? This action cannot be undone!
+	clearLocalEventLogInfo: "这将清除显示的本地事件日志。你确定吗？此操作无法撤消！",
+	// Copied
+	copied: "已复制",
+	// Public link copied to clipboard
+	publicLinkCopied: "公开链接已复制到剪贴板",
+	// Clear local trash bins
+	clearLocalTrashDirs: "清空本地垃圾箱",
+	// Clearing the local trash bins cannot be undone! Are you sure?
+	clearLocalTrashDirsInfo: "清空本地垃圾箱的操作无法撤消！你确定吗？",
+	// The client will exit and start the update flow in the background. It will restart itself when it is done. Please do not interrupt this process.
+	updateWindowInfo3:
+		"客户端将退出并在后台启动更新流程。完成后它将自行重新启动。请不要中断此过程。",
+	// Please login
+	pleaseLogin: "请登录",
+	// __NUM__ sync issues
+	traySyncIssues: "__NUM__ 个同步问题",
+	// Syncing __NUM__ items
+	traySyncing: "正在同步 __NUM__ 个项目",
+	// Everything synced
+	everythingSynced: "均已同步",
+	// __NUM__ warnings
+	trayWarnings: "__NUM__ 个警告",
+	// No sync locations setup yet
+	trayNoSyncSetup: "尚未设置同步位置",
+	// No remote sync locations setup yet
+	trayNoSyncRemoteSetup: "尚未设置远程同步位置",
+	// __TIME__ seconds ago
+	timeSinceSeconds: "__TIME__ 秒之前",
+	// __TIME__ minutes ago
+	timeSinceMinutes: "__TIME__ 分钟之前",
+	// __TIME__ hours ago
+	timeSinceHours: "__TIME__ 小时之前",
+	// __TIME__ days ago
+	timeSinceDays: "__TIME__ 天之前",
+	// __TIME__ months ago
+	timeSinceMonths: "__TIME__ 个月之前",
+	// __TIME__ years ago
+	timeSinceYears: "__TIME__ 年之前",
+	// Show
+	trayMenuShow: "显示",
+	// Force sync
+	trayMenuForceSync: "强制同步",
+	// Upload folders
+	trayMenuUploadFolders: "上传文件夹",
+	// Upload files
+	trayMenuUploadFiles: "上传文件",
+	// Settings
+	trayMenuSettings: "设置",
+	// Quit Filen
+	trayMenuQuit: "退出 Filen",
+	// Open local folder
+	openLocalFolder: "打开本地文件夹",
+	// Open local trash folder
+	openLocalTrash: "打开本地垃圾箱文件夹",
+	// Help
+	help: "帮助",
+	// Possible solution
+	possibleSolution: "可能的解决方案",
+	// Please make sure that the client has all permissions needed to read and write to the above path.
+	possibleSolutionEPERM: "请确保客户端具有读取和写入上述路径所需的所有权限。",
+	// Please make sure the above path exists on your system.
+	possibleSolutionENOENT: "请确保您的系统上存在上述路径。",
+	// The client could not access the above path. Please check if other programs are actively using it or locking it.
+	possibleSolutionEBUSY:
+		"客户端无法访问上述路径。请检查其他程序是否正在使用它或正在锁定它。",
+	// Not enough file descriptors or space left on your system.
+	possibleSolutionEMFILE: "系统上没有足够的文件描述符或空间。",
+	// Please make sure your local sync location does not contain symlinks that result into infinite loops.
+	possibleSolutionELOOP: "请确保您的本地同步位置不包含导致无限循环的符号链接。",
+	// File name or path too long. Please reduce the length to a value supported by your operating system.
+	possibleSolutionENAMETOOLONG: "文件名或路径太长。请将长度减少到您的操作系统支持的值。",
+	// Issue
+	issue: "问题",
+	// Path
+	path: "路径"
 }
 
 export default zh
