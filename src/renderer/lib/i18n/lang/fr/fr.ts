@@ -46,7 +46,7 @@ const fr: {
 	change: "Modifier",
 	open: "Ouvrir",
 	noFilesOrFoldersUploadedYet: "Aucun fichier ou dossier chargé pour l'instant",
-	uploadDone: "Chargement effectuée",
+	uploadDone: "Chargement effectué",
 	preparingUpload: "Préparation...",
 	preparingUploadFolders: "Création de la structure des dossiers...",
 	launchAtSystemStartup: "Lancer au démarrage du système",
