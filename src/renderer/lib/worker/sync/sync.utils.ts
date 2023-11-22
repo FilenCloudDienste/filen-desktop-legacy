@@ -9,14 +9,10 @@ const gitignoreParser = window.require("@gerhobbelt/gitignore-parser")
 export const isSyncLocationPaused = async (uuid: string): Promise<boolean> => {
 	try {
 		const userId = await db.get("userId")
-		let syncLocations = await db.get("syncLocations:" + userId)
-
-		if (!Array.isArray(syncLocations)) {
-			syncLocations = []
-		}
+		const syncLocations = await db.get("syncLocations:" + userId)
 
 		for (let i = 0; i < syncLocations.length; i++) {
-			if (syncLocations[i].uuid === uuid) {
+			if (syncLocations[i].uuid == uuid) {
 				return syncLocations[i].paused
 			}
 		}
@@ -31,7 +27,7 @@ export const isSuspended = async (): Promise<boolean> => {
 	try {
 		const suspend = await db.get("suspend")
 
-		if (typeof suspend === "boolean") {
+		if (typeof suspend == "boolean") {
 			return suspend
 		}
 
@@ -77,7 +73,7 @@ export const getSyncMode = async (location: Location): Promise<SyncModes> => {
 	const userId = await db.get("userId")
 	let syncLocations = await db.get("syncLocations:" + userId)
 
-	if (!syncLocations || syncLocations === null || !Array.isArray(syncLocations)) {
+	if (!Array.isArray(syncLocations)) {
 		return "twoWay"
 	}
 
@@ -107,13 +103,13 @@ onlyGetBaseParent<Move/Delete>(tasks) will return
 }
 */
 
-export const onlyGetBaseParentMove = (tasks: any[]): any[] => {
+export const onlyGetBaseParentMove = (tasks: any): any => {
 	const sorted = tasks.sort((a: any, b: any) => {
-		return a.from.split("/").length - b.from.split("/").length
+		return a.path.split("/").length - b.path.split("/").length
 	})
 
 	const newTasks: any[] = []
-	const moving: string[] = []
+	const moving: any[] = []
 
 	const exists = (path: string) => {
 		for (let i = 0; i < moving.length; i++) {
@@ -128,8 +124,8 @@ export const onlyGetBaseParentMove = (tasks: any[]): any[] => {
 	for (let i = 0; i < sorted.length; i++) {
 		const task = sorted[i]
 
-		if (typeof task.to === "string") {
-			const path = task.to
+		if (typeof task.path == "string") {
+			const path = task.path
 
 			if (!exists(path)) {
 				moving.push(path)
@@ -141,13 +137,13 @@ export const onlyGetBaseParentMove = (tasks: any[]): any[] => {
 	return newTasks
 }
 
-export const onlyGetBaseParentDelete = (tasks: any[]): any[] => {
+export const onlyGetBaseParentDelete = (tasks: any): any => {
 	const sorted = tasks.sort((a: any, b: any) => {
 		return a.path.split("/").length - b.path.split("/").length
 	})
 
 	const newTasks: any[] = []
-	const deleting: string[] = []
+	const deleting: any[] = []
 
 	const exists = (path: string) => {
 		for (let i = 0; i < deleting.length; i++) {
@@ -191,7 +187,7 @@ Since we only need one of them we sort them and return only one task for each ta
 */
 
 export const sortMoveRenameTasks = (tasks: any): any => {
-	const added: Record<string, boolean> = {}
+	const added: any = {}
 	const newTasks: any[] = []
 
 	tasks = tasks.filter(
@@ -299,21 +295,4 @@ export const isIgnoredBySelectiveSync = (selectiveSyncRemoteIgnore: { [key: stri
 	}
 
 	return false
-}
-
-export const updateSyncLocationBusy = async (uuid: string, busy: boolean): Promise<void> => {
-	const userId = await db.get("userId")
-	let syncLocations = await db.get("syncLocations:" + userId)
-
-	if (!Array.isArray(syncLocations)) {
-		syncLocations = []
-	}
-
-	for (let i = 0; i < syncLocations.length; i++) {
-		if (syncLocations[i].uuid === uuid) {
-			syncLocations[i].busy = busy
-		}
-	}
-
-	await db.set("syncLocations:" + userId, syncLocations)
 }

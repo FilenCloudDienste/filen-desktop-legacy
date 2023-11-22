@@ -47,11 +47,13 @@ const SettingsSelectionButton = memo(
 		title: string
 		color?: string
 	}) => {
+		const [hovering, setHovering] = useState<boolean>(false)
+
 		return (
 			<Flex
-				minWidth="80px"
+				minWidth="90px"
 				height="100%"
-				backgroundColor={selection == type ? colors(platform, darkMode, "backgroundPrimary") : "transparent"}
+				backgroundColor={selection === type ? colors(platform, darkMode, "backgroundTertiary") : "transparent"}
 				borderRadius="15px"
 				paddingLeft="15px"
 				paddingRight="15px"
@@ -65,8 +67,13 @@ const SettingsSelectionButton = memo(
 				userSelect="none"
 				marginLeft="3px"
 				_hover={{
-					backgroundColor: colors(platform, darkMode, "backgroundPrimary")
+					backgroundColor: colors(platform, darkMode, "backgroundTertiary")
 				}}
+				onMouseEnter={() => setHovering(true)}
+				onMouseLeave={() => setHovering(false)}
+				border={
+					hovering || selection === type ? "1px solid " + colors(platform, darkMode, "borderPrimary") : "1px solid transparent"
+				}
 			>
 				<Flex
 					width="100%"
@@ -78,44 +85,48 @@ const SettingsSelectionButton = memo(
 				>
 					{type == "general" && (
 						<HiOutlineCog
-							size={20}
-							color={darkMode ? "white" : "#333333"}
+							size={22}
+							color={colors(platform, darkMode, hovering || selection === type ? "textPrimary" : "textSecondary")}
 						/>
 					)}
 					{type == "syncs" && (
 						<AiOutlineSync
-							size={20}
-							color={darkMode ? "white" : "#333333"}
+							size={22}
+							color={colors(platform, darkMode, hovering || selection === type ? "textPrimary" : "textSecondary")}
 						/>
 					)}
 					{type == "account" && (
 						<VscAccount
-							size={20}
-							color={darkMode ? "white" : "#333333"}
+							size={22}
+							color={colors(platform, darkMode, hovering || selection === type ? "textPrimary" : "textSecondary")}
 						/>
 					)}
 					{type == "issues" && (
 						<GoIssueReopened
-							size={20}
-							color={typeof color == "string" ? color : darkMode ? "white" : "#333333"}
+							size={22}
+							color={
+								typeof color === "string"
+									? color
+									: colors(platform, darkMode, hovering || selection === type ? "textPrimary" : "textSecondary")
+							}
 						/>
 					)}
 					{type == "networking" && (
 						<MdOutlineNetworkCheck
-							size={20}
-							color={darkMode ? "white" : "#333333"}
+							size={22}
+							color={colors(platform, darkMode, hovering || selection === type ? "textPrimary" : "textSecondary")}
 						/>
 					)}
 					{type == "keybinds" && (
 						<BsKeyboard
-							size={20}
-							color={darkMode ? "white" : "#333333"}
+							size={22}
+							color={colors(platform, darkMode, hovering || selection === type ? "textPrimary" : "textSecondary")}
 						/>
 					)}
 					<Text
-						fontSize={13}
+						fontSize={14}
 						fontWeight="bold"
-						color={darkMode ? "white" : "#333333"}
+						color={colors(platform, darkMode, hovering || selection === type ? "textPrimary" : "textSecondary")}
 						userSelect="none"
 					>
 						{title}
@@ -144,7 +155,7 @@ const SettingsSelection = memo(
 
 		const [syncIssuesIncludesCritical] = useMemo(() => {
 			const filtered = syncIssues.filter(issue => ["critical", "conflict", "warning"].includes(issue.type))
-			const includesCritical = filtered.filter(issue => issue.type == "critical").length > 0
+			const includesCritical = filtered.filter(issue => issue.type === "critical").length > 0
 
 			return [includesCritical]
 		}, [syncIssues])
@@ -162,13 +173,14 @@ const SettingsSelection = memo(
 					// @ts-ignore
 					WebkitAppRegion: "drag"
 				}}
-				backgroundColor={colors(platform, darkMode, "titlebarBackgroundPrimary")}
+				backgroundColor={colors(platform, darkMode, "backgroundSecondary")}
 			>
 				<Flex
 					flexDirection="row"
 					width="auto"
 					height="auto"
 					userSelect="none"
+					gap="3px"
 					style={{
 						// @ts-ignore
 						WebkitAppRegion: "none"
@@ -256,11 +268,7 @@ const SettingsWindow = memo(
 		}, [])
 
 		return (
-			<Container
-				darkMode={darkMode}
-				lang={lang}
-				platform={platform}
-			>
+			<Container>
 				<Titlebar
 					darkMode={darkMode}
 					lang={lang}
@@ -272,7 +280,6 @@ const SettingsWindow = memo(
 						flexDirection="column"
 						width="100%"
 						height="570px"
-						paddingTop="20px"
 					>
 						<SettingsSelection
 							darkMode={darkMode}

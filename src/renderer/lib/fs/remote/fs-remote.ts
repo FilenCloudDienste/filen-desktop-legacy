@@ -10,8 +10,7 @@ import {
 	moveFile,
 	moveFolder,
 	renameFile,
-	renameFolder,
-	filePresent
+	renameFolder
 } from "../../api"
 import db from "../../db"
 import { decryptFolderName, decryptFileMetadata, hashFn, encryptMetadata, encryptData } from "../../crypto"
@@ -858,28 +857,13 @@ export const rm = async (type: string, uuid: string): Promise<void> => {
 }
 
 export const move = async (type: string, task: any, location: any, remoteTreeNow: any): Promise<void> => {
-	if (type === "file") {
-		const present = await filePresent(task.item.uuid)
-
-		if (!present.present || present.versioned || present.trash) {
-			return
-		}
-	} else {
-		const present = await folderPresent(task.item.uuid)
-
-		if (!present.present || present.trash) {
-			return
-		}
-	}
-
 	const parent = await findOrCreateParentDirectory(task.to, location.remoteUUID, remoteTreeNow)
-	const name = pathModule.basename(task.to)
 
 	if (type == "file") {
 		await moveFile({
 			file: {
 				uuid: task.item.uuid,
-				name,
+				name: task.item.metadata.name,
 				size: task.item.metadata.size,
 				mime: task.item.metadata.mime,
 				key: task.item.metadata.key,
@@ -891,7 +875,7 @@ export const move = async (type: string, task: any, location: any, remoteTreeNow
 		await moveFolder({
 			folder: {
 				uuid: task.item.uuid,
-				name
+				name: task.item.name
 			},
 			parent
 		})
@@ -899,20 +883,6 @@ export const move = async (type: string, task: any, location: any, remoteTreeNow
 }
 
 export const rename = async (type: string, task: any): Promise<void> => {
-	if (type === "file") {
-		const present = await filePresent(task.item.uuid)
-
-		if (!present.present || present.versioned || present.trash) {
-			return
-		}
-	} else {
-		const present = await folderPresent(task.item.uuid)
-
-		if (!present.present || present.trash) {
-			return
-		}
-	}
-
 	const newName = pathModule.basename(task.to)
 
 	if (newName.length == 0) {

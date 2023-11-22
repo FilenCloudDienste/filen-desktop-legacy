@@ -152,6 +152,7 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
 							<Text
 								color={colors(platform, darkMode, "textPrimary")}
 								fontSize={15}
+								fontWeight="400 !important"
 							>
 								{i18n(lang, "launchAtSystemStartup")}
 							</Text>
@@ -191,6 +192,7 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
 						<Text
 							color={colors(platform, darkMode, "textPrimary")}
 							fontSize={15}
+							fontWeight="400 !important"
 						>
 							{i18n(lang, "darkMode")}
 						</Text>
@@ -221,20 +223,24 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
 						<Tooltip
 							label={
 								<Text
-									color={colors(platform, darkMode, "textPrimary")}
+									color={colors(platform, darkMode, "textSecondary")}
 									fontSize={14}
+									fontWeight="400 !important"
 								>
 									{i18n(lang, "excludeDotTooltip")}
 								</Text>
 							}
 							placement="top-end"
-							borderRadius="15px"
+							borderRadius="10px"
 							backgroundColor={colors(platform, darkMode, "backgroundSecondary")}
+							border={"1px solid " + colors(platform, darkMode, "borderPrimary")}
 							shadow="none"
+							padding="10px"
 						>
 							<Text
 								color={colors(platform, darkMode, "textPrimary")}
 								fontSize={15}
+								fontWeight="400 !important"
 							>
 								{i18n(lang, "excludeDot")}
 							</Text>
@@ -272,6 +278,7 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
 						<Text
 							color={colors(platform, darkMode, "textPrimary")}
 							fontSize={15}
+							fontWeight="400 !important"
 						>
 							{i18n(lang, "language")}
 						</Text>
@@ -283,12 +290,43 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
 							fontSize={14}
 							height="30px"
 							borderColor={colors(platform, darkMode, "borderPrimary")}
+							shadow="none"
+							cursor="pointer"
 							_focus={{
-								outline: "none"
+								outline: "none",
+								shadow: "none",
+								borderColor: colors(platform, darkMode, "borderSecondary")
 							}}
 							outline="none"
 							_active={{
-								outline: "none"
+								outline: "none",
+								shadow: "none",
+								borderColor: colors(platform, darkMode, "borderSecondary")
+							}}
+							_expanded={{
+								outline: "none",
+								shadow: "none",
+								borderColor: colors(platform, darkMode, "borderSecondary")
+							}}
+							_highlighted={{
+								outline: "none",
+								shadow: "none",
+								borderColor: colors(platform, darkMode, "borderSecondary")
+							}}
+							_hover={{
+								outline: "none",
+								shadow: "none",
+								borderColor: colors(platform, darkMode, "borderSecondary")
+							}}
+							_selected={{
+								outline: "none",
+								shadow: "none",
+								borderColor: colors(platform, darkMode, "borderSecondary")
+							}}
+							_pressed={{
+								outline: "none",
+								shadow: "none",
+								borderColor: colors(platform, darkMode, "borderSecondary")
 							}}
 							onChange={(e: any) => {
 								Promise.all([db.set("lang", e.nativeEvent.target.value), db.set("langSetManually", true)]).catch(log.error)
@@ -481,13 +519,14 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
 						<Text
 							color={colors(platform, darkMode, "textPrimary")}
 							fontSize={15}
+							fontWeight="400 !important"
 						>
 							{i18n(lang, "clearLocalEventLog")}
 						</Text>
 					</Flex>
 					<Flex>
 						<Link
-							color={colors(platform, darkMode, "link")}
+							color={colors(platform, darkMode, "linkPrimary")}
 							fontSize={14}
 							textDecoration="none"
 							_hover={{
@@ -513,6 +552,7 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
 						<Text
 							color={colors(platform, darkMode, "textPrimary")}
 							fontSize={15}
+							fontWeight="400 !important"
 						>
 							{i18n(lang, "clearLocalTrashDirs")}
 						</Text>
@@ -530,7 +570,7 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
 						</Text>
 						{localTrashDirsSize > 0 && (
 							<Link
-								color={colors(platform, darkMode, "link")}
+								color={colors(platform, darkMode, "linkPrimary")}
 								fontSize={14}
 								textDecoration="none"
 								_hover={{
@@ -561,16 +601,18 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
 					>
 						<Flex>
 							<Text
-								color={colors(platform, darkMode, "textPrimary")}
-								fontSize={13}
+								color={colors(platform, darkMode, "textSecondary")}
+								fontSize={11}
+								fontWeight="400 !important"
 							>
 								v{appVersion}
 							</Text>
 						</Flex>
 						<Flex>
 							<Link
-								color={colors(platform, darkMode, "link")}
-								fontSize={13}
+								color={colors(platform, darkMode, "linkPrimary")}
+								fontSize={11}
+								fontWeight="400 !important"
 								textDecoration="none"
 								_hover={{
 									textDecoration: "underline"
@@ -590,8 +632,9 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
 			>
 				<ModalOverlay borderRadius="10px" />
 				<ModalContent
-					backgroundColor={colors(platform, darkMode, "backgroundPrimary")}
-					borderRadius="15px"
+					backgroundColor={colors(platform, darkMode, "backgroundSecondary")}
+					borderRadius="10px"
+					border={"1px solid " + colors(platform, darkMode, "borderPrimary")}
 				>
 					<ModalCloseButton
 						color={colors(platform, darkMode, "textPrimary")}
@@ -647,8 +690,9 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
 			>
 				<ModalOverlay borderRadius="10px" />
 				<ModalContent
-					backgroundColor={colors(platform, darkMode, "backgroundPrimary")}
-					borderRadius="15px"
+					backgroundColor={colors(platform, darkMode, "backgroundSecondary")}
+					borderRadius="10px"
+					border={"1px solid " + colors(platform, darkMode, "borderPrimary")}
 				>
 					<ModalCloseButton
 						color={colors(platform, darkMode, "textPrimary")}

@@ -106,7 +106,7 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }: { darkMode:
 							</Flex>
 							<Flex>
 								<Link
-									color={colors(platform, darkMode, "link")}
+									color={colors(platform, darkMode, "linkPrimary")}
 									textDecoration="none"
 									_hover={{
 										textDecoration: "none"
@@ -170,7 +170,7 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }: { darkMode:
 							</Flex>
 							<Flex>
 								<Link
-									color={colors(platform, darkMode, "link")}
+									color={colors(platform, darkMode, "linkPrimary")}
 									textDecoration="none"
 									_hover={{
 										textDecoration: "none"
@@ -190,8 +190,9 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }: { darkMode:
 					>
 						<ModalOverlay borderRadius="10px" />
 						<ModalContent
-							backgroundColor={colors(platform, darkMode, "backgroundPrimary")}
-							borderRadius="15px"
+							backgroundColor={colors(platform, darkMode, "backgroundSecondary")}
+							borderRadius="10px"
+							border={"1px solid " + colors(platform, darkMode, "borderPrimary")}
 						>
 							<ModalCloseButton
 								color={colors(platform, darkMode, "textPrimary")}
@@ -293,7 +294,7 @@ const SettingsWindowNetworking = memo(({ darkMode, lang, platform }: { darkMode:
 							</ModalBody>
 							<ModalFooter>
 								<Link
-									color={colors(platform, darkMode, "link")}
+									color={colors(platform, darkMode, "linkPrimary")}
 									textDecoration="none"
 									_hover={{ textDecoration: "none" }}
 									marginLeft="10px"

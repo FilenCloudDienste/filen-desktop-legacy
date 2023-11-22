@@ -459,11 +459,7 @@ const MainWindow = memo(({ userId, email, windowId }: { userId: number; email: s
 	}, [])
 
 	return (
-		<Container
-			darkMode={darkMode}
-			lang={lang}
-			platform={platform}
-		>
+		<Container>
 			{!isTrayAvailable && (
 				<Titlebar
 					darkMode={darkMode}

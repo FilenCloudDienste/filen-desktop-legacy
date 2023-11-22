@@ -1,6 +1,7 @@
 import pathModule from "path"
 import log from "electron-log"
 import nodeWatch from "node-watch"
+import is from "electron-is"
 import { powerMonitor } from "electron"
 import { emitGlobal } from "../ipc"
 import { getRandomArbitrary } from "../helpers"
@@ -33,7 +34,15 @@ export const emitToWorker = (data: any) => {
 }
 
 export const resumeWatchers = async () => {
+	if (is.linux()) {
+		return
+	}
+
 	for (const path in SUBS_INFO) {
+		if (await isNetworkPath(path)) {
+			continue
+		}
+
 		const locationUUID = SUBS_INFO[path]
 
 		try {
@@ -55,6 +64,10 @@ export const resumeWatchers = async () => {
 }
 
 export const restartWatcher = async (path: string, locationUUID: string) => {
+	if (is.linux() || (await isNetworkPath(path))) {
+		return
+	}
+
 	setTimeout(() => {
 		if (typeof didCloseDueToResume[path] == "undefined") {
 			delete SUBS[path]
@@ -78,30 +91,34 @@ powerMonitor.on("resume", () => resumeWatchers())
 powerMonitor.on("unlock-screen", () => resumeWatchers())
 powerMonitor.on("user-did-become-active", () => resumeWatchers())
 
-export const pollingFallback = async (path: string, locationUUID: string) => {
-	clearInterval(pollingTimeout[path])
-
-	pollingTimeout[path] = setInterval(() => {
-		emitToWorker({
-			event: "dummy",
-			name: "dummy",
-			watchPath: path,
-			locationUUID
-		})
-	}, getRandomArbitrary(30000, 60000))
-
-	setTimeout(() => {
-		emitToWorker({
-			event: "dummy",
-			name: "dummy",
-			watchPath: path,
-			locationUUID
-		})
-	}, 5000)
-}
-
 export const watch = (path: string, locationUUID: string) => {
 	return new Promise(async (resolve, reject) => {
+		if (is.linux() || (await isNetworkPath(path))) {
+			clearInterval(pollingTimeout[path])
+
+			pollingTimeout[path] = setInterval(() => {
+				emitToWorker({
+					event: "dummy",
+					name: "dummy",
+					watchPath: path,
+					locationUUID
+				})
+			}, getRandomArbitrary(30000, 60000))
+
+			setTimeout(() => {
+				emitToWorker({
+					event: "dummy",
+					name: "dummy",
+					watchPath: path,
+					locationUUID
+				})
+			}, 5000)
+
+			resolve(SUBS[path])
+
+			return
+		}
+
 		if (typeof SUBS[path] !== "undefined") {
 			resolve(SUBS[path])
 
@@ -128,7 +145,7 @@ export const watch = (path: string, locationUUID: string) => {
 				delete SUBS[path]
 				delete SUBS_INFO[path]
 
-				pollingFallback(path, locationUUID)
+				restartWatcher(path, locationUUID)
 			})
 
 			SUBS[path].on("close", () => {
@@ -142,8 +159,6 @@ export const watch = (path: string, locationUUID: string) => {
 			})
 		} catch (e) {
 			log.error(e)
-
-			pollingFallback(path, locationUUID)
 
 			reject(e)
 

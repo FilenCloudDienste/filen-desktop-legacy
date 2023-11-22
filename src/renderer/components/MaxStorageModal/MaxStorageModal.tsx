@@ -24,8 +24,9 @@ const MaxStorageModal = memo(({ lang, darkMode, platform }: { lang: string; dark
 		>
 			<ModalOverlay borderRadius="10px" />
 			<ModalContent
-				backgroundColor={colors(platform, darkMode, "backgroundPrimary")}
+				backgroundColor={colors(platform, darkMode, "backgroundSecondary")}
 				borderRadius="10px"
+				border={"1px solid " + colors(platform, darkMode, "borderPrimary")}
 			>
 				<ModalCloseButton
 					color={colors(platform, darkMode, "textPrimary")}
@@ -54,7 +55,7 @@ const MaxStorageModal = memo(({ lang, darkMode, platform }: { lang: string; dark
 							{i18n(lang, "maxStorageReached")}
 						</Text>
 						<Link
-							color={colors(platform, darkMode, "link")}
+							color={colors(platform, darkMode, "linkPrimary")}
 							fontSize={16}
 							textDecoration="none"
 							_hover={{

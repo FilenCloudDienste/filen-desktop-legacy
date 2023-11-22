@@ -661,23 +661,6 @@ export const hashKey = memoize((key: string) => {
 	return hash
 })
 
-export const parseURLParams = (url: string) => {
-	const urlParams = new URLSearchParams(new URL(url).search)
-	const params: Record<string, string> = {}
-
-	urlParams.forEach((value, key) => {
-		params[key] = value
-	})
-
-	return params
-}
-
-export const parseURLParamsSearch = (urlParams: URLSearchParams) => {
-	const params: Record<string, string> = {}
-
-	urlParams.forEach((value, key) => {
-		params[key] = value
-	})
-
-	return params
+export const replaceFirstNChars = (str: string, replacement: string, n: number) => {
+	return replacement + str.substring(n)
 }

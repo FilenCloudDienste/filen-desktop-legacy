@@ -381,11 +381,7 @@ const SelectiveSyncWindow = memo(({ userId, email, windowId }: { userId: number;
 	}, [])
 
 	return (
-		<Container
-			darkMode={darkMode}
-			lang={lang}
-			platform={platform}
-		>
+		<Container>
 			<Titlebar
 				darkMode={darkMode}
 				lang={lang}

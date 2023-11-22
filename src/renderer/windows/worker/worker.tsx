@@ -125,7 +125,7 @@ const WorkerWindow = memo(({ userId }: { userId: number }) => {
 					return
 				}
 
-				if (paused && runningSyncTasks <= 0 && !checkingChanges) {
+				if (paused) {
 					updateTray("paused", i18n(lang, "paused"))
 
 					return

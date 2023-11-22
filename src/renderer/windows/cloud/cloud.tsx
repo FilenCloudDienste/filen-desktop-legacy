@@ -371,11 +371,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 	}, [])
 
 	return (
-		<Container
-			darkMode={darkMode}
-			lang={lang}
-			platform={platform}
-		>
+		<Container>
 			<Titlebar
 				darkMode={darkMode}
 				lang={lang}
@@ -431,7 +427,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 											onClick={() => goBack()}
 										>
 											<IoChevronBackOutline
-												color={colors(platform, darkMode, "link")}
+												color={colors(platform, darkMode, "linkPrimary")}
 												size={18}
 												fontWeight="bold"
 											/>
@@ -452,7 +448,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 									justifyContent="center"
 								>
 									<Link
-										color={colors(platform, darkMode, "link")}
+										color={colors(platform, darkMode, "linkPrimary")}
 										textDecoration="none"
 										_hover={{
 											textDecoration: "none"
@@ -474,7 +470,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 												/>
 											) : (
 												<Link
-													color={colors(platform, darkMode, "link")}
+													color={colors(platform, darkMode, "linkPrimary")}
 													textDecoration="none"
 													_hover={{
 														textDecoration: "none"
@@ -559,7 +555,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 											{i18n(lang, "thisFolderIsEmpty")}
 										</Text>
 										<Link
-											color={colors(platform, darkMode, "link")}
+											color={colors(platform, darkMode, "linkPrimary")}
 											textDecoration="none"
 											marginTop="10px"
 											_hover={{
@@ -606,8 +602,9 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 			>
 				<ModalOverlay borderRadius="10px" />
 				<ModalContent
-					backgroundColor={colors(platform, darkMode, "backgroundPrimary")}
-					borderRadius="15px"
+					backgroundColor={colors(platform, darkMode, "backgroundSecondary")}
+					borderRadius="10px"
+					border={"1px solid " + colors(platform, darkMode, "borderPrimary")}
 				>
 					<ModalCloseButton
 						color={colors(platform, darkMode, "textPrimary")}
@@ -651,7 +648,7 @@ const CloudWindow = memo(({ userId, email, windowId }: { userId: number; email: 
 						) : (
 							<>
 								<Link
-									color={colors(platform, darkMode, "link")}
+									color={colors(platform, darkMode, "linkPrimary")}
 									textDecoration="none"
 									_hover={{ textDecoration: "none" }}
 									marginLeft="10px"

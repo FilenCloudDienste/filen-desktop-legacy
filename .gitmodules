@@ -1,0 +1,3 @@
+[submodule "drive"]
+	path = drive
+	url = https://github.com/FilenCloudDienste/filen-drive

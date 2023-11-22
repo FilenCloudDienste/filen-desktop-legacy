@@ -104,9 +104,9 @@ export const createMain = async (show: boolean = false): Promise<BrowserWindow> 
 	})
 
 	window.once("closed", () => {
-		activeWindows = activeWindows.filter(w => w.id !== windowId)
-
 		memoryCache.delete("MAIN_WINDOW")
+
+		activeWindows = activeWindows.filter(w => w.id !== windowId)
 	})
 
 	window.once("show", () => {
@@ -826,9 +826,9 @@ export const createUpdate = async (toVersion: string = "1"): Promise<BrowserWind
 	}
 
 	window.once("closed", () => {
-		activeWindows = activeWindows.filter(w => w.id !== windowId)
-
 		memoryCache.delete("UPDATE_WINDOW")
+
+		activeWindows = activeWindows.filter(w => w.id !== windowId)
 
 		if (is.macOS()) {
 			const active = JSON.stringify(activeWindows.map(w => w.type))
@@ -897,9 +897,9 @@ export const createWorker = async (): Promise<BrowserWindow> => {
 	}
 
 	window.once("closed", () => {
-		activeWindows = activeWindows.filter(w => w.id !== windowId)
-
 		memoryCache.delete("WORKER_WINDOW")
+
+		activeWindows = activeWindows.filter(w => w.id !== windowId)
 
 		setTimeout(() => {
 			if (activeWindows.length > 0) {
@@ -907,7 +907,7 @@ export const createWorker = async (): Promise<BrowserWindow> => {
 
 				createWorker().catch(log.error)
 			}
-		}, 3000)
+		}, 2500)
 	})
 
 	memoryCache.set("WORKER_WINDOW", window)

@@ -484,9 +484,7 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number; email:
 
 											let baseParentUUID: string = uuidv4()
 											const baseParentName: string = pathModule.basename(basePath)
-											const foldersSorted: string[] = [
-												...Object.keys(folders).sort((a, b) => a.split("/").length - b.split("/").length)
-											]
+											const foldersSorted: string[] = [...Object.keys(folders).sort((a, b) => a.length - b.length)]
 											const createdFolderUUIDs: any = {}
 
 											setFoldersNeeded(foldersSorted.length + 1)
@@ -634,11 +632,7 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number; email:
 	}, [])
 
 	return (
-		<Container
-			darkMode={darkMode}
-			lang={lang}
-			platform={platform}
-		>
+		<Container>
 			<Titlebar
 				darkMode={darkMode}
 				lang={lang}
@@ -760,7 +754,7 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number; email:
 										<>
 											{paused ? (
 												<Link
-													color={colors(platform, darkMode, "link")}
+													color={colors(platform, darkMode, "linkPrimary")}
 													textDecoration="none"
 													_hover={{ textDecoration: "none" }}
 													marginLeft="10px"
@@ -770,7 +764,7 @@ const UploadWindow = memo(({ userId, email, windowId }: { userId: number; email:
 												</Link>
 											) : (
 												<Link
-													color={colors(platform, darkMode, "link")}
+													color={colors(platform, darkMode, "linkPrimary")}
 													textDecoration="none"
 													_hover={{ textDecoration: "none" }}
 													marginLeft="10px"
