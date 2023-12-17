@@ -118,7 +118,7 @@ const sk: {
 	keybinds_openSettings: "Otvoriť nastavenia",
 	keybinds_pauseSync: "Pozastaviť synchronizáciu",
 	keybinds_resumeSync: "Obnoviť synchronizáciu",
-	    keybinds_openWebsite: "Otvoriť webovú stránku",
+	keybinds_openWebsite: "Otvoriť webovú stránku",
     keybindNotBound: "Nenastavené",
     syncing: "Synchronizácia..",
     maxStorageReached: "Dosiahli ste maximálny úložný objem vášho účtu. Odporúčame vám upgrade, aby ste mohli pokračovať v synchronizácii.",
