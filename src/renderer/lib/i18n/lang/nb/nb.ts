@@ -153,8 +153,8 @@ const nb: {
 	clearLocalEventLogInfo: "Dette vil fjerne den viste hendelsesloggen. Er du sikker? Denne handlingen kan ikke omgjøres!",
 	copied: "Kopiert",
 	publicLinkCopied: "Offentlig lenke kopiert til utklippstavlen",
-	clearLocalTrashDirs: "Tøm lokale søppelkasser",
-	clearLocalTrashDirsInfo: "Tømming av lokale søppelkasser kan ikke omgjøres! Er du sikker?",
+	clearLocalTrashDirs: "Tøm lokale søppelkurver",
+	clearLocalTrashDirsInfo: "Tømming av lokale søppelkurver kan ikke omgjøres! Er du sikker?",
 	updateWindowInfo3:
 		"Klienten vil avslutte og starte oppdateringsstrømmen i bakgrunnen. Den vil starte på nytt av seg selv når den er ferdig. Vennligst ikke forstyrr denne prosessen.",
 	pleaseLogin: "Vennligst logg inn",
