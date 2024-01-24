@@ -146,7 +146,7 @@ const TreeItem = memo(
 								<>
 									<AiOutlineCaretDown color="gray" />
 									<IoFolderOpen
-										color={platform == "mac" ? "#3ea0d5" : "#ffd04c"}
+										color={platform == "windows" ? "#ffd04c" : "#3ea0d5"}
 										style={{
 											marginLeft: 4
 										}}
@@ -156,7 +156,7 @@ const TreeItem = memo(
 								<>
 									<AiOutlineCaretRight color="gray" />
 									<IoFolder
-										color={platform == "mac" ? "#3ea0d5" : "#ffd04c"}
+										color={platform == "windows" ? "#ffd04c" : "#3ea0d5"}
 										style={{
 											marginLeft: 4
 										}}

@@ -339,7 +339,7 @@ const Item = memo(({ task, style, userId, platform, paused, isOnline }: ItemProp
 						<Flex>
 							<BsFillFolderFill
 								size={25}
-								color={platform == "mac" ? "#3ea0d5" : "#ffd04c"}
+								color={platform == "windows" ? "#ffd04c" : "#3ea0d5"}
 							/>
 						</Flex>
 					) : memoryCache.has(itemIconCacheKey) ? (
@@ -363,7 +363,7 @@ const Item = memo(({ task, style, userId, platform, paused, isOnline }: ItemProp
 							{task.task.type == "folder" ? (
 								<BsFillFolderFill
 									size={25}
-									color={platform == "mac" ? "#3ea0d5" : "#ffd04c"}
+									color={platform == "windows" ? "#ffd04c" : "#3ea0d5"}
 								/>
 							) : (
 								<BsFileEarmark
