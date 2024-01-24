@@ -13,6 +13,7 @@ import es from "./lang/es"
 import el from "./lang/el"
 import it from "./lang/it"
 import tr from "./lang/tr"
+import sk from "./lang/sk"
 import sv from "./lang/sv"
 import ko from "./lang/ko"
 
@@ -34,6 +35,7 @@ const translations: {
 	el,
 	it,
 	tr,
+	sk,
 	sv,
 	ko
 }
