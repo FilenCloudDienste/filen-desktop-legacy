@@ -6,6 +6,7 @@ import pl from "./lang/pl"
 import zh from "./lang/zh"
 import ja from "./lang/ja"
 import da from "./lang/da"
+import nb from "./lang/nb"
 import nl from "./lang/nl"
 import fr from "./lang/fr"
 import fi from "./lang/fi"
@@ -27,6 +28,7 @@ const translations: {
 	zh,
 	ja,
 	da,
+	nb,
 	nl,
 	fr,
 	fi,
