@@ -1,3 +1,4 @@
+import cs from "./lang/cs"
 import en from "./lang/en"
 import de from "./lang/de"
 import ru from "./lang/ru"
@@ -19,6 +20,7 @@ import ko from "./lang/ko"
 const translations: {
 	[key: string]: any
 } = {
+	cs,
 	en,
 	de,
 	ru,
