@@ -193,9 +193,10 @@ export const directoryTree = async (path: string, skipCache = false, location: L
 				}
 			}
 		} catch (e: any) {
+			const stats = await gracefulLStat(item.fullPath)
 			if (
-				!filenIgnoreCompiled.denies(item.path) &&
-				!filenIgnoreCompiled.denies(item.fullPath) &&
+				!filenIgnoreCompiled.denies(stats.isDir ? item.path + '/' : item.path) &&
+				!filenIgnoreCompiled.denies(stats.isDir ? item.fullPath + '/' : item.fullPath) &&
 				!isIgnoredBySelectiveSync(selectiveSyncRemote, item.path) &&
 				!isIgnoredBySelectiveSync(selectiveSyncRemote, item.fullPath)
 			) {
