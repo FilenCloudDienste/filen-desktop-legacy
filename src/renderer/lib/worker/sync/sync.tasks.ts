@@ -42,9 +42,10 @@ export const sortTasks = async ({
 }): Promise<any> => {
 	const ignored = []
 	const [{ selectiveSyncRemoteIgnore, filenIgnore }, syncMode] = await Promise.all([getIgnored(location), getSyncMode(location)])
+	const filenIgnoreDenies = (task: any) => filenIgnore.denies(task.type == "folder" ? task.path + '/' : task.path)
 
 	for (let i = 0; i < renameInLocal.length; i++) {
-		if (filenIgnore.denies(renameInLocal[i].path) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, renameInLocal[i].path)) {
+		if (filenIgnoreDenies(renameInLocal[i]) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, renameInLocal[i].path)) {
 			ignored.push(renameInLocal[i].path)
 			renameInLocal.splice(i, 1)
 
@@ -53,7 +54,7 @@ export const sortTasks = async ({
 	}
 
 	for (let i = 0; i < renameInRemote.length; i++) {
-		if (filenIgnore.denies(renameInRemote[i].path) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, renameInRemote[i].path)) {
+		if (filenIgnoreDenies(renameInRemote[i]) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, renameInRemote[i].path)) {
 			ignored.push(renameInRemote[i].path)
 			renameInRemote.splice(i, 1)
 
@@ -62,7 +63,7 @@ export const sortTasks = async ({
 	}
 
 	for (let i = 0; i < moveInLocal.length; i++) {
-		if (filenIgnore.denies(moveInLocal[i].path) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, moveInLocal[i].path)) {
+		if (filenIgnoreDenies(moveInLocal[i]) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, moveInLocal[i].path)) {
 			ignored.push(moveInLocal[i].path)
 			moveInLocal.splice(i, 1)
 
@@ -71,7 +72,7 @@ export const sortTasks = async ({
 	}
 
 	for (let i = 0; i < moveInRemote.length; i++) {
-		if (filenIgnore.denies(moveInRemote[i].path) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, moveInRemote[i].path)) {
+		if (filenIgnoreDenies(moveInRemote[i]) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, moveInRemote[i].path)) {
 			ignored.push(moveInRemote[i].path)
 			moveInRemote.splice(i, 1)
 
@@ -80,7 +81,7 @@ export const sortTasks = async ({
 	}
 
 	for (let i = 0; i < deleteInLocal.length; i++) {
-		if (filenIgnore.denies(deleteInLocal[i].path) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, deleteInLocal[i].path)) {
+		if (filenIgnoreDenies(deleteInLocal[i]) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, deleteInLocal[i].path)) {
 			ignored.push(deleteInLocal[i].path)
 			deleteInLocal.splice(i, 1)
 
@@ -89,7 +90,7 @@ export const sortTasks = async ({
 	}
 
 	for (let i = 0; i < deleteInRemote.length; i++) {
-		if (filenIgnore.denies(deleteInRemote[i].path) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, deleteInRemote[i].path)) {
+		if (filenIgnoreDenies(deleteInRemote[i]) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, deleteInRemote[i].path)) {
 			ignored.push(deleteInRemote[i].path)
 			deleteInRemote.splice(i, 1)
 
@@ -98,7 +99,7 @@ export const sortTasks = async ({
 	}
 
 	for (let i = 0; i < uploadToRemote.length; i++) {
-		if (filenIgnore.denies(uploadToRemote[i].path) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, uploadToRemote[i].path)) {
+		if (filenIgnoreDenies(uploadToRemote[i]) || isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, uploadToRemote[i].path)) {
 			ignored.push(uploadToRemote[i].path)
 			uploadToRemote.splice(i, 1)
 
@@ -108,7 +109,7 @@ export const sortTasks = async ({
 
 	for (let i = 0; i < downloadFromRemote.length; i++) {
 		if (
-			filenIgnore.denies(downloadFromRemote[i].path) ||
+			filenIgnoreDenies(downloadFromRemote[i]) ||
 			isIgnoredBySelectiveSync(selectiveSyncRemoteIgnore, downloadFromRemote[i].path)
 		) {
 			ignored.push(downloadFromRemote[i].path)
