@@ -1,38 +1,15 @@
-# Filen Desktop Client for Windows, macOS and Linux
-> Crossplatform desktop client written in TypeScript/JavaScript using Electron
+# [Filen Desktop Client](https://github.com/FilenCloudDienste/filen-desktop) (JupiterPi fork)
 
-# Installation
+## Additional features
 
-Use node 14
+This fork of the Filen desktop client adds the following functionality:
 
-``` bash
-nvm install 14
-nvm use 14
-```
+### Physical .filenignore
 
-Use npm
+Adds the option of having a "physical" .filenignore file located at the root of a sync location. Its content is added to the content of the "virtual" .filenignore loaded from the local database.
 
-``` bash
-npm install
-```
+**Advantages**: Additionally to the current "virtual" implementation, this allows the .filenignore file to be uploaded along with the files of a sync location, and thus for it to be downloaded along with the files when syncing to another device. (This is very useful for e. g. JavaScript source repositories where node_modules mustn't be uploaded to cloud storage on any device that clones the sync location locally.)
 
-#### Build Setup
+## Todo
 
-``` bash
-# install dependencies
-npm install
-
-# run client
-npm run start
-
-# build electron application for production, where {platform} = win, mac or linux
-npm run build-{platform}
-
-# build for all platforms
-npm run dist
-
-```
-
-# Contributing translations
-
-If you want to help us translate the app you can head over to [this](https://github.com/FilenCloudDienste/filen-desktop/tree/master/src/renderer/lib/i18n) page and check out the Readme provided there! :)
+- [ ] suppress updater
