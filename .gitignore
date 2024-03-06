@@ -37,3 +37,6 @@ yarn-error.log*
 /tests
 /prod
 /main
+
+data
+.idea

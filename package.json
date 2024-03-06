@@ -73,6 +73,8 @@
 		"wait-on": "5.3.0"
 	},
 	"scripts": {
+		"build-compat": "npm run build-main && react-scripts build && electron-builder --win portable",
+
 		"dev": "npm run build-main && concurrently -k \"cross-env BROWSER=none npm run react-start\" \"wait-on http://localhost:3000 && electronmon .\"",
 		"build-main": "tsc --project ./tsconfig.main.json && copyfiles -u 1 src/assets/**/* prod && copyfiles -u 1 src/constants.json prod",
 		"build": "react-scripts build",
@@ -81,7 +83,7 @@
 		"dist": "rm -rf prod/ && npm run build-main && rm -rf dist/ && react-scripts build && electron-builder -wlm --publish never",
 		"build-linux": "rm -rf prod/ && npm run build-main && rm -rf dist/ && react-scripts build && electron-builder -l --publish never",
 		"build-mac": "rm -rf prod/ && npm run build-main && rm -rf dist/ && react-scripts build && electron-builder -m --publish never",
-		"build-win": "rm -rf prod/ && npm run build-main && rm -rf dist/ && react-scripts build && electron-builder -w --publish never",
+		"build-win": "rd /s /q prod/ && npm run build-main && rd /s /q dist/ && react-scripts build && electron-builder -w --publish never",
 		"build-win-arm64": "rm -rf prod/ && npm run build-main && rm-rf dist / && react-scripts build && electron-builder -w --arm64 --publish never",
 		"build-win-win": "npm run build-main && react-scripts build && electron-builder -w --publish never",
 		"react-start": "react-scripts start",
@@ -117,7 +119,6 @@
 		"npmRebuild": false,
 		"nodeGypRebuild": false,
 		"artifactName": "filen_${arch}.${ext}",
-		"afterSign": "./scripts/notarize.js",
 		"extends": null,
 		"files": [
 			"build",
@@ -138,11 +139,6 @@
 			}
 		],
 		"win": {
-			"publisherName": [
-				"Filen Cloud Dienste UG (haftungsbeschränkt)"
-			],
-			"certificateSubjectName": "Filen Cloud Dienste UG (haftungsbeschränkt)",
-			"verifyUpdateCodeSignature": false,
 			"icon": "./assets/icons/win/icon.ico",
 			"target": {
 				"target": "nsis",
@@ -150,14 +146,7 @@
 					"x64",
 					"arm64"
 				]
-			},
-			"publish": [
-				{
-					"provider": "generic",
-					"url": "https://cdn.filen.io/desktop/release/"
-				}
-			],
-			"sign": "./scripts/sign.js"
+			}
 		},
 		"nsis": {
 			"oneClick": true,
