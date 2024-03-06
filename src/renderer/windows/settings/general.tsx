@@ -605,7 +605,7 @@ const SettingsWindowGeneral = memo(({ darkMode, lang, platform }: { darkMode: bo
 								fontSize={11}
 								fontWeight="400 !important"
 							>
-								v{appVersion}
+								v{appVersion} - JupiterPi v0.0.1
 							</Text>
 						</Flex>
 						<Flex>
