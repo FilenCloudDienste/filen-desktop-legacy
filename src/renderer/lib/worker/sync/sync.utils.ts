@@ -5,6 +5,8 @@ import { Location, SyncModes } from "../../../../types"
 
 const log = window.require("electron-log")
 const gitignoreParser = window.require("@gerhobbelt/gitignore-parser")
+const fs = window.require("fs-extra")
+const pathModule = window.require("path")
 
 export const isSyncLocationPaused = async (uuid: string): Promise<boolean> => {
 	try {
@@ -52,6 +54,11 @@ export const getIgnored = (
 			.then(([selectiveSyncRemote, fIgnore]) => {
 				if (typeof fIgnore !== "string") {
 					fIgnore = ""
+				}
+
+				const physicalIgnoreFile = pathModule.join(location.local, ".filenignore")
+				if (fs.existsSync(physicalIgnoreFile)) {
+					fIgnore += "\n" + fs.readFileSync(physicalIgnoreFile, "utf-8")
 				}
 
 				try {
