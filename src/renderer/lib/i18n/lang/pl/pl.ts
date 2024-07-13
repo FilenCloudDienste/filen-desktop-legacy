@@ -155,7 +155,39 @@ const pl: {
 	clearLocalTrashDirs: "Opróżnij lokalne kosze na śmieci",
 	clearLocalTrashDirsInfo: "Wyczyszczenia lokalnych koszy na śmieci nie można cofnąć! Jesteś pewny?",
 	updateWindowInfo3:
-		"Klient zakończy działanie i rozpocznie przepływ aktualizacji w tle. Po zakończeniu uruchomi się ponownie. Proszę nie przerywać tego procesu."
+		"Klient zakończy działanie i rozpocznie przepływ aktualizacji w tle. Po zakończeniu uruchomi się ponownie. Proszę nie przerywać tego procesu.",
+	pleaseLogin: "Proszę się zalogować",
+	traySyncIssues: "__NUM__ problemów z synchronizacją",
+	traySyncing: "Synchronizowanie __NUM__ elementów",
+	everythingSynced: "Wszystko zsynchronizowane",
+	trayWarnings: "__NUM__ ostrzeżeń",
+	trayNoSyncSetup: "Nie skonfigurowano jeszcze lokalizacji synchronizacji",
+	trayNoSyncRemoteSetup: "Nie skonfigurowano jeszcze lokalizacji zdalnej synchronizacji",
+	timeSinceSeconds: "__TIME__ sekund temu",
+	timeSinceMinutes: "__TIME__ minut temu",
+	timeSinceHours: "__TIME__ godzin temu",
+	timeSinceDays: "__TIME__ dni temu",
+	timeSinceMonths: "__TIME__ miesięcy temu",
+	timeSinceYears: "__TIME__ lat temu",
+	trayMenuShow: "Pokaż",
+	trayMenuForceSync: "Wymusz synchronizację",
+	trayMenuUploadFolders: "Prześlij foldery",
+	trayMenuUploadFiles: "Prześlij pliki",
+	trayMenuSettings: "Ustawienia",
+	trayMenuQuit: "Wyjdź z Filen",
+	openLocalFolder: "Otwórz folder lokalny",
+	openLocalTrash: "Otwórz lokalny folder śmieci",
+	help: "Pomoc",
+	possibleSolution: "Możliwe rozwiązanie",
+	possibleSolutionEPERM: "Upewnij się, że klient ma wszystkie uprawnienia potrzebne do odczytu i zapisu w powyższej ścieżce.",
+	possibleSolutionENOENT: "Upewnij się, że powyższa ścieżka istnieje w Twoim systemie.",
+	possibleSolutionEBUSY:
+		"Klient nie mógł uzyskać dostępu do powyższej ścieżki. Sprawdź, czy inne programy aktywnie ją używają lub blokują.",
+	possibleSolutionEMFILE: "Za mało deskryptorów plików lub wolnego miejsca w systemie.",
+	possibleSolutionELOOP: "Upewnij się, że lokalna lokalizacja synchronizacji nie zawiera dowiązań symbolicznych prowadzących do nieskończonych pętli.",
+	possibleSolutionENAMETOOLONG: "Nazwa pliku lub ścieżka są za długie. Zmniejsz długość do wartości obsługiwanej przez Twój system operacyjny.",
+	issue: "Problem",
+	path: "Ścieżka"
 }
 
 export default pl
